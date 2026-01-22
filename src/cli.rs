@@ -1,6 +1,6 @@
 //! CLI definitions using clap derive API
 
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 /// Augent - AI configuration manager

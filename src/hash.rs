@@ -1,5 +1,8 @@
 //! BLAKE3 hashing utilities for bundle integrity
 
+// Infrastructure code - functions defined but not yet used in Phase 1
+#![allow(dead_code)]
+
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
@@ -136,7 +139,6 @@ pub fn strip_prefix(hash: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::TempDir;
 
     #[test]

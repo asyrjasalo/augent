@@ -5,6 +5,8 @@
 //! - Resource transformation (universal format → platform-specific format)
 //! - Merge strategies for special files (AGENTS.md, mcp.jsonc)
 
+#![allow(dead_code)]
+
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -90,7 +92,7 @@ impl Platform {
     }
 
     /// Get the platform directory path
-    pub fn directory_path(&self, workspace_root: &Path) -> std::path::PathBuf {
+    pub fn directory_path(&self, workspace_root: &Path) -> PathBuf {
         workspace_root.join(&self.directory)
     }
 }

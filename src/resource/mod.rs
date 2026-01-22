@@ -3,6 +3,9 @@
 //! A **Resource** (or "Aug") is a file in AI agent-independent format provided by a bundle.
 //! An **Augmentation** is a resource installed for a specific AI agent in its native format.
 
+// Infrastructure code - types and methods defined but not yet used in Phase 1
+#![allow(dead_code)]
+
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -87,6 +90,7 @@ impl Resource {
     }
 
     /// Get the file name without extension
+    #[allow(dead_code)]
     pub fn stem(&self) -> Option<&str> {
         self.path.file_stem().and_then(|s| s.to_str())
     }
@@ -158,6 +162,7 @@ impl ResourceType {
     }
 
     /// Check if this resource type should be copied as-is to workspace root
+    #[allow(dead_code)]
     pub fn is_root_file(&self) -> bool {
         matches!(self, ResourceType::RootFile)
     }
@@ -184,6 +189,7 @@ impl ResourceSet {
     }
 
     /// Get all resources
+    #[allow(dead_code)]
     pub fn resources(&self) -> &[Resource] {
         &self.resources
     }

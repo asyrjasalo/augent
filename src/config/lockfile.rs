@@ -3,6 +3,8 @@
 //! The lockfile contains resolved dependency versions with exact git SHAs
 //! and BLAKE3 content hashes for reproducibility.
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};

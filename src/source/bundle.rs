@@ -1,5 +1,7 @@
 //! Bundle model
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};
@@ -101,7 +103,7 @@ impl BundleDependency {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::source::{BundleSource, GitSource};
+    use crate::source::BundleSource;
 
     #[test]
     fn test_bundle_new() {

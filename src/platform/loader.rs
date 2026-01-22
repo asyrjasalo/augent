@@ -3,8 +3,10 @@
 //! This module handles loading platform configurations from platforms.jsonc files
 //! and merging them with built-in platform definitions.
 
+#![allow(dead_code)]
+
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::Platform;
 use crate::error::{AugentError, Result};

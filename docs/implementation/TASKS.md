@@ -93,7 +93,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Set up workspace structure: `src/`, `tests/`, `docs/`, `examples/` - [src/](../../src/), [tests/](../../tests/)
 - [x] Configure Cargo features for optional platforms - [Cargo.toml](../../Cargo.toml)
 - [x] Set up pre-commit hooks configuration - [.pre-commit-config.yaml](../../.pre-commit-config.yaml)
-- [ ] Configure CI/CD workflow for cross-platform builds
+- [x] Configure CI/CD workflow for cross-platform builds - [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
 - [x] Create initial `src/main.rs` with basic CLI stub - [src/main.rs](../../src/main.rs)
 
 #### Feature 1.2: Error Handling Framework
@@ -121,17 +121,17 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Define subcommand enums: Install, Uninstall, List, Show, Help, Version - [src/cli.rs](../../src/cli.rs)
 - [x] Set up global options (verbose, workspace path) - [src/cli.rs](../../src/cli.rs)
 - [x] Configure command-specific arguments - [src/cli.rs](../../src/cli.rs)
-- [ ] Enable shell completion generation
+- [x] Enable shell completion generation - [src/cli.rs](../../src/cli.rs), [src/commands/completions.rs](../../src/commands/completions.rs)
 - [x] Test basic CLI parsing and help output - [src/cli.rs](../../src/cli.rs), [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ### Epic 2: Core Data Models
 
 #### Feature 2.1: Bundle Models
 
-- [ ] Define `Bundle` struct (name, source, dependencies, metadata)
+- [x] Define `Bundle` struct (name, source, dependencies, metadata) - [src/source/bundle.rs](../../src/source/bundle.rs)
 - [x] Define `BundleSource` enum (Dir, Git, GitHub short-form) - [src/source/mod.rs](../../src/source/mod.rs)
 - [x] Define `GitSource` struct (url, ref, subdirectory, resolved_sha) - [src/source/mod.rs](../../src/source/mod.rs)
-- [x] Implement bundle validation logic
+- [x] Implement bundle validation logic - [src/source/bundle.rs](../../src/source/bundle.rs)
 - [x] Add BLAKE3 hashing for bundle integrity - [src/hash.rs](../../src/hash.rs)
 - [x] Write tests for bundle model operations - [src/source/mod.rs](../../src/source/mod.rs), [src/hash.rs](../../src/hash.rs)
 
@@ -482,8 +482,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 ## Task Statistics
 
 - **Total Tasks:** 254
-- **Completed:** 94 (Phase 0 complete, Phase 1 Epics 1-3 mostly complete)
-- **Pending:** 160
+- **Completed:** 97 (Phase 0 complete, Phase 1 complete)
+- **Pending:** 157
 
 ---
 

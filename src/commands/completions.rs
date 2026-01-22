@@ -1,6 +1,6 @@
 //! Shell completions command
 
-use clap::{CommandFactory, Parser};
+use clap::CommandFactory;
 use miette::Result;
 
 use crate::cli::CompletionsArgs;

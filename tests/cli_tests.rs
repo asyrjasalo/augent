@@ -5,10 +5,15 @@ mod common;
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+// Temporary fix for deprecated cargo_bin - will be updated when build-dir issues are resolved
+#[allow(deprecated)]
+fn augent_cmd() -> Command {
+    Command::cargo_bin("augent").unwrap()
+}
+
 #[test]
 fn test_help_output() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .arg("--help")
         .assert()
         .success()
@@ -21,8 +26,7 @@ fn test_help_output() {
 
 #[test]
 fn test_version_output() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .arg("version")
         .assert()
         .success()
@@ -32,8 +36,7 @@ fn test_version_output() {
 
 #[test]
 fn test_install_stub() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .args(["install", "github:test/bundle"])
         .assert()
         .success()
@@ -44,8 +47,7 @@ fn test_install_stub() {
 
 #[test]
 fn test_install_with_for_flag() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .args([
             "install",
             "github:test/bundle",
@@ -61,8 +63,7 @@ fn test_install_with_for_flag() {
 
 #[test]
 fn test_install_with_frozen_flag() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .args(["install", "github:test/bundle", "--frozen"])
         .assert()
         .success()
@@ -71,8 +72,7 @@ fn test_install_with_frozen_flag() {
 
 #[test]
 fn test_uninstall_stub() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .args(["uninstall", "my-bundle"])
         .assert()
         .success()
@@ -81,8 +81,7 @@ fn test_uninstall_stub() {
 
 #[test]
 fn test_list_stub() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .arg("list")
         .assert()
         .success()
@@ -91,8 +90,7 @@ fn test_list_stub() {
 
 #[test]
 fn test_show_stub() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .args(["show", "my-bundle"])
         .assert()
         .success()
@@ -101,8 +99,7 @@ fn test_show_stub() {
 
 #[test]
 fn test_unknown_command() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .arg("unknown")
         .assert()
         .failure()
@@ -111,8 +108,7 @@ fn test_unknown_command() {
 
 #[test]
 fn test_install_missing_source() {
-    Command::cargo_bin("augent")
-        .unwrap()
+    augent_cmd()
         .arg("install")
         .assert()
         .failure()

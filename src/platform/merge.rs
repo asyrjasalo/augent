@@ -1,5 +1,7 @@
 //! Merge strategies for combining resource files
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 

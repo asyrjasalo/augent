@@ -3,6 +3,8 @@
 //! This file tracks which files are installed from which bundles
 //! to which AI agents.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -147,7 +149,7 @@ impl WorkspaceBundle {
     pub fn find_conflicts(&self, other: &WorkspaceBundle) -> Vec<&str> {
         self.enabled
             .keys()
-            .filter(|file| other.enabled.contains_key(file))
+            .filter(|file| other.enabled.contains_key(*file))
             .map(|s| s.as_str())
             .collect()
     }

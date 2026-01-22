@@ -12,6 +12,8 @@
 //! - `mod.rs`: Bundle source parsing and URL resolution
 //! - `bundle.rs`: Fully resolved bundle model with validation
 //!
+#![allow(dead_code)]
+
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -205,8 +207,7 @@ impl GitSource {
             .url
             .replace("https://", "")
             .replace("git@", "")
-            .replace(':', "-")
-            .replace('/', "-")
+            .replace([':', '/'], "-")
             .replace(".git", "");
 
         match &self.resolved_sha {

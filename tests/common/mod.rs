@@ -4,8 +4,10 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// A test workspace for integration tests
+#[allow(dead_code)]
 pub struct TestWorkspace {
     /// Temporary directory
+    #[allow(dead_code)]
     pub temp: TempDir,
     /// Path to workspace root
     pub path: PathBuf,
@@ -20,6 +22,7 @@ impl TestWorkspace {
     }
 
     /// Create a bundle directory in the workspace
+    #[allow(dead_code)]
     pub fn create_bundle(&self, name: &str) -> PathBuf {
         let bundle_path = self.path.join("bundles").join(name);
         std::fs::create_dir_all(&bundle_path).expect("Failed to create bundle directory");
@@ -27,6 +30,7 @@ impl TestWorkspace {
     }
 
     /// Create .augent directory
+    #[allow(dead_code)]
     pub fn create_augent_dir(&self) -> PathBuf {
         let augent_path = self.path.join(".augent");
         std::fs::create_dir_all(&augent_path).expect("Failed to create .augent directory");
@@ -54,6 +58,7 @@ impl TestWorkspace {
     }
 
     /// Get the path to the augent binary
+    #[allow(dead_code)]
     pub fn augent_bin() -> PathBuf {
         // During tests, the binary is in target/debug/
         PathBuf::from(env!("CARGO_BIN_EXE_augent"))

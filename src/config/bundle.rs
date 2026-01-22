@@ -1,5 +1,7 @@
 //! Bundle configuration (augent.yaml) data structures
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};

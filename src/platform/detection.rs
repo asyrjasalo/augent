@@ -1,5 +1,7 @@
 //! Platform detection for finding AI agents in a workspace
 
+#![allow(dead_code)]
+
 use std::path::Path;
 
 use crate::error::{AugentError, Result};
