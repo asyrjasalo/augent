@@ -165,6 +165,7 @@ Basically, the user can give any path or repo url or github:author/reponame to `
 We adopt a `platforms.jsonc` configuration file approach to support ever increasing number of AI agents and their features. It must be possible for the developer to add support to new AI agents without changing the core code.
 
 **TODO: Research OpenPackage's platforms.jsonc schema and implementation** including:
+
 - Platform identifier (e.g., "opencode", "cursor", "claude")
 - Directory structure where resources are stored
 - File format transformations (agent-independent → agent-specific)
@@ -184,11 +185,13 @@ Even though we don't have centralized registry, we might later implement a centr
 ### CLI commands
 
 augent install [--for <agent>...] [--frozen] <source>
+
 - adds bundle to augent.yaml and augent.lock
 - updates augent.workspace.yaml (per --for <agent>, otherwise detects all used AI agents by checking for agent-specific directories like `.opencode/`, `.cursor/`, `.claude/`, etc. and targets those)
 - installs bundles resources per AI agent in format that agent expects
 
 augent uninstall <bundle-name>
+
 - removes files from all agents it is installed in, but only removes files that are not currently provided/overridden by later bundles (to avoid removing files that belong to other bundles)
 - updates augent.workspace.yaml
 - removes bundle from augent.yaml and augent.lock
@@ -221,7 +224,8 @@ augent version - show version number, build info, and Rust version
 
 ### files
 
-# Workspace root structure
+## Workspace root structure
+
 .augent/
 --- augent.yaml - bundle config
 --- augent.lock - bundles with resolved sources and included resources
@@ -230,13 +234,15 @@ augent version - show version number, build info, and Rust version
     |_ my-debug-bundle/
     |_ code-documentation/
 
-# Global cache (shared across all workspaces)
+## Global cache (shared across all workspaces)
+
 ~/.cache/augent/
 --- bundles/
     |_ <url-path-slug>/
         |_ <git-sha>/
 
-# AI agent directories (each agent expects its own directory structure)
+## AI agent directories (each agent expects its own directory structure)
+
 .opencode/
 --- commands/
 --- rules/
@@ -249,7 +255,7 @@ augent version - show version number, build info, and Rust version
 --- .clinerules
 --- workspace/
 
-### augent.yaml
+## augent.yaml
 
 This is the main config file for the bundle. It is optional, but if bundle has dependencies, it must be present.
 
@@ -269,7 +275,6 @@ bundles:
 ### augent.lock
 
 This is the lockfile which has resolved sources (like git repository URL and SHA) and included resources (like commands, rules, skills, etc.). Claude Code plugins will be handled as git repositories (with subdirectories) so source type is essentially always either `dir` (for bundles in the current repo) or `git` (for remote bundles or converted from Claude Code plugins).
-
 
 ```json
 {

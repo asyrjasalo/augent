@@ -1,0 +1,28 @@
+# Install the hooks in this file:
+#   pre-commit install --hook-type pre-commit --hook-type commit-msg
+#
+# (optional) test hooks for staged files:
+#   pre-commit run --verbose
+#
+# (optional) test hooks for all files:
+#   pre-commit run --all-files --verbose
+
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/rvben/rumdl-pre-commit
+    rev: v0.0.222
+    hooks:
+      - id: rumdl-fmt
+        args: ["--disable", "MD013,MD033,MD041"]
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.30.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
