@@ -65,22 +65,6 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 **Status:** Complete
 
-## Phase 2: Core Functionality (Epics 4-5)
-
-**Status:** In Progress (Epic 4 complete, Epic 5 pending)
-
-### Overview
-
-Core infrastructure and data models, platform system for extensibility - essential for all other features.
-
-**Target Version:** 1.0.0
-**Primary Goals:**
-
-- Platform-independent AI configuration management
-- Lean, intuitive, developer-friendly CLI
-- Easy extensibility without code changes
-- Support for multiple AI agents (Claude, Cursor, OpenCode, etc.)
-
 ---
 
 ## Architecture Decisions Summary

@@ -210,30 +210,30 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 4.2: Git Repository Operations
 
-- [x] Implement `git clone` with `git2` + `auth-git2` - [src/git/mod.rs](../../src/git/mod.rs)
-- [x] Implement git SHA resolution for refs - [src/git/mod.rs](../../src/git/mod.rs)
-- [x] Implement repository fetching and checkout - [src/git/mod.rs](../../src/git/mod.rs)
-- [x] Add support for SSH and HTTPS authentication (delegated to git) - [src/git/mod.rs](../../src/git/mod.rs)
-- [x] Implement private repository support - [src/git/mod.rs](../../src/git/mod.rs)
-- [x] Write tests for git operations - [src/git/mod.rs](../../src/git/mod.rs)
+- [x] Implement `git clone` with `git2` + `auth-git2`
+- [x] Implement git SHA resolution for refs
+- [x] Implement repository fetching and checkout
+- [x] Add support for SSH and HTTPS authentication (delegated to git)
+- [x] Implement private repository support
+- [x] Write tests for git operations
 
 #### Feature 4.3: Bundle Caching System
 
-- [x] Define cache directory structure (`~/.cache/augent/bundles/`) - [src/cache/mod.rs](../../src/cache/mod.rs)
-- [x] Implement cache key generation from URL - [src/cache/mod.rs](../../src/cache/mod.rs)
-- [x] Implement bundle download and caching logic - [src/cache/mod.rs](../../src/cache/mod.rs)
-- [x] Add cache hit/miss tracking - [src/cache/mod.rs](../../src/cache/mod.rs)
+- [x] Define cache directory structure (`~/.cache/augent/bundles/`)
+- [x] Implement cache key generation from URL
+- [x] Implement bundle download and caching logic
+- [x] Add cache hit/miss tracking
 - [-] Implement cache cleanup (optional)
-- [x] Write tests for cache operations - [src/cache/mod.rs](../../src/cache/mod.rs)
+- [x] Write tests for cache operations
 
 #### Feature 4.4: Bundle Discovery
 
-- [x] Scan local directories for bundle resources - [src/discovery/mod.rs](../../src/discovery/mod.rs)
-- [x] Scan git repositories for bundles/subdirectories - [src/discovery/mod.rs](../../src/discovery/mod.rs)
-- [x] Detect Claude Code plugins and marketplaces - [src/discovery/mod.rs](../../src/discovery/mod.rs)
+- [x] Scan local directories for bundle resources
+- [x] Scan git repositories for bundles/subdirectories
+- [x] Detect Claude Code plugins and marketplaces
 - [-] Create interactive menu for multiple discovered bundles
-- [x] Implement bundle discovery when source path is explicitly specified - [src/discovery/mod.rs](../../src/discovery/mod.rs)
-- [x] Write tests for discovery logic - [src/discovery/mod.rs](../../src/discovery/mod.rs)
+- [x] Implement bundle discovery when source path is explicitly specified
+- [x] Write tests for discovery logic
 
 ### Epic 5: Workspace Management
 
