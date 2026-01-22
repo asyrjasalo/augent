@@ -458,4 +458,98 @@ mod tests {
 
         assert!(is_dir_empty(&dir).unwrap());
     }
+
+    #[test]
+    fn test_update_configs() {
+        let temp = TempDir::new().unwrap();
+        let workspace_path = temp.path();
+        let augent_dir = workspace_path.join(".augent");
+        fs::create_dir_all(&augent_dir).unwrap();
+
+        let bundle_config_path = augent_dir.join("augent.yaml");
+        fs::write(
+            &bundle_config_path,
+            r#"
+name: "@test/workspace"
+bundles:
+  - name: "bundle1"
+    subdirectory: bundles/bundle1
+"#,
+        )
+        .unwrap();
+
+        let lockfile_path = augent_dir.join("augent.lock");
+        fs::write(
+            &lockfile_path,
+            r#"{
+  "name": "@test/workspace",
+  "bundles": [
+    {
+      "name": "bundle1",
+      "source": {
+        "type": "dir",
+        "path": ".augent/bundles/bundle1",
+        "hash": "hash1"
+      },
+      "files": []
+    }
+  ]
+}"#,
+        )
+        .unwrap();
+
+        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        fs::write(
+            &workspace_config_path,
+            r#"
+name: "@test/workspace"
+bundles:
+  - name: bundle1
+    enabled: {}
+"#,
+        )
+        .unwrap();
+
+        let mut workspace = Workspace::open(workspace_path).unwrap();
+
+        update_configs(&mut workspace, "bundle1").unwrap();
+
+        assert!(!workspace.bundle_config.has_dependency("bundle1"));
+    }
+
+    #[test]
+    fn test_determine_files_to_remove_nonexistent_bundle() {
+        let lockfile = Lockfile::new("@test/workspace");
+
+        let workspace_root = TempDir::new().unwrap();
+        let workspace_path = workspace_root.path();
+        let augent_dir = workspace_path.join(".augent");
+        fs::create_dir_all(&augent_dir).unwrap();
+
+        let bundle_config_path = augent_dir.join("augent.yaml");
+        fs::write(&bundle_config_path, "name: \"@test/workspace\"").unwrap();
+
+        let lockfile_path = augent_dir.join("augent.lock");
+        fs::write(
+            &lockfile_path,
+            "{\"name\":\"@test/workspace\",\"bundles\":[]}",
+        )
+        .unwrap();
+
+        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        fs::write(
+            &workspace_config_path,
+            "name: \"@test/workspace\"\nbundles: []",
+        )
+        .unwrap();
+
+        let mut workspace = Workspace::open(workspace_path).unwrap();
+        workspace.lockfile = lockfile;
+        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+
+        let result =
+            determine_files_to_remove(&workspace, "nonexistent", &["test.txt".to_string()]);
+
+        assert!(result.is_err());
+    }
 }

@@ -616,17 +616,19 @@ mod tests {
         assert!(temp.path().join(WORKSPACE_DIR).join(BUNDLES_DIR).is_dir());
 
         // Check config files
-        assert!(temp
-            .path()
-            .join(WORKSPACE_DIR)
-            .join(BUNDLE_CONFIG_FILE)
-            .exists());
+        assert!(
+            temp.path()
+                .join(WORKSPACE_DIR)
+                .join(BUNDLE_CONFIG_FILE)
+                .exists()
+        );
         assert!(temp.path().join(WORKSPACE_DIR).join(LOCKFILE_NAME).exists());
-        assert!(temp
-            .path()
-            .join(WORKSPACE_DIR)
-            .join(WORKSPACE_CONFIG_FILE)
-            .exists());
+        assert!(
+            temp.path()
+                .join(WORKSPACE_DIR)
+                .join(WORKSPACE_CONFIG_FILE)
+                .exists()
+        );
 
         // Check name format
         assert!(workspace.bundle_config.name.starts_with('@'));

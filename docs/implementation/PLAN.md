@@ -641,7 +641,7 @@ Uninstall command, query commands (list, show), help and version.
 
 ## Phase 5: Quality Assurance (Epics 11-12)
 
-**Status:** Pending
+**Status:** Epic 12 Complete (Epic 11 Pending)
 
 ### Overview
 
@@ -699,58 +699,60 @@ Testing infrastructure, documentation, coverage targets.
 
 ## Epic 12: Documentation
 
+**Status:** Complete
+
 **Goal:** Create user-facing and internal documentation.
 
 ### Feature 12.1: CLI Help Documentation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Write help text for all commands (fits on one screen)
-- [ ] Add examples to help text
-- [ ] Ensure help text is in CLI help format
-- [ ] Test help output with different flags
+- [x] Write help text for all commands (fits on one screen) - [src/cli.rs](../../src/cli.rs)
+- [x] Add examples to help text - [src/cli.rs](../../src/cli.rs)
+- [x] Ensure help text is in CLI help format - [src/cli.rs](../../src/cli.rs)
+- [x] Test help output with different flags - [src/cli.rs](../../src/cli.rs)
 
 ---
 
 ### Feature 12.2: README.md
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Write essential introduction to Augent
-- [ ] Include quick start example
-- [ ] Link to detailed documentation for longer content
-- [ ] Keep it concise but informative
+- [x] Write essential introduction to Augent - [README.md](../../README.md)
+- [x] Include quick start example - [README.md](../../README.md)
+- [x] Link to detailed documentation for longer content - [README.md](../../README.md)
+- [x] Keep it concise but informative - [README.md](../../README.md)
 
 ---
 
 ### Feature 12.3: Feature Documentation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Create `docs/FEATURE.md` for detailed feature docs
-- [ ] Document each command with examples
-- [ ] Document bundle format (augent.yaml)
-- [ ] Document lockfile format
-- [ ] Document workspace configuration
+- [x] Create `docs/COMMANDS.md` for detailed command docs - [docs/COMMANDS.md](../../docs/COMMANDS.md)
+- [x] Document each command with examples - [docs/COMMANDS.md](../../docs/COMMANDS.md)
+- [x] Document bundle format (augent.yaml) - [docs/BUNDLES.md](../../docs/BUNDLES.md)
+- [x] Document lockfile format - [docs/BUNDLES.md](../../docs/BUNDLES.md)
+- [x] Document workspace configuration - [docs/WORKSPACE.md](../../docs/WORKSPACE.md)
 
 ---
 
 ### Feature 12.4: Implementation Documentation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Create `docs/implementation/ARCHITECTURE.md`
-- [ ] Document architecture decision records (ADRs)
-- [ ] Document Rust development practices
-- [ ] Create sequence diagrams for workflows (Mermaid)
+- [x] Verify `docs/implementation/ARCHITECTURE.md` exists - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md)
+- [x] Verify architecture decision records (ADRs) are complete - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md#architecture-decision-records-adr)
+- [x] Verify Rust development practices are documented - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md#rust-development-practices)
+- [x] Verify sequence diagrams for workflows (Mermaid) exist - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md#user-workflows)
 
 ---
 
@@ -847,8 +849,8 @@ Cross-platform builds, distribution setup.
 - **Epic 6** → Can be done after Epics 1-5
 - **Epic 7** → Depends on Epic 6
 - **Epics 8-10** → Can be done after Epic 1
-- **Epic 11** → Parallel to implementation, continuous
-- **Epic 12** → Starts during Epic 1, continues throughout
+- **Epic 11** → Parallel to implementation, continuous (Pending)
+- **Epic 12** → Starts during Epic 1, continues throughout (Complete)
 - **Epic 13** → Final phase after all features complete
 
 ## Notes

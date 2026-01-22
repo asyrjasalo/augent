@@ -22,7 +22,7 @@ use crate::config::{BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
-use crate::platform::{self, detection, Platform};
+use crate::platform::{self, Platform, detection};
 use crate::resolver::{DiscoveredBundle, Resolver};
 use crate::source::BundleSource;
 use crate::transaction::Transaction;

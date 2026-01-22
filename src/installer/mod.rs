@@ -543,12 +543,16 @@ mod tests {
 
         let resources = Installer::discover_resources(temp.path()).unwrap();
         assert_eq!(resources.len(), 2);
-        assert!(resources
-            .iter()
-            .any(|r| r.bundle_path == PathBuf::from("commands/debug.md")));
-        assert!(resources
-            .iter()
-            .any(|r| r.bundle_path == PathBuf::from("commands/test.md")));
+        assert!(
+            resources
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("commands/debug.md"))
+        );
+        assert!(
+            resources
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("commands/test.md"))
+        );
     }
 
     #[test]
@@ -628,5 +632,74 @@ mod tests {
         assert!(installer.pattern_matches("commands/**/*.md", "commands/sub/debug.md"));
         assert!(installer.pattern_matches("AGENTS.md", "AGENTS.md"));
         assert!(!installer.pattern_matches("commands/*.md", "rules/debug.md"));
+    }
+
+    #[test]
+    fn test_install_resource_no_platforms() {
+        let temp = TempDir::new().unwrap();
+        let mut installer = Installer::new(temp.path(), vec![]);
+
+        let bundle = ResolvedBundle {
+            name: "test-bundle".to_string(),
+            dependency: None,
+            source_path: temp.path().to_path_buf(),
+            resolved_sha: None,
+            git_source: None,
+            config: None,
+        };
+
+        let result = installer.install_bundle(&bundle);
+        assert!(result.is_ok());
+        let workspace_bundle = result.unwrap();
+        assert_eq!(workspace_bundle.name, "test-bundle");
+    }
+
+    #[test]
+    fn test_copy_file() {
+        let temp = TempDir::new().unwrap();
+        let installer = Installer::new(temp.path(), vec![]);
+
+        let source = temp.path().join("source.txt");
+        let target = temp.path().join("target.txt");
+
+        fs::write(&source, "test content").unwrap();
+
+        let result = installer.copy_file(&source, &target);
+        assert!(result.is_ok());
+        assert!(target.exists());
+        assert_eq!(fs::read_to_string(&target).unwrap(), "test content");
+    }
+
+    #[test]
+    fn test_deep_merge_new_keys() {
+        let mut target: serde_json::Value = serde_json::json!({
+            "a": 1
+        });
+
+        let source: serde_json::Value = serde_json::json!({
+            "b": 2,
+            "c": 3
+        });
+
+        deep_merge(&mut target, &source);
+
+        assert_eq!(target["a"], 1);
+        assert_eq!(target["b"], 2);
+        assert_eq!(target["c"], 3);
+    }
+
+    #[test]
+    fn test_find_transform_rule_no_match() {
+        let platform = Platform::new("test", "Test", ".test");
+        let installer = Installer::new(Path::new("/test"), vec![platform.clone()]);
+
+        let resource = DiscoveredResource {
+            bundle_path: PathBuf::from("other/test.md"),
+            absolute_path: PathBuf::from("/test/other/test.md"),
+            resource_type: "commands".to_string(),
+        };
+
+        let rule = installer.find_transform_rule(&platform, &resource.bundle_path);
+        assert!(rule.is_none());
     }
 }

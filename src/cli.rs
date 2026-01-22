@@ -63,6 +63,14 @@ pub enum Commands {
 
 /// Arguments for the install command
 #[derive(Parser, Debug)]
+#[command(after_help = "EXAMPLES:\n  \
+                  Install from GitHub:\n    augent install github:author/debug-tools\n\n\
+                  Install from local directory:\n    augent install ./my-bundle\n\n\
+                  Install from Git URL:\n    augent install https://github.com/author/bundle.git\n\n\
+                  Install for specific agents:\n    augent install ./bundle --for cursor opencode\n\n\
+                  Install with frozen lockfile (CI/CD):\n    augent install github:author/bundle --frozen\n\n\
+                  Install from subdirectory:\n    augent install github:author/repo#plugins/name\n\n\
+                  Install specific version:\n    augent install github:author/bundle#v1.0.0")]
 pub struct InstallArgs {
     /// Bundle source (path, URL, or github:author/repo)
     pub source: String,
@@ -78,6 +86,10 @@ pub struct InstallArgs {
 
 /// Arguments for the uninstall command
 #[derive(Parser, Debug)]
+#[command(after_help = "EXAMPLES:\n  \
+                  Uninstall a bundle:\n    augent uninstall my-bundle\n\n\
+                  Uninstall without confirmation:\n    augent uninstall my-bundle -y\n\n\
+                  Uninstall a specific bundle name:\n    augent uninstall author/bundle")]
 pub struct UninstallArgs {
     /// Bundle name to uninstall
     pub name: String,
@@ -89,6 +101,10 @@ pub struct UninstallArgs {
 
 /// Arguments for the list command
 #[derive(Parser, Debug)]
+#[command(after_help = "EXAMPLES:\n  \
+                  List all installed bundles:\n    augent list\n\n\
+                  Show detailed information:\n    augent list --detailed\n\n\
+                  Use verbose output:\n    augent list -v")]
 pub struct ListArgs {
     /// Show detailed output
     #[arg(long)]
@@ -97,6 +113,10 @@ pub struct ListArgs {
 
 /// Arguments for the show command
 #[derive(Parser, Debug)]
+#[command(after_help = "EXAMPLES:\n  \
+                  Show bundle information:\n    augent show my-bundle\n\n\
+                  Show a specific bundle:\n    augent show author/debug-tools\n\n\
+                  Use verbose output:\n    augent show my-bundle -v")]
 pub struct ShowArgs {
     /// Bundle name to show
     pub name: String,
@@ -104,6 +124,11 @@ pub struct ShowArgs {
 
 /// Arguments for completions command
 #[derive(Parser, Debug)]
+#[command(after_help = "EXAMPLES:\n  \
+                  Generate bash completions:\n    augent completions --shell bash > ~/.bash_completion.d/augent\n\n\
+                  Generate zsh completions:\n    augent completions --shell zsh > ~/.zfunc/_augent\n\n\
+                  Generate fish completions:\n    augent completions --shell fish > ~/.config/fish/completions/augent.fish\n\n\
+                  Generate PowerShell completions:\n    augent completions --shell powershell")]
 pub struct CompletionsArgs {
     /// Shell type (bash, elvish, fish, powershell, zsh)
     #[arg(long)]
@@ -112,6 +137,10 @@ pub struct CompletionsArgs {
 
 /// Arguments for clean-cache command
 #[derive(Parser, Debug)]
+#[command(after_help = "EXAMPLES:\n  \
+                  Show cache size:\n    augent clean-cache --show-size\n\n\
+                  Remove all cached bundles:\n    augent clean-cache --all\n\n\
+                  Show size and clean:\n    augent clean-cache -s -a")]
 pub struct CleanCacheArgs {
     #[arg(long, short = 's', help = "Show cache size without cleaning")]
     pub show_size: bool,

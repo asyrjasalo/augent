@@ -151,8 +151,10 @@ mod tests {
             Platform::new("cursor", "Cursor AI", ".cursor").with_detection(".cursor"),
         ];
 
-        let override_config = vec![Platform::new("claude", "Claude Code (Custom)", ".claude")
-            .with_detection("custom-claude")];
+        let override_config = vec![
+            Platform::new("claude", "Claude Code (Custom)", ".claude")
+                .with_detection("custom-claude"),
+        ];
 
         let merged = PlatformLoader::merge_platforms(base, override_config);
 
