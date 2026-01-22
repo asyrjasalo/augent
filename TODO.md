@@ -3,17 +3,17 @@
 update <--- WE ARE HERE marker
 
 - pre-implementation
-  - write docs/implementation/PRD.md
-  - write docs/implementation/PLAN.md <--- WE ARE HERE
+  - write @docs/implementation/PRD.md
+  - write @docs/implementation/PLAN.md <--- WE ARE HERE
     - ensure all pending research is done
       - you don't need code yet
-      - you can research <https://github.com/enulus/OpenPackage> to understand how to create tasks for yet undocumented concepts
+      - you can research [OpenPackage](https://github.com/enulus/OpenPackage) to understand how to implement AI agent (platform) independent resources
     - split implementation to epics
       - split epics to features
         - split features to tasks
           - these tasks should be checkboxes (each task should fit within a context window)
-            - maintain task list in docs/implementation/TASKS.md
-  - write testing plan - docs/implementation/TESTING.md
+            - maintain task list in @docs/implementation/TASKS.md
+  - write testing plan - @docs/implementation/TESTING.md
     - testing plan, includes:
       - unit tests always
       - integration tests for every feature
@@ -22,7 +22,7 @@ update <--- WE ARE HERE marker
         - use Tarpaulin
       - all tests must pass for feature to be complete
       - add test after fix to ensure that the fix is effective ALWAYS!
-  - write architecture document - docs/implementation/ARCHITECTURE.md
+  - write architecture document - @docs/implementation/ARCHITECTURE.md
     - includes (at least):
       - introduces key concepts
       - introduces fundamental design decisions and reasoning (from PRD)
@@ -31,7 +31,7 @@ update <--- WE ARE HERE marker
       - Rust development practices
       - architecture decision record (ADR)
         - only updated, earlier never removed
-  - write documentation plan - docs/implementation/DOCUMENTATION.md
+  - write documentation plan - @docs/implementation/DOCUMENTATION.md
     - includes (at least):
       - USER FACING DOCS (more important)
         - CLI help is the primary help, ALWAYS
@@ -40,12 +40,12 @@ update <--- WE ARE HERE marker
           - must be essentials, but include example or a few
           - if longer, put docs/FEATURE.md and link from README.md
       - internal docs (must be kept update)
-        - implementation docs: docs/implementation/specs/FEATURE.md
+        - implementation docs: @docs/implementation/specs/FEATURE.md
       - if there are architecture changes, always confirm the user
         - then add new ARCHITECTURE.md decision records
-  - update AGENTS.md with following instructions:
+  - update @CLAUDE.md with following instructions:
     - "you must follow this process ALWAYS when implementing any feature or bug fix":
-      - create a task to the end of docs/implementation/TASKS.md
+      - create a task to the end of @docs/implementation/TASKS.md
       - research what exists per existing documentation
       - create tests first
       - create implementation
@@ -53,9 +53,9 @@ update <--- WE ARE HERE marker
       - run linters and formatters
       - create and update docs
       - ensure task is complete
-      - tick the checkbox in docs/implementation/TASKS.md
+      - tick the checkbox in @docs/implementation/TASKS.md
         - link to relevant documentation (file + section)
-      - update CHANGELOG.md if it is user-facing feature or bug fix
+      - update @CHANGELOG.md if it is user-facing feature or bug fix
     - also ensure these are mentioned:
       - do not reference to the code by specific line numbers
       - you do not need to count lines or do other vanity metrics in docs
