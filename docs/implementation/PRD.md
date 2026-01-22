@@ -4,84 +4,155 @@
 
 ### What are we solving
 
-As of today (2026-01-22), there are many AI agents for developers to choose from and more is expected to come. Some popular ones include OpenCode, Claude Code, Cursor, Codex CLI and GitHub Copilot.
+As of today (2026-01-22), there are many AI agents for developers to choose from, and more is expected to come. Some popular ones include OpenCode, Claude Code, Cursor, Codex CLI and GitHub Copilot. Many developers increasingly use more than one AI agent in the project scope.
 
-Increasingly a project uses more than one AI agent. There is no standard way to manage these agents' resources, such as commands, rules, subagents, skills and MCP servers. This applies not only accross agents but also across projects.
+There is no well-established process to manage these AI coding agents' resources across different agents or projects.
 
-Currently the most promising solution to resolve the issue [OpenPackage](https://github.com/enulus/OpenPackage).
+The resources are key assets for AI driven development process such as commands, rules, subagents, skills and MCP servers. Many of developers rely on maintaining their own set of resources and copy them across projects.
 
-It has some design flaws due to it mostly being designed on how other package managers (like npm) work.
+### What do we have today
 
-Managing AI agent resources is whole lot of different from managing software packages. E.g. implementing development dependencies has little actual use in managing resources for AI agents and mostly confuses what gets installed and when. On the other hand, it then lacks a dependency locking which would be useful when using version ranges in dependencies.
+As of 2026-01-22, the most promising solution to resolve these issues in an agent-independent manner is [OpenPackage](https://github.com/enulus/OpenPackage). The project is not fully matured yet (it has a central registry but does not share code for that registry) and lacks accelerating adoption even though the problem itself has been widely acknowledged and is pending solution.
 
-From the user point of view, its biggest issue is that it is designed with simplicity in mind from the beginning: There are too many commands, some commands like `install` and `apply` are too ambiguous by name, it is not clear what `save` does, what `add` adds and where `publish` puts the packages etc.
+OpenPackage also has a few design flaws due to it stemming from being designed on how other package managers (like npm) work, and not aknowledging that managing AI agent resources is whole lot of different from managing software packages.
+
+Some examples of early design flaws include implementing development dependencies without careful thought when they are installed. Overall, development dependencies has little recognized use cases yet in managing resources for AI agents, and it mostly confuses what gets installed and when.
+
+On the other hand, it lacks useful features from real package managers like dependency locking. This is mandatory requirement when using version ranges in dependencies to ensure reproducibility in the first place across team members.
+
+From the adoption point of view, likely its biggest issue is that is not designed with simplicity in mind from the ground up. Already there are too many commands. A few commands like `install` and `apply` are too ambiguous to be understood by their name, it is not clear what `save` does, what `add` adds and where `publish` puts the packages etc. without careful reading of documentation.
 
 ### How we will resolve it
 
-We will implement an AI configuration manager (not package manager) supporting various AI agents.
+We will now implement an AI configuration manager (not package manager) supporting various AI agents and relying on OpenPackage's quite ok support for various AI agents (talking on them as "platforms")
 
-We will do this in a development-friendly manner which means that it is easy to use for anyone who has used a package manager before in any language, and actually it is far simpler than that.
+We will do this in a development-friendly manner. This means that it is not only easy, BUT OBVIOUS, to use for anyone who has used any package manager before in any programming language, and not only that but it is actually far simpler than that.
 
-Thus we will not cargo cult any existing packager manager and we will not implement ANY bells and whistles than what is required to active **our goal**:
+This means **we will not cargo cult any existing packager manager and we will not implement ANY bells and whistles than what is required to active our goal**.
 
-1) Implement AI coding agent and platform independent resource management
-2) In a lean, intuitive, developer friendly, non-documentation relying way
-3) With easy extensibility in mind, to respond to fast evolving landscape of AI coding agents and their features
+Our goal is:
 
-### What will 1.0.0 look like
+1) Implement AI coding agent and platform independent resource management,
+2) in a lean, intuitive, developer friendly, non-documentation relying way,
+3) with easy extensibility without code changes
 
-What we will have:
+To respond to fast evolving landscape of AI coding agents and their features.
+
+### What will 1.0 look like
+
+#### Terminology
+
+**Workspace** - working copy of git repository at hand on developer's machine
+
+**Workspace_root** - the root directory of the workspace (usually where `.git` directory is and where AI coding agent specific directories are stored)
+
+**Bundle** - a directory with AI coding agent independent augs (either in its root or in subdirectories) and optionally Augment bundle config files regarding the bundle (its dependencies, its name, optional metadata).
+
+**Bundle config files** - `augent.yaml`, `augent.lock` and `augent.workspace.yaml` files.
+
+**Aug** - a file that is provided by a bundle in an AI coding agent **independent** format (e.g. rule `<bundle_dir>/rules/debug.md` or mcp server `<bundle_dir>/mcp.jsonc`)
+
+***Bundle root file/dir*** - a file or directory that is provided by a bundle (`<bundle_dir>/root/file.md` or `<bundle_dir>/root/dir`) and is copied **as is** in the workspace root directory when the bundle is installled.
+
+**Resource** -
+
+*- `*resource` - a file that is provided by a bundle in an AI coding agent independent format (e.g. `<bundle_dir>rules/debug.md`)
+- `augmentation` - a resource that has been installed by a bundle for a specific AI coding agent in its own format (e.g. `<workspaec_root_dir>/cursor/rules/debug.mdc`)
+
+#### What we will have
 
 - A platform-independent command line tool written in Rust, named Augent (the binary is `augent`)
-- It implements as few commands (`install`, `uninstall`, `list`, `show`) as possible to do the jobo, so it is 100% intuitive for developers to use if you have ever installed dependencies and this even without even looking at the documentation.
-- All matured CLI tool practices and Rust development best practices are followed
 
-What we will not have:
+- It works on MacOS, Linux and Windows. For two latter, it works on ARM64 and x86_64 architectures.
 
-- Development dependencies (like npm or OpenPackage has) or cargo-culting any existing package managers for "nice to have" features that "might be useful in the future" (it is FUCKING HARD to deprecate any of features in package manager)
-- A centralized registry for publishing and distributing packages. We will store our bundles (lightweight "packages") in a Git repo in a clear text format as that's what the developers want to go see in GitHub when they see the bundle name.
-- Thus we will not install bundles (outside of the current repository) anywhere else than from git repositories via https:// (or via ssh:// for private repositories)
+- It implements as few commands (`install`, `uninstall`, `list`, `show`) as possible.
 
-## Archtitecture
+- The app knows all the AI agent formats that OpenPackage currently does and can convert from AI agent independent resources to agent specific resources and back.
+
+- All matured CLI tool practices and Rust development best practices are followed.
+
+#### What we will not have
+
+- Development dependencies (like npm or OpenPackage has) or cargo-culting any existing package managers for "nice to have" features that "might be useful in the future" (it is ABSOLUTELY TOO HARD to deprecate almost any of features in package manager)
+
+- A centralized registry for publishing and distributing packages. We will distribute bundles in a single Git repository, in a clear text format, as that is what the developers want to go read in GitHub before taking a bundle into use
+
+- We will not install bundles (outside of the current repository) anywhere else than from git repositories via https:// (or via ssh:// for private repositories). It has to support other sources than GitHub even though GitHub is likely the most popular for public bundles. We have to keep in mind that some organizations will have their own set of private bundles (git repositoriies).
 
 ### Type 1 decisions
 
-How we will do it:
+Note: These fundamental decisions cannot be reversed so it is ABSOTELY REQUIRED to get them right from the beginning or not implement them at all.
+
+#### Package format
 
 - We implement a `bundle` (a lightweight package concept) as a directory in filesystem.
-- If bundle has `augent.yaml` file, it also has `augent.lock`.
-- Bundle can define dependencies to other bundles. If not, then `augent.yaml` and thus `augent.lock` are factually optional, but bundle should still work.
-- If `augent.yaml` is created on first install, then the bundle is named `@author/bundle-name`. This is intended to be equal to the git repository and organization under which is stored. You can usually infer both from the git repostitory remote URL.
-- If bundle has lockfile, the bundle's lockfile is read when installing a bundle as a dependency. The bundle's lockfile contains the exact version, the resolved source (that is the exact URL and SHA for a git repository). The bundle installation must be 00% reproducible only with the lockfile (if not taking in the account the agent specific enablements in `augent.workspace.yaml`).
-- Bundle has a calculated `hash` per its contents (all files, including `augent.yaml` but excluding its lockfile, as the name of the related bundle and its hash is stored there)
-- Bundles are installed in order they are presented in `augent.yaml` so later bundles override resources from earlier bundles if the file names overlap.
-- Some resources are merged, e.g. AGENTS.md and mcp.jsonc files, see OpenPackage's implementation for the reference.
-- Bundles own resources (under the bundle's dir) always override the resources from dependencies.
-- Bundle is stored in Git repositories (either in this repo or in other repo).
-- One git repo can store multiple bundles in different subdirectories.
-- The app knows all the AI agent formats that OpenPackage currently does and can convert from AI agent independent resources to agent specific resources.
+
+- The bundle is a directory in filesystem.
+
+- Bundle is "published" to outer world via a Git repository.
+
+- This git repository can be essentially anywhere (even in the same filesystem)
+and we should not limit our implementation to only GitHub, GitLab, etc..
+
+- Bundle can define dependencies to other bundles via `augent.yaml` file, but presence of that file is optional.
+
+- Bundles are installed in order they are presented in `augent.yaml` so later bundles override the augs from earlier bundles where the aug file names overlap.
+
+- Some resources are merged with the existing ones if they already exist for the agent, e.g. AGENTS.md and mcp.jsonc files, see OpenPackage's implementation for the reference.
+
+- Augment will know how to install the directory's content for AI coding agents regardless of whether `augment.yaml`, `augent.lock`, `augent.workspace.yaml` is present in the directory. This ensures we maintain compatibility with Claude Code plugins, skills only repos, etc.
+
+- If a dependency is installed in the workspace, then `augent.lock` if the same directory as `augent.yaml` has an entry for it. It does not necessary mean that that dependency's provided files are installed for all or even any of the agents. What is installed per agent (and "where did the resources come from" is tracked in `augent.workspace.yaml`)
+
+#### Locking
+
+- If bundle has `augent.yaml` and `install` has been run, it also has `augent.lock`. Install takes care of updating the lockfile unless `--frozen` is used. If `--frozen` is used, then it fails if the lockfile is missing or it does not match `augent.yaml`.
+
+- If bundle has the lockfile, the bundle's lockfile is read when installing a bundle as a dependency. The bundle's lockfile contains the name of the bundle and its checksum.
+
+- In lockfile, all sources have been resolved TO BE EXACT, that is anything from github uses exact URL and SHA for a git repository. It may have org/user and ref info present but that is not used for resolving.
+
+- Lockfile lists all the files that are provided by the bundle, NOT WHAT is necessarily installed by the bundle. This means, providing you install for all AI agents, you should be able to track where the resources came from by starting from the end of the lockfile.
+
+- The last entry in the lockfile is the bundle itself. Thus the bundles own augs (in the bundle's dir) always override the resources from earlier dependencies if the file names overlap, except where resources are merged.
+
+- Each bundle in lockfile has a calculated `hash` per its contents (all files, including `augent.yaml`, but excluding its `augent.lock` and `augent.workspace.yaml` files). Also the last entry, this bundle.
+
+#### Workspace
+
+- If `augent.yaml` is created on first install, then the bundle is named `@author/bundle-name`. This is intended to be equal to the git repository and organization under which is stored. You can infer both from the git repostitory remote URL, if not use `USERNAME/WORKSPACE_ROOT_DIR_NAME` as fallback.
+
 - The user can change one AI agents' files directly in repo (e.g. `.opencode/commands/debug.md` and `install` will detect that these are different from the bundle they came from and copies them to the bundle's directory as AI agent independent resources)
-- This mapping is stored in `augent.workspace.yaml` file for each file that a bundle provides, for each AI agent that it is installed for (user can use `install --for <agent>...` to install some bundles only for specific agents).
 
-Where can you install bundles from:
+- The mapping for bundle's aug files and ai agent's resources is stored in `augent.workspace.yaml`. The format is file for each file that partiuclar bundle provides, and for each AI agent that it is installed for (user can use 0`install --for <agent>...` to install some bundles only for specific agents).
 
-- Other directories in the current repo (reference by relative path)
-- From Git repositories https://, ssh:// (optionally the particular ref|branch|tag)
+#### Sources
 
-These may or may not have `augent.yaml` and `augent.lock` files present and it will work, just not install any other bundles as dependencies.
+- Other directories in the current repo (reference by a relative path)
 
-In addition, you should be able to install resources from:
+- From Git repositories, optionally the particular ref|branch|tag, and from the particular subdirectory of the repository. Git repositories can store multiple bundles in different subdirectories.
 
-- From Git repositories which store Claude Code plugin
-- From Git repositories which store Claude Code marketplace (multiple Claude Code plugins)
-
-Basically, you can give any path or repo url or github:author/reponame to `install` and it will know how to handle it (as long as it has resources in its path or in its subdirectories). If there are multiple set of resources in the repo (e.g. aforementioned bundles, or multiple Claude Code plugins), it will show you the menu and ask you to select the ones you want to install.
+- Any of sources may not have `augent.yaml` and `augent.lock` files present and it will work - just then it will not install any other bundles as dependencies.
 
 ### Type 2 decisions (how we make it future proof)
+
+#### Other sources
+
+For 1.0.0, we should be able to install resources from:
+
+- From Git repositories which store Claude Code plugin
+
+- From Git repositories which store Claude Code marketplace (multiple Claude Code plugins)
+
+Basically, the user can give any path or repo url or github:author/reponame to `install` and it will know how to handle it (as long as it has resources in its path or in its subdirectories). If there are multiple set of resources in the repo (e.g. aforementioned bundles, or multiple Claude Code plugins), it will show you the menu and ask you to select the ones you want to install.
+
+#### Other AI agents
 
 We adopt `platforms.jsonc` approach from OpenPackage to support ever increasing number of AI agents and their features. It must be possible for the developer to add support to new AI agents without changing the core code.
 
 If another package format becomes popular, we will collaborate to add support to import from it, but we will not compromise our goal to implement some features just for the sake of something being popular.
+
+#### Distribution
 
 Even though we don't have centralized registry, we might later implement a centralized search for all the public bundles as they are mostly stored in publicly indexable Git repositories on GitHub. We have to reserve the option for now that in it that case the user can reference the bundle just by its
 name (it is a "well-known bundle")
