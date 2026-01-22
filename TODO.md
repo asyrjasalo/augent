@@ -12,15 +12,16 @@
       - target to have 80% test coverage
         - use Tarpaulin
       - all tests must pass for feature to be complete
-      - add test to ensure that FIX is effetive ALWAYS!
+      - add test after fix to ensure that the fix is effective ALWAYS!
   - write architecture document - docs/implementation/ARCHITECTURE.md
     - includes (at least):
       - introduces key concepts
       - introduces fundamental design decisions and reasoning (from PRD)
       - describes workflows from user point of view
         - sequence diagrams (mermaid)
-      - Rust development conventions
+      - Rust development practices
       - architecture decision record (ADR)
+        - only updated, earlier never removed
   - write documentation plan - docs/implementation/DOCUMENTATION.md
     - includes (at least):
       - USER FACING DOCS (more important)
@@ -31,7 +32,8 @@
           - if longer, put docs/FEATURE.md and link from README.md
       - internal docs (must be kept update)
         - implementation docs: docs/implementation/specs/FEATURE.md
-      - update ARCHITECTURE.md decision records
+      - if there are architecture changes, always confirm the user
+        - then add new ARCHITECTURE.md decision records
   - update AGENTS.md
     - follow this process ALWAYS:
       - research what exists per existing documentation
