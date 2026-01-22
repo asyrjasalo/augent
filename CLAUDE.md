@@ -13,33 +13,63 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 - **Aug**: An AI agent-independent resource file
 - **Augmentation**: A resource installed for a specific AI agent in its native format
 
-## Development Workflow
+## Implementation Process
 
-When working on Augent:
+**You must follow this process ALWAYS when implementing any feature or bug fix:**
 
-1. Reference the PRD for all requirements and design decisions:
-   - File: @docs/implementation/PRD.md
-   - This contains the complete Product Requirements Document with Type 1/2 decisions
+1. **Create task** - Add a task to the end of @docs/implementation/TASKS.md before starting work
+2. **Research** - Review existing documentation:
+   - @docs/implementation/PRD.md for requirements
+   - @docs/implementation/ARCHITECTURE.md for design decisions
+   - @docs/implementation/TESTING.md for testing requirements
+3. **Create tests first** - Write tests before implementation (TDD approach)
+4. **Implement** - Write the implementation code
+5. **Make tests pass** - Run tests and fix issues until all pass
+6. **Run linters and formatters** - Ensure code quality:
+   - `cargo fmt`
+   - `cargo clippy`
+   - `pre-commit run --all-files`
+7. **Update documentation** - Update relevant docs if needed
+8. **Mark task complete** - Check the task in TASKS.md and link to relevant documentation
+9. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
-2. Key directories:
-   - `.augent/` - Augent workspace configuration
-   - @docs/implementation/PRD.md - Product Requirements Document
-   - `.opencode/`, `.cursor/`, `.claude/` - AI agent-specific directories
+## Development Guidelines
 
-3. Core principles:
-   - We are building a configuration manager, NOT a package manager
-   - Simplicity and developer-friendliness are paramount
-   - No cargo culting existing package managers
-   - All Type 1 decisions in PRD are fundamental and non-reversible
-
-## Important Notes
-
-- Always reference @docs/implementation/PRD.md for implementation guidance
-- The PRD contains TODOs for research on OpenPackage's platforms.jsonc schema
+- Do not reference code by specific line numbers in documentation
+- Do not count lines or use vanity metrics in documentation
+- Do not create git commits unless explicitly asked
+- Do not push to remote repositories unless explicitly asked
 - Error messages should be clear and human-readable
 - Operations must be atomic - workspace should never be left in inconsistent state
-- After changing any files in `docs/`, run `pre-commit run --all-files` before committing
-- Never create git commits or push to remote repositories without explicit permission from the user
+
+## Key Documentation
+
+| Document | Purpose |
+|----------|---------|
+| @docs/implementation/PRD.md | Product requirements and Type 1/2 decisions |
+| @docs/implementation/PLAN.md | Implementation plan with epics/features |
+| @docs/implementation/TASKS.md | Task tracking checklist |
+| @docs/implementation/TESTING.md | Testing strategy and requirements |
+| @docs/implementation/ARCHITECTURE.md | Architecture and ADRs |
+| @docs/implementation/DOCUMENTATION.md | Documentation plan |
+
+## Key Directories
+
+- `.augent/` - Augent workspace configuration
+- `src/` - Source code
+- `tests/` - Integration tests
+- `docs/` - User documentation
+- `docs/implementation/` - Implementation documentation
+- `.opencode/`, `.cursor/`, `.claude/` - AI agent-specific directories
+
+## Core Principles
+
+- We are building a configuration manager, NOT a package manager
+- Simplicity and developer-friendliness are paramount
+- No cargo culting existing package managers
+- All Type 1 decisions in PRD are fundamental and non-reversible
+- 80% test coverage target using Tarpaulin
+- Integration tests must use REAL CLI
 
 ## Commands Reference
 
