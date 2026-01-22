@@ -1,0 +1,7 @@
+name: "@test/with-agents-workspace"
+bundles:
+  - name: test-bundle
+    enabled:
+      commands/test.md:
+        - .opencode/commands/test.md
+        - .claude/commands/test.md

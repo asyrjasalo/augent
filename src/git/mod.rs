@@ -368,4 +368,43 @@ mod tests {
         let sha = head_sha(&repo).unwrap();
         assert_eq!(sha, commit_oid.to_string());
     }
+
+    #[test]
+    fn test_resolve_ref_invalid() {
+        // Create a test repository
+        let temp = TempDir::new().unwrap();
+        let repo = Repository::init(temp.path()).unwrap();
+
+        // Create an initial commit
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+        let tree_id = {
+            let mut index = repo.index().unwrap();
+            index.write_tree().unwrap()
+        };
+        let tree = repo.find_tree(tree_id).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .unwrap();
+
+        // Try to resolve invalid ref
+        let result = resolve_ref(&repo, Some("nonexistent"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_checkout_invalid_sha() {
+        // Create a test repository
+        let temp = TempDir::new().unwrap();
+        let repo = Repository::init(temp.path()).unwrap();
+
+        // Try to checkout invalid SHA
+        let result = checkout_commit(&repo, "0000000000000000000000000000000000000000");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_open_nonexistent_repo() {
+        let temp = TempDir::new().unwrap();
+        let result = open(temp.path().join("nonexistent").as_path());
+        assert!(result.is_err());
+    }
 }

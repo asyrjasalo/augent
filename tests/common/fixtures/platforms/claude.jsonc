@@ -1,0 +1,54 @@
+{
+  "name": "claude",
+  "version": "1.0.0",
+  "description": "Claude Desktop platform configuration",
+  "directories": [".claude", "CLAUDE.md"],
+  "defaults": {
+    "merge": "composite",
+    "delimiter": "\n\n---\n\n"
+  },
+  "transforms": [
+    {
+      "from": "commands/**",
+      "to": ".claude/commands/**/*.md",
+      "map": {
+        "op": "rename",
+        "ext": ".md"
+      }
+    },
+    {
+      "from": "skills/**",
+      "to": ".claude/skills/**/*.md",
+      "map": {
+        "op": "rename",
+        "ext": ".md"
+      }
+    },
+    {
+      "from": "rules/**",
+      "to": ".claude/rules/**/*.md",
+      "map": {
+        "op": "rename",
+        "ext": ".md"
+      }
+    },
+    {
+      "from": "mcp.jsonc",
+      "to": ".claude/mcp.jsonc",
+      "merge": "shallow"
+    },
+    {
+      "from": "AGENTS.md",
+      "to": "CLAUDE.md",
+      "merge": "replace"
+    },
+    {
+      "from": "agents/**",
+      "to": ".claude/agents/**/*.md",
+      "map": {
+        "op": "rename",
+        "ext": ".md"
+      }
+    }
+  ]
+}

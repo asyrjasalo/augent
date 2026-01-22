@@ -1,0 +1,14 @@
+name: "@test/multi-agent-workspace"
+bundles:
+  - name: bundle-a
+    enabled:
+      commands/test-a.md:
+        - .opencode/commands/test-a.md
+        - .claude/commands/test-a.md
+        - .cursor/rules/test-a.mdc
+  - name: bundle-b
+    enabled:
+      commands/test-b.md:
+        - .opencode/commands/test-b.md
+        - .claude/commands/test-b.md
+        - .cursor/rules/test-b.mdc

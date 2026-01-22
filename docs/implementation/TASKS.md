@@ -431,10 +431,6 @@ See: [CLAUDE.md](../../CLAUDE.md)
 #### Feature 11.3: Coverage Setup
 
 - [ ] Install and configure `tarpaulin`
-- [ ] Set up CI job for coverage reporting
-- [ ] Generate baseline coverage report
-- [ ] Add coverage badge to README
-- [ ] Set up coverage enforcement (minimum 80%)
 
 ### Epic 12: Documentation
 

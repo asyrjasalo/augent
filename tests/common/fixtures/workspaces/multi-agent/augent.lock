@@ -1,0 +1,23 @@
+{
+  "name": "@test/multi-agent-workspace",
+  "bundles": [
+    {
+      "name": "bundle-a",
+      "source": {
+        "type": "dir",
+        "path": ".augent/bundles/bundle-a",
+        "hash": "blake3:abc123"
+      },
+      "files": ["commands/test-a.md"]
+    },
+    {
+      "name": "bundle-b",
+      "source": {
+        "type": "dir",
+        "path": ".augent/bundles/bundle-b",
+        "hash": "blake3:def456"
+      },
+      "files": ["commands/test-b.md"]
+    }
+  ]
+}

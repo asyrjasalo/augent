@@ -1,0 +1,14 @@
+{
+  "name": "@test/with-agents-workspace",
+  "bundles": [
+    {
+      "name": "test-bundle",
+      "source": {
+        "type": "dir",
+        "path": ".augent/bundles/test-bundle",
+        "hash": "blake3:abc123"
+      },
+      "files": ["commands/test.md"]
+    }
+  ]
+}

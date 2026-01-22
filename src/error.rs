@@ -385,9 +385,10 @@ mod tests {
             path: "/path/to/config.yaml".to_string(),
             reason: "invalid YAML".to_string(),
         };
-        assert!(err
-            .to_string()
-            .contains("Failed to parse configuration file"));
+        assert!(
+            err.to_string()
+                .contains("Failed to parse configuration file")
+        );
         assert!(err.to_string().contains("/path/to/config.yaml"));
     }
 
@@ -450,9 +451,10 @@ mod tests {
         let err = AugentError::PlatformConfigFailed {
             message: "invalid JSON".to_string(),
         };
-        assert!(err
-            .to_string()
-            .contains("Failed to load platform configuration"));
+        assert!(
+            err.to_string()
+                .contains("Failed to load platform configuration")
+        );
         assert!(err.to_string().contains("invalid JSON"));
     }
 
@@ -481,9 +483,10 @@ mod tests {
             path: "/path/to/config.yaml".to_string(),
             reason: "file corrupted".to_string(),
         };
-        assert!(err
-            .to_string()
-            .contains("Failed to read configuration file"));
+        assert!(
+            err.to_string()
+                .contains("Failed to read configuration file")
+        );
         assert!(err.to_string().contains("/path/to/config.yaml"));
     }
 

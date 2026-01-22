@@ -1,0 +1,4 @@
+name: "@fixtures/complex-bundle"
+bundles:
+  - name: "@fixtures/with-deps"
+    path: ../with-deps

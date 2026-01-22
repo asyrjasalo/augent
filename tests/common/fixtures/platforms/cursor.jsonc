@@ -1,0 +1,54 @@
+{
+  "name": "cursor",
+  "version": "1.0.0",
+  "description": "Cursor IDE platform configuration",
+  "directories": [".cursor", "CLAUDE.md"],
+  "defaults": {
+    "merge": "composite",
+    "delimiter": "\n\n---\n\n"
+  },
+  "transforms": [
+    {
+      "from": "commands/**",
+      "to": ".cursor/rules/**.mdc",
+      "map": {
+        "op": "rename",
+        "ext": ".mdc"
+      }
+    },
+    {
+      "from": "skills/**",
+      "to": ".cursor/rules/**.mdc",
+      "map": {
+        "op": "rename",
+        "ext": ".mdc"
+      }
+    },
+    {
+      "from": "rules/**",
+      "to": ".cursor/rules/**.mdc",
+      "map": {
+        "op": "rename",
+        "ext": ".mdc"
+      }
+    },
+    {
+      "from": "mcp.jsonc",
+      "to": ".cursor/mcp.jsonc",
+      "merge": "shallow"
+    },
+    {
+      "from": "AGENTS.md",
+      "to": "CLAUDE.md",
+      "merge": "composite"
+    },
+    {
+      "from": "agents/**",
+      "to": ".cursor/agents/**.mdc",
+      "map": {
+        "op": "rename",
+        "ext": ".mdc"
+      }
+    }
+  ]
+}
