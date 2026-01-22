@@ -16,7 +16,7 @@ pub enum AugentError {
         code(augent::bundle::not_found),
         help("Check that bundle name is correct and source is accessible")
     )]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     BundleNotFound { name: String },
 
     #[error("Invalid bundle name: {name}")]
@@ -24,7 +24,7 @@ pub enum AugentError {
         code(augent::bundle::invalid_name),
         help("Bundle names should follow the format @author/name or author/name")
     )]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     InvalidBundleName { name: String },
 
     #[error("Bundle validation failed: {message}")]
@@ -37,12 +37,12 @@ pub enum AugentError {
         code(augent::source::invalid_url),
         help("Valid formats: ./path, github:author/repo, https://github.com/author/repo.git")
     )]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     InvalidSourceUrl { url: String },
 
     #[error("Failed to parse source: {input}")]
     #[diagnostic(code(augent::source::parse_failed))]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     SourceParseFailed { input: String, reason: String },
 
     // Git errors
@@ -53,30 +53,34 @@ pub enum AugentError {
     #[error("Failed to clone repository: {url}")]
     #[diagnostic(
         code(augent::git::clone_failed),
-        help("Check that the URL is correct and you have access to the repository")
+        help("Check that URL is correct and you have access to the repository")
     )]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     GitCloneFailed { url: String, reason: String },
 
     #[error("Failed to resolve ref '{reference}' to SHA")]
     #[diagnostic(code(augent::git::ref_resolution_failed))]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     GitRefResolutionFailed { reference: String },
 
     #[error("Failed to resolve git ref '{git_ref}': {reason}")]
     #[diagnostic(code(augent::git::ref_resolve_failed))]
+    #[allow(dead_code, unused_assignments)]
     GitRefResolveFailed { git_ref: String, reason: String },
 
     #[error("Failed to checkout commit '{sha}': {reason}")]
     #[diagnostic(code(augent::git::checkout_failed))]
+    #[allow(dead_code, unused_assignments)]
     GitCheckoutFailed { sha: String, reason: String },
 
     #[error("Failed to fetch from remote: {reason}")]
     #[diagnostic(code(augent::git::fetch_failed))]
+    #[allow(dead_code, unused_assignments)]
     GitFetchFailed { reason: String },
 
     #[error("Failed to open repository at '{path}': {reason}")]
     #[diagnostic(code(augent::git::open_failed))]
+    #[allow(dead_code, unused_assignments)]
     GitOpenFailed { path: String, reason: String },
 
     // Workspace errors
@@ -85,7 +89,7 @@ pub enum AugentError {
         code(augent::workspace::not_found),
         help("Run 'augent install' to initialize a workspace")
     )]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     WorkspaceNotFound { path: String },
 
     #[error("Workspace already locked by another process")]
@@ -97,7 +101,7 @@ pub enum AugentError {
 
     #[error("Failed to acquire workspace lock")]
     #[diagnostic(code(augent::workspace::lock_failed))]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     WorkspaceLockFailed { reason: String },
 
     // Configuration errors
@@ -107,12 +111,12 @@ pub enum AugentError {
 
     #[error("Failed to parse configuration file: {path}")]
     #[diagnostic(code(augent::config::parse_failed))]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     ConfigParseFailed { path: String, reason: String },
 
     #[error("Invalid configuration: {message}")]
     #[diagnostic(code(augent::config::invalid))]
-    #[allow(dead_code)]
+    #[allow(dead_code, unused_assignments)]
     ConfigInvalid { message: String },
 
     // Lockfile errors
@@ -381,10 +385,9 @@ mod tests {
             path: "/path/to/config.yaml".to_string(),
             reason: "invalid YAML".to_string(),
         };
-        assert!(
-            err.to_string()
-                .contains("Failed to parse configuration file")
-        );
+        assert!(err
+            .to_string()
+            .contains("Failed to parse configuration file"));
         assert!(err.to_string().contains("/path/to/config.yaml"));
     }
 
@@ -447,10 +450,9 @@ mod tests {
         let err = AugentError::PlatformConfigFailed {
             message: "invalid JSON".to_string(),
         };
-        assert!(
-            err.to_string()
-                .contains("Failed to load platform configuration")
-        );
+        assert!(err
+            .to_string()
+            .contains("Failed to load platform configuration"));
         assert!(err.to_string().contains("invalid JSON"));
     }
 
@@ -479,10 +481,9 @@ mod tests {
             path: "/path/to/config.yaml".to_string(),
             reason: "file corrupted".to_string(),
         };
-        assert!(
-            err.to_string()
-                .contains("Failed to read configuration file")
-        );
+        assert!(err
+            .to_string()
+            .contains("Failed to read configuration file"));
         assert!(err.to_string().contains("/path/to/config.yaml"));
     }
 
