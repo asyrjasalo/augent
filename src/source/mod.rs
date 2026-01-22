@@ -6,12 +6,19 @@
 //! - GitHub short-form: `github:author/repo`, `author/repo`
 //! - With subdirectory: `github:user/repo#plugins/bundle-name`
 //! - With ref: `github:user/repo#v1.0.0`
-
+//!
+//! ## Module Organization
+//!
+//! - `mod.rs`: Bundle source parsing and URL resolution
+//! - `bundle.rs`: Fully resolved bundle model with validation
+//!
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};
+
+pub mod bundle;
 
 /// Represents a parsed bundle source
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

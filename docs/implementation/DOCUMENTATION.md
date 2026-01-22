@@ -56,7 +56,7 @@ OPTIONS:
     -V, --version    Print version
 
 DOCUMENTATION:
-    https://github.com/augent/augent
+    https://github.com/asyrjasalo/augent
 ```
 
 **Command-Specific Help:**

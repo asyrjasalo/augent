@@ -55,7 +55,7 @@ impl BundleConfig {
         Ok(serde_yaml::to_string(self)?)
     }
 
-    /// Validate the bundle configuration
+    /// Validate bundle configuration
     pub fn validate(&self) -> Result<()> {
         // Validate bundle name format
         if self.name.is_empty() {
@@ -79,9 +79,36 @@ impl BundleConfig {
         Ok(())
     }
 
-    /// Add a dependency to the bundle
+    /// Add a dependency to bundle
     pub fn add_dependency(&mut self, dep: BundleDependency) {
         self.bundles.push(dep);
+    }
+
+    /// Merge another bundle config into this one
+    ///
+    /// Dependencies from `other` are appended to this config.
+    /// The `other`'s name is ignored to preserve this config's identity.
+    pub fn merge(&mut self, other: BundleConfig) {
+        self.bundles.extend(other.bundles);
+    }
+
+    /// Check if a dependency with given name exists
+    pub fn has_dependency(&self, name: &str) -> bool {
+        self.bundles.iter().any(|dep| dep.name == name)
+    }
+
+    /// Get dependency by name
+    pub fn get_dependency(&self, name: &str) -> Option<&BundleDependency> {
+        self.bundles.iter().find(|dep| dep.name == name)
+    }
+
+    /// Remove dependency by name
+    pub fn remove_dependency(&mut self, name: &str) -> Option<BundleDependency> {
+        if let Some(pos) = self.bundles.iter().position(|dep| dep.name == name) {
+            Some(self.bundles.remove(pos))
+        } else {
+            None
+        }
     }
 }
 

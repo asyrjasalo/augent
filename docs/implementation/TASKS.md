@@ -112,7 +112,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Define data structures for `augent.workspace.yaml` in `src/config/workspace.rs` - [src/config/workspace.rs](../../src/config/workspace.rs)
 - [x] Implement YAML serialization/deserialization with `serde_yaml` - [src/config/](../../src/config/)
 - [x] Add validation logic for config file schemas - [src/config/](../../src/config/)
-- [ ] Implement config file merging behavior
+- [x] Implement config file merging behavior - merge() methods already exist in BundleConfig, Lockfile, WorkspaceConfig
 - [x] Write tests for config file parsing and validation - [src/config/](../../src/config/)
 
 #### Feature 1.4: CLI Framework Setup
@@ -129,11 +129,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 #### Feature 2.1: Bundle Models
 
 - [ ] Define `Bundle` struct (name, source, dependencies, metadata)
-- [ ] Define `BundleSource` enum (Dir, Git, GitHub short-form)
-- [ ] Define `GitSource` struct (url, ref, subdirectory, resolved_sha)
-- [ ] Implement bundle validation logic
-- [ ] Add BLAKE3 hashing for bundle integrity
-- [ ] Write tests for bundle model operations
+- [x] Define `BundleSource` enum (Dir, Git, GitHub short-form) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Define `GitSource` struct (url, ref, subdirectory, resolved_sha) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Implement bundle validation logic
+- [x] Add BLAKE3 hashing for bundle integrity - [src/hash.rs](../../src/hash.rs)
+- [x] Write tests for bundle model operations - [src/source/mod.rs](../../src/source/mod.rs), [src/hash.rs](../../src/hash.rs)
 
 #### Feature 2.2: Lockfile Models
 
@@ -142,57 +142,57 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Define `LockedFile` representation - files tracked as Vec<String> in LockedBundle
 - [x] Implement lockfile serialization/deserialization - [src/config/lockfile.rs](../../src/config/lockfile.rs)
 - [x] Add lockfile validation (SHA resolution, hash verification) - [src/config/lockfile.rs](../../src/config/lockfile.rs)
-- [ ] Implement lockfile comparison for detecting changes
+- [x] Implement lockfile comparison for detecting changes - equals() method exists in Lockfile
 - [x] Write tests for lockfile operations - [src/config/lockfile.rs](../../src/config/lockfile.rs)
 
 #### Feature 2.3: Resource Models
 
-- [ ] Define `Resource` struct (path, bundle_source, content_hash)
-- [ ] Define `Augmentation` struct (agent-specific installed resource)
-- [ ] Define `WorkspaceBundle` model (workspace's own bundle)
-- [ ] Implement resource path mapping utilities
-- [ ] Add resource conflict detection logic
-- [ ] Write tests for resource model operations
+- [x] Define `Resource` struct (path, bundle_source, content_hash) - [src/resource/mod.rs](../../src/resource/mod.rs)
+- [x] Define `Augmentation` struct (agent-specific installed resource) - [src/resource/mod.rs](../../src/resource/mod.rs)
+- [x] Define `WorkspaceBundle` model (workspace's own bundle) - type alias in resource/mod.rs
+- [x] Implement resource path mapping utilities - [src/resource/mod.rs](../../src/resource/mod.rs)
+- [x] Add resource conflict detection logic - find_conflicts() and has_conflict() in WorkspaceBundle, find_all_conflicts() and check_conflicts_for_new_bundle() in WorkspaceConfig
+- [x] Write tests for resource model operations - [src/resource/mod.rs](../../src/resource/mod.rs)
 
 ### Epic 3: Platform System
 
 #### Feature 3.1: Platform Configuration Schema
 
-- [ ] Design `platforms.jsonc` schema (based on OpenPackage research)
-- [ ] Define `Platform` struct in `src/platform/mod.rs`
-- [ ] Define `PlatformFlow` struct (from, to, map operations)
-- [ ] Define merge strategy enum (replace, shallow, deep, composite)
-- [ ] Create default built-in platform definitions
-- [ ] Implement platform config loading and merging
-- [ ] Write tests for platform config parsing
+- [x] Design `platforms.jsonc` schema (based on OpenPackage research)
+- [x] Define `Platform` struct in `src/platform/mod.rs` - [src/platform/mod.rs](../../src/platform/mod.rs)
+- [x] Define `PlatformFlow` struct (from, to, map operations) - TransformRule in [src/platform/mod.rs](../../src/platform/mod.rs)
+- [x] Define merge strategy enum (replace, shallow, deep, composite) - [src/platform/merge.rs](../../src/platform/merge.rs)
+- [x] Create default built-in platform definitions - [src/platform/mod.rs](../../src/platform/mod.rs)
+- [x] Implement platform config loading and merging - PlatformLoader::load() and merge_platforms() in [src/platform/loader.rs](../../src/platform/loader.rs)
+- [x] Write tests for platform config parsing - [src/platform/mod.rs](../../src/platform/mod.rs)
 
 #### Feature 3.2: Platform Detection
 
-- [ ] Implement platform detection by checking for directories (`.claude/`, `.cursor/`, `.opencode/`)
-- [ ] Implement platform detection by checking for root files (CLAUDE.md, AGENTS.md)
-- [ ] Add detection pattern matching (glob patterns)
-- [ ] Create platform alias resolution
-- [ ] Implement auto-detection for `--for` flag
-- [ ] Write tests for platform detection logic
+- [x] Implement platform detection by checking for directories (`.claude/`, `.cursor/`, `.opencode/`) - [src/platform/detection.rs](../../src/platform/detection.rs)
+- [x] Implement platform detection by checking for root files (CLAUDE.md, AGENTS.md) - [src/platform/detection.rs](../../src/platform/detection.rs)
+- [x] Add detection pattern matching (glob patterns) - [src/platform/detection.rs](../../src/platform/detection.rs)
+- [x] Create platform alias resolution - get_platform in [src/platform/detection.rs](../../src/platform/detection.rs)
+- [x] Implement auto-detection for `--for` flag - resolve_platforms in [src/platform/detection.rs](../../src/platform/detection.rs)
+- [x] Write tests for platform detection logic - [src/platform/detection.rs](../../src/platform/detection.rs)
 
 #### Feature 3.3: Transformation Engine
 
-- [ ] Define transformation operations (map, rename, pipeline, switch)
-- [ ] Implement glob pattern matching for file paths
-- [ ] Implement path mapping (universal → platform-specific)
-- [ ] Implement reverse path mapping (platform-specific → universal)
-- [ ] Create transformation operation registry
-- [ ] Implement pipeline execution engine
-- [ ] Write tests for transformation operations
+- [x] Define transformation operations (map, rename, pipeline, switch) - TransformRule in [src/platform/mod.rs](../../src/platform/mod.rs)
+- [x] Implement glob pattern matching for file paths - matches_pattern() in [src/platform/transform.rs](../../src/platform/transform.rs)
+- [x] Implement path mapping (universal → platform-specific) - TransformEngine in [src/platform/transform.rs](../../src/platform/transform.rs)
+- [x] Implement reverse path mapping (platform-specific → universal) - extract_name() in [src/platform/transform.rs](../../src/platform/transform.rs)
+- [ ] Create transformation operation registry - Not needed, TransformRule already defines operations
+- [x] Implement pipeline execution engine - TransformEngine in [src/platform/transform.rs](../../src/platform/transform.rs)
+- [x] Write tests for transformation operations - [src/platform/transform.rs](../../src/platform/transform.rs)
 
 #### Feature 3.4: Merge Strategies
 
-- [ ] Implement `replace` merge (overwrite)
-- [ ] Implement `shallow` merge (top-level keys)
-- [ ] Implement `deep` merge (recursive nested)
-- [ ] Implement `composite` merge (text files with delimiters)
-- [ ] Add special handling for AGENTS.md and mcp.jsonc
-- [ ] Write tests for all merge strategies
+- [x] Implement `replace` merge (overwrite) - [src/platform/merge.rs](../../src/platform/merge.rs)
+- [x] Implement `shallow` merge (top-level keys) - [src/platform/merge.rs](../../src/platform/merge.rs)
+- [x] Implement `deep` merge (recursive nested) - [src/platform/merge.rs](../../src/platform/merge.rs)
+- [x] Implement `composite` merge (text files with delimiters) - [src/platform/merge.rs](../../src/platform/merge.rs)
+- [x] Add special handling for AGENTS.md and mcp.jsonc - [src/platform/mod.rs](../../src/platform/mod.rs)
+- [x] Write tests for all merge strategies - [src/platform/merge.rs](../../src/platform/merge.rs)
 
 ---
 
@@ -482,8 +482,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 ## Task Statistics
 
 - **Total Tasks:** 254
-- **Completed:** 62 (Phase 0 complete, Epic 1 mostly complete)
-- **Pending:** 192
+- **Completed:** 94 (Phase 0 complete, Phase 1 Epics 1-3 mostly complete)
+- **Pending:** 160
 
 ---
 

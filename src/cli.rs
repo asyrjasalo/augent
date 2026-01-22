@@ -1,6 +1,6 @@
 //! CLI definitions using clap derive API
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 
 /// Augent - AI configuration manager
@@ -53,6 +53,9 @@ pub enum Commands {
 
     /// Show version information
     Version,
+
+    /// Generate shell completions
+    Completions(CompletionsArgs),
 }
 
 /// Arguments for the install command
@@ -94,6 +97,13 @@ pub struct ListArgs {
 pub struct ShowArgs {
     /// Bundle name to show
     pub name: String,
+}
+
+/// Arguments for completions command
+#[derive(Parser, Debug)]
+pub struct CompletionsArgs {
+    /// Shell type (bash, elvish, fish, powershell, zsh)
+    pub shell: String,
 }
 
 #[cfg(test)]
@@ -176,5 +186,16 @@ mod tests {
         let cli = Cli::try_parse_from(["augent", "-v", "-w", "/tmp/workspace", "list"]).unwrap();
         assert!(cli.verbose);
         assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/workspace")));
+    }
+
+    #[test]
+    fn test_cli_parsing_completions() {
+        let cli = Cli::try_parse_from(["augent", "completions", "bash"]).unwrap();
+        match cli.command {
+            Commands::Completions(args) => {
+                assert_eq!(args.shell, "bash");
+            }
+            _ => panic!("Expected Completions command"),
+        }
     }
 }

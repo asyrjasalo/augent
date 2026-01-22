@@ -24,10 +24,12 @@ pub fn hash_file(path: &Path) -> Result<String> {
     let mut buffer = [0u8; 8192];
 
     loop {
-        let bytes_read = reader.read(&mut buffer).map_err(|e| AugentError::FileReadFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })?;
+        let bytes_read = reader
+            .read(&mut buffer)
+            .map_err(|e| AugentError::FileReadFailed {
+                path: path.display().to_string(),
+                reason: e.to_string(),
+            })?;
 
         if bytes_read == 0 {
             break;
@@ -86,10 +88,12 @@ pub fn hash_directory(path: &Path) -> Result<String> {
         let mut buffer = [0u8; 8192];
 
         loop {
-            let bytes_read = reader.read(&mut buffer).map_err(|e| AugentError::FileReadFailed {
-                path: file_path.display().to_string(),
-                reason: e.to_string(),
-            })?;
+            let bytes_read = reader
+                .read(&mut buffer)
+                .map_err(|e| AugentError::FileReadFailed {
+                    path: file_path.display().to_string(),
+                    reason: e.to_string(),
+                })?;
 
             if bytes_read == 0 {
                 break;

@@ -136,6 +136,10 @@ pub enum AugentError {
     )]
     NoPlatformsDetected,
 
+    #[error("Failed to load platform configuration: {message}")]
+    #[diagnostic(code(augent::platform::config_failed))]
+    PlatformConfigFailed { message: String },
+
     // File system errors
     #[error("File not found: {path}")]
     #[diagnostic(code(augent::fs::not_found))]
@@ -144,6 +148,10 @@ pub enum AugentError {
     #[error("Failed to read file: {path}")]
     #[diagnostic(code(augent::fs::read_failed))]
     FileReadFailed { path: String, reason: String },
+
+    #[error("Failed to read configuration file: {path}")]
+    #[diagnostic(code(augent::config::read_failed))]
+    ConfigReadFailed { path: String, reason: String },
 
     #[error("Failed to write file: {path}")]
     #[diagnostic(code(augent::fs::write_failed))]

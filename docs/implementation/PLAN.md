@@ -61,13 +61,13 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
-## Phase 1: Actual Implementation
+## Phase 1: Foundation (Epics 1-3)
 
 **Status:** Ready to begin. Phase 0 complete.
 
 ### Overview
 
-This plan breaks down the implementation of Augent into epics, features, and tasks. Each task is designed to fit within a context window for focused development.
+Core infrastructure and data models, platform system for extensibility - essential for all other features.
 
 **Target Version:** 1.0.0
 **Primary Goals:**
@@ -76,6 +76,8 @@ This plan breaks down the implementation of Augent into epics, features, and tas
 - Lean, intuitive, developer-friendly CLI
 - Easy extensibility without code changes
 - Support for multiple AI agents (Claude, Cursor, OpenCode, etc.)
+
+---
 
 ## Architecture Decisions Summary
 
@@ -92,7 +94,7 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ---
 
-## Epic 1: Foundation & Project Setup
+### Epic 1: Foundation & Project Setup
 
 **Goal:** Set up project structure, build system, and core infrastructure.
 
@@ -273,7 +275,17 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ---
 
-## Epic 4: Git Operations & Bundle Sources
+## Phase 2: Core Functionality (Epics 4-5)
+
+**Status:** Pending
+
+### Overview
+
+Git operations and bundle sources, workspace management - install/uninstall prerequisites.
+
+---
+
+### Epic 4: Git Operations & Bundle Sources
 
 **Goal:** Handle bundle discovery, fetching, and caching.
 
@@ -385,7 +397,17 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ---
 
-## Epic 6: Install Command
+## Phase 3: Install Command (Epic 6)
+
+**Status:** Pending
+
+### Overview
+
+Most complex command, core value proposition - requires all previous phases.
+
+---
+
+### Epic 6: Install Command
 
 **Goal:** Implement the `install` command with dependency resolution.
 
@@ -464,7 +486,17 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ---
 
-## Epic 7: Uninstall Command
+## Phase 4: Additional Commands (Epics 7-10)
+
+**Status:** Pending
+
+### Overview
+
+Uninstall command, query commands (list, show), help and version.
+
+---
+
+### Epic 7: Uninstall Command
 
 **Goal:** Implement the `uninstall` command with safe removal.
 
@@ -595,7 +627,17 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ---
 
-## Epic 11: Testing Infrastructure
+## Phase 5: Quality Assurance (Epics 11-12)
+
+**Status:** Pending
+
+### Overview
+
+Testing infrastructure, documentation, coverage targets.
+
+---
+
+### Epic 11: Testing Infrastructure
 
 **Goal:** Set up comprehensive testing with 80% coverage target.
 
@@ -700,7 +742,17 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ---
 
-## Epic 13: Release & Distribution
+## Phase 6: Release (Epic 13)
+
+**Status:** Pending
+
+### Overview
+
+Cross-platform builds, distribution setup.
+
+---
+
+### Epic 13: Release & Distribution
 
 **Goal:** Set up cross-platform builds and distribution.
 

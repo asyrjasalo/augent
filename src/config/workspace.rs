@@ -140,6 +140,27 @@ impl WorkspaceBundle {
     pub fn is_empty(&self) -> bool {
         self.enabled.is_empty()
     }
+
+    /// Find all file conflicts with another workspace bundle
+    ///
+    /// Returns a list of files that are provided by both bundles.
+    pub fn find_conflicts(&self, other: &WorkspaceBundle) -> Vec<&str> {
+        self.enabled
+            .keys()
+            .filter(|file| other.enabled.contains_key(file))
+            .map(|s| s.as_str())
+            .collect()
+    }
+
+    /// Check if this bundle has any conflicts with a file-to-locations mapping
+    ///
+    /// Used when installing a new bundle to detect if it would conflict
+    /// with existing file mappings.
+    pub fn has_conflict(&self, file_to_locations: &HashMap<String, Vec<String>>) -> bool {
+        self.enabled
+            .keys()
+            .any(|file| file_to_locations.contains_key(file))
+    }
 }
 
 #[cfg(test)]

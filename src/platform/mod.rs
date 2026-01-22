@@ -1,24 +1,23 @@
-//! Platform system for AI agent support
+//! Transformation engine for converting resources between formats
 //!
 //! This module handles:
 //! - Platform detection (which AI agents are present in a workspace)
 //! - Resource transformation (universal format → platform-specific format)
 //! - Merge strategies for special files (AGENTS.md, mcp.jsonc)
 
-pub mod detection;
-pub mod merge;
-pub mod transform;
-
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-pub use detection::detect_platforms;
 pub use merge::MergeStrategy;
-pub use transform::TransformEngine;
+
+pub mod detection;
+pub mod loader;
+pub mod merge;
+pub mod transform;
 
 /// A supported AI coding agent platform
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Platform {
     /// Platform identifier (e.g., "claude", "cursor", "opencode")
     pub id: String,
@@ -37,7 +36,7 @@ pub struct Platform {
 }
 
 /// A transformation rule for converting resources
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TransformRule {
     /// Source pattern (glob) in universal format
     pub from: String,
@@ -56,7 +55,11 @@ pub struct TransformRule {
 
 impl Platform {
     /// Create a new platform
-    pub fn new(id: impl Into<String>, name: impl Into<String>, directory: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        directory: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             name: name.into(),
@@ -123,17 +126,24 @@ pub fn default_platforms() -> Vec<Platform> {
         Platform::new("claude", "Claude Code", ".claude")
             .with_detection(".claude")
             .with_detection("CLAUDE.md")
-            .with_transform(TransformRule::new("commands/**/*.md", ".claude/commands/**/*.md"))
+            .with_transform(TransformRule::new(
+                "commands/**/*.md",
+                ".claude/commands/**/*.md",
+            ))
             .with_transform(TransformRule::new("rules/**/*.md", ".claude/rules/**/*.md"))
-            .with_transform(TransformRule::new("agents/**/*.md", ".claude/agents/**/*.md"))
-            .with_transform(TransformRule::new("skills/**/*.md", ".claude/skills/**/*.md"))
+            .with_transform(TransformRule::new(
+                "agents/**/*.md",
+                ".claude/agents/**/*.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".claude/skills/**/*.md",
+            ))
             .with_transform(
-                TransformRule::new("mcp.jsonc", ".claude/mcp.json")
-                    .with_merge(MergeStrategy::Deep),
+                TransformRule::new("mcp.jsonc", ".claude/mcp.json").with_merge(MergeStrategy::Deep),
             )
             .with_transform(
-                TransformRule::new("AGENTS.md", "CLAUDE.md")
-                    .with_merge(MergeStrategy::Composite),
+                TransformRule::new("AGENTS.md", "CLAUDE.md").with_merge(MergeStrategy::Composite),
             ),
         // Cursor
         Platform::new("cursor", "Cursor", ".cursor")
@@ -144,28 +154,40 @@ pub fn default_platforms() -> Vec<Platform> {
                     .with_extension("mdc"),
             )
             .with_transform(
-                TransformRule::new("rules/**/*.md", ".cursor/rules/**/*.mdc")
-                    .with_extension("mdc"),
+                TransformRule::new("rules/**/*.md", ".cursor/rules/**/*.mdc").with_extension("mdc"),
             )
-            .with_transform(TransformRule::new("agents/**/*.md", ".cursor/agents/**/*.md"))
+            .with_transform(TransformRule::new(
+                "agents/**/*.md",
+                ".cursor/agents/**/*.md",
+            ))
             .with_transform(
-                TransformRule::new("AGENTS.md", "AGENTS.md")
-                    .with_merge(MergeStrategy::Composite),
+                TransformRule::new("AGENTS.md", "AGENTS.md").with_merge(MergeStrategy::Composite),
             ),
         // OpenCode
         Platform::new("opencode", "OpenCode", ".opencode")
             .with_detection(".opencode")
-            .with_transform(TransformRule::new("commands/**/*.md", ".opencode/commands/**/*.md"))
-            .with_transform(TransformRule::new("rules/**/*.md", ".opencode/rules/**/*.md"))
-            .with_transform(TransformRule::new("agents/**/*.md", ".opencode/agents/**/*.md"))
-            .with_transform(TransformRule::new("skills/**/*.md", ".opencode/skills/**/*.md"))
+            .with_transform(TransformRule::new(
+                "commands/**/*.md",
+                ".opencode/commands/**/*.md",
+            ))
+            .with_transform(TransformRule::new(
+                "rules/**/*.md",
+                ".opencode/rules/**/*.md",
+            ))
+            .with_transform(TransformRule::new(
+                "agents/**/*.md",
+                ".opencode/agents/**/*.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".opencode/skills/**/*.md",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".opencode/mcp.json")
                     .with_merge(MergeStrategy::Deep),
             )
             .with_transform(
-                TransformRule::new("AGENTS.md", "AGENTS.md")
-                    .with_merge(MergeStrategy::Composite),
+                TransformRule::new("AGENTS.md", "AGENTS.md").with_merge(MergeStrategy::Composite),
             ),
     ]
 }

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 /// - `mcp.jsonc`
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Resource {
-    /// Relative path within the bundle (e.g., "commands/debug.md")
+    /// Relative path within bundle (e.g., "commands/debug.md")
     pub path: PathBuf,
 
     /// Name of the bundle that provides this resource
@@ -81,7 +81,7 @@ impl Resource {
         }
     }
 
-    /// Get the resource type based on path
+    /// Get the resource type based on the path
     pub fn resource_type(&self) -> ResourceType {
         ResourceType::from_path(&self.path)
     }
@@ -115,7 +115,7 @@ impl Augmentation {
 }
 
 impl ResourceType {
-    /// Determine resource type from path
+    /// Determine the resource type from a path
     pub fn from_path(path: &Path) -> Self {
         let path_str = path.to_string_lossy().to_lowercase();
 
@@ -210,7 +210,43 @@ impl ResourceSet {
     pub fn len(&self) -> usize {
         self.resources.len()
     }
+
+    /// Detect conflicts between this resource set and another
+    ///
+    /// Returns a list of (path, bundle_name, other_bundle_name) tuples
+    /// for each conflicting resource path.
+    pub fn detect_conflicts(&self, other: &ResourceSet) -> Vec<(PathBuf, String, String)> {
+        let mut conflicts = Vec::new();
+
+        for resource in &self.resources {
+            if let Some(other_resource) = other.find_by_path(&resource.path) {
+                conflicts.push((
+                    resource.path.clone(),
+                    resource.bundle_name.clone(),
+                    other_resource.bundle_name.clone(),
+                ));
+            }
+        }
+
+        conflicts
+    }
+
+    /// Get all unique paths across all resources in this set
+    pub fn all_paths(&self) -> Vec<&Path> {
+        let mut paths: Vec<&Path> = self.resources.iter().map(|r| r.path.as_path()).collect();
+
+        paths.sort();
+        paths.dedup();
+
+        paths
+    }
 }
+
+/// Workspace's own bundle resources
+///
+/// Represents the workspace itself as a bundle, containing its own
+/// resource files in `.augent/bundles/<workspace-name>/`.
+pub type WorkspaceBundle = ResourceSet;
 
 #[cfg(test)]
 mod tests {
@@ -311,5 +347,70 @@ mod tests {
 
         assert!(set.find_by_path(Path::new("commands/a.md")).is_some());
         assert!(set.find_by_path(Path::new("nonexistent")).is_none());
+    }
+
+    #[test]
+    fn test_workspace_bundle() {
+        let mut workspace_bundle = WorkspaceBundle::new();
+        workspace_bundle.add(Resource::new(
+            "commands/debug.md",
+            "workspace",
+            "blake3:hash1",
+        ));
+        workspace_bundle.add(Resource::new("rules/lint.md", "workspace", "blake3:hash2"));
+
+        assert_eq!(workspace_bundle.len(), 2);
+        assert!(
+            workspace_bundle
+                .find_by_path(Path::new("commands/debug.md"))
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn test_detect_conflicts() {
+        let mut set1 = ResourceSet::new();
+        set1.add(Resource::new("commands/a.md", "bundle1", "hash1"));
+        set1.add(Resource::new("commands/b.md", "bundle1", "hash2"));
+
+        let mut set2 = ResourceSet::new();
+        set2.add(Resource::new("commands/a.md", "bundle2", "hash3"));
+        set2.add(Resource::new("rules/c.md", "bundle2", "hash4"));
+
+        let conflicts = set1.detect_conflicts(&set2);
+        assert_eq!(conflicts.len(), 1);
+
+        let (ref path, ref bundle1, ref bundle2) = conflicts[0];
+        assert_eq!(*path, Path::new("commands/a.md"));
+        assert_eq!(bundle1, "bundle1");
+        assert_eq!(bundle2, "bundle2");
+    }
+
+    #[test]
+    fn test_detect_conflicts_none() {
+        let mut set1 = ResourceSet::new();
+        set1.add(Resource::new("commands/a.md", "bundle1", "hash1"));
+
+        let mut set2 = ResourceSet::new();
+        set2.add(Resource::new("commands/b.md", "bundle2", "hash2"));
+
+        let conflicts = set1.detect_conflicts(&set2);
+        assert!(conflicts.is_empty());
+    }
+
+    #[test]
+    fn test_all_paths() {
+        let mut set = ResourceSet::new();
+        set.add(Resource::new("commands/a.md", "bundle", "hash1"));
+        set.add(Resource::new("commands/b.md", "bundle", "hash2"));
+        set.add(Resource::new("commands/a.md", "bundle", "hash3"));
+        set.add(Resource::new("rules/c.md", "bundle", "hash4"));
+
+        let paths = set.all_paths();
+        assert_eq!(paths.len(), 3);
+
+        assert!(paths.contains(&Path::new("commands/a.md")));
+        assert!(paths.contains(&Path::new("commands/b.md")));
+        assert!(paths.contains(&Path::new("rules/c.md")));
     }
 }

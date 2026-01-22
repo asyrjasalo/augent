@@ -109,6 +109,50 @@ impl Lockfile {
         }
     }
 
+    /// Merge another lockfile into this one
+    ///
+    /// Bundles from `other` are appended to this lockfile.
+    /// The `other`'s name is ignored to preserve this lockfile's identity.
+    pub fn merge(&mut self, other: Lockfile) {
+        self.bundles.extend(other.bundles);
+    }
+
+    /// Compare this lockfile with another
+    ///
+    /// Returns `true` if the two lockfiles are equivalent (same bundles in same order).
+    pub fn equals(&self, other: &Lockfile) -> bool {
+        if self.bundles.len() != other.bundles.len() {
+            return false;
+        }
+
+        self.bundles.iter().zip(other.bundles.iter()).all(|(a, b)| {
+            a.name == b.name
+                && match (&a.source, &b.source) {
+                    (
+                        LockedSource::Dir { path: pa, hash: ha },
+                        LockedSource::Dir { path: pb, hash: hb },
+                    ) => pa == pb && ha == hb,
+                    (
+                        LockedSource::Git {
+                            url: ua,
+                            sha: sa,
+                            hash: ha,
+                            path: pa,
+                            git_ref: ra,
+                        },
+                        LockedSource::Git {
+                            url: ub,
+                            sha: sb,
+                            hash: hb,
+                            path: pb,
+                            git_ref: rb,
+                        },
+                    ) => ua == ub && sa == sb && ha == hb && pa == pb && ra == rb,
+                    _ => false,
+                }
+        })
+    }
+
     /// Validate lockfile integrity
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
@@ -350,5 +394,106 @@ mod tests {
         // Invalid: wrong hash format
         let bundle = LockedBundle::dir("test", "path", "sha256:hash", vec![]);
         assert!(bundle.validate().is_err());
+    }
+
+    #[test]
+    fn test_lockfile_equals_identical() {
+        let mut lockfile1 = Lockfile::new("@test/bundle");
+        lockfile1.add_bundle(LockedBundle::dir(
+            "bundle1",
+            "path1",
+            "blake3:hash1",
+            vec!["file1.md".to_string()],
+        ));
+
+        let mut lockfile2 = Lockfile::new("@test/bundle");
+        lockfile2.add_bundle(LockedBundle::dir(
+            "bundle1",
+            "path1",
+            "blake3:hash1",
+            vec!["file1.md".to_string()],
+        ));
+
+        assert!(lockfile1.equals(&lockfile2));
+    }
+
+    #[test]
+    fn test_lockfile_equals_different_order() {
+        let mut lockfile1 = Lockfile::new("@test/bundle");
+        lockfile1.add_bundle(LockedBundle::dir("bundle1", "p1", "blake3:h1", vec![]));
+        lockfile1.add_bundle(LockedBundle::dir("bundle2", "p2", "blake3:h2", vec![]));
+
+        let mut lockfile2 = Lockfile::new("@test/bundle");
+        lockfile2.add_bundle(LockedBundle::dir("bundle2", "p2", "blake3:h2", vec![]));
+        lockfile2.add_bundle(LockedBundle::dir("bundle1", "p1", "blake3:h1", vec![]));
+
+        assert!(!lockfile1.equals(&lockfile2));
+    }
+
+    #[test]
+    fn test_lockfile_equals_different_content() {
+        let mut lockfile1 = Lockfile::new("@test/bundle");
+        lockfile1.add_bundle(LockedBundle::dir(
+            "bundle1",
+            "path1",
+            "blake3:hash1",
+            vec![],
+        ));
+
+        let mut lockfile2 = Lockfile::new("@test/bundle");
+        lockfile2.add_bundle(LockedBundle::dir(
+            "bundle1",
+            "path1",
+            "blake3:hash2",
+            vec![],
+        ));
+
+        assert!(!lockfile1.equals(&lockfile2));
+    }
+
+    #[test]
+    fn test_lockfile_equals_git_source() {
+        let mut lockfile1 = Lockfile::new("@test/bundle");
+        lockfile1.add_bundle(LockedBundle::git(
+            "bundle1",
+            "https://github.com/test/repo.git",
+            "abc123",
+            "blake3:hash1",
+            vec!["file.md".to_string()],
+        ));
+
+        let mut lockfile2 = Lockfile::new("@test/bundle");
+        lockfile2.add_bundle(LockedBundle::git(
+            "bundle1",
+            "https://github.com/test/repo.git",
+            "abc123",
+            "blake3:hash1",
+            vec!["file.md".to_string()],
+        ));
+
+        assert!(lockfile1.equals(&lockfile2));
+    }
+
+    #[test]
+    fn test_lockfile_equals_different_sha() {
+        let mut lockfile1 = Lockfile::new("@test/bundle");
+        lockfile1.add_bundle(LockedBundle::git(
+            "bundle1",
+            "https://github.com/test/repo.git",
+            "abc123",
+            "blake3:hash1",
+            vec![],
+        ));
+
+        let mut lockfile2 = Lockfile::new("@test/bundle");
+        lockfile2.add_bundle(LockedBundle::git(
+            "bundle1",
+            "https://github.com/test/repo.git",
+            "def456",
+            "blake3:hash1",
+            vec![],
+        ));
+
+        assert!(!lockfile1.equals(&lockfile2));
     }
 }

@@ -24,12 +24,16 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
    - @docs/implementation/TESTING.md for testing requirements
 3. **Create tests first** - Write tests before implementation (TDD approach)
 4. **Implement** - Write the implementation code
-5. **Make tests pass** - Run tests and fix issues until all pass
-6. **Run linters and formatters** - Ensure code quality:
+5. **Run linters and formatters** - Ensure code quality:
    - `cargo fmt`
    - `cargo clippy`
    - `pre-commit run --all-files`
-7. **Update documentation** - Update relevant docs if needed
+6. **Make tests pass** - Run tests and fix issues until all pass
+7. **Update documentation** - Update relevant docs if needed:
+   - Keep @docs/implementation/PLAN.md and @docs/implementation/TASKS.md in sync
+   - PLAN.md tracks PHASES, EPICS, and FEATURES (high-level progress)
+   - TASKS.md tracks individual tasks (detailed progress)
+   - Both documents must reflect current implementation status
 8. **Mark task complete** - Check the task in TASKS.md and link to relevant documentation
 9. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 

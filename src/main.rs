@@ -26,5 +26,6 @@ fn main() -> Result<()> {
         Commands::List(args) => commands::list::run(args),
         Commands::Show(args) => commands::show::run(args),
         Commands::Version => commands::version::run(),
+        Commands::Completions(args) => commands::completions::run(args),
     }
 }
