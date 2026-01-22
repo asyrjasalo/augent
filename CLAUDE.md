@@ -30,8 +30,8 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 5. **Implement** - Write the implementation code
 6. **Run formatters** - Fix formatting issues:
    - `cargo fmt`
-7. **Run linters** - Ensure code quality:
-   - `cargo clippy`
+7. **Run linters** - Ensure code quality (MUST use same arguments as CI):
+   - `cargo clippy --all-targets --all-features -- -D warnings`
 8. **Run security audit** - Check for vulnerabilities:
    - `cargo audit`
 9. **Make tests pass** - Run tests and fix issues until all pass

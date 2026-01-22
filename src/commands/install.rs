@@ -261,7 +261,7 @@ mod tests {
         // Create .cursor directory
         std::fs::create_dir(temp.path().join(".cursor")).unwrap();
 
-        let platforms = detect_target_platforms(&temp.path().to_path_buf(), &[]).unwrap();
+        let platforms = detect_target_platforms(temp.path(), &[]).unwrap();
         assert!(!platforms.is_empty());
 
         // Should include cursor
@@ -272,11 +272,9 @@ mod tests {
     fn test_detect_target_platforms_specified() {
         let temp = TempDir::new().unwrap();
 
-        let platforms = detect_target_platforms(
-            &temp.path().to_path_buf(),
-            &["cursor".to_string(), "opencode".to_string()],
-        )
-        .unwrap();
+        let platforms =
+            detect_target_platforms(temp.path(), &["cursor".to_string(), "opencode".to_string()])
+                .unwrap();
 
         assert_eq!(platforms.len(), 2);
         assert!(platforms.iter().any(|p| p.id == "cursor"));
@@ -287,10 +285,7 @@ mod tests {
     fn test_detect_target_platforms_invalid() {
         let temp = TempDir::new().unwrap();
 
-        let result = detect_target_platforms(
-            &temp.path().to_path_buf(),
-            &["invalid-platform".to_string()],
-        );
+        let result = detect_target_platforms(temp.path(), &["invalid-platform".to_string()]);
 
         assert!(result.is_err());
     }

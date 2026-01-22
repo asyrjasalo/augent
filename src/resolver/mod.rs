@@ -481,7 +481,7 @@ bundles:
             r#"
 name: "@test/bundle-b"
 bundles:
-  - name: bundle-c
+  - name: "@test/bundle-c"
     subdirectory: bundle-c
 "#,
         )
@@ -504,7 +504,7 @@ bundles:
         let mut resolver = Resolver::new(temp.path());
         let result = resolver.resolve("./bundle-a");
 
-        if !result.is_ok() {
+        if result.is_err() {
             eprintln!("Error: {:?}", result.as_ref().unwrap_err());
         }
 

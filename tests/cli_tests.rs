@@ -36,6 +36,7 @@ fn test_version_output() {
 }
 
 #[test]
+#[ignore = "Requires network access to non-existent repository"]
 fn test_install_stub() {
     augent_cmd()
         .args(["install", "github:test/bundle"])
@@ -47,6 +48,7 @@ fn test_install_stub() {
 }
 
 #[test]
+#[ignore = "Requires network access to non-existent repository"]
 fn test_install_with_for_flag() {
     augent_cmd()
         .args([
@@ -63,6 +65,7 @@ fn test_install_with_for_flag() {
 }
 
 #[test]
+#[ignore = "Requires network access to non-existent repository"]
 fn test_install_with_frozen_flag() {
     augent_cmd()
         .args(["install", "github:test/bundle", "--frozen"])

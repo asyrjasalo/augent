@@ -273,8 +273,7 @@ mod tests {
         let result = clone("https://github.com/octocat/Hello-World.git", temp.path());
 
         // This may fail in CI without network, so we don't assert success
-        if result.is_ok() {
-            let repo = result.unwrap();
+        if let Ok(repo) = result {
             assert!(repo.head().is_ok());
         }
     }
