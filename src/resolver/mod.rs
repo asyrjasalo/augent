@@ -636,4 +636,69 @@ bundles:
         // Should derive name from directory
         assert!(bundles[0].name.contains("simple-bundle"));
     }
+
+    #[test]
+    fn test_circular_dependency_detection() {
+        let temp = TempDir::new().unwrap();
+
+        // Create bundle A that depends on B
+        let bundle_a = temp.path().join("bundle-a");
+        std::fs::create_dir(&bundle_a).unwrap();
+        std::fs::write(
+            bundle_a.join("augent.yaml"),
+            r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: bundle-b
+"#,
+        )
+        .unwrap();
+
+        // Create bundle B that depends on A (creates cycle)
+        let bundle_b = temp.path().join("bundle-b");
+        std::fs::create_dir(&bundle_b).unwrap();
+        std::fs::write(
+            bundle_b.join("augent.yaml"),
+            r#"
+name: "@test/bundle-b"
+bundles:
+  - name: "@test/bundle-a"
+    subdirectory: bundle-a
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = Resolver::new(temp.path());
+
+        let result = resolver.resolve("./bundle-a");
+        // Should detect circular dependency
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Circular dependency"));
+    }
+
+    #[test]
+    fn test_nonexistent_dependency() {
+        let temp = TempDir::new().unwrap();
+
+        // Create bundle with nonexistent dependency
+        let bundle = temp.path().join("bundle");
+        std::fs::create_dir(&bundle).unwrap();
+        std::fs::write(
+            bundle.join("augent.yaml"),
+            r#"
+name: "@test/bundle"
+bundles:
+  - name: "@nonexistent/bundle"
+    subdirectory: nonexistent
+"#,
+        )
+        .unwrap();
+
+        let mut resolver = Resolver::new(temp.path());
+
+        let result = resolver.resolve("./bundle");
+        assert!(result.is_err());
+    }
 }

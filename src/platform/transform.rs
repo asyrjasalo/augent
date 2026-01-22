@@ -111,17 +111,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Infrastructure code - Phase 2+
-    fn test_transform_engine_with_rules() {
-        let platform = Platform::new("test", "Test", ".test")
-            .with_transform(TransformRule::new("commands/*.md", ".test/prompts/*.md"));
-
-        let engine = TransformEngine::new(platform);
-
-        assert_eq!(engine.rule_cache.len(), 1);
-    }
-
-    #[test]
     fn test_glob_match() {
         let platform = Platform::new("test", "Test", ".test");
         let engine = TransformEngine::new(platform);

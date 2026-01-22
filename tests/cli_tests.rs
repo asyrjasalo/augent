@@ -36,61 +36,12 @@ fn test_version_output() {
 }
 
 #[test]
-#[ignore = "Requires network access to non-existent repository"]
-fn test_install_stub() {
-    augent_cmd()
-        .args(["install", "github:test/bundle"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "Installing bundle from: github:test/bundle",
-        ));
-}
-
-#[test]
-#[ignore = "Requires network access to non-existent repository"]
-fn test_install_with_for_flag() {
-    augent_cmd()
-        .args([
-            "install",
-            "github:test/bundle",
-            "--for",
-            "cursor",
-            "--for",
-            "opencode",
-        ])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Target agents: cursor, opencode"));
-}
-
-#[test]
-#[ignore = "Requires network access to non-existent repository"]
-fn test_install_with_frozen_flag() {
-    augent_cmd()
-        .args(["install", "github:test/bundle", "--frozen"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("--frozen"));
-}
-
-#[test]
 fn test_uninstall_stub() {
     augent_cmd()
         .args(["uninstall", "my-bundle"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("BundleNotFound"));
-}
-
-#[test]
-#[ignore] // TODO: Implement list command
-fn test_list_stub() {
-    augent_cmd()
-        .arg("list")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Listing installed bundles"));
 }
 
 #[test]
