@@ -13,9 +13,7 @@
 
 use std::path::Path;
 
-use git2::{
-    build::RepoBuilder, Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository,
-};
+use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder};
 
 use crate::error::{AugentError, Result};
 
@@ -69,7 +67,7 @@ pub fn resolve_ref(repo: &Repository, git_ref: Option<&str>) -> Result<String> {
 }
 
 /// Resolve a reference name to a commit
-fn resolve_reference(repo: &Repository, refname: &str) -> Result<git2::Commit> {
+fn resolve_reference<'a>(repo: &'a Repository, refname: &str) -> Result<git2::Commit<'a>> {
     // Try different reference formats in order
     let ref_candidates = [
         refname.to_string(),
@@ -141,6 +139,7 @@ pub fn checkout_commit(repo: &Repository, sha: &str) -> Result<()> {
 }
 
 /// Fetch updates from a remote repository
+#[allow(dead_code)]
 pub fn fetch(repo: &Repository, remote_name: &str) -> Result<()> {
     let mut remote = repo
         .find_remote(remote_name)
@@ -164,6 +163,7 @@ pub fn fetch(repo: &Repository, remote_name: &str) -> Result<()> {
 }
 
 /// Open an existing repository
+#[allow(dead_code)]
 pub fn open(path: &Path) -> Result<Repository> {
     Repository::open(path).map_err(|e| AugentError::GitOpenFailed {
         path: path.display().to_string(),
@@ -243,16 +243,19 @@ fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
 }
 
 /// Get the HEAD commit SHA of a repository
+#[allow(dead_code)]
 pub fn head_sha(repo: &Repository) -> Result<String> {
     let head = repo.head().map_err(|e| AugentError::GitRefResolveFailed {
         git_ref: "HEAD".to_string(),
         reason: e.message().to_string(),
     })?;
 
-    let commit = head.peel_to_commit().map_err(|e| AugentError::GitRefResolveFailed {
-        git_ref: "HEAD".to_string(),
-        reason: e.message().to_string(),
-    })?;
+    let commit = head
+        .peel_to_commit()
+        .map_err(|e| AugentError::GitRefResolveFailed {
+            git_ref: "HEAD".to_string(),
+            reason: e.message().to_string(),
+        })?;
 
     Ok(commit.id().to_string())
 }
@@ -267,10 +270,7 @@ mod tests {
         // This test requires network access, so we mark it as ignored by default
         // Run with: cargo test -- --ignored
         let temp = TempDir::new().unwrap();
-        let result = clone(
-            "https://github.com/octocat/Hello-World.git",
-            temp.path(),
-        );
+        let result = clone("https://github.com/octocat/Hello-World.git", temp.path());
 
         // This may fail in CI without network, so we don't assert success
         if result.is_ok() {
@@ -319,8 +319,7 @@ mod tests {
             .unwrap();
 
         // Resolve by branch name (master/main is the default)
-        let sha = resolve_ref(&repo, Some("master"))
-            .or_else(|_| resolve_ref(&repo, Some("main")));
+        let sha = resolve_ref(&repo, Some("master")).or_else(|_| resolve_ref(&repo, Some("main")));
 
         if sha.is_ok() {
             assert_eq!(sha.unwrap(), commit_oid.to_string());

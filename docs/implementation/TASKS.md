@@ -272,48 +272,49 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 6.1: Dependency Resolution
 
-- [ ] Parse bundle dependencies from `augent.yaml`
-- [ ] Resolve dependency order (topological sort)
-- [ ] Detect circular dependencies
-- [ ] Validate dependency names and sources
-- [ ] Generate lockfile entries with resolved SHAs
-- [ ] Write tests for dependency resolution
+- [x] Implement Epic 6: Install Command
+- [x] Parse bundle dependencies from `augent.yaml`
+- [x] Resolve dependency order (topological sort)
+- [x] Detect circular dependencies
+- [x] Validate dependency names and sources
+- [x] Generate lockfile entries with resolved SHAs
+- [x] Write tests for dependency resolution
 
 #### Feature 6.2: Lockfile Generation
 
-- [ ] Calculate BLAKE3 hash for each bundle
-- [ ] List all files provided by each bundle
-- [ ] Resolve git refs to exact SHAs
-- [ ] Generate `augent.lock` in deterministic order
-- [ ] Implement `--frozen` flag validation
-- [ ] Write tests for lockfile generation
+- [x] Calculate BLAKE3 hash for each bundle
+- [x] List all files provided by each bundle
+- [x] Resolve git refs to exact SHAs
+- [x] Generate `augent.lock` in deterministic order
+- [x] Implement `--frozen` flag validation
+- [x] Write tests for lockfile generation
 
 #### Feature 6.3: File Installation
 
-- [ ] Read resources from cached bundles
-- [ ] Apply platform transformations (universal → agent-specific)
-- [ ] Handle merge strategies for conflicts
-- [ ] Override earlier bundle files with later ones
-- [ ] Copy root files/directories to workspace root
-- [ ] Write tests for file installation
+- [x] Read resources from cached bundles
+- [x] Apply platform transformations (universal → agent-specific)
+- [x] Handle merge strategies for conflicts
+- [x] Override earlier bundle files with later ones
+- [x] Copy root files/directories to workspace root
+- [x] Write tests for file installation
 
 #### Feature 6.4: Workspace Configuration Updates
 
-- [ ] Update `augent.yaml` with new bundle entry
-- [ ] Update `augent.lock` with resolved dependencies
-- [ ] Update `augent.workspace.yaml` with installed files mapping
-- [ ] Track which agents each file is installed for
-- [ ] Handle `--for <agent>` flag logic
-- [ ] Write tests for configuration updates
+- [x] Update `augent.yaml` with new bundle entry
+- [x] Update `augent.lock` with resolved dependencies
+- [x] Update `augent.workspace.yaml` with installed files mapping
+- [x] Track which agents each file is installed for
+- [x] Handle `--for <agent>` flag logic
+- [x] Write tests for configuration updates
 
 #### Feature 6.5: Atomic Rollback on Failure
 
-- [ ] Create backup of configuration files before install
-- [ ] Track all files created/modified during install
-- [ ] Implement rollback function on error
-- [ ] Restore backups on failure
-- [ ] Ensure workspace is never left in inconsistent state
-- [ ] Write tests for rollback scenarios
+- [x] Create backup of configuration files before install
+- [x] Track all files created/modified during install
+- [x] Implement rollback function on error
+- [x] Restore backups on failure
+- [x] Ensure workspace is never left in inconsistent state
+- [x] Write tests for rollback scenarios
 
 ---
 
@@ -358,12 +359,14 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 8.1: List Implementation
 
-- [ ] Read `augent.lock` to get installed bundles
-- [ ] Display bundle names and sources
-- [ ] Show enabled agents for each bundle
-- [ ] Show file count per bundle
-- [ ] Format output in table or list view
-- [ ] Write tests for list command
+**Status:** Complete
+
+- [x] Read `augent.lock` to get installed bundles - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Display bundle names and sources - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Show enabled agents for each bundle - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Show file count per bundle - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Format output in table or list view - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Write tests for list command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ### Epic 9: Show Command
 

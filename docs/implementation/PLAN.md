@@ -411,7 +411,7 @@ Bundle sources support for installing from various locations, with automatic cac
 
 ## Phase 3: Install Command (Epic 6)
 
-**Status:** Pending
+**Status:** Complete
 
 ### Overview
 
@@ -500,7 +500,7 @@ Most complex command, core value proposition - requires all previous phases.
 
 ## Phase 4: Additional Commands (Epics 7-10)
 
-**Status:** Pending
+**Status:** In Progress
 
 ### Overview
 
@@ -575,7 +575,7 @@ Uninstall command, query commands (list, show), help and version.
 
 ### Feature 8.1: List Implementation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 

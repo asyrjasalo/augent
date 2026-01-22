@@ -81,16 +81,18 @@ jobs:
             ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-
 
       - name: Run tests
+        shell: bash
         run: |
-          if ${{ matrix.use_cross }}; then
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross test --release --target ${{ matrix.target }}
           else
             cargo test --release --target ${{ matrix.target }}
           fi
 
       - name: Run clippy
+        shell: bash
         run: |
-          if ${{ matrix.use_cross }}; then
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross clippy --release --target ${{ matrix.target }} -- -D warnings
           else
             cargo clippy --release --target ${{ matrix.target }} -- -D warnings
@@ -200,8 +202,9 @@ jobs:
             ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-
 
       - name: Build release binary
+        shell: bash
         run: |
-          if ${{ matrix.use_cross }}; then
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross build --release --target ${{ matrix.target }}
           else
             cargo build --release --target ${{ matrix.target }}

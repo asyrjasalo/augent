@@ -16,7 +16,7 @@ clap = { version = "4", features = ["derive", "env", "string"] }
 clap_complete = "4"
 
 # Error handling
-miette = { version = "7", features = ["fancy"] }
+miette = { version = "7", features = [] }
 thiserror = "2"
 
 # Configuration & serialization
@@ -42,6 +42,9 @@ glob = "0.3"
 
 # URL parsing
 url = "2"
+
+# Regex for pattern matching
+regex = "1"
 
 [dev-dependencies]
 # Integration testing

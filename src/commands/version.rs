@@ -1,8 +1,8 @@
 //! Version command implementation
 
-use miette::Result;
+use crate::error::Result;
 
-/// Run the version command
+/// Run version command
 pub fn run() -> Result<()> {
     println!("augent {}", env!("CARGO_PKG_VERSION"));
     println!();

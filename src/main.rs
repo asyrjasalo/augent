@@ -4,20 +4,24 @@
 //! across multiple platforms (Claude, Cursor, OpenCode, etc.) in a reproducible manner.
 
 use clap::Parser;
-use miette::Result;
 
+mod cache;
 mod cli;
 mod commands;
 mod config;
 mod error;
 mod git;
 mod hash;
+mod installer;
 mod platform;
+mod resolver;
 mod resource;
 mod source;
+mod transaction;
 mod workspace;
 
 use cli::{Cli, Commands};
+use error::Result;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();

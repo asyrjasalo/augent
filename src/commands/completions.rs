@@ -1,9 +1,9 @@
 //! Shell completions command
 
 use clap::CommandFactory;
-use miette::Result;
 
 use crate::cli::CompletionsArgs;
+use crate::error::Result;
 
 /// Generate shell completions
 pub fn run(args: CompletionsArgs) -> Result<()> {

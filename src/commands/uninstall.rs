@@ -1,10 +1,9 @@
 //! Uninstall command implementation
 
-use miette::Result;
-
 use crate::cli::UninstallArgs;
+use crate::error::Result;
 
-/// Run the uninstall command
+/// Run uninstall command
 pub fn run(args: UninstallArgs) -> Result<()> {
     println!("Uninstalling bundle: {}", args.name);
 

@@ -9,10 +9,7 @@ pub mod bundle;
 pub mod lockfile;
 pub mod workspace;
 
-// These exports are provided for external use when they're needed
-#[allow(unused_imports)]
-pub use bundle::BundleConfig;
-#[allow(unused_imports)]
-pub use lockfile::{LockedBundle, Lockfile};
-#[allow(unused_imports)]
-pub use workspace::WorkspaceConfig;
+// Re-export commonly used types
+pub use bundle::{BundleConfig, BundleDependency};
+pub use lockfile::{LockedBundle, LockedSource, Lockfile};
+pub use workspace::{WorkspaceBundle, WorkspaceConfig};
