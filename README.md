@@ -8,6 +8,6 @@ It:
 - Frees you from burden of converting between AI agent specific formats.
 
 It does NOT:
-- Rely on a centralized package registry.
-- Require a PhD in dependency management.
+- Rely on a central package registry.
 - Cargo cult existing package managers.
+- Require a PhD in dependency management.
