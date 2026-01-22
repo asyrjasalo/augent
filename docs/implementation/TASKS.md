@@ -89,40 +89,40 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 1.1: Project Structure & Build Configuration
 
-- [ ] Create Cargo.toml with core dependencies (clap, miette, serde, git2, etc.)
-- [ ] Set up workspace structure: `src/`, `tests/`, `docs/`, `examples/`
-- [ ] Configure Cargo features for optional platforms
-- [ ] Set up pre-commit hooks configuration
+- [x] Create Cargo.toml with core dependencies (clap, miette, serde, git2, etc.) - [Cargo.toml](../../Cargo.toml)
+- [x] Set up workspace structure: `src/`, `tests/`, `docs/`, `examples/` - [src/](../../src/), [tests/](../../tests/)
+- [x] Configure Cargo features for optional platforms - [Cargo.toml](../../Cargo.toml)
+- [x] Set up pre-commit hooks configuration - [.pre-commit-config.yaml](../../.pre-commit-config.yaml)
 - [ ] Configure CI/CD workflow for cross-platform builds
-- [ ] Create initial `src/main.rs` with basic CLI stub
+- [x] Create initial `src/main.rs` with basic CLI stub - [src/main.rs](../../src/main.rs)
 
 #### Feature 1.2: Error Handling Framework
 
-- [ ] Define core error types in `src/error.rs` using `thiserror`
-- [ ] Set up `miette` integration for pretty error diagnostics
-- [ ] Implement `Result<T>` type alias using `miette::Result`
-- [ ] Add error codes and help text for common scenarios
-- [ ] Create error wrapper utilities with `.wrap_err()` patterns
-- [ ] Write unit tests for error conversion and display
+- [x] Define core error types in `src/error.rs` using `thiserror` - [src/error.rs](../../src/error.rs)
+- [x] Set up `miette` integration for pretty error diagnostics - [src/error.rs](../../src/error.rs)
+- [x] Implement `Result<T>` type alias using `miette::Result` - [src/error.rs](../../src/error.rs)
+- [x] Add error codes and help text for common scenarios - [src/error.rs](../../src/error.rs)
+- [x] Create error wrapper utilities with `.wrap_err()` patterns - [src/error.rs](../../src/error.rs)
+- [x] Write unit tests for error conversion and display - [src/error.rs](../../src/error.rs)
 
 #### Feature 1.3: Configuration File Handling
 
-- [ ] Define data structures for `augent.yaml` in `src/config/bundle.rs`
-- [ ] Define data structures for `augent.lock` in `src/config/lockfile.rs`
-- [ ] Define data structures for `augent.workspace.yaml` in `src/config/workspace.rs`
-- [ ] Implement YAML serialization/deserialization with `serde_yaml`
-- [ ] Add validation logic for config file schemas
+- [x] Define data structures for `augent.yaml` in `src/config/bundle.rs` - [src/config/bundle.rs](../../src/config/bundle.rs)
+- [x] Define data structures for `augent.lock` in `src/config/lockfile.rs` - [src/config/lockfile.rs](../../src/config/lockfile.rs)
+- [x] Define data structures for `augent.workspace.yaml` in `src/config/workspace.rs` - [src/config/workspace.rs](../../src/config/workspace.rs)
+- [x] Implement YAML serialization/deserialization with `serde_yaml` - [src/config/](../../src/config/)
+- [x] Add validation logic for config file schemas - [src/config/](../../src/config/)
 - [ ] Implement config file merging behavior
-- [ ] Write tests for config file parsing and validation
+- [x] Write tests for config file parsing and validation - [src/config/](../../src/config/)
 
 #### Feature 1.4: CLI Framework Setup
 
-- [ ] Create main CLI struct with derive API in `src/cli.rs`
-- [ ] Define subcommand enums: Install, Uninstall, List, Show, Help, Version
-- [ ] Set up global options (verbose, workspace path)
-- [ ] Configure command-specific arguments
+- [x] Create main CLI struct with derive API in `src/cli.rs` - [src/cli.rs](../../src/cli.rs)
+- [x] Define subcommand enums: Install, Uninstall, List, Show, Help, Version - [src/cli.rs](../../src/cli.rs)
+- [x] Set up global options (verbose, workspace path) - [src/cli.rs](../../src/cli.rs)
+- [x] Configure command-specific arguments - [src/cli.rs](../../src/cli.rs)
 - [ ] Enable shell completion generation
-- [ ] Test basic CLI parsing and help output
+- [x] Test basic CLI parsing and help output - [src/cli.rs](../../src/cli.rs), [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ### Epic 2: Core Data Models
 
@@ -137,13 +137,13 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 2.2: Lockfile Models
 
-- [ ] Define `Lockfile` struct with resolved dependencies
-- [ ] Define `LockedBundle` struct (name, source, files, hash)
-- [ ] Define `LockedFile` representation
-- [ ] Implement lockfile serialization/deserialization
-- [ ] Add lockfile validation (SHA resolution, hash verification)
+- [x] Define `Lockfile` struct with resolved dependencies - [src/config/lockfile.rs](../../src/config/lockfile.rs)
+- [x] Define `LockedBundle` struct (name, source, files, hash) - [src/config/lockfile.rs](../../src/config/lockfile.rs)
+- [x] Define `LockedFile` representation - files tracked as Vec<String> in LockedBundle
+- [x] Implement lockfile serialization/deserialization - [src/config/lockfile.rs](../../src/config/lockfile.rs)
+- [x] Add lockfile validation (SHA resolution, hash verification) - [src/config/lockfile.rs](../../src/config/lockfile.rs)
 - [ ] Implement lockfile comparison for detecting changes
-- [ ] Write tests for lockfile operations
+- [x] Write tests for lockfile operations - [src/config/lockfile.rs](../../src/config/lockfile.rs)
 
 #### Feature 2.3: Resource Models
 
@@ -482,8 +482,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 ## Task Statistics
 
 - **Total Tasks:** 254
-- **Completed:** 34 (Phase 0: Pre-Implementation Planning complete)
-- **Pending:** 220
+- **Completed:** 62 (Phase 0 complete, Epic 1 mostly complete)
+- **Pending:** 192
 
 ---
 
