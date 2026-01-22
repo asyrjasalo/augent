@@ -1,24 +1,34 @@
 # Product Requirements Document
 
-## What it solves
+## Goal
+
+### What are we solving
 
 As of today (2026-01-22), there are many AI agents for developers to choose from and more is expected to come. Some popular ones include OpenCode, Claude Code, Cursor, Codex CLI and GitHub Copilot.
 
 Increasingly a project uses more than one AI agent. There is no standard way to manage these agents' resources, such as commands, rules, subagents, skills and MCP servers. This applies not only accross agents but also across projects.
 
-## Current state
-
 Currently the most promising solution to resolve the issue [OpenPackage](https://github.com/enulus/OpenPackage).
 
-It has some design flaws due to it mostly being designed on how other package managers (like npm) work. Managing AI agent resources is whole lot of different from managing software packages.
+It has some design flaws due to it mostly being designed on how other package managers (like npm) work.
 
-However, the biggest of its problems is that it is designed with simplicity in mind for developers. There are too many commands, some commands like `install` and `apply` are too ambiguous, it is not clear what `save` does and where `publish` puts the packages etc.
+Managing AI agent resources is whole lot of different from managing software packages. E.g. implementing development dependencies has little actual use in managing resources for AI agents and mostly confuses what gets installed and when. On the other hand, it then lacks a dependency locking which would be useful when using version ranges in dependencies.
 
-We will implement a configuration manager supporting various AI agents which is easy to use for anyone who has used a package manager before.
+From the user point of view, its biggest issue is that it is designed with simplicity in mind from the beginning: There are too many commands, some commands like `install` and `apply` are too ambiguous by name, it is not clear what `save` does, what `add` adds and where `publish` puts the packages etc.
 
-We will not cargo cult any other existing manager and we will not implement any other bells and whistles than what is needed to 1) implement AI agent resource management in 2) a reproducible and 3) AI agent independent way.
+### How we will resolve it
 
-## Design principles
+We will implement an AI configuration manager (not package manager) supporting various AI agents.
+
+We will do this in a development-friendly manner which means that it is easy to use for anyone who has used a package manager before in any language, and actually it is far simpler than that.
+
+Thus we will not cargo cult any existing packager manager and we will not implement ANY bells and whistles than what is required to active **our goal**:
+
+1) Implement AI coding agent and platform independent resource management
+2) In a lean, intuitive, developer friendly, non-documentation relying way
+3) With easy extensibility in mind, to respond to fast evolving landscape of AI coding agents and their features
+
+### What will 1.0.0 look like
 
 What we will have:
 
@@ -31,6 +41,10 @@ What we will not have:
 - Development dependencies (like npm or OpenPackage has) or cargo-culting any existing package managers for "nice to have" features that "might be useful in the future" (it is FUCKING HARD to deprecate any of features in package manager)
 - A centralized registry for publishing and distributing packages. We will store our bundles (lightweight "packages") in a Git repo in a clear text format as that's what the developers want to go see in GitHub when they see the bundle name.
 - Thus we will not install bundles (outside of the current repository) anywhere else than from git repositories via https:// (or via ssh:// for private repositories)
+
+## Archtitecture
+
+### Type 1 decisions
 
 How we will do it:
 
@@ -63,7 +77,11 @@ In addition, you should be able to install resources from:
 
 Basically, you can give any path or repo url or github:author/reponame to `install` and it will know how to handle it (as long as it has resources in its path or in its subdirectories). If there are multiple set of resources in the repo (e.g. aforementioned bundles, or multiple Claude Code plugins), it will show you the menu and ask you to select the ones you want to install.
 
-Future note:
+### Type 2 decisions (how we make it future proof)
+
+We adopt `platforms.jsonc` approach from OpenPackage to support ever increasing number of AI agents and their features. It must be possible for the developer to add support to new AI agents without changing the core code.
+
+If another package format becomes popular, we will collaborate to add support to import from it, but we will not compromise our goal to implement some features just for the sake of something being popular.
 
 Even though we don't have centralized registry, we might later implement a centralized search for all the public bundles as they are mostly stored in publicly indexable Git repositories on GitHub. We have to reserve the option for now that in it that case the user can reference the bundle just by its
 name (it is a "well-known bundle")
