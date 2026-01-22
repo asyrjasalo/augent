@@ -17,25 +17,37 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 
 **You must follow this process ALWAYS when implementing any feature or bug fix:**
 
-1. **Create task** - Add a task to the end of @docs/implementation/TASKS.md before starting work
-2. **Research** - Review existing documentation:
+1. **Mark work as started** - Before starting work, mark the appropriate Epic/Feature/Task as in progress:
+   - In `docs/implementation/PLAN.md`: Mark Epic/Feature status as "In Progress"
+   - In `docs/implementation/TASKS.md`: Mark tasks as `[-]` (in progress)
+   - This allows epics to be worked in parallel as long as dependencies are met
+2. **Create task** - Add a task to the end of @docs/implementation/TASKS.md before starting work
+3. **Research** - Review existing documentation:
    - @docs/implementation/PRD.md for requirements
    - @docs/implementation/ARCHITECTURE.md for design decisions
    - @docs/implementation/TESTING.md for testing requirements
-3. **Create tests first** - Write tests before implementation (TDD approach)
-4. **Implement** - Write the implementation code
-5. **Run linters and formatters** - Ensure code quality:
+4. **Create tests first** - Write tests before implementation (TDD approach)
+5. **Implement** - Write the implementation code
+6. **Run formatters** - Fix formatting issues:
    - `cargo fmt`
+7. **Run linters** - Ensure code quality:
    - `cargo clippy`
-   - `pre-commit run --all-files`
-6. **Make tests pass** - Run tests and fix issues until all pass
-7. **Update documentation** - Update relevant docs if needed:
-   - Keep @docs/implementation/PLAN.md and @docs/implementation/TASKS.md in sync
-   - PLAN.md tracks PHASES, EPICS, and FEATURES (high-level progress)
-   - TASKS.md tracks individual tasks (detailed progress)
-   - Both documents must reflect current implementation status
-8. **Mark task complete** - Check the task in TASKS.md and link to relevant documentation
-9. **Update CHANGELOG.md** - For user-facing features or bug fixes only
+8. **Run security audit** - Check for vulnerabilities:
+   - `cargo audit`
+9. **Make tests pass** - Run tests and fix issues until all pass
+10. **Run code coverage** - Ensure 80% coverage threshold is met:
+    - `cargo tarpaulin --out Json | jq '.results.coverage'`
+11. **Update documentation** - Update relevant docs if needed:
+    - Keep @docs/implementation/PLAN.md and @docs/implementation/TASKS.md in sync
+    - PLAN.md tracks PHASES, EPICS, and FEATURES (high-level progress)
+    - TASKS.md tracks individual tasks (detailed progress)
+    - Both documents must reflect current implementation status
+12. **Run pre-commit** - Check documentation and other files:
+    - `pre-commit run --all-files`
+13. **Mark task complete** - Mark task as `[x]` in TASKS.md and link to relevant documentation
+    - If all tasks in a Feature are complete, mark Feature as "Complete" in PLAN.md
+    - If all Features in an Epic are complete, mark Epic as "Complete" in PLAN.md
+14. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
 ## Development Guidelines
 

@@ -16,6 +16,7 @@ pub enum AugentError {
         code(augent::bundle::not_found),
         help("Check that the bundle name is correct and the source is accessible")
     )]
+    #[allow(dead_code)]
     BundleNotFound { name: String },
 
     #[error("Invalid bundle name: {name}")]
@@ -23,6 +24,7 @@ pub enum AugentError {
         code(augent::bundle::invalid_name),
         help("Bundle names should follow the format @author/name or author/name")
     )]
+    #[allow(dead_code)]
     InvalidBundleName { name: String },
 
     #[error("Bundle validation failed: {message}")]
@@ -35,10 +37,12 @@ pub enum AugentError {
         code(augent::source::invalid_url),
         help("Valid formats: ./path, github:author/repo, https://github.com/author/repo.git")
     )]
+    #[allow(dead_code)]
     InvalidSourceUrl { url: String },
 
     #[error("Failed to parse source: {input}")]
     #[diagnostic(code(augent::source::parse_failed))]
+    #[allow(dead_code)]
     SourceParseFailed { input: String, reason: String },
 
     // Git errors
@@ -51,10 +55,12 @@ pub enum AugentError {
         code(augent::git::clone_failed),
         help("Check that the URL is correct and you have access to the repository")
     )]
+    #[allow(dead_code)]
     GitCloneFailed { url: String, reason: String },
 
     #[error("Failed to resolve ref '{reference}' to SHA")]
     #[diagnostic(code(augent::git::ref_resolution_failed))]
+    #[allow(dead_code)]
     GitRefResolutionFailed { reference: String },
 
     // Workspace errors
@@ -63,6 +69,7 @@ pub enum AugentError {
         code(augent::workspace::not_found),
         help("Run 'augent install' to initialize a workspace")
     )]
+    #[allow(dead_code)]
     WorkspaceNotFound { path: String },
 
     #[error("Workspace already locked by another process")]
@@ -74,6 +81,7 @@ pub enum AugentError {
 
     #[error("Failed to acquire workspace lock")]
     #[diagnostic(code(augent::workspace::lock_failed))]
+    #[allow(dead_code)]
     WorkspaceLockFailed { reason: String },
 
     // Configuration errors
@@ -83,10 +91,12 @@ pub enum AugentError {
 
     #[error("Failed to parse configuration file: {path}")]
     #[diagnostic(code(augent::config::parse_failed))]
+    #[allow(dead_code)]
     ConfigParseFailed { path: String, reason: String },
 
     #[error("Invalid configuration: {message}")]
     #[diagnostic(code(augent::config::invalid))]
+    #[allow(dead_code)]
     ConfigInvalid { message: String },
 
     // Lockfile errors
@@ -109,6 +119,7 @@ pub enum AugentError {
         code(augent::lockfile::hash_mismatch),
         help("The bundle contents have changed. Run 'augent install' to update the lockfile")
     )]
+    #[allow(dead_code)]
     HashMismatch { name: String },
 
     // Dependency errors
@@ -117,6 +128,7 @@ pub enum AugentError {
         code(augent::deps::circular),
         help("Remove the circular dependency from your bundle configuration")
     )]
+    #[allow(dead_code)]
     CircularDependency { chain: String },
 
     #[error("Dependency not found: {name}")]
@@ -129,6 +141,7 @@ pub enum AugentError {
         code(augent::platform::not_supported),
         help("Supported platforms: claude, cursor, opencode")
     )]
+    #[allow(dead_code)]
     PlatformNotSupported { platform: String },
 
     #[error("No platforms detected in workspace")]
@@ -140,6 +153,7 @@ pub enum AugentError {
 
     #[error("Failed to load platform configuration: {message}")]
     #[diagnostic(code(augent::platform::config_failed))]
+    #[allow(dead_code)]
     PlatformConfigFailed { message: String },
 
     // File system errors

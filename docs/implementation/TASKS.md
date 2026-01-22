@@ -202,38 +202,38 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 4.1: Source URL Parsing
 
-- [ ] Implement URL parser for all source types (local paths, Git URLs, GitHub short-form)
-- [ ] Parse subdirectory specifications (e.g., `github:user/repo#subdir`)
-- [ ] Parse ref specifications (branches, tags, SHAs)
-- [ ] Add validation for URL formats
-- [ ] Write tests for URL parsing
+- [x] Implement URL parser for all source types (local paths, Git URLs, GitHub short-form) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Parse subdirectory specifications (e.g., `github:user/repo#subdir`) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Parse ref specifications (branches, tags, SHAs) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Add validation for URL formats - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Write tests for URL parsing - [src/source/mod.rs](../../src/source/mod.rs)
 
 #### Feature 4.2: Git Repository Operations
 
-- [ ] Implement `git clone` with `git2` + `auth-git2`
-- [ ] Implement git SHA resolution for refs
-- [ ] Implement repository fetching and checkout
-- [ ] Add support for SSH and HTTPS authentication (delegated to git)
-- [ ] Implement private repository support
-- [ ] Write tests for git operations
+- [x] Implement `git clone` with `git2` + `auth-git2` - [src/git/mod.rs](../../src/git/mod.rs)
+- [x] Implement git SHA resolution for refs - [src/git/mod.rs](../../src/git/mod.rs)
+- [x] Implement repository fetching and checkout - [src/git/mod.rs](../../src/git/mod.rs)
+- [x] Add support for SSH and HTTPS authentication (delegated to git) - [src/git/mod.rs](../../src/git/mod.rs)
+- [x] Implement private repository support - [src/git/mod.rs](../../src/git/mod.rs)
+- [x] Write tests for git operations - [src/git/mod.rs](../../src/git/mod.rs)
 
 #### Feature 4.3: Bundle Caching System
 
-- [ ] Define cache directory structure (`~/.cache/augent/bundles/`)
-- [ ] Implement cache key generation from URL
-- [ ] Implement bundle download and caching logic
-- [ ] Add cache hit/miss tracking
-- [ ] Implement cache cleanup (optional)
-- [ ] Write tests for cache operations
+- [x] Define cache directory structure (`~/.cache/augent/bundles/`) - [src/cache/mod.rs](../../src/cache/mod.rs)
+- [x] Implement cache key generation from URL - [src/cache/mod.rs](../../src/cache/mod.rs)
+- [x] Implement bundle download and caching logic - [src/cache/mod.rs](../../src/cache/mod.rs)
+- [x] Add cache hit/miss tracking - [src/cache/mod.rs](../../src/cache/mod.rs)
+- [-] Implement cache cleanup (optional)
+- [x] Write tests for cache operations - [src/cache/mod.rs](../../src/cache/mod.rs)
 
 #### Feature 4.4: Bundle Discovery
 
-- [ ] Scan local directories for bundle resources
-- [ ] Scan git repositories for bundles/subdirectories
-- [ ] Detect Claude Code plugins and marketplaces
-- [ ] Create interactive menu for multiple discovered bundles
-- [ ] Implement bundle discovery when source path is explicitly specified
-- [ ] Write tests for discovery logic
+- [x] Scan local directories for bundle resources - [src/discovery/mod.rs](../../src/discovery/mod.rs)
+- [x] Scan git repositories for bundles/subdirectories - [src/discovery/mod.rs](../../src/discovery/mod.rs)
+- [x] Detect Claude Code plugins and marketplaces - [src/discovery/mod.rs](../../src/discovery/mod.rs)
+- [-] Create interactive menu for multiple discovered bundles
+- [x] Implement bundle discovery when source path is explicitly specified - [src/discovery/mod.rs](../../src/discovery/mod.rs)
+- [x] Write tests for discovery logic - [src/discovery/mod.rs](../../src/discovery/mod.rs)
 
 ### Epic 5: Workspace Management
 
@@ -482,8 +482,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 ## Task Statistics
 
 - **Total Tasks:** 254
-- **Completed:** 97 (Phase 0 complete, Phase 1 complete)
-- **Pending:** 157
+- **Completed:** 133 (Phase 0 complete, Phase 1 complete, Epic 4 complete)
+- **Pending:** 121
 
 ---
 

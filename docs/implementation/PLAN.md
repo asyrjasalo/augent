@@ -65,6 +65,10 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 **Status:** Complete
 
+## Phase 2: Core Functionality (Epics 4-5)
+
+**Status:** In Progress (Epic 4 complete, Epic 5 pending)
+
 ### Overview
 
 Core infrastructure and data models, platform system for extensibility - essential for all other features.
@@ -277,7 +281,7 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ## Phase 2: Core Functionality (Epics 4-5)
 
-**Status:** Pending
+**Status:** In Progress
 
 ### Overview
 
@@ -287,64 +291,74 @@ Git operations and bundle sources, workspace management - install/uninstall prer
 
 ### Epic 4: Git Operations & Bundle Sources
 
+**Status:** Complete
+
 **Goal:** Handle bundle discovery, fetching, and caching.
+
+---
+
+### Feature Overview
+
+Bundle sources support for installing from various locations, with automatic caching to improve performance and reproducibility.
+
+---
 
 ### Feature 4.1: Source URL Parsing
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Implement URL parser for all source types (local paths, Git URLs, GitHub short-form)
-- [ ] Parse subdirectory specifications (e.g., `github:user/repo#subdir`)
-- [ ] Parse ref specifications (branches, tags, SHAs)
-- [ ] Add validation for URL formats
-- [ ] Write tests for URL parsing
+- [x] Implement URL parser for all source types (local paths, Git URLs, GitHub short-form) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Parse subdirectory specifications (e.g., `github:user/repo#subdir`) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Parse ref specifications (branches, tags, SHAs) - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Add validation for URL formats - [src/source/mod.rs](../../src/source/mod.rs)
+- [x] Write tests for URL parsing - [src/source/mod.rs](../../src/source/mod.rs)
 
 ---
 
 ### Feature 4.2: Git Repository Operations
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Implement `git clone` with `git2` + `auth-git2`
-- [ ] Implement git SHA resolution for refs
-- [ ] Implement repository fetching and checkout
-- [ ] Add support for SSH and HTTPS authentication (delegated to git)
-- [ ] Implement private repository support
-- [ ] Write tests for git operations
+- [x] Implement `git clone` with `git2` + `auth-git2`
+- [x] Implement git SHA resolution for refs
+- [x] Implement repository fetching and checkout
+- [x] Add support for SSH and HTTPS authentication (delegated to git)
+- [x] Implement private repository support
+- [x] Write tests for git operations
 
 ---
 
 ### Feature 4.3: Bundle Caching System
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define cache directory structure (`~/.cache/augent/bundles/`)
-- [ ] Implement cache key generation from URL
-- [ ] Implement bundle download and caching logic
-- [ ] Add cache hit/miss tracking
-- [ ] Implement cache cleanup (optional)
-- [ ] Write tests for cache operations
+- [x] Define cache directory structure (`~/.cache/augent/bundles/`)
+- [x] Implement cache key generation from URL
+- [x] Implement bundle download and caching logic
+- [x] Add cache hit/miss tracking
+- [-] Implement cache cleanup (optional) - Skipped: can be implemented in future if needed
+- [x] Write tests for cache operations
 
 ---
 
 ### Feature 4.4: Bundle Discovery
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Scan local directories for bundle resources
-- [ ] Scan git repositories for bundles/subdirectories
-- [ ] Detect Claude Code plugins and marketplaces
-- [ ] Create interactive menu for multiple discovered bundles
-- [ ] Implement bundle discovery when source path is explicitly specified
-- [ ] Write tests for discovery logic
+- [x] Scan local directories for bundle resources
+- [x] Scan git repositories for bundles/subdirectories
+- [x] Detect Claude Code plugins and marketplaces
+- [-] Create interactive menu for multiple discovered bundles - Skipped: can be implemented in future if needed
+- [x] Implement bundle discovery when source path is explicitly specified
+- [x] Write tests for discovery logic
 
 ---
 
