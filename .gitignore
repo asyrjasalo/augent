@@ -1,3 +1,6 @@
 .rumdl_cache/
 
 target/
+
+build_rs_cov.profraw
+tarpaulin-report.json

@@ -38,4 +38,60 @@ mod tests {
         };
         assert!(run(args).is_ok());
     }
+
+    #[test]
+    fn test_completions_elvish() {
+        let args = CompletionsArgs {
+            shell: "elvish".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
+
+    #[test]
+    fn test_completions_fish() {
+        let args = CompletionsArgs {
+            shell: "fish".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
+
+    #[test]
+    fn test_completions_powershell() {
+        let args = CompletionsArgs {
+            shell: "powershell".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
+
+    #[test]
+    fn test_completions_pwsh() {
+        let args = CompletionsArgs {
+            shell: "pwsh".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
+
+    #[test]
+    fn test_completions_zsh() {
+        let args = CompletionsArgs {
+            shell: "zsh".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
+
+    #[test]
+    fn test_completions_uppercase() {
+        let args = CompletionsArgs {
+            shell: "BASH".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
+
+    #[test]
+    fn test_completions_mixed_case() {
+        let args = CompletionsArgs {
+            shell: "Zsh".to_string(),
+        };
+        assert!(run(args).is_ok());
+    }
 }

@@ -65,6 +65,18 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 **Status:** Complete
 
+### Overview
+
+Core infrastructure and data models, platform system for extensibility - essential for all other features.
+
+**Target Version:** 1.0.0
+**Primary Goals:**
+
+- Platform-independent AI configuration management
+- Lean, intuitive, developer-friendly CLI
+- Easy extensibility without code changes
+- Support for multiple AI agents (Claude, Cursor, OpenCode, etc.)
+
 ---
 
 ## Architecture Decisions Summary
@@ -265,7 +277,7 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ## Phase 2: Core Functionality (Epics 4-5)
 
-**Status:** In Progress
+**Status:** Complete
 
 ### Overview
 
@@ -348,50 +360,52 @@ Bundle sources support for installing from various locations, with automatic cac
 
 ## Epic 5: Workspace Management
 
+**Status:** Complete
+
 **Goal:** Handle workspace initialization and locking.
 
 ### Feature 5.1: Workspace Initialization
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Implement workspace detection (`.augent/` directory)
-- [ ] Create initial workspace bundle name inference from git remote
-- [ ] Create fallback naming (USERNAME/WORKSPACE_DIR)
-- [ ] Generate initial `augent.yaml`, `augent.lock`, `augent.workspace.yaml`
-- [ ] Set up `.augent/bundles/` directory structure
-- [ ] Write tests for workspace initialization
+- [x] Implement workspace detection (`.augent/` directory)
+- [x] Create initial workspace bundle name inference from git remote
+- [x] Create fallback naming (USERNAME/WORKSPACE_DIR)
+- [x] Generate initial `augent.yaml`, `augent.lock`, `augent.workspace.yaml`
+- [x] Set up `.augent/bundles/` directory structure
+- [x] Write tests for workspace initialization
 
 ---
 
 ### Feature 5.2: Workspace Locking
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Implement advisory file lock using `fslock`
-- [ ] Create `WorkspaceGuard` RAII wrapper
-- [ ] Implement lock acquisition (blocking)
-- [ ] Implement lock release on drop
-- [ ] Add error handling for lock conflicts
-- [ ] Write tests for concurrent access scenarios
+- [x] Implement advisory file lock using `fslock`
+- [x] Create `WorkspaceGuard` RAII wrapper
+- [x] Implement lock acquisition (blocking)
+- [x] Implement lock release on drop
+- [x] Add error handling for lock conflicts
+- [x] Write tests for concurrent access scenarios
 
 ---
 
 ### Feature 5.3: Modified File Detection
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Trace files from `augent.workspace.yaml` to source bundle/SHA
-- [ ] Calculate BLAKE3 checksum of original file from cached bundle
-- [ ] Compare with current workspace file
-- [ ] Identify modified files
-- [ ] Copy modified files to workspace bundle directory
-- [ ] Write tests for modification detection
+- [x] Trace files from `augent.workspace.yaml` to source bundle/SHA
+- [x] Calculate BLAKE3 checksum of original file from cached bundle
+- [x] Compare with current workspace file
+- [x] Identify modified files
+- [x] Copy modified files to workspace bundle directory
+- [x] Write tests for modification detection
 
 ---
 

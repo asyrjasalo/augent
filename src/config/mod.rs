@@ -13,6 +13,6 @@ pub mod workspace;
 #[allow(unused_imports)]
 pub use bundle::BundleConfig;
 #[allow(unused_imports)]
-pub use lockfile::Lockfile;
+pub use lockfile::{LockedBundle, Lockfile};
 #[allow(unused_imports)]
 pub use workspace::WorkspaceConfig;

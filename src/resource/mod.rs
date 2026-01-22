@@ -366,9 +366,11 @@ mod tests {
         workspace_bundle.add(Resource::new("rules/lint.md", "workspace", "blake3:hash2"));
 
         assert_eq!(workspace_bundle.len(), 2);
-        assert!(workspace_bundle
-            .find_by_path(Path::new("commands/debug.md"))
-            .is_some());
+        assert!(
+            workspace_bundle
+                .find_by_path(Path::new("commands/debug.md"))
+                .is_some()
+        );
     }
 
     #[test]

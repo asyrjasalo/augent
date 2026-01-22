@@ -135,6 +135,15 @@ mod tests {
     }
 
     #[test]
+    fn test_exact_match() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        assert!(engine.matches_pattern("commands/test.md", Path::new("commands/test.md")));
+        assert!(!engine.matches_pattern("commands/test.md", Path::new("commands/test.txt")));
+    }
+
+    #[test]
     #[ignore] // Infrastructure code - Phase 2+
     fn test_extract_name() {
         let platform = Platform::new("test", "Test", ".test");
@@ -158,6 +167,18 @@ mod tests {
 
     #[test]
     #[ignore] // Infrastructure code - Phase 2+
+    fn test_extract_name_no_pattern() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        assert_eq!(
+            engine.extract_name("commands/test.md", "commands/test.md"),
+            None
+        );
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
     fn test_normalize_pattern() {
         let platform = Platform::new("test", "Test", ".test");
         let engine = TransformEngine::new(platform);
@@ -166,6 +187,18 @@ mod tests {
 
         assert_eq!(from, "commands/*.md");
         assert_eq!(to, ".test/commands/*.md");
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
+    fn test_normalize_pattern_no_wildcard() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        let (from, to) = engine.normalize_pattern("commands/test.md", ".test/test.md");
+
+        assert_eq!(from, "commands/test.md");
+        assert_eq!(to, ".test/test.md");
     }
 
     #[test]
@@ -193,5 +226,72 @@ mod tests {
         let path = engine.calculate_target_path(&rule, Path::new("commands/debug.md"));
 
         assert_eq!(path, PathBuf::from(".test/prompts/debug.md"));
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
+    fn test_calculate_target_path_no_name_extraction() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        let rule = TransformRule::new("commands/*.md", ".test/prompts/test.md");
+
+        let path = engine.calculate_target_path(&rule, Path::new("commands/debug.md"));
+
+        assert_eq!(path, PathBuf::from(".test/prompts/test.md"));
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
+    fn test_transform_no_matching_rule() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        let result = engine.transform("test content", Path::new("commands/test.md"));
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), PathBuf::from(".test/commands/test.md"));
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
+    fn test_matches_pattern_complex_wildcard() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        assert!(engine.matches_pattern("commands/*", Path::new("commands/test.md")));
+        assert!(engine.matches_pattern("commands/*", Path::new("commands/subdir/test.md")));
+        assert!(engine.matches_pattern("*.md", Path::new("test.md")));
+        assert!(engine.matches_pattern("*", Path::new("test.md")));
+        assert!(!engine.matches_pattern("commands/*.md", Path::new("rules/test.md")));
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
+    fn test_extract_name_with_complex_path() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        assert_eq!(
+            engine.extract_name("src/{name}/main.rs", "src/lib/main.rs"),
+            Some("lib".to_string())
+        );
+
+        assert_eq!(
+            engine.extract_name("{name}.test.md", "file.test.md"),
+            Some("file".to_string())
+        );
+    }
+
+    #[test]
+    #[ignore] // Infrastructure code - Phase 2+
+    fn test_normalize_pattern_multiple_wildcards() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        let (from, to) = engine.normalize_pattern("**/*", "**/*");
+
+        assert_eq!(from, "/");
+        assert_eq!(to, "/");
     }
 }

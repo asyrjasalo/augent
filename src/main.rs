@@ -14,6 +14,7 @@ mod hash;
 mod platform;
 mod resource;
 mod source;
+mod workspace;
 
 use cli::{Cli, Commands};
 

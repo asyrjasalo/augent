@@ -239,30 +239,30 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 5.1: Workspace Initialization
 
-- [ ] Implement workspace detection (`.augent/` directory)
-- [ ] Create initial workspace bundle name inference from git remote
-- [ ] Create fallback naming (USERNAME/WORKSPACE_DIR)
-- [ ] Generate initial `augent.yaml`, `augent.lock`, `augent.workspace.yaml`
-- [ ] Set up `.augent/bundles/` directory structure
-- [ ] Write tests for workspace initialization
+- [x] Implement workspace detection (`.augent/` directory) - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Create initial workspace bundle name inference from git remote - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Create fallback naming (USERNAME/WORKSPACE_DIR) - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Generate initial `augent.yaml`, `augent.lock`, `augent.workspace.yaml` - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Set up `.augent/bundles/` directory structure - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Write tests for workspace initialization - [src/workspace/mod.rs](../../src/workspace/mod.rs)
 
 #### Feature 5.2: Workspace Locking
 
-- [ ] Implement advisory file lock using `fslock`
-- [ ] Create `WorkspaceGuard` RAII wrapper
-- [ ] Implement lock acquisition (blocking)
-- [ ] Implement lock release on drop
-- [ ] Add error handling for lock conflicts
-- [ ] Write tests for concurrent access scenarios
+- [x] Implement advisory file lock using `fslock` - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Create `WorkspaceGuard` RAII wrapper - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Implement lock acquisition (blocking) - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Implement lock release on drop - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Add error handling for lock conflicts - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Write tests for concurrent access scenarios - [src/workspace/mod.rs](../../src/workspace/mod.rs)
 
 #### Feature 5.3: Modified File Detection
 
-- [ ] Trace files from `augent.workspace.yaml` to source bundle/SHA
-- [ ] Calculate BLAKE3 checksum of original file from cached bundle
-- [ ] Compare with current workspace file
-- [ ] Identify modified files
-- [ ] Copy modified files to workspace bundle directory
-- [ ] Write tests for modification detection
+- [x] Trace files from `augent.workspace.yaml` to source bundle/SHA - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Calculate BLAKE3 checksum of original file from cached bundle - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Compare with current workspace file - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Identify modified files - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Copy modified files to workspace bundle directory - [src/workspace/mod.rs](../../src/workspace/mod.rs)
+- [x] Write tests for modification detection - [src/workspace/mod.rs](../../src/workspace/mod.rs)
 
 ---
 
@@ -482,8 +482,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 ## Task Statistics
 
 - **Total Tasks:** 254
-- **Completed:** 133 (Phase 0 complete, Phase 1 complete, Epic 4 complete)
-- **Pending:** 121
+- **Completed:** 151 (Phase 0 complete, Phase 1 complete, Epic 4 complete, Epic 5 complete)
+- **Pending:** 103
 
 ---
 
