@@ -63,6 +63,22 @@ pub enum AugentError {
     #[allow(dead_code)]
     GitRefResolutionFailed { reference: String },
 
+    #[error("Failed to resolve git ref '{git_ref}': {reason}")]
+    #[diagnostic(code(augent::git::ref_resolve_failed))]
+    GitRefResolveFailed { git_ref: String, reason: String },
+
+    #[error("Failed to checkout commit '{sha}': {reason}")]
+    #[diagnostic(code(augent::git::checkout_failed))]
+    GitCheckoutFailed { sha: String, reason: String },
+
+    #[error("Failed to fetch from remote: {reason}")]
+    #[diagnostic(code(augent::git::fetch_failed))]
+    GitFetchFailed { reason: String },
+
+    #[error("Failed to open repository at '{path}': {reason}")]
+    #[diagnostic(code(augent::git::open_failed))]
+    GitOpenFailed { path: String, reason: String },
+
     // Workspace errors
     #[error("Workspace not found at: {path}")]
     #[diagnostic(

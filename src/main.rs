@@ -10,6 +10,7 @@ mod cli;
 mod commands;
 mod config;
 mod error;
+mod git;
 mod hash;
 mod platform;
 mod resource;
