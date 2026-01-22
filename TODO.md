@@ -13,25 +13,27 @@
         - use Tarpaulin
       - all tests must pass for feature to be complete
       - add test to ensure that FIX is effetive ALWAYS!
-  - write architere document - docs/implementation/ARCHITECTURE.md
+  - write architecture document - docs/implementation/ARCHITECTURE.md
     - includes (at least):
-      - introduces concepts
-      - fundamental design decisions (from PRD)
+      - introduces key concepts
+      - introduces fundamental design decisions and reasoning (from PRD)
       - describes workflows from user point of view
         - sequence diagrams (mermaid)
+      - Rust development conventions
       - architecture decision record (ADR)
   - write documentation plan - docs/implementation/DOCUMENTATION.md
     - includes (at least):
       - USER FACING DOCS (more important)
-      - CLI help is the primary help, ALWAYS
-      - README.md
-        - must be essentials, but include example or a few
-        - if longer, put docs/FEATURE.md and link from README.md
+        - CLI help is the primary help, ALWAYS
+        - must be in CLI help format
+        - README.md
+          - must be essentials, but include example or a few
+          - if longer, put docs/FEATURE.md and link from README.md
       - internal docs (must be kept update)
-      - implementation docs: docs/implementation/specs/FEATURE.md
+        - implementation docs: docs/implementation/specs/FEATURE.md
       - update ARCHITECTURE.md decision records
   - update AGENTS.md
-    - loop
+    - follow this process ALWAYS:
       - research what exists per existing documentation
       - create tests first
       - create implementation
