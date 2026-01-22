@@ -5,13 +5,15 @@
   ],
   "mcp": {
     "dynamic-mcp": {
-      "command": ["dmcp"],
+      "command": [
+        "dmcp"
+      ],
       "type": "local"
     }
   },
   "model": "zai-coding-plan/glm-4.7",
   "plugin": [
-    "oh-my-opencode",
+    "oh-my-opencode-slim",
     "opencode-pty",
     "@plannotator/opencode",
     "@franlol/opencode-md-table-formatter"

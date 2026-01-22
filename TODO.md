@@ -1,9 +1,17 @@
 # TODO
 
+update <--- WE ARE HERE
+
 - pre-implementation
-  - prd
-  - write docs/implementation/PLAN.md
-    - with actionable tasks <--- WE ARE HERE NOW
+  - write docs/implementation/PRD.md
+  - write docs/implementation/PLAN.md <--- WE ARE HERE
+    - ensure all pending research is done
+      - you don't need code yet
+      - you can research <https://github.com/enulus/OpenPackage> to understand how to create tasks for yet undocumented concepts
+    - split implementation to epics
+      - split epics to features
+        - split features to tasks
+          - these tasks should be checkboxes (each task should fit within a context window)
   - write testing plan - docs/implementation/TESTING.md
     - testing plan, includes:
       - unit tests always
