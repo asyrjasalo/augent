@@ -100,62 +100,62 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ### Feature 1.1: Project Structure & Build Configuration
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Create Cargo.toml with core dependencies (clap, miette, serde, git2, etc.)
-- [ ] Set up workspace structure: `src/`, `tests/`, `docs/`, `examples/`
-- [ ] Configure Cargo features for optional platforms
-- [ ] Set up pre-commit hooks configuration
-- [ ] Configure CI/CD workflow for cross-platform builds
-- [ ] Create initial `src/main.rs` with basic CLI stub
+- [x] Create Cargo.toml with core dependencies (clap, miette, serde, git2, etc.)
+- [x] Set up workspace structure: `src/`, `tests/`, `docs/`, `examples/`
+- [x] Configure Cargo features for optional platforms
+- [x] Set up pre-commit hooks configuration
+- [x] Configure CI/CD workflow for cross-platform builds
+- [x] Create initial `src/main.rs` with basic CLI stub
 
 ---
 
 ### Feature 1.2: Error Handling Framework
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define core error types in `src/error.rs` using `thiserror`
-- [ ] Set up `miette` integration for pretty error diagnostics
-- [ ] Implement `Result<T>` type alias using `miette::Result`
-- [ ] Add error codes and help text for common scenarios
-- [ ] Create error wrapper utilities with `.wrap_err()` patterns
-- [ ] Write unit tests for error conversion and display
+- [x] Define core error types in `src/error.rs` using `thiserror`
+- [x] Set up `miette` integration for pretty error diagnostics
+- [x] Implement `Result<T>` type alias using `miette::Result`
+- [x] Add error codes and help text for common scenarios
+- [x] Create error wrapper utilities with `.wrap_err()` patterns
+- [x] Write unit tests for error conversion and display
 
 ---
 
 ### Feature 1.3: Configuration File Handling
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define data structures for `augent.yaml` in `src/config/bundle.rs`
-- [ ] Define data structures for `augent.lock` in `src/config/lockfile.rs`
-- [ ] Define data structures for `augent.workspace.yaml` in `src/config/workspace.rs`
-- [ ] Implement YAML serialization/deserialization with `serde_yaml`
-- [ ] Add validation logic for config file schemas
-- [ ] Implement config file merging behavior
-- [ ] Write tests for config file parsing and validation
+- [x] Define data structures for `augent.yaml` in `src/config/bundle.rs`
+- [x] Define data structures for `augent.lock` in `src/config/lockfile.rs`
+- [x] Define data structures for `augent.workspace.yaml` in `src/config/workspace.rs`
+- [x] Implement YAML serialization/deserialization with `serde_yaml`
+- [x] Add validation logic for config file schemas
+- [x] Implement config file merging behavior
+- [x] Write tests for config file parsing and validation
 
 ---
 
 ### Feature 1.4: CLI Framework Setup
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Create main CLI struct with derive API in `src/cli.rs`
-- [ ] Define subcommand enums: Install, Uninstall, List, Show, Help, Version
-- [ ] Set up global options (verbose, workspace path)
-- [ ] Configure command-specific arguments
-- [ ] Enable shell completion generation
-- [ ] Test basic CLI parsing and help output
+- [x] Create main CLI struct with derive API in `src/cli.rs`
+- [x] Define subcommand enums: Install, Uninstall, List, Show, Help, Version
+- [x] Set up global options (verbose, workspace path)
+- [x] Configure command-specific arguments
+- [x] Enable shell completion generation
+- [x] Test basic CLI parsing and help output
 
 ---
 
@@ -165,47 +165,47 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ### Feature 2.1: Bundle Models
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define `Bundle` struct (name, source, dependencies, metadata)
-- [ ] Define `BundleSource` enum (Dir, Git, GitHub short-form)
-- [ ] Define `GitSource` struct (url, ref, subdirectory, resolved_sha)
-- [ ] Implement bundle validation logic
-- [ ] Add BLAKE3 hashing for bundle integrity
-- [ ] Write tests for bundle model operations
+- [x] Define `Bundle` struct (name, source, dependencies, metadata)
+- [x] Define `BundleSource` enum (Dir, Git, GitHub short-form)
+- [x] Define `GitSource` struct (url, ref, subdirectory, resolved_sha)
+- [x] Implement bundle validation logic
+- [x] Add BLAKE3 hashing for bundle integrity
+- [x] Write tests for bundle model operations
 
 ---
 
 ### Feature 2.2: Lockfile Models
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define `Lockfile` struct with resolved dependencies
-- [ ] Define `LockedBundle` struct (name, source, files, hash)
-- [ ] Define `LockedFile` representation
-- [ ] Implement lockfile serialization/deserialization
-- [ ] Add lockfile validation (SHA resolution, hash verification)
-- [ ] Implement lockfile comparison for detecting changes
-- [ ] Write tests for lockfile operations
+- [x] Define `Lockfile` struct with resolved dependencies
+- [x] Define `LockedBundle` struct (name, source, files, hash)
+- [x] Define `LockedFile` representation
+- [x] Implement lockfile serialization/deserialization
+- [x] Add lockfile validation (SHA resolution, hash verification)
+- [x] Implement lockfile comparison for detecting changes
+- [x] Write tests for lockfile operations
 
 ---
 
 ### Feature 2.3: Resource Models
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define `Resource` struct (path, bundle_source, content_hash)
-- [ ] Define `Augmentation` struct (agent-specific installed resource)
-- [ ] Define `WorkspaceBundle` model (workspace's own bundle)
-- [ ] Implement resource path mapping utilities
-- [ ] Add resource conflict detection logic
-- [ ] Write tests for resource model operations
+- [x] Define `Resource` struct (path, bundle_source, content_hash)
+- [x] Define `Augmentation` struct (agent-specific installed resource)
+- [x] Define `WorkspaceBundle` model (workspace's own bundle)
+- [x] Implement resource path mapping utilities
+- [x] Add resource conflict detection logic
+- [x] Write tests for resource model operations
 
 ---
 
@@ -215,63 +215,63 @@ Based on research of OpenPackage and Rust CLI best practices:
 
 ### Feature 3.1: Platform Configuration Schema
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Design `platforms.jsonc` schema (based on OpenPackage research)
-- [ ] Define `Platform` struct in `src/platform/mod.rs`
-- [ ] Define `PlatformFlow` struct (from, to, map operations)
-- [ ] Define merge strategy enum (replace, shallow, deep, composite)
-- [ ] Create default built-in platform definitions
-- [ ] Implement platform config loading and merging
-- [ ] Write tests for platform config parsing
+- [x] Design `platforms.jsonc` schema (based on OpenPackage research)
+- [x] Define `Platform` struct in `src/platform/mod.rs`
+- [x] Define `PlatformFlow` struct (from, to, map operations)
+- [x] Define merge strategy enum (replace, shallow, deep, composite)
+- [x] Create default built-in platform definitions
+- [x] Implement platform config loading and merging
+- [x] Write tests for platform config parsing
 
 ---
 
 ### Feature 3.2: Platform Detection
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Implement platform detection by checking for directories (`.claude/`, `.cursor/`, `.opencode/`)
-- [ ] Implement platform detection by checking for root files (CLAUDE.md, AGENTS.md)
-- [ ] Add detection pattern matching (glob patterns)
-- [ ] Create platform alias resolution
-- [ ] Implement auto-detection for `--for` flag
-- [ ] Write tests for platform detection logic
+- [x] Implement platform detection by checking for directories (`.claude/`, `.cursor/`, `.opencode/`)
+- [x] Implement platform detection by checking for root files (CLAUDE.md, AGENTS.md)
+- [x] Add detection pattern matching (glob patterns)
+- [x] Create platform alias resolution
+- [x] Implement auto-detection for `--for` flag
+- [x] Write tests for platform detection logic
 
 ---
 
 ### Feature 3.3: Transformation Engine
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Define transformation operations (map, rename, pipeline, switch)
-- [ ] Implement glob pattern matching for file paths
-- [ ] Implement path mapping (universal → platform-specific)
-- [ ] Implement reverse path mapping (platform-specific → universal)
-- [ ] Create transformation operation registry
-- [ ] Implement pipeline execution engine
-- [ ] Write tests for transformation operations
+- [x] Define transformation operations (map, rename, pipeline, switch)
+- [x] Implement glob pattern matching for file paths
+- [x] Implement path mapping (universal → platform-specific)
+- [x] Implement reverse path mapping (platform-specific → universal)
+- [x] Create transformation operation registry
+- [x] Implement pipeline execution engine
+- [x] Write tests for transformation operations
 
 ---
 
 ### Feature 3.4: Merge Strategies
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Implement `replace` merge (overwrite)
-- [ ] Implement `shallow` merge (top-level keys)
-- [ ] Implement `deep` merge (recursive nested)
-- [ ] Implement `composite` merge (text files with delimiters)
-- [ ] Add special handling for AGENTS.md and mcp.jsonc
-- [ ] Write tests for all merge strategies
+- [x] Implement `replace` merge (overwrite)
+- [x] Implement `shallow` merge (top-level keys)
+- [x] Implement `deep` merge (recursive nested)
+- [x] Implement `composite` merge (text files with delimiters)
+- [x] Add special handling for AGENTS.md and mcp.jsonc
+- [x] Write tests for all merge strategies
 
 ---
 
@@ -338,7 +338,7 @@ Bundle sources support for installing from various locations, with automatic cac
 - [x] Implement cache key generation from URL
 - [x] Implement bundle download and caching logic
 - [x] Add cache hit/miss tracking
-- [-] Implement cache cleanup (optional) - Skipped: can be implemented in future if needed
+- [x] Implement cache cleanup (optional) - `augent clean-cache` command in src/commands/clean_cache.rs
 - [x] Write tests for cache operations
 
 ---
@@ -352,7 +352,7 @@ Bundle sources support for installing from various locations, with automatic cac
 - [x] Scan local directories for bundle resources
 - [x] Scan git repositories for bundles/subdirectories
 - [x] Detect Claude Code plugins and marketplaces
-- [-] Create interactive menu for multiple discovered bundles - Skipped: can be implemented in future if needed
+- [x] Create interactive menu for multiple discovered bundles - implemented in src/commands/install.rs and src/resolver/mod.rs
 - [x] Implement bundle discovery when source path is explicitly specified
 - [x] Write tests for discovery logic
 
@@ -425,82 +425,82 @@ Most complex command, core value proposition - requires all previous phases.
 
 ### Feature 6.1: Dependency Resolution
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Parse bundle dependencies from `augent.yaml`
-- [ ] Resolve dependency order (topological sort)
-- [ ] Detect circular dependencies
-- [ ] Validate dependency names and sources
-- [ ] Generate lockfile entries with resolved SHAs
-- [ ] Write tests for dependency resolution
+- [x] Parse bundle dependencies from `augent.yaml`
+- [x] Resolve dependency order (topological sort)
+- [x] Detect circular dependencies
+- [x] Validate dependency names and sources
+- [x] Generate lockfile entries with resolved SHAs
+- [x] Write tests for dependency resolution
 
 ---
 
 ### Feature 6.2: Lockfile Generation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Calculate BLAKE3 hash for each bundle
-- [ ] List all files provided by each bundle
-- [ ] Resolve git refs to exact SHAs
-- [ ] Generate `augent.lock` in deterministic order
-- [ ] Implement `--frozen` flag validation
-- [ ] Write tests for lockfile generation
+- [x] Calculate BLAKE3 hash for each bundle
+- [x] List all files provided by each bundle
+- [x] Resolve git refs to exact SHAs
+- [x] Generate `augent.lock` in deterministic order
+- [x] Implement `--frozen` flag validation
+- [x] Write tests for lockfile generation
 
 ---
 
 ### Feature 6.3: File Installation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Read resources from cached bundles
-- [ ] Apply platform transformations (universal → agent-specific)
-- [ ] Handle merge strategies for conflicts
-- [ ] Override earlier bundle files with later ones
-- [ ] Copy root files/directories to workspace root
-- [ ] Write tests for file installation
+- [x] Read resources from cached bundles
+- [x] Apply platform transformations (universal → agent-specific)
+- [x] Handle merge strategies for conflicts
+- [x] Override earlier bundle files with later ones
+- [x] Copy root files/directories to workspace root
+- [x] Write tests for file installation
 
 ---
 
 ### Feature 6.4: Workspace Configuration Updates
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Update `augent.yaml` with new bundle entry
-- [ ] Update `augent.lock` with resolved dependencies
-- [ ] Update `augent.workspace.yaml` with installed files mapping
-- [ ] Track which agents each file is installed for
-- [ ] Handle `--for <agent>` flag logic
-- [ ] Write tests for configuration updates
+- [x] Update `augent.yaml` with new bundle entry
+- [x] Update `augent.lock` with resolved dependencies
+- [x] Update `augent.workspace.yaml` with installed files mapping
+- [x] Track which agents each file is installed for
+- [x] Handle `--for <agent>` flag logic
+- [x] Write tests for configuration updates
 
 ---
 
 ### Feature 6.5: Atomic Rollback on Failure
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Create backup of configuration files before install
-- [ ] Track all files created/modified during install
-- [ ] Implement rollback function on error
-- [ ] Restore backups on failure
-- [ ] Ensure workspace is never left in inconsistent state
-- [ ] Write tests for rollback scenarios
+- [x] Create backup of configuration files before install
+- [x] Track all files created/modified during install
+- [x] Implement rollback function on error
+- [x] Restore backups on failure
+- [x] Ensure workspace is never left in inconsistent state
+- [x] Write tests for rollback scenarios
 
 ---
 
 ## Phase 4: Additional Commands (Epics 7-10)
 
-**Status:** In Progress
+**Status:** Complete
 
 ### Overview
 
@@ -514,58 +514,58 @@ Uninstall command, query commands (list, show), help and version.
 
 ### Feature 7.1: Bundle Dependency Analysis
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Find all bundles that depend on the target bundle
-- [ ] Check if bundle is used by other installed bundles
-- [ ] Warn user about dependent bundles
-- [ ] Implement confirmation prompt
-- [ ] Write tests for dependency analysis
+- [x] Find all bundles that depend on the target bundle - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Check if bundle is used by other installed bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Warn user about dependent bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Implement confirmation prompt - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for dependency analysis - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 ---
 
 ### Feature 7.2: Safe File Removal
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Determine which files the bundle provides
-- [ ] Check if files are overridden by later bundles
-- [ ] Remove only files that are not provided by other bundles
-- [ ] Handle root files/directories carefully
-- [ ] Remove files from all agent directories
-- [ ] Write tests for file removal logic
+- [x] Determine which files the bundle provides - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Check if files are overridden by later bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove only files that are not provided by other bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Handle root files/directories carefully - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove files from all agent directories - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for file removal logic - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 ---
 
 ### Feature 7.3: Configuration Cleanup
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Remove bundle from `augent.yaml`
-- [ ] Remove bundle from `augent.lock`
-- [ ] Remove bundle entries from `augent.workspace.yaml`
-- [ ] Update bundle order in config files
-- [ ] Write tests for configuration cleanup
+- [x] Remove bundle from `augent.yaml` - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove bundle from `augent.lock` - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove bundle entries from `augent.workspace.yaml` - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Update bundle order in config files - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for configuration cleanup - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 ---
 
 ### Feature 7.4: Atomic Rollback on Failure
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Create backup of configuration files before uninstall
-- [ ] Track all files removed during uninstall
-- [ ] Implement rollback function on error
-- [ ] Restore backups on failure
-- [ ] Write tests for rollback scenarios
+- [x] Create backup of configuration files before uninstall - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Track all files removed during uninstall - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Implement rollback function on error - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Restore backups on failure - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for rollback scenarios - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 ---
 
@@ -579,12 +579,12 @@ Uninstall command, query commands (list, show), help and version.
 
 #### Tasks
 
-- [ ] Read `augent.lock` to get installed bundles
-- [ ] Display bundle names and sources
-- [ ] Show enabled agents for each bundle
-- [ ] Show file count per bundle
-- [ ] Format output in table or list view
-- [ ] Write tests for list command
+- [x] Read `augent.lock` to get installed bundles - [tests/cli_tests.rs](../../tests/cli_tests.rs)
+- [x] Display bundle names and sources - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Show enabled agents for each bundle - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Show file count per bundle - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Format output in table or list view - [src/commands/list.rs](../../src/commands/list.rs)
+- [x] Write tests for list command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ---
 
@@ -594,16 +594,16 @@ Uninstall command, query commands (list, show), help and version.
 
 ### Feature 9.1: Show Implementation
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Read bundle metadata from `augent.yaml`
-- [ ] Display resolved source from `augent.lock`
-- [ ] List all files provided by bundle
-- [ ] Show installation status per agent
-- [ ] Display bundle dependencies
-- [ ] Write tests for show command
+- [x] Read bundle metadata from `augent.yaml` - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Display resolved source from `augent.lock` - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] List all files provided by bundle - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Show installation status per agent - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Display bundle dependencies - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Write tests for show command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ---
 
@@ -613,29 +613,29 @@ Uninstall command, query commands (list, show), help and version.
 
 ### Feature 10.1: Help Command
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Generate brief help that fits on one screen
-- [ ] Show all available commands with descriptions
-- [ ] Add usage examples
-- [ ] Format output nicely
-- [ ] Test help output
+- [x] Generate brief help that fits on one screen - [src/cli.rs](../../src/cli.rs)
+- [x] Show all available commands with descriptions - [src/cli.rs](../../src/cli.rs)
+- [x] Add usage examples - [src/cli.rs](../../src/cli.rs)
+- [x] Format output nicely - [src/cli.rs](../../src/cli.rs)
+- [x] Test help output - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ---
 
 ### Feature 10.2: Version Command
 
-**Status:** Pending
+**Status:** Complete
 
 #### Tasks
 
-- [ ] Display version number from Cargo.toml
-- [ ] Show build timestamp
-- [ ] Show Rust version
-- [ ] Format output cleanly
-- [ ] Test version output
+- [x] Display version number from Cargo.toml - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Show build timestamp - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Show Rust version - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Format output cleanly - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Test version output - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ---
 

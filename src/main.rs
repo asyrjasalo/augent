@@ -31,6 +31,7 @@ fn main() -> Result<()> {
         Commands::Uninstall(args) => commands::uninstall::run(args),
         Commands::List(args) => commands::list::run(args),
         Commands::Show(args) => commands::show::run(args),
+        Commands::CleanCache(args) => commands::clean_cache::run(args),
         Commands::Version => commands::version::run(),
         Commands::Completions(args) => commands::completions::run(args),
     }

@@ -38,6 +38,19 @@ pub struct ResolvedBundle {
     pub config: Option<BundleConfig>,
 }
 
+/// A discovered bundle before selection
+#[derive(Debug, Clone)]
+pub struct DiscoveredBundle {
+    /// Bundle name
+    pub name: String,
+
+    /// Bundle source path
+    pub path: std::path::PathBuf,
+
+    /// Optional bundle description
+    pub description: Option<String>,
+}
+
 /// Dependency resolver for bundles
 pub struct Resolver {
     /// Workspace root path
@@ -72,6 +85,91 @@ impl Resolver {
         let order = self.topological_sort()?;
 
         Ok(order)
+    }
+
+    /// Discover all potential bundles in a source directory
+    pub fn discover_bundles(&self, source: &str) -> Result<Vec<DiscoveredBundle>> {
+        let bundle_source = BundleSource::parse(source)?;
+
+        let discovered = match bundle_source {
+            BundleSource::Dir { path } => self.discover_local_bundles(&path)?,
+            BundleSource::Git(git_source) => self.discover_git_bundles(&git_source)?,
+        };
+
+        Ok(discovered)
+    }
+
+    /// Discover bundles in a local directory
+    fn discover_local_bundles(&self, path: &Path) -> Result<Vec<DiscoveredBundle>> {
+        let full_path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            self.workspace_root.join(path)
+        };
+
+        if !full_path.is_dir() {
+            return Ok(vec![]);
+        }
+
+        let mut discovered = Vec::new();
+
+        if self.is_bundle_directory(&full_path) {
+            let name = self.get_bundle_name(&full_path)?;
+            discovered.push(DiscoveredBundle {
+                name,
+                path: full_path.clone(),
+                description: self.get_bundle_description(&full_path),
+            });
+        } else if let Ok(entries) = std::fs::read_dir(&full_path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                if entry_path.is_dir() && self.is_bundle_directory(&entry_path) {
+                    let name = self.get_bundle_name(&entry_path)?;
+                    discovered.push(DiscoveredBundle {
+                        name,
+                        path: entry_path.clone(),
+                        description: self.get_bundle_description(&entry_path),
+                    });
+                }
+            }
+        }
+
+        Ok(discovered)
+    }
+
+    /// Discover bundles in a cached git repository
+    fn discover_git_bundles(&self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
+        let (cache_path, _sha) = cache::cache_bundle(source)?;
+        let content_path = cache::get_bundle_content_path(source, &cache_path);
+
+        self.discover_local_bundles(&content_path)
+    }
+
+    fn is_bundle_directory(&self, path: &Path) -> bool {
+        if path.join("augent.yaml").exists() {
+            return true;
+        }
+
+        ["commands", "rules", "agents", "skills"]
+            .iter()
+            .any(|dir| path.join(dir).is_dir())
+    }
+
+    fn get_bundle_name(&self, path: &Path) -> Result<String> {
+        if let Ok(Some(cfg)) = self.load_bundle_config(path) {
+            return Ok(cfg.name);
+        }
+
+        path.file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| AugentError::BundleNotFound {
+                name: "Unknown".to_string(),
+            })
+    }
+
+    fn get_bundle_description(&self, _path: &Path) -> Option<String> {
+        None
     }
 
     /// Resolve a bundle source to a ResolvedBundle

@@ -14,6 +14,7 @@
 //! 6. Update configuration files
 //! 7. Commit transaction (or rollback on error)
 
+use std::io::{self, Write};
 use std::path::Path;
 
 use crate::cli::InstallArgs;
@@ -21,8 +22,8 @@ use crate::config::{BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
-use crate::platform::{self, Platform, detection};
-use crate::resolver::Resolver;
+use crate::platform::{self, detection, Platform};
+use crate::resolver::{DiscoveredBundle, Resolver};
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
@@ -49,11 +50,44 @@ pub fn run(args: InstallArgs) -> Result<()> {
             transaction.commit();
             Ok(())
         }
-        Err(e) => {
-            // Transaction will rollback automatically on drop
-            Err(e)
+        Err(e) => Err(e),
+    }
+}
+
+fn select_bundle_interactively(bundles: &[DiscoveredBundle]) -> Result<DiscoveredBundle> {
+    println!("\nFound {} bundle(s):", bundles.len());
+
+    for (i, bundle) in bundles.iter().enumerate() {
+        println!("  {}. {}", i + 1, bundle.name);
+        if let Some(ref desc) = bundle.description {
+            println!("     Description: {}", desc);
         }
     }
+
+    print!("\nSelect a bundle to install [1-{}]: ", bundles.len());
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .map_err(|e| AugentError::IoError {
+            message: format!("Failed to read input: {}", e),
+        })?;
+
+    let selection: usize = input.trim().parse().map_err(|_| AugentError::IoError {
+        message: "Please enter a valid number".to_string(),
+    })?;
+
+    if selection == 0 || selection > bundles.len() {
+        return Err(AugentError::IoError {
+            message: format!(
+                "Invalid selection. Please enter a number between 1 and {}",
+                bundles.len()
+            ),
+        });
+    }
+
+    Ok(bundles[selection - 1].clone())
 }
 
 /// Perform the actual installation
@@ -64,9 +98,17 @@ fn do_install(
 ) -> Result<()> {
     println!("Installing from: {}", args.source);
 
-    // Parse and resolve the source
     let mut resolver = Resolver::new(&workspace.root);
-    let resolved_bundles = resolver.resolve(&args.source)?;
+
+    let discovered = resolver.discover_bundles(&args.source)?;
+
+    let resolved_bundles = if discovered.len() > 1 {
+        let selected = select_bundle_interactively(&discovered)?;
+        let selected_path = selected.path.to_string_lossy().to_string();
+        resolver.resolve(&selected_path)?
+    } else {
+        resolver.resolve(&args.source)?
+    };
 
     if resolved_bundles.is_empty() {
         return Err(AugentError::BundleNotFound {

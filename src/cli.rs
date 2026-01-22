@@ -51,6 +51,9 @@ pub enum Commands {
     /// Show bundle information
     Show(ShowArgs),
 
+    /// Clean cache directory
+    CleanCache(CleanCacheArgs),
+
     /// Show version information
     Version,
 
@@ -103,7 +106,18 @@ pub struct ShowArgs {
 #[derive(Parser, Debug)]
 pub struct CompletionsArgs {
     /// Shell type (bash, elvish, fish, powershell, zsh)
+    #[arg(long)]
     pub shell: String,
+}
+
+/// Arguments for clean-cache command
+#[derive(Parser, Debug)]
+pub struct CleanCacheArgs {
+    #[arg(long, short = 's', help = "Show cache size without cleaning")]
+    pub show_size: bool,
+
+    #[arg(long, short = 'a', help = "Remove all cached bundles")]
+    pub all: bool,
 }
 
 #[cfg(test)]
@@ -190,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_completions() {
-        let cli = Cli::try_parse_from(["augent", "completions", "bash"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "completions", "--shell", "bash"]).unwrap();
         match cli.command {
             Commands::Completions(args) => {
                 assert_eq!(args.shell, "bash");

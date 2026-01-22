@@ -4,3 +4,4 @@ target/
 
 build_rs_cov.profraw
 tarpaulin-report.json
+tarpaulin-report.html

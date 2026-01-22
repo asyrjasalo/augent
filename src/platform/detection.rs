@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::error::{AugentError, Result};
 
-use super::{Platform, default_platforms};
+use super::{default_platforms, Platform};
 
 /// Detect which platforms are present in the workspace
 ///

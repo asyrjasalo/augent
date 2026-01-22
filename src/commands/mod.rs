@@ -1,5 +1,4 @@
-//! Command implementations for Augent CLI
-
+pub mod clean_cache;
 pub mod completions;
 pub mod install;
 pub mod list;

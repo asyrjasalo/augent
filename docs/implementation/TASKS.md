@@ -181,7 +181,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement glob pattern matching for file paths - matches_pattern() in [src/platform/transform.rs](../../src/platform/transform.rs)
 - [x] Implement path mapping (universal → platform-specific) - TransformEngine in [src/platform/transform.rs](../../src/platform/transform.rs)
 - [x] Implement reverse path mapping (platform-specific → universal) - extract_name() in [src/platform/transform.rs](../../src/platform/transform.rs)
-- [ ] Create transformation operation registry - Not needed, TransformRule already defines operations
+- [x] Create transformation operation registry - TransformEngine.rule_cache + TransformRule builder pattern in [src/platform/mod.rs](../../src/platform/mod.rs) and [src/platform/transform.rs](../../src/platform/transform.rs)
 - [x] Implement pipeline execution engine - TransformEngine in [src/platform/transform.rs](../../src/platform/transform.rs)
 - [x] Write tests for transformation operations - [src/platform/transform.rs](../../src/platform/transform.rs)
 
@@ -223,7 +223,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement cache key generation from URL
 - [x] Implement bundle download and caching logic
 - [x] Add cache hit/miss tracking
-- [-] Implement cache cleanup (optional)
+- [x] Implement cache cleanup - `augent clean-cache` command in [src/commands/clean_cache.rs](../../src/commands/clean_cache.rs)
 - [x] Write tests for cache operations
 
 #### Feature 4.4: Bundle Discovery
@@ -231,7 +231,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Scan local directories for bundle resources
 - [x] Scan git repositories for bundles/subdirectories
 - [x] Detect Claude Code plugins and marketplaces
-- [-] Create interactive menu for multiple discovered bundles
+- [x] Create interactive menu for multiple discovered bundles - implemented in [src/commands/install.rs](../../src/commands/install.rs) and [src/resolver/mod.rs](../../src/resolver/mod.rs)
 - [x] Implement bundle discovery when source path is explicitly specified
 - [x] Write tests for discovery logic
 
@@ -272,7 +272,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 6.1: Dependency Resolution
 
-- [x] Implement Epic 6: Install Command
+**Status:** Complete
+
 - [x] Parse bundle dependencies from `augent.yaml`
 - [x] Resolve dependency order (topological sort)
 - [x] Detect circular dependencies
@@ -324,36 +325,36 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 7.1: Bundle Dependency Analysis
 
-- [ ] Find all bundles that depend on target bundle
-- [ ] Check if bundle is used by other installed bundles
-- [ ] Warn user about dependent bundles
-- [ ] Implement confirmation prompt
-- [ ] Write tests for dependency analysis
+- [x] Find all bundles that depend on the target bundle - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Check if bundle is used by other installed bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Warn user about dependent bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Implement confirmation prompt - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for dependency analysis - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 #### Feature 7.2: Safe File Removal
 
-- [ ] Determine which files bundle provides
-- [ ] Check if files are overridden by later bundles
-- [ ] Remove only files that are not provided by other bundles
-- [ ] Handle root files/directories carefully
-- [ ] Remove files from all agent directories
-- [ ] Write tests for file removal logic
+- [x] Determine which files the bundle provides - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Check if files are overridden by later bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove only files that are not provided by other bundles - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Handle root files/directories carefully - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove files from all agent directories - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for file removal logic - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 #### Feature 7.3: Configuration Cleanup
 
-- [ ] Remove bundle from `augent.yaml`
-- [ ] Remove bundle from `augent.lock`
-- [ ] Remove bundle entries from `augent.workspace.yaml`
-- [ ] Update bundle order in config files
-- [ ] Write tests for configuration cleanup
+- [x] Remove bundle from `augent.yaml` - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove bundle from `augent.lock` - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Remove bundle entries from `augent.workspace.yaml` - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Update bundle order in config files - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for configuration cleanup - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 #### Feature 7.4: Atomic Rollback on Failure
 
-- [ ] Create backup of configuration files before uninstall
-- [ ] Track all files removed during uninstall
-- [ ] Implement rollback function on error
-- [ ] Restore backups on failure
-- [ ] Write tests for rollback scenarios
+- [x] Create backup of configuration files before uninstall - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Track all files removed during uninstall - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Implement rollback function on error - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Restore backups on failure - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
+- [x] Write tests for rollback scenarios - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
 
 ### Epic 8: List Command
 
@@ -372,30 +373,36 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 9.1: Show Implementation
 
-- [ ] Read bundle metadata from `augent.yaml`
-- [ ] Display resolved source from `augent.lock`
-- [ ] List all files provided by bundle
-- [ ] Show installation status per agent
-- [ ] Display bundle dependencies
-- [ ] Write tests for show command
+**Status:** Complete
+
+- [x] Read bundle metadata from `augent.yaml` - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Display resolved source from `augent.lock` - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] List all files provided by bundle - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Show installation status per agent - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Display bundle dependencies - [src/commands/show.rs](../../src/commands/show.rs)
+- [x] Write tests for show command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ### Epic 10: Help & Version Commands
 
 #### Feature 10.1: Help Command
 
-- [ ] Generate brief help that fits on one screen
-- [ ] Show all available commands with descriptions
-- [ ] Add usage examples
-- [ ] Format output nicely
-- [ ] Test help output
+**Status:** Complete
+
+- [x] Generate brief help that fits on one screen - [src/cli.rs](../../src/cli.rs)
+- [x] Show all available commands with descriptions - [src/cli.rs](../../src/cli.rs)
+- [x] Add usage examples - [src/cli.rs](../../src/cli.rs)
+- [x] Format output nicely - [src/cli.rs](../../src/cli.rs)
+- [x] Test help output - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 #### Feature 10.2: Version Command
 
-- [ ] Display version number from Cargo.toml
-- [ ] Show build timestamp
-- [ ] Show Rust version
-- [ ] Format output cleanly
-- [ ] Test version output
+**Status:** Complete
+
+- [x] Display version number from Cargo.toml - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Show build timestamp - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Show Rust version - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Format output cleanly - [src/commands/version.rs](../../src/commands/version.rs)
+- [x] Test version output - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ---
 
@@ -484,9 +491,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Task Statistics
 
-- **Total Tasks:** 254
-- **Completed:** 151 (Phase 0 complete, Phase 1 complete, Epic 4 complete, Epic 5 complete)
-- **Pending:** 103
+- **Total Tasks:** 253
+- **Completed:** 213 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete)
+- **Pending:** 40
 
 ---
 

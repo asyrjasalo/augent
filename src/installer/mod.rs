@@ -543,16 +543,12 @@ mod tests {
 
         let resources = Installer::discover_resources(temp.path()).unwrap();
         assert_eq!(resources.len(), 2);
-        assert!(
-            resources
-                .iter()
-                .any(|r| r.bundle_path == PathBuf::from("commands/debug.md"))
-        );
-        assert!(
-            resources
-                .iter()
-                .any(|r| r.bundle_path == PathBuf::from("commands/test.md"))
-        );
+        assert!(resources
+            .iter()
+            .any(|r| r.bundle_path == PathBuf::from("commands/debug.md")));
+        assert!(resources
+            .iter()
+            .any(|r| r.bundle_path == PathBuf::from("commands/test.md")));
     }
 
     #[test]

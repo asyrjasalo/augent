@@ -79,8 +79,8 @@ fn test_uninstall_stub() {
     augent_cmd()
         .args(["uninstall", "my-bundle"])
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Uninstalling bundle: my-bundle"));
+        .failure()
+        .stderr(predicate::str::contains("BundleNotFound"));
 }
 
 #[test]

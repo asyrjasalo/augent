@@ -13,7 +13,7 @@
 
 use std::path::Path;
 
-use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder};
+use git2::{build::RepoBuilder, Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository};
 
 use crate::error::{AugentError, Result};
 
