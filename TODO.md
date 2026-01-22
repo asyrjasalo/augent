@@ -1,6 +1,6 @@
 # TODO
 
-update <--- WE ARE HERE
+update <--- WE ARE HERE marker
 
 - pre-implementation
   - write docs/implementation/PRD.md
@@ -12,6 +12,7 @@ update <--- WE ARE HERE
       - split epics to features
         - split features to tasks
           - these tasks should be checkboxes (each task should fit within a context window)
+            - maintain task list in docs/implementation/TASKS.md
   - write testing plan - docs/implementation/TESTING.md
     - testing plan, includes:
       - unit tests always
@@ -42,12 +43,21 @@ update <--- WE ARE HERE
         - implementation docs: docs/implementation/specs/FEATURE.md
       - if there are architecture changes, always confirm the user
         - then add new ARCHITECTURE.md decision records
-  - update AGENTS.md
-    - follow this process ALWAYS:
+  - update AGENTS.md with following instructions:
+    - "you must follow this process ALWAYS when implementing any feature or bug fix":
+      - create a task to the end of docs/implementation/TASKS.md
       - research what exists per existing documentation
       - create tests first
       - create implementation
       - make tests pass
       - run linters and formatters
       - create and update docs
-      - only then mark task done
+      - ensure task is complete
+      - tick the checkbox in docs/implementation/TASKS.md
+        - link to relevant documentation (file + section)
+      - update CHANGELOG.md if it is user-facing feature or bug fix
+    - also ensure these are mentioned:
+      - do not reference to the code by specific line numbers
+      - you do not need to count lines or do other vanity metrics in docs
+      - do not commit changes unless excplitly asked to do so
+      - do not push changes unless excplitly asked to do so
