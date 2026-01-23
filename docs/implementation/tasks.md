@@ -486,11 +486,12 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Verify all commands are documented in `docs/commands.md` - [docs/commands.md](../commands.md)
 - [x] Verify bundle format is documented in `docs/bundles.md` - [docs/bundles.md](../bundles.md)
-- [x] Verify platform support is documented in `docs/platforms_schema.md` - [docs/platforms_schema.md](../platforms_schema.md)
+- [x] Verify platform support is documented in `docs/platforms.md` - [docs/platforms.md](../platforms.md)
 - [x] Verify README.md is accurate and concise - [README.md](../../README.md)
 - [x] Verify CLI help text is complete and fits on screen
 - [x] Verify all links in documentation files work
 - [x] Verify `docs/implementation/specs/` directory exists with feature specifications
+- [x] Update documentation checklist in `docs/implementation/documentation.md` with completed items
 
 ---
 

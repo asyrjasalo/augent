@@ -60,9 +60,6 @@ augent install github:author/bundle --for claude
 
 # Install for multiple specific platforms
 augent install github:author/bundle --for claude cursor
-
-# List detected platforms
-augent list --platforms
 ```
 
 ## Adding New Platforms

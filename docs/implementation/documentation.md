@@ -369,12 +369,12 @@ Use tables for reference material:
 
 ### Before Release
 
-- [ ] All commands documented in `docs/commands.md`
-- [ ] Bundle format documented in `docs/bundles.md`
-- [ ] Platform support documented in `docs/platforms.md`
-- [ ] README.md is accurate and concise
-- [ ] CLI help text is complete and fits on screen
-- [ ] All links work
+- [x] All commands documented in `docs/commands.md`
+- [x] Bundle format documented in `docs/bundles.md`
+- [x] Platform support documented in `docs/platforms.md`
+- [x] README.md is accurate and concise
+- [x] CLI help text is complete and fits on screen
+- [x] All links work
 
 ### For Each Feature
 
