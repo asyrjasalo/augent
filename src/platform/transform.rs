@@ -83,8 +83,30 @@ impl TransformEngine {
             } else {
                 PathBuf::from(target)
             }
+        } else if rule.from.contains("*") || rule.from.contains("**") {
+            self.handle_wildcard_target(rule, resource_path)
         } else {
             PathBuf::from(&rule.to)
+        }
+    }
+
+    fn handle_wildcard_target(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
+        let resource_name = resource_path
+            .file_name()
+            .unwrap_or(resource_path.as_os_str());
+        let resource_stem = Path::new(resource_name).file_stem();
+
+        if let Some(ext) = &rule.extension {
+            let target = rule
+                .to
+                .replace("*", &resource_stem.unwrap_or_default().to_string_lossy());
+            let stem = target.trim_end_matches(['.']);
+            PathBuf::from(format!("{}{}", stem, ext))
+        } else {
+            let target = rule
+                .to
+                .replace("*", &resource_stem.unwrap_or_default().to_string_lossy());
+            PathBuf::from(target)
         }
     }
 
@@ -271,5 +293,30 @@ mod tests {
         assert!(engine.matches_pattern("*.md", Path::new("test.md")));
         assert!(engine.matches_pattern("*", Path::new("test.md")));
         assert!(!engine.matches_pattern("commands/*.md", Path::new("rules/test.md")));
+    }
+
+    #[test]
+    fn test_cursor_rules_extension_with_wildcard() {
+        let platform = Platform::new("cursor", "Cursor", ".cursor");
+        let engine = TransformEngine::new(platform);
+
+        let rule =
+            TransformRule::new("rules/**/*.md", ".cursor/rules/**/*.mdc").with_extension("mdc");
+
+        let path = engine.calculate_target_path(&rule, Path::new("rules/format.md"));
+
+        assert_eq!(path, PathBuf::from(".cursor/rules/format.mdc"));
+    }
+
+    #[test]
+    fn test_wildcard_with_extension_no_name_placeholder() {
+        let platform = Platform::new("test", "Test", ".test");
+        let engine = TransformEngine::new(platform);
+
+        let rule = TransformRule::new("rules/*.md", ".test/rules/*.mdc").with_extension("mdc");
+
+        let path = engine.calculate_target_path(&rule, Path::new("rules/lint.md"));
+
+        assert_eq!(path, PathBuf::from(".test/rules/lint.mdc"));
     }
 }

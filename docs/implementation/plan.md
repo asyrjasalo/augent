@@ -650,8 +650,6 @@ Testing infrastructure, documentation.
 
 ### Epic 11: Testing Infrastructure
 
-**Goal:** Set up comprehensive testing framework with adequate coverage.
-
 **Status:** Complete
 
 ### Feature 11.1: Unit Testing Framework

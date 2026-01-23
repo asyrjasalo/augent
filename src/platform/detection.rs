@@ -40,8 +40,23 @@ pub fn detect_platforms_or_error(workspace_root: &Path) -> Result<Vec<Platform>>
 }
 
 /// Get a platform by ID from the default platforms
+/// First tries to find exact ID match, then looks for alias matches
 pub fn get_platform(id: &str) -> Option<Platform> {
-    default_platforms().into_iter().find(|p| p.id == id)
+    let platforms = default_platforms();
+
+    // First try exact ID match
+    if let Some(platform) = platforms.iter().find(|p| p.id == id) {
+        return Some(platform.clone());
+    }
+
+    // Then try alias match
+    for platform in platforms {
+        if platform.aliases.contains(&id.to_string()) {
+            return Some(platform.clone());
+        }
+    }
+
+    None
 }
 
 /// Get multiple platforms by ID

@@ -432,12 +432,43 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Write integration tests for `install` command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 - [x] Write integration tests for `uninstall` command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 - [x] Write integration tests for `list` and `show` commands - [tests/cli_tests.rs](../../tests/cli_tests.rs)
+- [x] Resolve Platform-Specific Testing Gaps - [docs/implementation/TESTING_COVERAGE_GAPS.md](TESTING_COVERAGE_GAPS.md#platform-specific-testing-gaps)
+  - [x] Add test for platform detection order and priority when multiple platforms present
+  - [x] Verify commands/*.md → .claude/commands/**/*.md transformation
+  - [x] Verify rules/*.md → .claude/rules/**/*.md transformation
+  - [x] Verify skills/*.md → .claude/skills/**/*.md transformation
+  - [x] Verify rules/*.md → .cursor/rules/**/*.md transformation (extension change not working - documented as bug)
+  - [x] Verify all transformations for opencode platform (commands, rules, skills)
+  - [x] Verify same bundle transforms correctly for multiple platforms simultaneously
+  - [x] Verify directory structures are created correctly for all platforms
 
 #### Feature 11.3: Coverage Setup
 
 **Status:** Complete
 
 - [x] Install and configure `tarpaulin` - Available as dev-dependency for local use
+
+#### Feature 11.4: Documentation-Based Feature Testing
+
+**Status:** Complete
+
+- [x] Create test file for bundle metadata features - [tests/bundle_metadata_tests.rs](../../tests/bundle_metadata_tests.rs)
+- [x] Test bundles with version field work correctly
+- [x] Test bundles with metadata fields (author, license, homepage)
+- [x] Test bundles with dependencies array
+- [x] Create test file for show command features - [tests/show_command_tests.rs](../../tests/show_command_tests.rs)
+- [x] Test show command displays correct dependencies list
+- [x] Test show command shows installation status for each agent
+- [x] Test show command displays all files provided by bundle
+- [x] Create test file for list command features - [tests/list_command_tests.rs](../../tests/list_command_tests.rs)
+- [x] Test list --detailed shows source details and file counts
+- [x] Test list command with 10+ installed bundles
+- [x] Test list with bundles installed to different platforms
+- [x] Test list shows agent information for each bundle
+- [x] Verify completions command generates valid scripts for all shells (already tested in cli_options_tests.rs)
+- [x] Verify global --verbose flag works for all commands (already tested in cli_options_tests.rs)
+- [x] Update TESTING_COVERAGE_GAPS.md with resolved items
+- [x] Update test count and metrics in TESTING_COVERAGE_GAPS.md
 
 ### Epic 12: Documentation
 

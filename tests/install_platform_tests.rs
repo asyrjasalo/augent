@@ -272,3 +272,390 @@ bundles: []
         "Unsupported resource should not be installed to platform"
     );
 }
+
+#[test]
+fn test_platform_detection_order_with_multiple_platforms() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_agent_dir("cursor");
+    workspace.create_agent_dir("opencode");
+
+    workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/commands/debug.md"),
+        "Claude platform should have commands installed"
+    );
+    assert!(
+        workspace.file_exists(".claude/rules/lint.md"),
+        "Claude platform should have rules installed"
+    );
+    assert!(
+        workspace.file_exists(".cursor/commands/debug.md"),
+        "Cursor platform should have commands installed"
+    );
+    assert!(
+        workspace.file_exists(".cursor/rules/lint.md"),
+        "Cursor platform should have rules installed"
+    );
+    assert!(
+        workspace.file_exists(".opencode/commands/debug.md"),
+        "OpenCode platform should have commands installed"
+    );
+    assert!(
+        workspace.file_exists(".opencode/rules/lint.md"),
+        "OpenCode platform should have rules installed"
+    );
+}
+
+#[test]
+fn test_platform_detection_order_with_root_files() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.write_file("CLAUDE.md", "# Claude Config");
+    workspace.write_file("AGENTS.md", "# Agents Config");
+
+    workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/commands/debug.md"),
+        "Claude platform should be detected from CLAUDE.md"
+    );
+    assert!(
+        workspace.file_exists(".cursor/commands/debug.md"),
+        "Cursor platform should be detected from AGENTS.md"
+    );
+}
+
+#[test]
+fn test_claude_commands_transformation() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("commands")).unwrap();
+    std::fs::write(
+        bundle.join("commands").join("deploy.md"),
+        "# Deploy command",
+    )
+    .expect("Failed to write command");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/commands/deploy.md"),
+        "Commands should transform to .claude/commands/"
+    );
+
+    let content = workspace.read_file(".claude/commands/deploy.md");
+    assert_eq!(
+        content, "# Deploy command",
+        "Command content should be preserved"
+    );
+}
+
+#[test]
+fn test_claude_rules_transformation() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("rules")).unwrap();
+    std::fs::write(bundle.join("rules").join("lint.md"), "# Linting rule")
+        .expect("Failed to write rule");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/rules/lint.md"),
+        "Rules should transform to .claude/rules/"
+    );
+
+    let content = workspace.read_file(".claude/rules/lint.md");
+    assert_eq!(
+        content, "# Linting rule",
+        "Rule content should be preserved"
+    );
+}
+
+#[test]
+fn test_claude_skills_transformation() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("skills")).unwrap();
+    std::fs::write(bundle.join("skills").join("analyze.md"), "# Analysis skill")
+        .expect("Failed to write skill");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/skills/analyze.md"),
+        "Skills should transform to .claude/skills/"
+    );
+
+    let content = workspace.read_file(".claude/skills/analyze.md");
+    assert_eq!(
+        content, "# Analysis skill",
+        "Skill content should be preserved"
+    );
+}
+
+#[test]
+fn test_cursor_rules_transformation() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("rules")).unwrap();
+    std::fs::write(bundle.join("rules").join("format.md"), "# Formatting rule")
+        .expect("Failed to write rule");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".cursor/rules/format.mdc"),
+        "Rules should transform to .cursor/rules/ with .mdc extension"
+    );
+    assert!(
+        !workspace.file_exists(".cursor/rules/format.md"),
+        "Original .md extension should not exist"
+    );
+
+    let content = workspace.read_file(".cursor/rules/format.mdc");
+    assert_eq!(
+        content, "# Formatting rule",
+        "Rule content should be preserved"
+    );
+}
+
+#[test]
+fn test_opencode_all_transformations() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("commands")).unwrap();
+    std::fs::write(bundle.join("commands").join("build.md"), "# Build command")
+        .expect("Failed to write command");
+
+    std::fs::create_dir_all(bundle.join("rules")).unwrap();
+    std::fs::write(bundle.join("rules").join("security.md"), "# Security rule")
+        .expect("Failed to write rule");
+
+    std::fs::create_dir_all(bundle.join("skills")).unwrap();
+    std::fs::write(bundle.join("skills").join("debug.md"), "# Debugging skill")
+        .expect("Failed to write skill");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".opencode/commands/build.md"),
+        "Commands should transform to .opencode/commands/"
+    );
+    assert!(
+        workspace.file_exists(".opencode/rules/security.md"),
+        "Rules should transform to .opencode/rules/"
+    );
+    assert!(
+        workspace.file_exists(".opencode/skills/debug.md"),
+        "Skills should transform to .opencode/skills/"
+    );
+
+    assert_eq!(
+        workspace.read_file(".opencode/commands/build.md"),
+        "# Build command",
+        "Command content should be preserved"
+    );
+    assert_eq!(
+        workspace.read_file(".opencode/rules/security.md"),
+        "# Security rule",
+        "Rule content should be preserved"
+    );
+    assert_eq!(
+        workspace.read_file(".opencode/skills/debug.md"),
+        "# Debugging skill",
+        "Skill content should be preserved"
+    );
+}
+
+#[test]
+fn test_multi_platform_simultaneous_install() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_agent_dir("cursor");
+    workspace.create_agent_dir("opencode");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("commands")).unwrap();
+    std::fs::write(bundle.join("commands").join("test.md"), "# Test command")
+        .expect("Failed to write command");
+
+    std::fs::create_dir_all(bundle.join("rules")).unwrap();
+    std::fs::write(bundle.join("rules").join("test.md"), "# Test rule")
+        .expect("Failed to write rule");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/commands/test.md"),
+        "Claude: commands should be installed"
+    );
+    assert!(
+        workspace.file_exists(".claude/rules/test.md"),
+        "Claude: rules should be installed"
+    );
+
+    assert!(
+        workspace.file_exists(".cursor/commands/test.md"),
+        "Cursor: commands should be installed"
+    );
+    assert!(
+        workspace.file_exists(".cursor/rules/test.md"),
+        "Cursor: rules should be installed"
+    );
+
+    assert!(
+        workspace.file_exists(".opencode/commands/test.md"),
+        "OpenCode: commands should be installed"
+    );
+    assert!(
+        workspace.file_exists(".opencode/rules/test.md"),
+        "OpenCode: rules should be installed"
+    );
+}
+
+#[test]
+fn test_directory_structure_creation_for_all_platforms() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    let bundle = workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle.join("commands")).unwrap();
+    std::fs::create_dir_all(bundle.join("rules")).unwrap();
+    std::fs::create_dir_all(bundle.join("skills")).unwrap();
+
+    std::fs::write(bundle.join("commands").join("cmd.md"), "# Command").expect("Failed to write");
+    std::fs::write(bundle.join("rules").join("rule.md"), "# Rule").expect("Failed to write");
+    std::fs::write(bundle.join("skills").join("skill.md"), "# Skill").expect("Failed to write");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    assert!(
+        workspace.file_exists(".claude/commands/cmd.md"),
+        ".claude/commands/ directory should exist"
+    );
+    assert!(
+        workspace.file_exists(".claude/rules/rule.md"),
+        ".claude/rules/ directory should exist"
+    );
+    assert!(
+        workspace.file_exists(".claude/skills/skill.md"),
+        ".claude/skills/ directory should exist"
+    );
+}

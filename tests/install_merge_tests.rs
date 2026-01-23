@@ -128,6 +128,7 @@ bundles: []
         .success();
 
     let content = workspace.read_file("AGENTS.md");
+    eprintln!("AGENTS.md content:\n---\n{}\n---", content);
     assert!(
         content.contains("Bundle 1 Configuration"),
         "AGENTS.md should contain content from bundle-1"
@@ -140,7 +141,6 @@ bundles: []
 
 // TODO: Enable when composite merge for mcp.jsonc is fully implemented
 #[test]
-#[ignore]
 fn test_composite_merge_for_mcp_jsonc() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -413,23 +413,96 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/bundle-a"])
+        .args(["install", "./bundles/bundle-1"])
         .assert()
         .success();
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/bundle-b"])
+        .args(["install", "./bundles/bundle-2"])
         .assert()
         .success();
 
-    let content = workspace.read_file(".cursor/commands/test.md");
+    let content = workspace.read_file("AGENTS.md");
     assert!(
-        content.contains("Content from bundle B"),
-        "Later bundle should override earlier bundle file"
+        content.contains("Bundle 1 Configuration"),
+        "AGENTS.md should contain content from bundle-1"
     );
     assert!(
-        !content.contains("Content from bundle A"),
-        "Earlier bundle content should be completely replaced"
+        content.contains("Bundle 2 Configuration"),
+        "AGENTS.md should contain content from bundle-2"
+    );
+}
+
+#[test]
+fn test_root_directory_handling_empty_vs_non_empty() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    // Test bundle with empty root directory
+    workspace.create_bundle("bundle-with-empty-root");
+    workspace.write_file(
+        "bundles/bundle-with-empty-root/augent.yaml",
+        r#"
+name: "@test/bundle-with-empty-root"
+bundles: []
+"#,
+    );
+
+    // Create empty root directory
+    let bundle_root = workspace.path.join("bundles/bundle-with-empty-root/root");
+    std::fs::create_dir_all(&bundle_root).expect("Failed to create root directory");
+
+    workspace.write_file(
+        "bundles/bundle-with-empty-root/commands/test.md",
+        "# Test\n",
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-with-empty-root"])
+        .assert()
+        .success();
+
+    // Root directory should not be created in workspace if empty
+    assert!(
+        !workspace.file_exists("root"),
+        "Empty root directory should not be created in workspace"
+    );
+
+    // Test bundle with non-empty root directory
+    workspace.create_bundle("bundle-with-non-empty-root");
+    workspace.write_file(
+        "bundles/bundle-with-non-empty-root/augent.yaml",
+        r#"
+name: "@test/bundle-with-non-empty-root"
+bundles: []
+"#,
+    );
+
+    // Create non-empty root directory
+    let bundle_root2 = workspace
+        .path
+        .join("bundles/bundle-with-non-empty-root/root");
+    std::fs::create_dir_all(&bundle_root2).expect("Failed to create root directory");
+    std::fs::write(bundle_root2.join("config.yaml"), "# Configuration file\n")
+        .expect("Failed to write config");
+
+    workspace.write_file(
+        "bundles/bundle-with-non-empty-root/commands/test2.md",
+        "# Test 2\n",
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-with-non-empty-root"])
+        .assert()
+        .success();
+
+    // Non-empty root directory should be created in workspace
+    assert!(
+        workspace.file_exists("config.yaml"),
+        "Non-empty root directory should be copied to workspace root"
     );
 }

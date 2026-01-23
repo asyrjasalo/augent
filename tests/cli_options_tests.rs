@@ -309,3 +309,356 @@ fn test_uninstall_help() {
         .success()
         .stdout(predicate::str::contains("--yes"));
 }
+
+// ============================================================================
+// Error message quality tests
+// ============================================================================
+
+#[test]
+fn test_error_invalid_bundle_name() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "invalid_bundle_name_format"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("Invalid bundle name")
+                .or(predicate::str::contains("Invalid source URL")),
+        );
+}
+
+#[test]
+fn test_error_bundle_not_found() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "@test/nonexistent"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("Bundle not found").or(predicate::str::contains("not found")),
+        );
+}
+
+// ============================================================================
+// Help text length tests
+// ============================================================================
+
+#[test]
+fn test_help_fits_on_one_screen() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_augent"))
+        .arg("--help")
+        .output()
+        .expect("Failed to run augent --help");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line_count = stdout.lines().count();
+
+    assert!(
+        line_count < 30,
+        "Help text is too long: {} lines",
+        line_count
+    );
+}
+
+#[test]
+fn test_install_help_fits_on_one_screen() {
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_augent"))
+        .args(["install", "--help"])
+        .output()
+        .expect("Failed to run augent install --help");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line_count = stdout.lines().count();
+
+    assert!(
+        line_count < 40,
+        "Install help text is too long: {} lines",
+        line_count
+    );
+}
+
+// ============================================================================
+// Documentation examples tests
+// ============================================================================
+
+#[test]
+fn test_example_install_github_short_form() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_bundle("example-bundle");
+    workspace.write_file(
+        "bundles/example-bundle/augent.yaml",
+        r#"name: "@test/example-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/example-bundle/commands/example.md", "# Example\n");
+    workspace.create_agent_dir("claude");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/example-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".claude/commands/example.md"));
+}
+
+#[test]
+fn test_example_list_command() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test-bundle"));
+}
+
+// ============================================================================
+// Completion script syntax validation
+// ============================================================================
+
+#[test]
+fn test_bash_completion_script_valid() {
+    let output = augent_cmd()
+        .args(["completions", "--shell", "bash"])
+        .output()
+        .expect("Failed to generate bash completions");
+
+    assert!(output.status.success());
+
+    let script = String::from_utf8_lossy(&output.stdout);
+
+    assert!(script.contains("_augent"));
+    assert!(script.contains("complete -F"));
+
+    assert!(!script.contains("ERROR"));
+    assert!(!script.contains("syntax error"));
+}
+
+#[test]
+fn test_zsh_completion_script_valid() {
+    let output = augent_cmd()
+        .args(["completions", "--shell", "zsh"])
+        .output()
+        .expect("Failed to generate zsh completions");
+
+    assert!(output.status.success());
+
+    let script = String::from_utf8_lossy(&output.stdout);
+
+    assert!(script.contains("#compdef"));
+
+    assert!(!script.contains("ERROR"));
+    assert!(!script.contains("syntax error"));
+}
+
+#[test]
+fn test_fish_completion_script_valid() {
+    let output = augent_cmd()
+        .args(["completions", "--shell", "fish"])
+        .output()
+        .expect("Failed to generate fish completions");
+
+    assert!(output.status.success());
+
+    let script = String::from_utf8_lossy(&output.stdout);
+
+    assert!(script.contains("complete"));
+
+    assert!(!script.contains("ERROR"));
+    assert!(!script.contains("syntax error"));
+}
+
+// ============================================================================
+// list --detailed tests
+// ============================================================================
+
+#[test]
+fn test_list_detailed_shows_metadata() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+version: "1.0.0"
+author: Test Author
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test-bundle"))
+        .stdout(predicate::str::contains("version"))
+        .stdout(predicate::str::contains("author"));
+}
+
+// ============================================================================
+// Global --verbose flag tests
+// ============================================================================
+
+#[test]
+fn test_uninstall_verbose() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["uninstall", "@test/test-bundle", "-y", "-v"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_show_verbose() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@test/test-bundle", "-v"])
+        .assert()
+        .success();
+}
+
+// ============================================================================
+// Additional --workspace option tests
+// ============================================================================
+
+#[test]
+fn test_install_with_workspace_option() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    let temp = common::TestWorkspace::new();
+
+    augent_cmd()
+        .current_dir(&temp.path)
+        .args([
+            "install",
+            workspace.path.join("bundles/test-bundle").to_str().unwrap(),
+            "--workspace",
+            workspace.path.to_str().unwrap(),
+            "--for",
+            "claude",
+        ])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".claude/commands/test.md"));
+}
+
+#[test]
+fn test_uninstall_with_workspace_option() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    let temp = common::TestWorkspace::new();
+
+    augent_cmd()
+        .current_dir(&temp.path)
+        .args([
+            "uninstall",
+            "@test/test-bundle",
+            "-y",
+            "--workspace",
+            workspace.path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(!workspace.file_exists(".claude/commands/test.md"));
+}

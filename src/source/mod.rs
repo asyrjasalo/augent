@@ -60,10 +60,12 @@ impl BundleSource {
     /// Supported formats:
     /// - `./path` or `../path` - Local directory
     /// - `/absolute/path` - Absolute local path
+    /// - `file:///absolute/path` - Local directory with file:// protocol
     /// - `github:user/repo` - GitHub repository
     /// - `user/repo` - GitHub repository (short form)
     /// - `https://github.com/user/repo.git` - Git HTTPS URL
     /// - `git@github.com:user/repo.git` - Git SSH URL
+    /// - `file://` URLs with fragments (`#ref` or `#subdir`) are treated as git sources
     /// - Any of the above with `#subdir` for subdirectory
     /// - Any of the above with `#ref` for git ref
     pub fn parse(input: &str) -> Result<Self> {
@@ -72,6 +74,20 @@ impl BundleSource {
         if input.is_empty() {
             return Err(AugentError::InvalidSourceUrl {
                 url: input.to_string(),
+            });
+        }
+
+        // Check for file:// URL with fragment (ref or subdirectory)
+        // Fragments imply git operations (checkout/clone), so treat as Git source
+        if input.starts_with("file://") && input.contains('#') {
+            let git_source = GitSource::parse(input)?;
+            return Ok(BundleSource::Git(git_source));
+        }
+
+        // Check for file:// URL without fragment (local directory)
+        if let Some(path_str) = input.strip_prefix("file://") {
+            return Ok(BundleSource::Dir {
+                path: PathBuf::from(path_str),
             });
         }
 
@@ -183,6 +199,7 @@ impl GitSource {
         // Must have exactly one slash and no protocol
         if !input.contains("://")
             && !input.starts_with("git@")
+            && !input.starts_with("file://")
             && input.matches('/').count() == 1
             && !input.starts_with('/')
         {
@@ -192,6 +209,11 @@ impl GitSource {
         // Full HTTPS or SSH URL
         if input.starts_with("https://") || input.starts_with("git@") || input.starts_with("ssh://")
         {
+            return Ok(input.to_string());
+        }
+
+        // file:// URL - treat as Git source (may be a git repo)
+        if input.starts_with("file://") {
             return Ok(input.to_string());
         }
 

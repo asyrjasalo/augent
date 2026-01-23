@@ -106,7 +106,7 @@ impl<'a> Installer<'a> {
                 resources.push(DiscoveredResource {
                     bundle_path: PathBuf::from(file_name),
                     absolute_path: file_path,
-                    resource_type: (*file_name).to_string(),
+                    resource_type: "root".to_string(),
                 });
             }
         }
