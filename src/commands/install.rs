@@ -277,8 +277,13 @@ fn update_configs(
         }
     }
 
-    // Update lockfile
-    workspace.lockfile = generate_lockfile(workspace, resolved_bundles)?;
+    // Update lockfile - merge new bundles with existing ones
+    for bundle in resolved_bundles {
+        let locked_bundle = create_locked_bundle(bundle)?;
+        // Remove existing entry if present (to update it)
+        workspace.lockfile.remove_bundle(&locked_bundle.name);
+        workspace.lockfile.add_bundle(locked_bundle);
+    }
 
     // Update workspace config
     for bundle in workspace_bundles {

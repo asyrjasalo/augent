@@ -157,6 +157,14 @@ impl<'a> Installer<'a> {
                 .unwrap_or(&resource.bundle_path);
             let target = self.workspace_root.join(relative_path);
 
+            // Ensure parent directory exists for root files
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                    path: parent.display().to_string(),
+                    reason: e.to_string(),
+                })?;
+            }
+
             self.copy_file(&resource.absolute_path, &target)?;
             target_paths.push(relative_path.to_string_lossy().to_string());
         } else {

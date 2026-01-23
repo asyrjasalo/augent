@@ -1,5 +1,6 @@
 //! Common test utilities for Augent integration tests
 
+use assert_cmd::Command;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -90,25 +91,32 @@ impl TestWorkspace {
 
         let augent_dir = self.create_augent_dir();
 
-        if fixture_path.join("augent.yaml").exists() {
+        // Check for files in .augent/ subdirectory first (new fixture format)
+        let source_dir = if fixture_path.join(".augent").exists() {
+            fixture_path.join(".augent")
+        } else {
+            fixture_path.clone()
+        };
+
+        if source_dir.join("augent.yaml").exists() {
             std::fs::copy(
-                fixture_path.join("augent.yaml"),
+                source_dir.join("augent.yaml"),
                 augent_dir.join("augent.yaml"),
             )
             .expect("Failed to copy augent.yaml");
         }
 
-        if fixture_path.join("augent.lock").exists() {
+        if source_dir.join("augent.lock").exists() {
             std::fs::copy(
-                fixture_path.join("augent.lock"),
+                source_dir.join("augent.lock"),
                 augent_dir.join("augent.lock"),
             )
             .expect("Failed to copy augent.lock");
         }
 
-        if fixture_path.join("augent.workspace.yaml").exists() {
+        if source_dir.join("augent.workspace.yaml").exists() {
             std::fs::copy(
-                fixture_path.join("augent.workspace.yaml"),
+                source_dir.join("augent.workspace.yaml"),
                 augent_dir.join("augent.workspace.yaml"),
             )
             .expect("Failed to copy augent.workspace.yaml");
@@ -130,6 +138,132 @@ impl TestWorkspace {
         self.create_agent_dir("claude");
         self.create_agent_dir("cursor");
         self.create_agent_dir("opencode");
+    }
+
+    /// Initialize git repository for workspace
+    pub fn init_git(&self) {
+        let git_dir = self.path.join(".git");
+        if git_dir.exists() {
+            return;
+        }
+
+        std::process::Command::new("git")
+            .arg("init")
+            .current_dir(&self.path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to init git repo");
+
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&self.path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to configure git");
+
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&self.path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to configure git");
+    }
+
+    /// Create a mock git repository for testing
+    pub fn create_mock_git_repo(&self, name: &str) -> PathBuf {
+        let repo_path = self.path.join(name);
+        std::fs::create_dir_all(&repo_path).expect("Failed to create repo directory");
+
+        std::process::Command::new("git")
+            .arg("init")
+            .current_dir(&repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to init git repo");
+
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to configure git");
+
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to configure git");
+
+        let augent_yaml = repo_path.join("augent.yaml");
+        std::fs::write(
+            &augent_yaml,
+            format!("name: \"@test/{}\"\nbundles: []\n", name),
+        )
+        .expect("Failed to write augent.yaml");
+
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(&repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to add files");
+
+        std::process::Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(&repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to commit");
+
+        repo_path
+    }
+
+    /// Count files in a bundle directory
+    pub fn count_bundle_files(&self, bundle_path: &str) -> usize {
+        let path = self.path.join(bundle_path);
+        if !path.exists() {
+            return 0;
+        }
+
+        walkdir::WalkDir::new(&path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .filter(|e| !e.path().ends_with("augent.yaml"))
+            .filter(|e| !e.path().ends_with("augent.lock"))
+            .filter(|e| !e.path().ends_with("augent.workspace.yaml"))
+            .count()
+    }
+
+    /// Check if files exist in workspace
+    pub fn files_exist(&self, paths: &[&str]) -> bool {
+        paths.iter().all(|path| self.file_exists(path))
+    }
+
+    /// Modify a file in workspace
+    pub fn modify_file(&self, path: &str, new_content: &str) {
+        self.write_file(path, new_content);
+    }
+
+    /// Delete a file in workspace
+    pub fn delete_file(&self, path: &str) {
+        let file_path = self.path.join(path);
+        std::fs::remove_file(&file_path).expect("Failed to delete file");
+    }
+
+    /// Create directory in workspace
+    pub fn create_dir(&self, path: &str) {
+        let dir_path = self.path.join(path);
+        std::fs::create_dir_all(&dir_path).expect("Failed to create directory");
     }
 }
 
@@ -159,6 +293,16 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
     }
 
     Ok(())
+}
+
+/// Run augent command with workspace context
+pub fn run_augent_cmd(workspace: &TestWorkspace, args: &[&str]) -> Command {
+    let mut cmd = Command::cargo_bin("augent").unwrap();
+    cmd.current_dir(&workspace.path);
+    for arg in args {
+        cmd.arg(arg);
+    }
+    cmd
 }
 
 #[cfg(test)]

@@ -106,14 +106,36 @@ fn do_uninstall(
     let files_to_remove = determine_files_to_remove(workspace, name, bundle_files)?;
 
     let mut removed_count = 0;
+
+    // Get the platform-specific file locations from workspace config
+    let bundle_config = workspace.workspace_config.find_bundle(name);
+
     for file_path in &files_to_remove {
+        // First, try to get the platform-specific locations from workspace config
+        if let Some(bundle_cfg) = &bundle_config {
+            if let Some(locations) = bundle_cfg.get_locations(file_path) {
+                for location in locations {
+                    let full_path = workspace.root.join(location);
+                    if full_path.exists() {
+                        fs::remove_file(&full_path).map_err(|e| AugentError::FileWriteFailed {
+                            path: full_path.display().to_string(),
+                            reason: e.to_string(),
+                        })?;
+                        transaction.track_file_created(&full_path);
+                        removed_count += 1;
+                    }
+                }
+                continue;
+            }
+        }
+
+        // Fallback: try universal path directly (for root files)
         let full_path = workspace.root.join(file_path);
         if full_path.exists() {
             fs::remove_file(&full_path).map_err(|e| AugentError::FileWriteFailed {
                 path: full_path.display().to_string(),
                 reason: e.to_string(),
             })?;
-
             transaction.track_file_created(&full_path);
             removed_count += 1;
         }

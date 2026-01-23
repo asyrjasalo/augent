@@ -76,7 +76,7 @@ pub struct InstallArgs {
     pub source: String,
 
     /// Install only for specific agents (e.g., --for cursor opencode)
-    #[arg(long = "for", value_name = "AGENT")]
+    #[arg(long = "for", value_name = "AGENT", num_args = 1..)]
     pub agents: Vec<String>,
 
     /// Fail if lockfile would change
