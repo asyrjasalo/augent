@@ -16,10 +16,13 @@ use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 
 /// Run uninstall command
-pub fn run(args: UninstallArgs) -> Result<()> {
-    let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
-        message: format!("Failed to get current directory: {}", e),
-    })?;
+pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
+    let current_dir = match workspace {
+        Some(path) => path,
+        None => std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {}", e),
+        })?,
+    };
 
     let workspace_root =
         Workspace::find_from(&current_dir).ok_or_else(|| AugentError::WorkspaceNotFound {

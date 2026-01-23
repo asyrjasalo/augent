@@ -29,10 +29,13 @@ use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 
 /// Run the install command
-pub fn run(args: InstallArgs) -> Result<()> {
-    let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
-        message: format!("Failed to get current directory: {}", e),
-    })?;
+pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<()> {
+    let current_dir = match workspace {
+        Some(path) => path,
+        None => std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {}", e),
+        })?,
+    };
 
     // Initialize or open workspace
     let mut workspace = Workspace::init_or_open(&current_dir)?;

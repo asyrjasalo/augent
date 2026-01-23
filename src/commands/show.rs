@@ -5,10 +5,13 @@ use crate::config::{BundleConfig, LockedBundle, LockedSource, WorkspaceBundle};
 use crate::error::{AugentError, Result};
 use crate::workspace;
 
-pub fn run(args: ShowArgs) -> Result<()> {
-    let current_dir = std::env::current_dir().map_err(|e| AugentError::WorkspaceNotFound {
-        path: format!("Failed to get current directory: {}", e),
-    })?;
+pub fn run(workspace: Option<std::path::PathBuf>, args: ShowArgs) -> Result<()> {
+    let current_dir = match workspace {
+        Some(path) => path,
+        None => std::env::current_dir().map_err(|e| AugentError::WorkspaceNotFound {
+            path: format!("Failed to get current directory: {}", e),
+        })?,
+    };
 
     let workspace_root = workspace::Workspace::find_from(&current_dir).ok_or_else(|| {
         AugentError::WorkspaceNotFound {

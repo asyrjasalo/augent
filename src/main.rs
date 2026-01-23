@@ -27,10 +27,10 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Install(args) => commands::install::run(args),
-        Commands::Uninstall(args) => commands::uninstall::run(args),
-        Commands::List(args) => commands::list::run(args),
-        Commands::Show(args) => commands::show::run(args),
+        Commands::Install(args) => commands::install::run(cli.workspace, args),
+        Commands::Uninstall(args) => commands::uninstall::run(cli.workspace, args),
+        Commands::List(args) => commands::list::run(cli.workspace, args),
+        Commands::Show(args) => commands::show::run(cli.workspace, args),
         Commands::CleanCache(args) => commands::clean_cache::run(args),
         Commands::Version => commands::version::run(),
         Commands::Completions(args) => commands::completions::run(args),

@@ -11,8 +11,8 @@ use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
 
 /// Run list command
-pub fn run(args: ListArgs) -> Result<()> {
-    let workspace_path = get_workspace_path()?;
+pub fn run(workspace: Option<std::path::PathBuf>, args: ListArgs) -> Result<()> {
+    let workspace_path = get_workspace_path(workspace)?;
 
     let workspace_root =
         Workspace::find_from(&workspace_path).ok_or_else(|| AugentError::WorkspaceNotFound {
@@ -25,11 +25,13 @@ pub fn run(args: ListArgs) -> Result<()> {
 }
 
 /// Get workspace path from CLI argument or current directory
-fn get_workspace_path() -> Result<PathBuf> {
-    // TODO: Add support for --workspace CLI argument
-    std::env::current_dir().map_err(|e| AugentError::IoError {
-        message: format!("Failed to get current directory: {}", e),
-    })
+fn get_workspace_path(workspace: Option<PathBuf>) -> Result<PathBuf> {
+    match workspace {
+        Some(path) => Ok(path),
+        None => std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {}", e),
+        }),
+    }
 }
 
 /// List bundles in the workspace
