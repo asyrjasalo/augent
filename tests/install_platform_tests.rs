@@ -300,7 +300,7 @@ fn test_platform_detection_order_with_multiple_platforms() {
         "Cursor platform should have commands installed"
     );
     assert!(
-        workspace.file_exists(".cursor/rules/lint.md"),
+        workspace.file_exists(".cursor/rules/lint.mdc"),
         "Cursor platform should have rules installed"
     );
     assert!(
@@ -624,7 +624,7 @@ bundles: []
         "Cursor: commands should be installed"
     );
     assert!(
-        workspace.file_exists(".cursor/rules/test.md"),
+        workspace.file_exists(".cursor/rules/test.mdc"),
         "Cursor: rules should be installed"
     );
 

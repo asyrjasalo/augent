@@ -114,7 +114,7 @@ bundles: []
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/a.md"));
-    assert!(workspace.file_exists(".cursor/rules/b.md"));
+    assert!(workspace.file_exists(".cursor/rules/b.mdc"));
     assert!(workspace.file_exists(".cursor/skills/c.md"));
 }
 
@@ -175,7 +175,7 @@ bundles: []
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/a.md"));
-    assert!(workspace.file_exists(".cursor/rules/b.md"));
+    assert!(workspace.file_exists(".cursor/rules/b.mdc"));
     assert!(workspace.file_exists(".cursor/skills/c.md"));
 
     let config = workspace.read_file(".augent/augent.yaml");
