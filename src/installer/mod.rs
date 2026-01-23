@@ -250,7 +250,7 @@ impl<'a> Installer<'a> {
         for installation in installations {
             grouped
                 .entry(installation.target_path.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(installation.clone());
         }
 
@@ -456,88 +456,6 @@ impl<'a> Installer<'a> {
         Ok(())
     }
 
-    /// Install a single resource file
-    fn install_resource(
-        &mut self,
-        resource: &DiscoveredResource,
-        bundle: &ResolvedBundle,
-    ) -> Result<InstalledFile> {
-        let source_path = resource.bundle_path.to_string_lossy().to_string();
-        let mut target_paths = Vec::new();
-
-        // Handle root directory specially - copy to workspace root
-        if resource.resource_type == "root" {
-            let relative_path = resource
-                .bundle_path
-                .strip_prefix("root")
-                .unwrap_or(&resource.bundle_path);
-            let target = self.workspace_root.join(relative_path);
-
-            // Ensure parent directory exists for root files
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
-                    path: parent.display().to_string(),
-                    reason: e.to_string(),
-                })?;
-            }
-
-            self.copy_file(&resource.absolute_path, &target)?;
-            target_paths.push(relative_path.to_string_lossy().to_string());
-        } else {
-            // Install for each platform
-            for platform in &self.platforms {
-                if let Some(target) =
-                    self.install_for_platform(resource, platform, &bundle.source_path)?
-                {
-                    target_paths.push(target);
-                }
-            }
-        }
-
-        let installed = InstalledFile {
-            source_paths: vec![source_path.clone()],
-            target_paths: target_paths.clone(),
-        };
-
-        self.installed_files.insert(source_path, installed.clone());
-
-        Ok(installed)
-    }
-
-    /// Install a resource for a specific platform
-    fn install_for_platform(
-        &self,
-        resource: &DiscoveredResource,
-        platform: &Platform,
-        _bundle_path: &Path,
-    ) -> Result<Option<String>> {
-        // Find matching transform rule
-        let rule = self.find_transform_rule(platform, &resource.bundle_path);
-
-        let (target_path, merge_strategy) = match rule {
-            Some(r) => {
-                let target = self.apply_transform_rule(r, &resource.bundle_path);
-                (target, r.merge)
-            }
-            None => {
-                // Default: copy to platform directory with same relative path
-                let target = platform
-                    .directory_path(self.workspace_root)
-                    .join(&resource.bundle_path);
-                (target, MergeStrategy::Replace)
-            }
-        };
-
-        // Apply merge strategy and copy file
-        self.apply_merge_and_copy(&resource.absolute_path, &target_path, &merge_strategy)?;
-
-        // Return relative path from workspace root
-        let relative = target_path
-            .strip_prefix(self.workspace_root)
-            .unwrap_or(&target_path);
-        Ok(Some(relative.to_string_lossy().to_string()))
-    }
-
     /// Find a matching transform rule for a resource path
     fn find_transform_rule<'b>(
         &self,
@@ -667,8 +585,7 @@ impl<'a> Installer<'a> {
 
                 // If suffix starts with '/', it's meant to be part of path structure
                 // Don't append it - relative_part already contains the full path
-                if suffix.starts_with('/') {
-                    let suffix_without_slash = &suffix[1..];
+                if let Some(suffix_without_slash) = suffix.strip_prefix('/') {
                     // If suffix contains '.' or '*', it's a filename pattern extension
                     // In that case, relative_part already has the filename
                     if suffix_without_slash.contains('.') || suffix_without_slash.contains('*') {

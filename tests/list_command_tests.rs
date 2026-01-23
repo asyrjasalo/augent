@@ -227,34 +227,140 @@ bundles: []
 }
 
 #[test]
-fn test_list_detailed_shows_platforms_for_each_bundle() {
+fn test_list_shows_file_counts() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("multi-file-bundle");
+    workspace.write_file(
+        "bundles/multi-file-bundle/augent.yaml",
+        r#"
+name: "@test/multi-file-bundle"
+description: "Bundle with multiple files"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/multi-file-bundle/commands/cmd1.md", "# Cmd 1\n");
+    workspace.write_file("bundles/multi-file-bundle/commands/cmd2.md", "# Cmd 2\n");
+    workspace.write_file("bundles/multi-file-bundle/rules/rule1.md", "# Rule 1\n");
+    workspace.write_file("bundles/multi-file-bundle/skills/skill1.md", "# Skill 1\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/multi-file-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Files:"))
+        .stdout(predicate::str::contains("commands/cmd1.md"))
+        .stdout(predicate::str::contains("commands/cmd2.md"))
+        .stdout(predicate::str::contains("rules/rule1.md"))
+        .stdout(predicate::str::contains("skills/skill1.md"));
+}
+
+#[test]
+fn test_list_detailed_shows_all_metadata_fields() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
-    workspace.create_all_agent_dirs();
+    workspace.create_agent_dir("cursor");
 
-    assert!(workspace.file_exists(".cursor"));
-    assert!(workspace.file_exists(".claude"));
-    assert!(workspace.file_exists(".opencode"));
+    workspace.create_bundle("metadata-bundle");
+    workspace.write_file(
+        "bundles/metadata-bundle/augent.yaml",
+        r#"
+name: "@test/metadata-bundle"
+description: "Bundle for testing all metadata fields"
+version: "1.0.0"
+author: "Test Author <test@example.com>"
+license: "MIT"
+homepage: "https://example.com/metadata-bundle"
+bundles: []
+"#,
+    );
 
-    workspace.create_bundle("multi-platform-bundle");
+    workspace.write_file("bundles/metadata-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/metadata-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("metadata-bundle"))
+        .stdout(predicate::str::contains("Description:"))
+        .stdout(predicate::str::contains("Version:"))
+        .stdout(predicate::str::contains("Author:"))
+        .stdout(predicate::str::contains("License:"))
+        .stdout(predicate::str::contains("Homepage:"))
+        .stdout(predicate::str::contains("Source:"))
+        .stdout(predicate::str::contains("Files:"))
+        .stdout(predicate::str::contains("Agents:"));
+}
+
+#[test]
+fn test_list_detailed_format_readability() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("readable-bundle");
+    workspace.write_file(
+        "bundles/readable-bundle/augent.yaml",
+        r#"
+name: "@test/readable-bundle"
+description: "Bundle for testing output readability"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/readable-bundle/commands/test1.md", "# Test 1\n");
+    workspace.write_file("bundles/readable-bundle/commands/test2.md", "# Test 2\n");
+    workspace.write_file("bundles/readable-bundle/rules/rule.md", "# Rule\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/readable-bundle", "--for", "cursor"])
+        .assert()
+        .success();
 
     let output = augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/multi-platform-bundle"])
-        .output()
-        .expect("install command failed");
-
-    output.assert().success();
-
-    list_output.output().expect("list command failed");
-
-    list_output
+        .args(["list", "--detailed"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("multi-platform-bundle"))
-        .stdout(predicate::str::contains("cursor"))
-        .stdout(predicate::str::contains("claude"))
-        .stdout(predicate::str::contains("opencode"));
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8(output).unwrap();
+
+    // Verify readable formatting (should have line breaks, not all on one line)
+    assert!(
+        output_str.lines().count() > 10,
+        "Detailed output should span multiple lines for readability"
+    );
+
+    // Verify metadata is on separate lines
+    assert!(
+        output_str.contains("Description:") && output_str.contains("Source:"),
+        "Metadata fields should be present"
+    );
+
+    // Verify file list is structured
+    assert!(
+        output_str.contains("commands/test1.md"),
+        "File list should show individual files"
+    );
 }

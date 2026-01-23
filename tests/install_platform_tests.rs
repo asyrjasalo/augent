@@ -368,20 +368,16 @@ bundles: []
 
     // Debug: list .claude directory
     if let Ok(entries) = std::fs::read_dir(workspace.path.join(".claude")) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                println!("[DEBUG] {:?}: {:?}", entry.path(), entry.file_type());
-                if entry.path().is_dir() {
-                    if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
-                        for sub_entry in sub_entries {
-                            if let Ok(sub_entry) = sub_entry {
-                                println!(
-                                    "[DEBUG]   {:?}: {:?}",
-                                    sub_entry.path(),
-                                    sub_entry.file_type()
-                                );
-                            }
-                        }
+        for entry in entries.filter_map(Result::ok) {
+            println!("[DEBUG] {:?}: {:?}", entry.path(), entry.file_type());
+            if entry.path().is_dir() {
+                if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
+                    for sub_entry in sub_entries.filter_map(Result::ok) {
+                        println!(
+                            "[DEBUG]   {:?}: {:?}",
+                            sub_entry.path(),
+                            sub_entry.file_type()
+                        );
                     }
                 }
             }

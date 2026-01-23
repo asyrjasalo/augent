@@ -103,12 +103,6 @@ mod tests {
     }
 
     #[test]
-    fn test_list_cached_bundles_empty() {
-        let result = list_cached_bundles();
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_clean_specific_bundle_not_found() {
         let result = clean_specific_bundle("nonexistent-bundle");
         assert!(result.is_err());

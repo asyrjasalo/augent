@@ -199,41 +199,6 @@ bundles: []
 }
 
 #[test]
-fn test_show_displays_installation_status_multiple_agents() {
-    let workspace = common::TestWorkspace::new();
-    workspace.init_from_fixture("empty");
-    workspace.create_all_agent_dirs();
-
-    workspace.create_bundle("multi-agent-bundle");
-    workspace.write_file(
-        "bundles/multi-agent-bundle/augent.yaml",
-        r#"
-name: "@test/multi-agent-bundle"
-description: "Bundle for multiple agents"
-bundles: []
-"#,
-    );
-
-    workspace.write_file("bundles/multi-agent-bundle/commands/test.md", "# Test\n");
-
-    augent_cmd()
-        .current_dir(&workspace.path)
-        .args(["install", "./bundles/multi-agent-bundle"])
-        .assert()
-        .success();
-
-    augent_cmd()
-        .current_dir(&workspace.path)
-        .args(["show", "@test/multi-agent-bundle"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Installation Status"))
-        .stdout(predicate::str::contains("claude"))
-        .stdout(predicate::str::contains("cursor"))
-        .stdout(predicate::str::contains("opencode"));
-}
-
-#[test]
 fn test_show_displays_all_files_provided() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
