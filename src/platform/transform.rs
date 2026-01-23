@@ -91,22 +91,33 @@ impl TransformEngine {
     }
 
     fn handle_wildcard_target(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
-        let resource_name = resource_path
-            .file_name()
-            .unwrap_or(resource_path.as_os_str());
-        let resource_stem = Path::new(resource_name).file_stem();
+        let resource_stem = resource_path
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy();
+
+        // Handle pattern like "rules/**/*.md" -> ".cursor/rules/**/*.mdc"
+        // For a resource like "rules/format.md", we want ".cursor/rules/format.mdc"
+
+        // Normalize target: remove ** (represents nested dirs that don't exist in simple paths)
+        let normalized_target = rule.to.replace("**", "");
+
+        // Replace * (filename wildcard) with the stem
+        let target = normalized_target.replace("*", &resource_stem);
+
+        // Clean up double slashes
+        let clean_target = target.replace("//", "/");
 
         if let Some(ext) = &rule.extension {
-            let target = rule
-                .to
-                .replace("*", &resource_stem.unwrap_or_default().to_string_lossy());
-            let stem = target.trim_end_matches(['.']);
-            PathBuf::from(format!("{}{}", stem, ext))
+            // Strip existing extension and dots, then add the new extension
+            let without_ext = if let Some(pos) = clean_target.rfind('.') {
+                &clean_target[..pos]
+            } else {
+                &clean_target
+            };
+            PathBuf::from(format!("{}.{}", without_ext, ext))
         } else {
-            let target = rule
-                .to
-                .replace("*", &resource_stem.unwrap_or_default().to_string_lossy());
-            PathBuf::from(target)
+            PathBuf::from(clean_target)
         }
     }
 

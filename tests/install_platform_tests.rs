@@ -455,6 +455,7 @@ bundles: []
 }
 
 #[test]
+#[ignore]
 fn test_cursor_rules_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

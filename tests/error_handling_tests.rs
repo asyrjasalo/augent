@@ -22,8 +22,8 @@ fn test_invalid_bundle_name_format() {
         .assert()
         .failure()
         .stderr(
-            predicate::str::contains("Invalid bundle name")
-                .or(predicate::str::contains("Invalid source URL")),
+            predicate::str::contains("Failed to parse source")
+                .or(predicate::str::contains("Unknown source format")),
         );
 }
 

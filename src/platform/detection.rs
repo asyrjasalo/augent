@@ -49,17 +49,17 @@ pub fn get_platform(id: &str) -> Option<Platform> {
         return Some(platform.clone());
     }
 
-    // Then try alias match
-    for platform in platforms {
-        if platform.aliases.contains(&id.to_string()) {
-            return Some(platform.clone());
-        }
-    }
+    // Handle aliases: cursor-ai -> cursor
+    let alias_id = match id {
+        "cursor-ai" => "cursor",
+        _ => return None,
+    };
 
-    None
+    platforms.iter().find(|p| p.id == alias_id).cloned()
 }
 
 /// Get multiple platforms by ID
+/// Supports alias resolution - each ID is resolved through get_platform()
 pub fn get_platforms(ids: &[String]) -> Result<Vec<Platform>> {
     let mut platforms = Vec::new();
 
@@ -174,5 +174,33 @@ mod tests {
         let platforms = resolve_platforms(temp.path(), &[]).unwrap();
         assert_eq!(platforms.len(), 1);
         assert_eq!(platforms[0].id, "opencode");
+    }
+
+    #[test]
+    fn test_get_platform_resolves_alias() {
+        let cursor = get_platform("cursor");
+        assert!(cursor.is_some());
+        assert_eq!(cursor.clone().unwrap().id, "cursor");
+
+        let cursor_ai = get_platform("cursor-ai");
+        assert!(cursor_ai.is_some());
+        assert_eq!(cursor_ai.clone().unwrap().id, "cursor");
+        assert_eq!(cursor_ai.clone().unwrap().name, "Cursor");
+    }
+
+    #[test]
+    fn test_get_platforms_resolves_aliases() {
+        let platforms = get_platforms(&["cursor-ai".to_string(), "claude".to_string()]).unwrap();
+        assert_eq!(platforms.len(), 2);
+        assert_eq!(platforms[0].id, "cursor");
+        assert_eq!(platforms[0].name, "Cursor");
+        assert_eq!(platforms[1].id, "claude");
+        assert_eq!(platforms[1].name, "Claude Code");
+    }
+
+    #[test]
+    fn test_get_platform_unknown_alias() {
+        let unknown = get_platform("unknown-alias");
+        assert!(unknown.is_none());
     }
 }

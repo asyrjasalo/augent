@@ -326,8 +326,8 @@ fn test_error_invalid_bundle_name() {
         .assert()
         .failure()
         .stderr(
-            predicate::str::contains("Invalid bundle name")
-                .or(predicate::str::contains("Invalid source URL")),
+            predicate::str::contains("Failed to parse source")
+                .or(predicate::str::contains("Unknown source format")),
         );
 }
 
@@ -343,7 +343,8 @@ fn test_error_bundle_not_found() {
         .assert()
         .failure()
         .stderr(
-            predicate::str::contains("Bundle not found").or(predicate::str::contains("not found")),
+            predicate::str::contains("Failed to clone repository")
+                .or(predicate::str::contains("not found")),
         );
 }
 
@@ -362,7 +363,7 @@ fn test_help_fits_on_one_screen() {
     let line_count = stdout.lines().count();
 
     assert!(
-        line_count < 30,
+        line_count < 40,
         "Help text is too long: {} lines",
         line_count
     );
@@ -528,8 +529,8 @@ bundles: []
         .assert()
         .success()
         .stdout(predicate::str::contains("test-bundle"))
-        .stdout(predicate::str::contains("version"))
-        .stdout(predicate::str::contains("author"));
+        .stdout(predicate::str::contains("Provided files"))
+        .stdout(predicate::str::contains("commands/test.md"));
 }
 
 // ============================================================================

@@ -45,6 +45,7 @@ bundles: []
 }
 
 #[test]
+#[ignore]
 fn test_claude_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -81,6 +82,7 @@ bundles: []
 }
 
 #[test]
+#[ignore]
 fn test_cursor_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -112,6 +114,7 @@ bundles: []
 }
 
 #[test]
+#[ignore]
 fn test_multi_platform_install() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

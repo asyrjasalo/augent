@@ -152,7 +152,8 @@ fn test_conflicting_dependencies() {
         "bundles/bundle-a/augent.yaml",
         r#"name: "@test/bundle-a"
 bundles:
-  - "@test/shared"
+  - name: "@test/shared"
+    subdirectory: ../bundle-shared
 "#,
     );
     workspace.write_file("bundles/bundle-a/commands/a.md", "# A\n");
@@ -162,7 +163,8 @@ bundles:
         "bundles/bundle-b/augent.yaml",
         r#"name: "@test/bundle-b"
 bundles:
-  - "@test/shared"
+  - name: "@test/shared"
+    subdirectory: ../bundle-shared
 "#,
     );
     workspace.write_file("bundles/bundle-b/commands/b.md", "# B\n");
@@ -276,10 +278,12 @@ fn test_install_bundle_without_augent_yaml() {
     workspace.create_bundle("no-yaml");
     workspace.write_file("bundles/no-yaml/commands/test.md", "# Test\n");
 
+    // A bundle without augent.yaml but with resource directories is now allowed
+    // The system auto-generates a bundle name like @local/no-yaml
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", "./bundles/no-yaml", "--for", "claude"])
         .assert()
-        .failure()
-        .stderr(predicate::str::contains("augent.yaml"));
+        .success()
+        .stdout(predicate::str::contains("Installed"));
 }
