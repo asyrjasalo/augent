@@ -294,6 +294,7 @@ fn update_configs(
 mod tests {
     use super::*;
     use crate::source::GitSource;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[test]
@@ -381,11 +382,96 @@ mod tests {
 
         let locked = create_locked_bundle(&bundle).unwrap();
         assert_eq!(locked.name, "@test/bundle");
+        assert!(locked.files.contains(&"commands/test.md".to_string()));
         assert!(matches!(locked.source, LockedSource::Git { .. }));
 
         if let LockedSource::Git { sha, git_ref, .. } = &locked.source {
             assert_eq!(sha, "abc123");
             assert_eq!(git_ref, &Some("main".to_string()));
         }
+    }
+
+    #[test]
+    fn test_generate_lockfile_empty() {
+        let temp = TempDir::new().unwrap();
+
+        let workspace = crate::workspace::Workspace {
+            root: temp.path().to_path_buf(),
+            augent_dir: temp.path().join(".augent"),
+            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
+            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
+            lockfile: crate::config::Lockfile::new("@test/workspace"),
+        };
+
+        let lockfile = generate_lockfile(&workspace, &[]).unwrap();
+
+        assert_eq!(lockfile.name, "@test/workspace");
+        assert!(lockfile.bundles.is_empty());
+    }
+
+    #[test]
+    fn test_generate_lockfile_with_bundle() {
+        let temp = TempDir::new().unwrap();
+
+        std::fs::create_dir(temp.path().join("commands")).unwrap();
+        std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
+
+        let workspace = crate::workspace::Workspace {
+            root: temp.path().to_path_buf(),
+            augent_dir: temp.path().join(".augent"),
+            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
+            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
+            lockfile: crate::config::Lockfile::new("@test/workspace"),
+        };
+
+        let bundle = crate::resolver::ResolvedBundle {
+            name: "@test/bundle".to_string(),
+            dependency: None,
+            source_path: temp.path().to_path_buf(),
+            resolved_sha: None,
+            git_source: None,
+            config: None,
+        };
+
+        let lockfile = generate_lockfile(&workspace, &[bundle]).unwrap();
+
+        assert_eq!(lockfile.name, "@test/workspace");
+        assert_eq!(lockfile.bundles.len(), 1);
+        assert_eq!(lockfile.bundles[0].name, "@test/bundle");
+    }
+
+    #[test]
+    #[ignore]
+    fn test_select_bundle_interactively_single() {
+        let bundles = vec![crate::resolver::DiscoveredBundle {
+            name: "@test/bundle1".to_string(),
+            path: PathBuf::from("/tmp/bundle1"),
+            description: Some("First bundle".to_string()),
+        }];
+
+        let selected = select_bundle_interactively(&bundles).unwrap();
+
+        assert_eq!(selected.name, "@test/bundle1");
+    }
+
+    #[test]
+    #[ignore]
+    fn test_select_bundle_interactively_multiple() {
+        let bundles = vec![
+            crate::resolver::DiscoveredBundle {
+                name: "@test/bundle1".to_string(),
+                path: PathBuf::from("/tmp/bundle1"),
+                description: Some("First bundle".to_string()),
+            },
+            crate::resolver::DiscoveredBundle {
+                name: "@test/bundle2".to_string(),
+                path: PathBuf::from("/tmp/bundle2"),
+                description: Some("Second bundle".to_string()),
+            },
+        ];
+
+        let selected = select_bundle_interactively(&bundles).unwrap();
+
+        assert!(selected.name == "@test/bundle1" || selected.name == "@test/bundle2");
     }
 }

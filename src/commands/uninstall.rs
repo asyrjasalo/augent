@@ -519,7 +519,7 @@ bundles:
 
     #[test]
     fn test_determine_files_to_remove_nonexistent_bundle() {
-        let lockfile = Lockfile::new("@test/workspace");
+        let lockfile = create_test_lockfile();
 
         let workspace_root = TempDir::new().unwrap();
         let workspace_path = workspace_root.path();
@@ -551,5 +551,89 @@ bundles:
             determine_files_to_remove(&workspace, "nonexistent", &["test.txt".to_string()]);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_check_file_conflicts_no_conflict() {
+        let mut lockfile = Lockfile::new("@test/workspace");
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "bundle1".to_string(),
+            source: crate::config::LockedSource::Dir {
+                path: ".augent/bundles/bundle1".to_string(),
+                hash: "hash1".to_string(),
+            },
+            files: vec!["file1.txt".to_string()],
+        });
+
+        let mut workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+
+        workspace_config.add_bundle(crate::config::WorkspaceBundle {
+            name: "bundle2".to_string(),
+            enabled: std::collections::HashMap::new(),
+        });
+
+        assert!(!check_file_conflicts(
+            &lockfile,
+            "bundle2",
+            "bundle1",
+            &workspace_config
+        ));
+    }
+
+    #[test]
+    fn test_check_file_conflicts_with_conflict() {
+        let mut lockfile = Lockfile::new("@test/workspace");
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "bundle1".to_string(),
+            source: crate::config::LockedSource::Dir {
+                path: ".augent/bundles/bundle1".to_string(),
+                hash: "hash1".to_string(),
+            },
+            files: vec!["shared.txt".to_string()],
+        });
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "bundle2".to_string(),
+            source: crate::config::LockedSource::Dir {
+                path: ".augent/bundles/bundle2".to_string(),
+                hash: "hash2".to_string(),
+            },
+            files: vec!["shared.txt".to_string()],
+        });
+
+        let mut workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+
+        workspace_config.add_bundle(crate::config::WorkspaceBundle {
+            name: "bundle1".to_string(),
+            enabled: {
+                let mut enabled = std::collections::HashMap::new();
+                enabled.insert(
+                    "shared.txt".to_string(),
+                    vec![".opencode/shared.txt".to_string()],
+                );
+                enabled
+            },
+        });
+
+        assert!(check_file_conflicts(
+            &lockfile,
+            "bundle1",
+            "bundle2",
+            &workspace_config
+        ));
+    }
+
+    #[test]
+    fn test_is_dir_empty_with_files() {
+        let temp = TempDir::new().unwrap();
+        let dir = temp.path().join("test");
+
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join("file1.txt"), "content").unwrap();
+        fs::write(dir.join("file2.md"), "content").unwrap();
+
+        assert!(!is_dir_empty(&dir).unwrap());
     }
 }

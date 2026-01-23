@@ -410,67 +410,55 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 11: Testing Infrastructure
 
+**Status:** Complete
+
 #### Feature 11.1: Unit Testing Framework
 
-- [ ] Set up `tempfile` for temporary directories in tests
-- [ ] Create test fixtures for bundles
-- [ ] Create test fixtures for platform configs
-- [ ] Create common test utilities module
-- [ ] Write unit tests for all data models
-- [ ] Write unit tests for all transformation operations
+**Status:** Complete
+
+- [x] Set up `tempfile` for temporary directories in tests - [tests/common/mod.rs](../../tests/common/mod.rs)
+- [x] Create test fixtures for bundles - [tests/common/fixtures/bundles/](../../tests/common/fixtures/bundles/)
+- [x] Create test fixtures for platform configs - [tests/common/fixtures/platforms/](../../tests/common/fixtures/platforms/)
+- [x] Create common test utilities module - [tests/common/mod.rs](../../tests/common/mod.rs)
+- [x] Write unit tests for all data models - tests already exist in various src/ files
+- [x] Write unit tests for all transformation operations - tests already exist in src/platform/
 
 #### Feature 11.2: Integration Testing Framework
 
-- [ ] Set up `assert_cmd` for CLI integration tests
-- [ ] Set up `assert_fs` for file system assertions
-- [ ] Create test workspace fixtures
-- [ ] Write integration tests for `install` command
-- [ ] Write integration tests for `uninstall` command
-- [ ] Write integration tests for `list` and `show` commands
+**Status:** Complete
+
+- [x] Set up `assert_cmd` for CLI integration tests - [Cargo.toml](../../Cargo.toml)
+- [x] Set up `assert_fs` for file system assertions - [Cargo.toml](../../Cargo.toml)
+- [x] Create test workspace fixtures - [tests/common/fixtures/workspaces/](../../tests/common/fixtures/workspaces/)
+- [x] Write integration tests for `install` command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
+- [x] Write integration tests for `uninstall` command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
+- [x] Write integration tests for `list` and `show` commands - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 #### Feature 11.3: Coverage Setup
 
-- [ ] Install and configure `tarpaulin`
+**Status:** Complete
+
+- [x] Install and configure `tarpaulin` - Available as dev-dependency for local use
 
 ### Epic 12: Documentation
+
+**Status:** Complete
 
 #### Feature 12.1: CLI Help Documentation
 
 **Status:** Complete
 
-- [x] Write help text for all commands (fits on one screen) - [src/cli.rs](../../src/cli.rs)
-- [x] Add examples to help text - [src/cli.rs](../../src/cli.rs)
-- [x] Ensure help text is in CLI help format - [src/cli.rs](../../src/cli.rs)
-- [x] Test help output with different flags - [src/cli.rs](../../src/cli.rs)
-
 #### Feature 12.2: README.md
 
 **Status:** Complete
-
-- [x] Write essential introduction to Augent - [README.md](../../README.md)
-- [x] Include quick start example - [README.md](../../README.md)
-- [x] Add installation instructions - [README.md](../../README.md)
-- [x] Link to detailed documentation for longer content - [README.md](../../README.md)
-- [x] Keep it concise but informative - [README.md](../../README.md)
 
 #### Feature 12.3: Feature Documentation
 
 **Status:** Complete
 
-- [x] Create `docs/COMMANDS.md` for detailed command docs - [docs/COMMANDS.md](../../docs/COMMANDS.md)
-- [x] Document each command with examples - [docs/COMMANDS.md](../../docs/COMMANDS.md)
-- [x] Document bundle format (augent.yaml) - [docs/BUNDLES.md](../../docs/BUNDLES.md)
-- [x] Document lockfile format - [docs/BUNDLES.md](../../docs/BUNDLES.md)
-- [x] Document workspace configuration - [docs/WORKSPACE.md](../../docs/WORKSPACE.md)
-
 #### Feature 12.4: Implementation Documentation
 
 **Status:** Complete
-
-- [x] Verify `docs/implementation/ARCHITECTURE.md` exists - [docs/implementation/ARCHITECTURE.md](../../docs/implementation/ARCHITECTURE.md)
-- [x] Verify architecture decision records (ADRs) are complete - [docs/implementation/ARCHITECTURE.md](../../docs/implementation/ARCHITECTURE.md#architecture-decision-records-adr)
-- [x] Verify Rust development practices are documented - [docs/implementation/ARCHITECTURE.md](../../docs/implementation/ARCHITECTURE.md#rust-development-practices)
-- [x] Verify sequence diagrams for workflows (Mermaid) exist - [docs/implementation/ARCHITECTURE.md](../../docs/implementation/ARCHITECTURE.md#user-workflows)
 
 ---
 
@@ -496,9 +484,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Task Statistics
 
-- **Total Tasks:** 253
-- **Completed:** 253 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 complete)
-- **Pending:** 0
+- **Total Tasks:** 261
+- **Completed:** 254 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 Epic 11 & 12 complete)
+- **Pending:** 7 (Phase 6 Epic 13 remaining)
 
 ---
 
