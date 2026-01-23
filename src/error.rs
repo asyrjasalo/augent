@@ -2,7 +2,7 @@
 //!
 //! Uses `thiserror` for error definitions and `miette` for pretty diagnostics.
 
-#![allow(dead_code)]
+#![allow(dead_code, unused_assignments)]
 
 use miette::Diagnostic;
 use thiserror::Error;
