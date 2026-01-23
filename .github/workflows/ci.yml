@@ -17,6 +17,7 @@ jobs:
     name: Test (${{ matrix.os }} - ${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           # Linux
@@ -39,9 +40,7 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             use_cross: false
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            use_cross: true
+          # Note: aarch64-pc-windows-msvc is build-only (no cross Docker image)
 
     steps:
       - name: Checkout code
