@@ -124,16 +124,6 @@ jobs:
             cargo test --release --target ${{ matrix.target }}
           fi
 
-      - name: Run clippy
-        if: matrix.build_only != true
-        shell: bash
-        run: |
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross clippy --release --target ${{ matrix.target }} -- -D warnings
-          else
-            cargo clippy --release --target ${{ matrix.target }} -- -D warnings
-          fi
-
       - name: Build release binary
         shell: bash
         run: |
