@@ -23,7 +23,7 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
    - This allows epics to be worked in parallel as long as dependencies are met
 2. **Create task** - Add a task to the end of @docs/implementation/TASKS.md before starting work
 3. **Research** - Review existing documentation:
-   - @docs/implementation/PRD.md for requirements
+   - @docs/pre-implementation/PRD.md for requirements
    - @docs/implementation/ARCHITECTURE.md for design decisions
    - @docs/implementation/TESTING.md for testing requirements
 4. **Create tests first** - Write tests before implementation (TDD approach)
@@ -53,6 +53,7 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 
 - Do not reference code by specific line numbers in documentation
 - Do not count lines or use vanity metrics in documentation
+- Do not update @docs/pre-implementation/ - these are historical documents
 - Do not create git commits unless explicitly asked
 - Do not push to remote repositories unless explicitly asked
 - Error messages should be clear and human-readable
@@ -62,7 +63,8 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 
 | Document | Purpose |
 |----------|---------|
-| @docs/implementation/PRD.md | Product requirements and Type 1/2 decisions |
+| @docs/pre-implementation/PRD.md | Product requirements and Type 1/2 decisions |
+| @docs/pre-implementation/ | Historical planning documents (do not modify) |
 | @docs/implementation/PLAN.md | Implementation plan with epics/features |
 | @docs/implementation/TASKS.md | Task tracking checklist |
 | @docs/implementation/TESTING.md | Testing strategy and requirements |

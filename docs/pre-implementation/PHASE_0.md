@@ -1,0 +1,62 @@
+# Phase 0: Pre-Implementation Planning
+
+Tasks (use <--- WE ARE HERE marker to track progress)
+
+- write @docs/pre-implementation/PRD.md
+- write @docs/implementation/PLAN.md
+  - ensure all pending research is done
+    - you don't need code yet
+    - you can research [OpenPackage](https://github.com/enulus/OpenPackage) to understand how to implement AI agent (platform) independent resources
+  - split implementation to epics
+    - split epics to features
+      - split features to tasks
+        - these tasks should be checkboxes (each task should fit within a context window)
+          - maintain task list in @docs/implementation/TASKS.md
+- write testing plan - @docs/implementation/TESTING.md
+  - testing plan, includes:
+    - unit tests always
+    - integration tests for every feature
+      - test uses REAL CLI
+    - target to have 80% test coverage
+      - use Tarpaulin
+    - all tests must pass for feature to be complete
+    - add test after fix to ensure that the fix is effective ALWAYS!
+- write architecture document - @docs/implementation/ARCHITECTURE.md
+  - includes (at least):
+    - introduces key concepts
+    - introduces fundamental design decisions and reasoning (from PRD)
+    - describes workflows from user point of view
+      - sequence diagrams (mermaid)
+    - Rust development practices
+    - architecture decision record (ADR)
+      - only updated, earlier never removed
+- write documentation plan - @docs/implementation/DOCUMENTATION.md
+  - includes (at least):
+    - USER FACING DOCS (more important)
+      - CLI help is the primary help, ALWAYS
+      - must be in CLI help format
+      - README.md
+        - must be essentials, but include example or a few
+        - if longer, put docs/FEATURE.md and link from README.md
+    - internal docs (must be kept update)
+      - implementation docs: @docs/implementation/specs/FEATURE.md
+    - if there are architecture changes, always confirm the user
+      - then add new ARCHITECTURE.md decision records
+- update @CLAUDE.md with following instructions:
+  - "you must follow this process ALWAYS when implementing any feature or bug fix":
+    - create a task to the end of @docs/implementation/TASKS.md
+    - research what exists per existing documentation
+    - create tests first
+    - create implementation
+    - make tests pass
+    - run linters and formatters
+    - create and update docs
+    - ensure task is complete
+    - tick the checkbox in @docs/implementation/TASKS.md
+      - link to relevant documentation (file + section)
+    - update @CHANGELOG.md if it is user-facing feature or bug fix
+  - also ensure these are mentioned:
+    - do not reference to the code by specific line numbers
+    - you do not need to count lines or do other vanity metrics in docs
+    - do not commit changes unless excplitly asked to do so
+    - do not push changes unless excplitly asked to do so
