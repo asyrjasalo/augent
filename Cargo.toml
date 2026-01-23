@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 authors = ["Anssi Syrjäsalo"]
-description = "Lean and platform independent AI coding agent resource manager"
+description = "Lean and platform independent AI coding agent package manager"
 repository = "https://github.com/asyrjasalo/augent"
 license = "AGPL-3.0"
-keywords = ["ai", "agent", "resource", "manager", "cli"]
+keywords = ["ai", "agent", "package", "manager"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
