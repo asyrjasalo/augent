@@ -64,7 +64,6 @@ struct PendingInstallation {
     source_path: PathBuf,
     target_path: PathBuf,
     merge_strategy: MergeStrategy,
-    bundle_name: String,
     bundle_path: String,
 }
 
@@ -158,7 +157,7 @@ impl<'a> Installer<'a> {
     fn collect_pending_installations(
         &self,
         resources: &[DiscoveredResource],
-        bundle: &ResolvedBundle,
+        _bundle: &ResolvedBundle,
     ) -> Result<Vec<PendingInstallation>> {
         let mut pending = Vec::new();
 
@@ -181,7 +180,6 @@ impl<'a> Installer<'a> {
                             source_path: resource.absolute_path.clone(),
                             target_path: target,
                             merge_strategy: rule.merge,
-                            bundle_name: bundle.name.clone(),
                             bundle_path: resource.bundle_path.to_string_lossy().to_string(),
                         });
                         found_rule = true;
@@ -196,7 +194,6 @@ impl<'a> Installer<'a> {
                         source_path: resource.absolute_path.clone(),
                         target_path: target,
                         merge_strategy: MergeStrategy::Replace,
-                        bundle_name: bundle.name.clone(),
                         bundle_path: resource.bundle_path.to_string_lossy().to_string(),
                     });
                 }
@@ -209,7 +206,6 @@ impl<'a> Installer<'a> {
                             source_path: resource.absolute_path.clone(),
                             target_path,
                             merge_strategy,
-                            bundle_name: bundle.name.clone(),
                             bundle_path: resource.bundle_path.to_string_lossy().to_string(),
                         });
                     }
@@ -644,37 +640,44 @@ impl<'a> Installer<'a> {
         // Must be done BEFORE extension transformation
         #[allow(clippy::needless_borrow)]
         if rule.from.contains("**") && rule.to.contains("**") {
-            let prefix_len = rule.from.find("**").unwrap_or(0);
-            let path_prefix = if prefix_len > 0 {
-                &path_str[..prefix_len.min(path_str.len())]
+            // Everything before ** in source pattern
+            let source_prefix = if let Some(pos) = rule.from.find("**") {
+                &rule.from[..pos]
             } else {
                 ""
             };
 
-            let relative_part = path_str.strip_prefix(path_prefix).unwrap_or(&path_str);
-            let trimmed_part = relative_part.trim_start_matches('/');
+            // Get the part after the source prefix (e.g., "test.md" from "commands/test.md")
+            let relative_part = path_str
+                .strip_prefix(source_prefix)
+                .unwrap_or(&path_str)
+                .trim_start_matches('/');
 
-            // When replacing ** in target, we need to strip the target's extension from the matched part
-            // to avoid duplicate extensions when applying the rule extension later
-            let target_without_ext = if rule.extension.is_some() {
-                // Strip the extension pattern from the target before replacing wildcards
-                // The extension will be applied later as a separate step
-                if let Some(pos) = target.rfind('.') {
-                    target[..pos].to_string()
+            // Split target around ** to get prefix and suffix
+            if let Some(pos) = target.find("**") {
+                let target_prefix = &target[..pos];
+                let suffix_start = pos + 2; // Skip "**"
+
+                // Get everything after ** in target
+                let suffix = if suffix_start < target.len() {
+                    &target[suffix_start..]
                 } else {
-                    target.clone()
-                }
-            } else {
-                target.clone()
-            };
+                    ""
+                };
 
-            // Replace **/ with the relative part, being careful to handle the slash correctly
-            if target.contains("/**/") {
-                // Pattern like ".cursor/rules/**/*.mdc" - has slashes around **
-                target = target_without_ext.replace("/**/", &format!("/{}/", trimmed_part));
-            } else if target.contains("**") {
-                // Pattern like ".cursor/rules/**" - no trailing slash
-                target = target_without_ext.replace("**", &trimmed_part);
+                // If suffix starts with '/', it's meant to be part of path structure
+                // Don't append it - relative_part already contains the full path
+                if suffix.starts_with('/') {
+                    let suffix_without_slash = &suffix[1..];
+                    // If suffix contains '.' or '*', it's a filename pattern extension
+                    // In that case, relative_part already has the filename
+                    if suffix_without_slash.contains('.') || suffix_without_slash.contains('*') {
+                        target = format!("{}{}", target_prefix, relative_part);
+                    } else {
+                        target =
+                            format!("{}{}{}", target_prefix, relative_part, suffix_without_slash);
+                    }
+                }
             }
         }
 

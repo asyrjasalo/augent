@@ -3,7 +3,6 @@
 mod common;
 
 use assert_cmd::Command;
-use predicates::prelude::*;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {

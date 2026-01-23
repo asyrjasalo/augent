@@ -59,9 +59,31 @@ It does NOT:
 - Do not update @docs/pre-implementation/ - these are historical documents
 - Do not create git commits unless explicitly asked
 - Do not push to remote repositories unless explicitly asked
-- Do not use `git checkout` or `git reset` to revert changes
 - Error messages should be clear and human-readable
 - Operations must be atomic - workspace should never be left in inconsistent state
+
+## CRITICAL: GIT OPERATIONS RESTRICTIONS
+
+**YOU MUST NEVER, UNDER ANY CIRCUMSTANCES, RUN THE FOLLOWING GIT COMMANDS:**
+
+- ❌ `git checkout` - **ABSOLUTELY FORBIDDEN**
+- ❌ `git reset` - **ABSOLUTELY FORBIDDEN**
+
+**These commands are strictly prohibited because:**
+
+1. They can destroy user's work
+2. They can undo changes the user intentionally made
+3. They can break the git history in unrecoverable ways
+4. They are DANGEROUS and should never be run by an AI agent
+
+**If you make mistakes:**
+
+- Use `git diff` to understand what changed
+- Manually revert changes using `edit` tool
+- Ask the user how they want to proceed
+- NEVER attempt to "undo" with git checkout or reset
+
+**This is a hard rule with NO exceptions.**
 
 ## Key Documentation
 
