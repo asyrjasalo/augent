@@ -41,7 +41,7 @@ fn test_uninstall_stub() {
         .args(["uninstall", "my-bundle"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("BundleNotFound"));
+        .stderr(predicate::str::contains("Bundle not found"));
 }
 
 #[test]
@@ -376,7 +376,7 @@ bundles: []
         .args(["show", "nonexistent-bundle"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("BundleNotFound"));
+        .stderr(predicate::str::contains("Bundle not found"));
 }
 
 #[test]

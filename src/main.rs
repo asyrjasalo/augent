@@ -21,12 +21,11 @@ mod transaction;
 mod workspace;
 
 use cli::{Cli, Commands};
-use error::Result;
 
-fn main() -> Result<()> {
+fn main() {
     let cli = Cli::parse();
 
-    match cli.command {
+    let result = match cli.command {
         Commands::Install(args) => commands::install::run(cli.workspace, args),
         Commands::Uninstall(args) => commands::uninstall::run(cli.workspace, args),
         Commands::List(args) => commands::list::run(cli.workspace, args),
@@ -34,5 +33,10 @@ fn main() -> Result<()> {
         Commands::CleanCache(args) => commands::clean_cache::run(args),
         Commands::Version => commands::version::run(),
         Commands::Completions(args) => commands::completions::run(args),
+    };
+
+    if let Err(e) = result {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
     }
 }

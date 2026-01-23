@@ -263,24 +263,31 @@ fn update_configs(
     resolved_bundles: &[crate::resolver::ResolvedBundle],
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
 ) -> Result<()> {
-    // Add dependency to bundle config if it's not already there
-    if let Some(first_bundle) = resolved_bundles.first() {
-        if !workspace.bundle_config.has_dependency(&first_bundle.name) {
-            // Parse the source to create a proper dependency
-            let bundle_source = BundleSource::parse(source)?;
-            let dependency = match bundle_source {
-                BundleSource::Dir { path } => {
-                    BundleDependency::local(&first_bundle.name, path.to_string_lossy().to_string())
-                }
-                BundleSource::Git(git) => {
-                    BundleDependency::git(&first_bundle.name, &git.url, git.git_ref.clone())
-                }
-            };
-            workspace.bundle_config.add_dependency(dependency);
+    // Add all resolved bundles to bundle config
+    for bundle in resolved_bundles.iter() {
+        if bundle.dependency.is_none() {
+            // Root bundle (what user specified): add with original source specification
+            if !workspace.bundle_config.has_dependency(&bundle.name) {
+                let bundle_source = BundleSource::parse(source)?;
+                let dependency = match bundle_source {
+                    BundleSource::Dir { path } => {
+                        BundleDependency::local(&bundle.name, path.to_string_lossy().to_string())
+                    }
+                    BundleSource::Git(git) => {
+                        BundleDependency::git(&bundle.name, &git.url, git.git_ref.clone())
+                    }
+                };
+                workspace.bundle_config.add_dependency(dependency);
+            }
+        } else if let Some(dep) = &bundle.dependency {
+            // Transitive dependency: add as-is from the original dependency declaration
+            if !workspace.bundle_config.has_dependency(&bundle.name) {
+                workspace.bundle_config.add_dependency(dep.clone());
+            }
         }
     }
 
-    // Update lockfile - merge new bundles with existing ones
+    // Update lockfile - merge new bundles with existing ones (in topological order)
     for bundle in resolved_bundles {
         let locked_bundle = create_locked_bundle(bundle)?;
         // Remove existing entry if present (to update it)

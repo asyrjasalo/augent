@@ -36,7 +36,7 @@ bundles: []
         r#"name: "@test/main-bundle"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: bundles/dep-bundle
+    subdirectory: ../dep-bundle
 "#,
     );
     workspace.write_file(
@@ -90,7 +90,7 @@ bundles: []
         r#"name: "@test/main-bundle"
 bundles:
   - name: "@test/dep-1"
-    subdirectory: bundles/dep-1
+    subdirectory: ../dep-1
 "#,
     );
     workspace.write_file(

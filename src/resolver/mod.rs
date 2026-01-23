@@ -61,15 +61,20 @@ pub struct Resolver {
 
     /// Resolution stack for cycle detection
     resolution_stack: Vec<String>,
+
+    /// Current context path for resolving relative dependencies
+    current_context: std::path::PathBuf,
 }
 
 impl Resolver {
     /// Create a new resolver for the given workspace
     pub fn new(workspace_root: impl Into<std::path::PathBuf>) -> Self {
+        let workspace_root_path = workspace_root.into();
         Self {
-            workspace_root: workspace_root.into(),
+            workspace_root: workspace_root_path.clone(),
             resolved: HashMap::new(),
             resolution_stack: Vec::new(),
+            current_context: workspace_root_path,
         }
     }
 
@@ -184,17 +189,33 @@ impl Resolver {
         }
     }
 
+    /// Resolve a bundle source to a ResolvedBundle with a specific context
+    fn resolve_source_with_context(
+        &mut self,
+        source: &BundleSource,
+        dependency: Option<&BundleDependency>,
+        context_path: &std::path::Path,
+    ) -> Result<ResolvedBundle> {
+        let previous_context = self.current_context.clone();
+        self.current_context = context_path.to_path_buf();
+
+        let result = self.resolve_source(source, dependency);
+
+        self.current_context = previous_context;
+        result
+    }
+
     /// Resolve a local directory bundle
     fn resolve_local(
         &mut self,
         path: &Path,
         dependency: Option<&BundleDependency>,
     ) -> Result<ResolvedBundle> {
-        // Make path absolute relative to workspace root
+        // Make path absolute relative to current context
         let full_path = if path.is_absolute() {
             path.to_path_buf()
         } else {
-            self.workspace_root.join(path)
+            self.current_context.join(path)
         };
 
         // Check if directory exists
@@ -231,10 +252,10 @@ impl Resolver {
         // Push onto resolution stack for cycle detection
         self.resolution_stack.push(name.clone());
 
-        // Resolve dependencies first
+        // Resolve dependencies first with the bundle's directory as context
         if let Some(cfg) = &config {
             for dep in &cfg.bundles {
-                self.resolve_dependency(dep)?;
+                self.resolve_dependency_with_context(dep, &full_path)?;
             }
         }
 
@@ -312,10 +333,10 @@ impl Resolver {
         // Push onto resolution stack for cycle detection
         self.resolution_stack.push(name.clone());
 
-        // Resolve dependencies first
+        // Resolve dependencies first with the bundle's directory as context
         if let Some(cfg) = &config {
             for dep in &cfg.bundles {
-                self.resolve_dependency(dep)?;
+                self.resolve_dependency_with_context(dep, &content_path)?;
             }
         }
 
@@ -336,6 +357,7 @@ impl Resolver {
         Ok(resolved)
     }
 
+    #[allow(dead_code)]
     /// Resolve a dependency declaration
     fn resolve_dependency(&mut self, dep: &BundleDependency) -> Result<ResolvedBundle> {
         let source = if let Some(ref git_url) = dep.git {
@@ -362,6 +384,38 @@ impl Resolver {
         };
 
         self.resolve_source(&source, Some(dep))
+    }
+
+    /// Resolve a dependency with a specific context path
+    fn resolve_dependency_with_context(
+        &mut self,
+        dep: &BundleDependency,
+        context_path: &std::path::Path,
+    ) -> Result<ResolvedBundle> {
+        let source = if let Some(ref git_url) = dep.git {
+            // Git dependency
+            let git_source = GitSource {
+                url: git_url.clone(),
+                git_ref: dep.git_ref.clone(),
+                subdirectory: dep.subdirectory.clone(),
+                resolved_sha: None,
+            };
+            BundleSource::Git(git_source)
+        } else if let Some(ref subdir) = dep.subdirectory {
+            // Local dependency
+            BundleSource::Dir {
+                path: std::path::PathBuf::from(subdir),
+            }
+        } else {
+            return Err(AugentError::BundleValidationFailed {
+                message: format!(
+                    "Dependency '{}' has neither 'git' nor 'subdirectory' specified",
+                    dep.name
+                ),
+            });
+        };
+
+        self.resolve_source_with_context(&source, Some(dep), context_path)
     }
 
     /// Check for circular dependencies
@@ -580,7 +634,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: bundle-c
+    subdirectory: ../bundle-c
 "#,
         )
         .unwrap();
@@ -594,7 +648,7 @@ bundles:
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ./bundle-b
+    subdirectory: ../bundle-b
 "#,
         )
         .unwrap();
@@ -651,7 +705,7 @@ bundles:
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: bundle-b
+    subdirectory: ../bundle-b
 "#,
         )
         .unwrap();
@@ -665,7 +719,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-a"
-    subdirectory: bundle-a
+    subdirectory: ../bundle-a
 "#,
         )
         .unwrap();

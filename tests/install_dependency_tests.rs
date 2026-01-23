@@ -1,0 +1,341 @@
+//! Dependency resolution tests
+//!
+//! Tests for dependency graph resolution, circular dependencies,
+//! complex dependency graphs, and dependency ordering.
+
+mod common;
+
+use assert_cmd::Command;
+use predicates::prelude::*;
+
+#[allow(deprecated)]
+fn augent_cmd() -> Command {
+    Command::cargo_bin("augent").unwrap()
+}
+
+#[test]
+fn test_circular_dependency_detection_shows_clear_error() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+    let bundle_b = workspace.create_bundle("bundle-b");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("test.md"), "# Bundle A")
+        .expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles:
+  - name: "@test/bundle-a"
+    subdirectory: ../bundle-a
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_b.join("rules")).unwrap();
+    std::fs::write(bundle_b.join("rules").join("test.md"), "# Bundle B")
+        .expect("Failed to write rule");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Circular dependency"));
+}
+
+#[test]
+fn test_complex_dependency_graph_three_levels_deep() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+    let bundle_b = workspace.create_bundle("bundle-b");
+    let bundle_c = workspace.create_bundle("bundle-c");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("a.md"), "# A").expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles:
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_b.join("rules")).unwrap();
+    std::fs::write(bundle_b.join("rules").join("b.md"), "# B").expect("Failed to write rule");
+
+    workspace.write_file(
+        "bundles/bundle-c/augent.yaml",
+        r#"
+name: "@test/bundle-c"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
+    std::fs::write(bundle_c.join("skills").join("c.md"), "# C").expect("Failed to write skill");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+    assert!(workspace.file_exists(".cursor/rules/b.md"));
+    assert!(workspace.file_exists(".cursor/skills/c.md"));
+}
+
+#[test]
+fn test_transitive_dependencies() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+    let bundle_b = workspace.create_bundle("bundle-b");
+    let bundle_c = workspace.create_bundle("bundle-c");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("a.md"), "# A depends on B")
+        .expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles:
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_b.join("rules")).unwrap();
+    std::fs::write(bundle_b.join("rules").join("b.md"), "# B depends on C")
+        .expect("Failed to write rule");
+
+    workspace.write_file(
+        "bundles/bundle-c/augent.yaml",
+        r#"
+name: "@test/bundle-c"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
+    std::fs::write(bundle_c.join("skills").join("c.md"), "# C has no deps")
+        .expect("Failed to write skill");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+    assert!(workspace.file_exists(".cursor/rules/b.md"));
+    assert!(workspace.file_exists(".cursor/skills/c.md"));
+
+    let config = workspace.read_file(".augent/augent.yaml");
+    assert!(config.contains("@test/bundle-a"));
+    assert!(config.contains("@test/bundle-b"));
+    assert!(config.contains("@test/bundle-c"));
+}
+
+#[test]
+fn test_duplicate_dependency_resolution() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+    let bundle_b = workspace.create_bundle("bundle-b");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("a.md"), "# A").expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_b.join("rules")).unwrap();
+    std::fs::write(bundle_b.join("rules").join("b.md"), "# B").expect("Failed to write rule");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .success();
+
+    let config = workspace.read_file(".augent/augent.yaml");
+    let bundle_b_count = config.matches("@test/bundle-b").count();
+    assert_eq!(
+        bundle_b_count, 1,
+        "Bundle B should appear once in config (duplicates are de-duplicated)"
+    );
+}
+
+#[test]
+fn test_dependency_order_in_lockfile() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+    let bundle_b = workspace.create_bundle("bundle-b");
+    let bundle_c = workspace.create_bundle("bundle-c");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("a.md"), "# A").expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles:
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_b.join("rules")).unwrap();
+    std::fs::write(bundle_b.join("rules").join("b.md"), "# B").expect("Failed to write rule");
+
+    workspace.write_file(
+        "bundles/bundle-c/augent.yaml",
+        r#"
+name: "@test/bundle-c"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
+    std::fs::write(bundle_c.join("skills").join("c.md"), "# C").expect("Failed to write skill");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .success();
+
+    let lockfile = workspace.read_file(".augent/augent.lock");
+
+    // Search for the full bundle names to avoid matching substrings in paths
+    let pos_c = lockfile
+        .find("\"name\": \"@test/bundle-c\"")
+        .expect("Bundle C not found in lockfile");
+    let pos_b = lockfile
+        .find("\"name\": \"@test/bundle-b\"")
+        .expect("Bundle B not found in lockfile");
+    let pos_a = lockfile
+        .find("\"name\": \"@test/bundle-a\"")
+        .expect("Bundle A not found in lockfile");
+
+    assert!(
+        pos_c < pos_b && pos_b < pos_a,
+        "Dependencies should be ordered before dependents in lockfile: C before B, B before A"
+    );
+}
+
+#[test]
+fn test_bundle_with_missing_dependency_fails() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles:
+  - name: "@test/nonexistent-bundle"
+    subdirectory: ../nonexistent-bundle
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("a.md"), "# A").expect("Failed to write command");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("does not exist"))
+                .or(predicate::str::contains("BundleNotFound")),
+        );
+}
