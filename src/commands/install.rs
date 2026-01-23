@@ -249,8 +249,27 @@ fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<Lock
         }
     };
 
+    // Extract metadata from bundle config if available
+    let (description, version, author, license, homepage) = if let Some(ref config) = bundle.config
+    {
+        (
+            config.description.clone(),
+            config.version.clone(),
+            config.author.clone(),
+            config.license.clone(),
+            config.homepage.clone(),
+        )
+    } else {
+        (None, None, None, None, None)
+    };
+
     Ok(LockedBundle {
         name: bundle.name.clone(),
+        description,
+        version,
+        author,
+        license,
+        homepage,
         source,
         files,
     })

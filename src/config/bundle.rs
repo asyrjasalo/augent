@@ -12,6 +12,26 @@ pub struct BundleConfig {
     /// Bundle name (e.g., "@author/my-bundle")
     pub name: String,
 
+    /// Bundle description
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    /// Bundle version (for reference only, no semantic versioning)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+
+    /// Bundle author
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+
+    /// Bundle license
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+
+    /// Bundle homepage URL
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub homepage: Option<String>,
+
     /// Bundle dependencies
     #[serde(default)]
     pub bundles: Vec<BundleDependency>,
@@ -41,6 +61,11 @@ impl BundleConfig {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             bundles: Vec::new(),
         }
     }
@@ -209,7 +234,7 @@ bundles:
     fn test_bundle_config_validation_empty_name() {
         let config = BundleConfig {
             name: String::new(),
-            bundles: Vec::new(),
+            ..Default::default()
         };
         assert!(config.validate().is_err());
     }
@@ -218,7 +243,7 @@ bundles:
     fn test_bundle_config_validation_invalid_name() {
         let config = BundleConfig {
             name: "invalid-name".to_string(),
-            bundles: Vec::new(),
+            ..Default::default()
         };
         assert!(config.validate().is_err());
     }
@@ -227,7 +252,7 @@ bundles:
     fn test_bundle_config_validation_valid() {
         let config = BundleConfig {
             name: "@author/bundle".to_string(),
-            bundles: Vec::new(),
+            ..Default::default()
         };
         assert!(config.validate().is_ok());
     }

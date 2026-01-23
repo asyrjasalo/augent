@@ -127,9 +127,10 @@ fn test_frozen_fails_when_lockfile_missing() {
         );
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
+// Note: This test may fail in some environments if git SHA resolution is slow or times out
 #[test]
-#[ignore]
+#[ignore = "Git SHA resolution can be slow in test environments"]
 fn test_lockfile_sha_resolution_for_branches_that_moved() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -202,9 +203,8 @@ fn test_lockfile_sha_resolution_for_branches_that_moved() {
     );
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_lockfile_regeneration_after_ref_change() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

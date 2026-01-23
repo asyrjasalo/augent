@@ -432,15 +432,6 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Write integration tests for `install` command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 - [x] Write integration tests for `uninstall` command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 - [x] Write integration tests for `list` and `show` commands - [tests/cli_tests.rs](../../tests/cli_tests.rs)
-- [x] Resolve Platform-Specific Testing Gaps - [docs/implementation/TESTING_COVERAGE_GAPS.md](TESTING_COVERAGE_GAPS.md#platform-specific-testing-gaps)
-  - [x] Add test for platform detection order and priority when multiple platforms present
-  - [x] Verify commands/*.md → .claude/commands/**/*.md transformation
-  - [x] Verify rules/*.md → .claude/rules/**/*.md transformation
-  - [x] Verify skills/*.md → .claude/skills/**/*.md transformation
-  - [x] Verify rules/*.md → .cursor/rules/**/*.md transformation (extension change not working - documented as bug)
-  - [x] Verify all transformations for opencode platform (commands, rules, skills)
-  - [x] Verify same bundle transforms correctly for multiple platforms simultaneously
-  - [x] Verify directory structures are created correctly for all platforms
 
 #### Feature 11.3: Coverage Setup
 
@@ -467,8 +458,6 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Test list shows agent information for each bundle
 - [x] Verify completions command generates valid scripts for all shells (already tested in cli_options_tests.rs)
 - [x] Verify global --verbose flag works for all commands (already tested in cli_options_tests.rs)
-- [x] Update TESTING_COVERAGE_GAPS.md with resolved items
-- [x] Update test count and metrics in TESTING_COVERAGE_GAPS.md
 
 ### Epic 12: Documentation
 

@@ -145,9 +145,7 @@ bundles: []
     );
 }
 
-// TODO: Enable when MCP server configuration installation is fully implemented
 #[test]
-#[ignore]
 fn test_all_resource_types_commands_rules_skills_agents_mcp_servers() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -218,11 +216,11 @@ bundles: []
         "Agents resource should be installed"
     );
     assert!(
-        workspace.file_exists(".claude/mcp.jsonc"),
+        workspace.file_exists(".claude/mcp.json"),
         "MCP server configuration should be installed"
     );
 
-    let mcp_content = workspace.read_file(".claude/mcp.jsonc");
+    let mcp_content = workspace.read_file(".claude/mcp.json");
     assert!(
         mcp_content.contains("filesystem"),
         "MCP server should be in config"
@@ -368,6 +366,28 @@ bundles: []
         .assert()
         .success();
 
+    // Debug: list .claude directory
+    if let Ok(entries) = std::fs::read_dir(workspace.path.join(".claude")) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                println!("[DEBUG] {:?}: {:?}", entry.path(), entry.file_type());
+                if entry.path().is_dir() {
+                    if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
+                        for sub_entry in sub_entries {
+                            if let Ok(sub_entry) = sub_entry {
+                                println!(
+                                    "[DEBUG]   {:?}: {:?}",
+                                    sub_entry.path(),
+                                    sub_entry.file_type()
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     assert!(
         workspace.file_exists(".claude/commands/deploy.md"),
         "Commands should transform to .claude/commands/"
@@ -455,7 +475,6 @@ bundles: []
 }
 
 #[test]
-#[ignore]
 fn test_cursor_rules_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -476,10 +495,11 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/test-bundle"])
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
+    // Cursor rules should transform to .mdc extension
     assert!(
         workspace.file_exists(".cursor/rules/format.mdc"),
         "Rules should transform to .cursor/rules/ with .mdc extension"

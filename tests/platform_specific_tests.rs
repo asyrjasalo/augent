@@ -45,7 +45,6 @@ bundles: []
 }
 
 #[test]
-#[ignore]
 fn test_claude_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -67,11 +66,12 @@ bundles: []
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".claude/prompts/debug.md"));
+    // Claude: commands go to .claude/commands/, rules to .claude/rules/, skills to .claude/skills/
+    assert!(workspace.file_exists(".claude/commands/debug.md"));
     assert!(workspace.file_exists(".claude/rules/lint.md"));
     assert!(workspace.file_exists(".claude/skills/analyze.md"));
 
-    let debug_content = workspace.read_file(".claude/prompts/debug.md");
+    let debug_content = workspace.read_file(".claude/commands/debug.md");
     assert!(debug_content.contains("Debug Command"));
 
     let lint_content = workspace.read_file(".claude/rules/lint.md");
@@ -82,7 +82,6 @@ bundles: []
 }
 
 #[test]
-#[ignore]
 fn test_cursor_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -103,7 +102,24 @@ bundles: []
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".cursor/rules/debug.mdc"));
+    // Debug: List files in .cursor/rules/
+    let rules_dir = workspace.path.join(".cursor/rules");
+    if rules_dir.exists() {
+        println!("Files in .cursor/rules/:");
+        for entry in std::fs::read_dir(&rules_dir).unwrap() {
+            let entry = entry.unwrap();
+            println!("  {:?}", entry.file_name());
+        }
+    } else {
+        println!(".cursor/rules/ does not exist");
+    }
+
+    // Cursor rules should get .mdc extension per platform definition
+    // Note: If this fails, check if extension transformation is working in installer
+    assert!(
+        workspace.file_exists(".cursor/rules/debug.mdc"),
+        "Expected .cursor/rules/debug.mdc, check files listed above"
+    );
     assert!(workspace.file_exists(".cursor/rules/lint.mdc"));
 
     let debug_content = workspace.read_file(".cursor/rules/debug.mdc");
@@ -114,7 +130,6 @@ bundles: []
 }
 
 #[test]
-#[ignore]
 fn test_multi_platform_install() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -140,14 +155,15 @@ bundles: []
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".claude/prompts/test.md"));
-    assert!(workspace.file_exists(".cursor/prompts/test.md"));
+    // All platforms use commands/ directory
+    assert!(workspace.file_exists(".claude/commands/test.md"));
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
     assert!(workspace.file_exists(".opencode/commands/test.md"));
 
-    let claude_content = workspace.read_file(".claude/prompts/test.md");
+    let claude_content = workspace.read_file(".claude/commands/test.md");
     assert!(claude_content.contains("Test"));
 
-    let cursor_content = workspace.read_file(".cursor/prompts/test.md");
+    let cursor_content = workspace.read_file(".cursor/commands/test.md");
     assert!(cursor_content.contains("Test"));
 
     let opencode_content = workspace.read_file(".opencode/commands/test.md");

@@ -362,6 +362,11 @@ mod tests {
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: LockedSource::Dir {
                 path: ".augent/bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
@@ -371,6 +376,11 @@ mod tests {
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle2".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: LockedSource::Dir {
                 path: ".augent/bundles/bundle2".to_string(),
                 hash: "hash2".to_string(),
@@ -584,6 +594,11 @@ bundles:
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: crate::config::LockedSource::Dir {
                 path: ".augent/bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
@@ -612,6 +627,11 @@ bundles:
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: crate::config::LockedSource::Dir {
                 path: ".augent/bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
@@ -621,6 +641,11 @@ bundles:
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle2".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: crate::config::LockedSource::Dir {
                 path: ".augent/bundles/bundle2".to_string(),
                 hash: "hash2".to_string(),
@@ -668,6 +693,11 @@ bundles:
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: crate::config::LockedSource::Dir {
                 path: ".augent/bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
@@ -677,6 +707,11 @@ bundles:
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle2".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: crate::config::LockedSource::Dir {
                 path: ".augent/bundles/bundle2".to_string(),
                 hash: "hash2".to_string(),

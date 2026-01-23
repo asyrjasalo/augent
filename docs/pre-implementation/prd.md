@@ -24,7 +24,7 @@ From the adoption point of view, likely its biggest issue is that is not designe
 
 ### How we will resolve it
 
-We will now implement an AI configuration manager (not package manager) supporting various AI agents and relying on OpenPackage's quite ok support for various AI agents (talking on them as "platforms")
+We will now implement an AI package manager supporting various AI agents and relying on OpenPackage's quite ok support for various AI agents (talking on them as "platforms")
 
 We will do this in a development-friendly manner. This means that it is not only easy, BUT OBVIOUS, to use for anyone who has used any package manager before in any programming language, and not only that but it is actually far simpler than that.
 
@@ -108,7 +108,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - If bundle has `augent.yaml` and `install` has been run, it also has `augent.lock`. Install takes care of updating the lockfile unless `--frozen` is used.
 
-- In `augent.yaml`, dependencies are specified with exact refs (branch names, tag names, or SHAs). The lockfile resolves these to exact git SHAs for reproducibility. **Note: This is a configuration manager, not a package manager, so there is no concept of semantic versioning or version ranges.**
+- In `augent.yaml`, dependencies are specified with exact refs (branch names, tag names, or SHAs). The lockfile resolves these to exact git SHAs for reproducibility. Note: There is no concept of semantic versioning or version ranges.
 
 - If `--frozen` is used, it fails if the lockfile is missing or if the resolved versions would change (e.g., remote's main branch has moved to a different commit than what's in the lockfile).
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the architecture of Augent, an AI configuration manager for managing AI coding agent resources across multiple platforms.
+This document describes the architecture of Augent, an AI package manager for managing AI coding agent resources across multiple platforms.
 
 ---
 
@@ -53,9 +53,9 @@ An **Augmentation** is a resource that has been installed for a specific AI agen
 
 These are Type 1 decisions from the PRD that cannot be reversed.
 
-### Configuration Manager, Not Package Manager
+### Package Manager
 
-Augent is a **configuration manager**. It manages AI agent resources, not software dependencies. This means:
+Augent is a **package manager**. It manages AI agent resources, not software dependencies. This means:
 
 - No semantic versioning or version ranges
 - No development vs. production dependencies

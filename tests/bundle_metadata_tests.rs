@@ -80,7 +80,7 @@ bundles: []
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".cursor/rules/lint.md"));
+    assert!(workspace.file_exists(".cursor/rules/lint.mdc"));
 }
 
 // ============================================================================
@@ -250,7 +250,7 @@ bundles:
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
-    assert!(workspace.file_exists(".cursor/rules/base.md"));
+    assert!(workspace.file_exists(".cursor/rules/base.mdc"));
 
     augent_cmd()
         .current_dir(&workspace.path)
@@ -312,7 +312,7 @@ bundles:
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
-    assert!(workspace.file_exists(".cursor/rules/dep1.md"));
-    assert!(workspace.file_exists(".cursor/rules/dep2.md"));
-    assert!(workspace.file_exists(".cursor/rules/dep3.md"));
+    assert!(workspace.file_exists(".cursor/rules/dep1.mdc"));
+    assert!(workspace.file_exists(".cursor/rules/dep2.mdc"));
+    assert!(workspace.file_exists(".cursor/rules/dep3.mdc"));
 }

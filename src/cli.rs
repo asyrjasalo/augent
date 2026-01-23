@@ -140,13 +140,20 @@ pub struct CompletionsArgs {
 #[command(after_help = "EXAMPLES:\n  \
                   Show cache size:\n    augent clean-cache --show-size\n\n\
                   Remove all cached bundles:\n    augent clean-cache --all\n\n\
-                  Show size and clean:\n    augent clean-cache -s -a")]
+                  Remove specific bundle:\n    augent clean-cache github.com-author-repo\n\n\
+                  List cached bundles:\n    augent clean-cache --list")]
 pub struct CleanCacheArgs {
+    /// Bundle slug to remove (e.g., github.com-author-repo)
+    pub bundle: Option<String>,
+
     #[arg(long, short = 's', help = "Show cache size without cleaning")]
     pub show_size: bool,
 
     #[arg(long, short = 'a', help = "Remove all cached bundles")]
     pub all: bool,
+
+    #[arg(long, short = 'l', help = "List cached bundles")]
+    pub list: bool,
 }
 
 #[cfg(test)]

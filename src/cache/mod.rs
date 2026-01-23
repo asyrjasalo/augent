@@ -193,6 +193,123 @@ pub fn clear_cache() -> Result<()> {
     Ok(())
 }
 
+/// Cached bundle information
+#[derive(Debug, Clone)]
+pub struct CachedBundle {
+    /// URL slug (e.g., "github.com-author-repo")
+    pub slug: String,
+    /// Original URL (reconstructed from slug)
+    pub url: String,
+    /// Number of cached versions
+    pub versions: usize,
+    /// Total size in bytes
+    pub size: u64,
+}
+
+impl CachedBundle {
+    /// Format size as human-readable string
+    pub fn formatted_size(&self) -> String {
+        let size = self.size as f64;
+        if size < 1024.0 {
+            format!("{} B", self.size)
+        } else if size < 1024.0 * 1024.0 {
+            format!("{:.1} KB", size / 1024.0)
+        } else if size < 1024.0 * 1024.0 * 1024.0 {
+            format!("{:.1} MB", size / (1024.0 * 1024.0))
+        } else {
+            format!("{:.1} GB", size / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+}
+
+/// List all cached bundles
+pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
+    let path = bundles_cache_dir()?;
+
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut bundles = Vec::new();
+
+    for entry in fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to read cache directory: {}", e),
+    })? {
+        let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read entry: {}", e),
+        })?;
+
+        if entry.path().is_dir() {
+            let slug = entry.file_name().to_string_lossy().to_string();
+
+            // Reconstruct URL from slug (best effort)
+            let url = slug_to_url(&slug);
+
+            // Count versions and calculate size
+            let mut versions = 0;
+            let mut size = 0u64;
+
+            for sha_entry in
+                fs::read_dir(entry.path()).map_err(|e| AugentError::CacheOperationFailed {
+                    message: format!("Failed to read SHA directory: {}", e),
+                })?
+            {
+                let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
+                    message: format!("Failed to read SHA entry: {}", e),
+                })?;
+
+                if sha_entry.path().is_dir() {
+                    versions += 1;
+                    size += dir_size(&sha_entry.path())?;
+                }
+            }
+
+            bundles.push(CachedBundle {
+                slug,
+                url,
+                versions,
+                size,
+            });
+        }
+    }
+
+    // Sort by slug for consistent ordering
+    bundles.sort_by(|a, b| a.slug.cmp(&b.slug));
+
+    Ok(bundles)
+}
+
+/// Convert a URL slug back to an approximate URL
+fn slug_to_url(slug: &str) -> String {
+    // Try to reconstruct a readable URL from the slug
+    // github.com-author-repo -> https://github.com/author/repo
+    let parts: Vec<&str> = slug.splitn(2, '-').collect();
+    if parts.len() == 2 {
+        let host = parts[0];
+        let path = parts[1].replace('-', "/");
+        format!("https://{}/{}", host, path)
+    } else {
+        slug.to_string()
+    }
+}
+
+/// Remove a specific bundle from cache by its slug
+pub fn remove_cached_bundle(slug: &str) -> Result<()> {
+    let path = bundles_cache_dir()?.join(slug);
+
+    if !path.exists() {
+        return Err(AugentError::CacheOperationFailed {
+            message: format!("Bundle not found in cache: {}", slug),
+        });
+    }
+
+    fs::remove_dir_all(&path).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to remove cached bundle: {}", e),
+    })?;
+
+    Ok(())
+}
+
 /// Get cache statistics
 pub fn cache_stats() -> Result<CacheStats> {
     let path = bundles_cache_dir()?;
@@ -419,9 +536,8 @@ mod tests {
 
     #[test]
     fn test_cache_stats() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let cache_base = temp_dir.path().join("cache");
-        std::fs::create_dir_all(&cache_base).unwrap();
+        // Clear cache before test to ensure clean state
+        let _ = clear_cache();
 
         let stats = cache_stats().unwrap();
         assert_eq!(stats.repositories, 0);

@@ -39,8 +39,8 @@ pub struct DiscoveredResource {
 /// Result of installing a file
 #[derive(Debug, Clone)]
 pub struct InstalledFile {
-    /// Source path (universal format within bundle)
-    pub source_path: String,
+    /// Source paths (universal format within bundle)
+    pub source_paths: Vec<String>,
 
     /// Target paths per platform (e.g., ".cursor/rules/debug.mdc")
     pub target_paths: Vec<String>,
@@ -56,6 +56,16 @@ pub struct Installer<'a> {
 
     /// Installed files tracking
     installed_files: HashMap<String, InstalledFile>,
+}
+
+/// A pending file installation with merge strategy
+#[derive(Debug, Clone)]
+struct PendingInstallation {
+    source_path: PathBuf,
+    target_path: PathBuf,
+    merge_strategy: MergeStrategy,
+    bundle_name: String,
+    bundle_path: String,
 }
 
 impl<'a> Installer<'a> {
@@ -117,12 +127,16 @@ impl<'a> Installer<'a> {
     /// Install a single bundle
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
         let resources = Self::discover_resources(&bundle.source_path)?;
+        let pending_installations = self.collect_pending_installations(&resources, bundle)?;
+
+        let grouped = self.group_by_target(&pending_installations);
 
         let mut workspace_bundle = WorkspaceBundle::new(&bundle.name);
-
-        for resource in resources {
-            let installed = self.install_resource(&resource, bundle)?;
-            workspace_bundle.add_file(installed.source_path.clone(), installed.target_paths);
+        for (ref target_path, ref installations) in grouped {
+            let installed = self.execute_installations(target_path, installations)?;
+            for source_path in installed.source_paths {
+                workspace_bundle.add_file(source_path, installed.target_paths.clone());
+            }
         }
 
         Ok(workspace_bundle)
@@ -138,6 +152,312 @@ impl<'a> Installer<'a> {
         }
 
         Ok(workspace_bundles)
+    }
+
+    /// Collect all pending installations for resources
+    fn collect_pending_installations(
+        &self,
+        resources: &[DiscoveredResource],
+        bundle: &ResolvedBundle,
+    ) -> Result<Vec<PendingInstallation>> {
+        let mut pending = Vec::new();
+
+        for resource in resources {
+            if resource.resource_type == "root" {
+                // Root-level resource files (like AGENTS.md, mcp.jsonc)
+                // Strip the "root" prefix from the path for lookup
+                let relative_path = resource
+                    .bundle_path
+                    .strip_prefix("root")
+                    .unwrap_or(&resource.bundle_path);
+
+                // Try to find platform transformation rules for this file
+                let mut found_rule = false;
+                for platform in &self.platforms {
+                    if let Some(rule) = self.find_transform_rule(platform, relative_path) {
+                        // Apply the transform rule to get the target and merge strategy
+                        let target = self.apply_transform_rule(rule, relative_path);
+                        pending.push(PendingInstallation {
+                            source_path: resource.absolute_path.clone(),
+                            target_path: target,
+                            merge_strategy: rule.merge,
+                            bundle_name: bundle.name.clone(),
+                            bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                        });
+                        found_rule = true;
+                        break; // Use first platform that has a rule
+                    }
+                }
+
+                // If no platform rule found, put at workspace root with replace strategy
+                if !found_rule {
+                    let target = self.workspace_root.join(relative_path);
+                    pending.push(PendingInstallation {
+                        source_path: resource.absolute_path.clone(),
+                        target_path: target,
+                        merge_strategy: MergeStrategy::Replace,
+                        bundle_name: bundle.name.clone(),
+                        bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                    });
+                }
+            } else {
+                for platform in &self.platforms {
+                    if let Some((target_path, merge_strategy)) =
+                        self.get_target_path_and_strategy(resource, platform)?
+                    {
+                        pending.push(PendingInstallation {
+                            source_path: resource.absolute_path.clone(),
+                            target_path,
+                            merge_strategy,
+                            bundle_name: bundle.name.clone(),
+                            bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(pending)
+    }
+
+    /// Get target path and merge strategy for a resource on a platform
+    fn get_target_path_and_strategy(
+        &self,
+        resource: &DiscoveredResource,
+        platform: &Platform,
+    ) -> Result<Option<(PathBuf, MergeStrategy)>> {
+        let rule = self.find_transform_rule(platform, &resource.bundle_path);
+
+        let (target_path, merge_strategy) = match rule {
+            Some(r) => {
+                let target = self.apply_transform_rule(r, &resource.bundle_path);
+                (target, r.merge)
+            }
+            None => {
+                let target = platform
+                    .directory_path(self.workspace_root)
+                    .join(&resource.bundle_path);
+                (target, MergeStrategy::Replace)
+            }
+        };
+
+        Ok(Some((target_path, merge_strategy)))
+    }
+
+    /// Group installations by target path
+    fn group_by_target(
+        &self,
+        installations: &[PendingInstallation],
+    ) -> Vec<(PathBuf, Vec<PendingInstallation>)> {
+        let mut grouped: HashMap<PathBuf, Vec<PendingInstallation>> = HashMap::new();
+
+        for installation in installations {
+            grouped
+                .entry(installation.target_path.clone())
+                .or_insert_with(Vec::new)
+                .push(installation.clone());
+        }
+
+        grouped.into_iter().collect()
+    }
+
+    /// Execute merged installations for a target path
+    fn execute_installations(
+        &mut self,
+        target_path: &Path,
+        installations: &[PendingInstallation],
+    ) -> Result<InstalledFile> {
+        if installations.is_empty() {
+            return Err(AugentError::FileReadFailed {
+                path: target_path.display().to_string(),
+                reason: "No installations to execute".to_string(),
+            });
+        }
+
+        let source_paths: Vec<String> = installations
+            .iter()
+            .map(|i| i.bundle_path.clone())
+            .collect();
+
+        if installations.len() == 1 {
+            let installation = &installations[0];
+            self.apply_merge_and_copy(
+                &installation.source_path,
+                target_path,
+                &installation.merge_strategy,
+            )?;
+        } else {
+            self.merge_multiple_installations(target_path, installations)?;
+        }
+
+        let relative = target_path
+            .strip_prefix(self.workspace_root)
+            .unwrap_or(target_path);
+        let target_paths = vec![relative.to_string_lossy().to_string()];
+
+        let installed = InstalledFile {
+            source_paths,
+            target_paths: target_paths.clone(),
+        };
+
+        for installation in installations {
+            self.installed_files.insert(
+                installation.bundle_path.clone(),
+                InstalledFile {
+                    source_paths: vec![installation.bundle_path.clone()],
+                    target_paths: target_paths.clone(),
+                },
+            );
+        }
+
+        Ok(installed)
+    }
+
+    /// Merge multiple installations into a single target
+    fn merge_multiple_installations(
+        &self,
+        target_path: &Path,
+        installations: &[PendingInstallation],
+    ) -> Result<()> {
+        if installations.is_empty() {
+            return Ok(());
+        }
+
+        let merge_strategy = &installations[0].merge_strategy;
+
+        match merge_strategy {
+            MergeStrategy::Replace => {
+                let last_installation = installations.last().unwrap();
+                self.apply_merge_and_copy(
+                    &last_installation.source_path,
+                    target_path,
+                    merge_strategy,
+                )?;
+            }
+            MergeStrategy::Shallow | MergeStrategy::Deep => {
+                self.merge_multiple_json_files(target_path, installations, merge_strategy)?;
+            }
+            MergeStrategy::Composite => {
+                self.merge_multiple_text_files(target_path, installations)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Merge multiple JSON files into a single target
+    fn merge_multiple_json_files(
+        &self,
+        target_path: &Path,
+        installations: &[PendingInstallation],
+        strategy: &MergeStrategy,
+    ) -> Result<()> {
+        let mut result_value: serde_json::Value = if target_path.exists() {
+            let existing_content =
+                fs::read_to_string(target_path).map_err(|e| AugentError::FileReadFailed {
+                    path: target_path.display().to_string(),
+                    reason: e.to_string(),
+                })?;
+
+            let existing_json = strip_jsonc_comments(&existing_content);
+            serde_json::from_str(&existing_json).map_err(|e| AugentError::ConfigParseFailed {
+                path: target_path.display().to_string(),
+                reason: e.to_string(),
+            })?
+        } else {
+            serde_json::json!({})
+        };
+
+        for installation in installations {
+            let source_content = fs::read_to_string(&installation.source_path).map_err(|e| {
+                AugentError::FileReadFailed {
+                    path: installation.source_path.display().to_string(),
+                    reason: e.to_string(),
+                }
+            })?;
+
+            let source_json = strip_jsonc_comments(&source_content);
+            let source_value: serde_json::Value =
+                serde_json::from_str(&source_json).map_err(|e| AugentError::ConfigParseFailed {
+                    path: installation.source_path.display().to_string(),
+                    reason: e.to_string(),
+                })?;
+
+            match strategy {
+                MergeStrategy::Shallow => {
+                    shallow_merge(&mut result_value, &source_value);
+                }
+                MergeStrategy::Deep => {
+                    deep_merge(&mut result_value, &source_value);
+                }
+                _ => {}
+            }
+        }
+
+        let result = serde_json::to_string_pretty(&result_value).map_err(|e| {
+            AugentError::ConfigParseFailed {
+                path: target_path.display().to_string(),
+                reason: e.to_string(),
+            }
+        })?;
+
+        if let Some(parent) = target_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+
+        fs::write(target_path, result).map_err(|e| AugentError::FileWriteFailed {
+            path: target_path.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        Ok(())
+    }
+
+    /// Merge multiple text files into a single target
+    fn merge_multiple_text_files(
+        &self,
+        target_path: &Path,
+        installations: &[PendingInstallation],
+    ) -> Result<()> {
+        let mut result = if target_path.exists() {
+            fs::read_to_string(target_path).map_err(|e| AugentError::FileReadFailed {
+                path: target_path.display().to_string(),
+                reason: e.to_string(),
+            })?
+        } else {
+            String::new()
+        };
+
+        for installation in installations {
+            let source_content = fs::read_to_string(&installation.source_path).map_err(|e| {
+                AugentError::FileReadFailed {
+                    path: installation.source_path.display().to_string(),
+                    reason: e.to_string(),
+                }
+            })?;
+
+            if !result.is_empty() {
+                result.push_str("\n\n<!-- Augent: merged content below -->\n\n");
+            }
+            result.push_str(&source_content);
+        }
+
+        if let Some(parent) = target_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+
+        fs::write(target_path, result).map_err(|e| AugentError::FileWriteFailed {
+            path: target_path.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        Ok(())
     }
 
     /// Install a single resource file
@@ -179,7 +499,7 @@ impl<'a> Installer<'a> {
         }
 
         let installed = InstalledFile {
-            source_path: source_path.clone(),
+            source_paths: vec![source_path.clone()],
             target_paths: target_paths.clone(),
         };
 
@@ -238,25 +558,75 @@ impl<'a> Installer<'a> {
 
     /// Check if a glob-like pattern matches a path
     fn pattern_matches(&self, pattern: &str, path: &str) -> bool {
-        // Simple glob matching: ** matches any path, * matches single segment
-        let pattern = pattern.replace("**", ".*").replace('*', "[^/]*");
+        // Glob patterns:
+        // * = any characters except /
+        // ** = any characters including / (for matching paths across directories)
+
+        // Strategy: convert glob pattern to regex
+        // When we have **, the surrounding / characters are important:
+        // - "**" matches any path segments
+        // - "dir/**" matches dir and everything under it
+        // - "**/file" matches file at any depth
+        // - "dir/**/file" matches file anywhere under dir
+
+        let mut regex_pattern = String::new();
+        let mut chars = pattern.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            if ch == '*' {
+                if chars.peek() == Some(&'*') {
+                    // This is ** - consume the second *
+                    chars.next();
+
+                    // Check what comes after **
+                    // If there's a '/', we want (.*?)? to handle optional nested dirs
+                    // and we should consume the slash too so we don't double-slash
+                    if chars.peek() == Some(&'/') {
+                        chars.next(); // Consume the slash
+                        regex_pattern.push_str("(.*?/)?");
+                    } else {
+                        // No slash after, so ** can match anything including paths
+                        regex_pattern.push_str(".*");
+                    }
+                } else {
+                    // This is * - matches any characters except /
+                    regex_pattern.push_str("[^/]*");
+                }
+            } else if ch == '.'
+                || ch == '+'
+                || ch == '?'
+                || ch == '['
+                || ch == ']'
+                || ch == '('
+                || ch == ')'
+                || ch == '{'
+                || ch == '}'
+                || ch == '^'
+                || ch == '$'
+            {
+                // Escape regex special characters
+                regex_pattern.push('\\');
+                regex_pattern.push(ch);
+            } else {
+                regex_pattern.push(ch);
+            }
+        }
 
         // Handle exact match first
-        if pattern == path {
+        if regex_pattern == path {
             return true;
         }
 
-        // Try regex-like matching
-        if let Ok(re) = regex::Regex::new(&format!("^{}$", pattern)) {
+        // Try regex matching
+        if let Ok(re) = regex::Regex::new(&format!("^{}$", regex_pattern)) {
             return re.is_match(path);
         }
 
-        // Fallback: prefix matching for directories
-        let pattern_prefix = pattern.split(".*").next().unwrap_or("");
-        path.starts_with(pattern_prefix.trim_end_matches('/'))
+        // Fallback: prefix matching
+        path.starts_with(pattern.trim_end_matches('*'))
     }
 
-    /// Apply a transform rule to get the target path
+    /// Apply a transform rule to get the target path for a resource
     fn apply_transform_rule(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
         let path_str = resource_path.to_string_lossy();
 
@@ -271,8 +641,9 @@ impl<'a> Installer<'a> {
         }
 
         // Handle ** wildcard - preserve subdirectory structure
+        // Must be done BEFORE extension transformation
+        #[allow(clippy::needless_borrow)]
         if rule.from.contains("**") && rule.to.contains("**") {
-            // Find the dynamic part of the path
             let prefix_len = rule.from.find("**").unwrap_or(0);
             let path_prefix = if prefix_len > 0 {
                 &path_str[..prefix_len.min(path_str.len())]
@@ -280,17 +651,47 @@ impl<'a> Installer<'a> {
                 ""
             };
 
-            // Get the relative part after the prefix
             let relative_part = path_str.strip_prefix(path_prefix).unwrap_or(&path_str);
-            target = target.replace("**", relative_part.trim_start_matches('/'));
+            let trimmed_part = relative_part.trim_start_matches('/');
+
+            // When replacing ** in target, we need to strip the target's extension from the matched part
+            // to avoid duplicate extensions when applying the rule extension later
+            let target_without_ext = if rule.extension.is_some() {
+                // Strip the extension pattern from the target before replacing wildcards
+                // The extension will be applied later as a separate step
+                if let Some(pos) = target.rfind('.') {
+                    target[..pos].to_string()
+                } else {
+                    target.clone()
+                }
+            } else {
+                target.clone()
+            };
+
+            // Replace **/ with the relative part, being careful to handle the slash correctly
+            if target.contains("/**/") {
+                // Pattern like ".cursor/rules/**/*.mdc" - has slashes around **
+                target = target_without_ext.replace("/**/", &format!("/{}/", trimmed_part));
+            } else if target.contains("**") {
+                // Pattern like ".cursor/rules/**" - no trailing slash
+                target = target_without_ext.replace("**", &trimmed_part);
+            }
         }
 
-        // Apply extension transformation
+        // Handle * wildcard (single file) - must be done BEFORE extension transformation
+        if target.contains('*') && !target.contains("**") {
+            if let Some(stem) = resource_path.file_stem() {
+                target = target.replace('*', &stem.to_string_lossy());
+            }
+        }
+
+        // Apply extension transformation after all wildcards are replaced
         if let Some(ref ext) = rule.extension {
-            let without_ext = target
-                .rsplit_once('.')
-                .map(|(base, _)| base)
-                .unwrap_or(&target);
+            let without_ext = if let Some(pos) = target.rfind('.') {
+                &target[..pos]
+            } else {
+                &target
+            };
             target = format!("{}.{}", without_ext, ext);
         }
 
@@ -298,6 +699,7 @@ impl<'a> Installer<'a> {
     }
 
     /// Apply merge strategy and copy file
+    /// Always applies merge strategy if target exists, regardless of strategy type
     fn apply_merge_and_copy(
         &self,
         source: &Path,
@@ -312,26 +714,24 @@ impl<'a> Installer<'a> {
             })?;
         }
 
+        // If target doesn't exist, just copy
+        if !target.exists() {
+            return self.copy_file(source, target);
+        }
+
+        // Target exists - apply merge strategy
         match strategy {
             MergeStrategy::Replace => {
-                // Simply overwrite
+                // For Replace strategy, still overwrite (replace existing file)
                 self.copy_file(source, target)?;
             }
             MergeStrategy::Shallow | MergeStrategy::Deep => {
                 // JSON merging
-                if target.exists() {
-                    self.merge_json_files(source, target, strategy)?;
-                } else {
-                    self.copy_file(source, target)?;
-                }
+                self.merge_json_files(source, target, strategy)?;
             }
             MergeStrategy::Composite => {
                 // Text file appending
-                if target.exists() {
-                    self.merge_text_files(source, target)?;
-                } else {
-                    self.copy_file(source, target)?;
-                }
+                self.merge_text_files(source, target)?;
             }
         }
 
@@ -709,5 +1109,69 @@ mod tests {
 
         let rule = installer.find_transform_rule(&platform, &resource.bundle_path);
         assert!(rule.is_none());
+    }
+
+    #[test]
+    fn test_apply_transform_rule_single_wildcard_with_extension() {
+        let installer = Installer::new(Path::new("/workspace"), vec![]);
+        let single_wildcard_rule =
+            TransformRule::new("rules/*.md", ".cursor/rules/*.mdc").with_extension("mdc");
+        let format_resource = PathBuf::from("rules/format.md");
+
+        let result = installer.apply_transform_rule(&single_wildcard_rule, &format_resource);
+
+        assert_eq!(
+            result,
+            PathBuf::from("/workspace/.cursor/rules/format.mdc"),
+            "Single wildcard should be replaced with filename stem before extension"
+        );
+    }
+
+    #[test]
+    fn test_apply_transform_rule_double_wildcard_with_extension() {
+        let installer = Installer::new(Path::new("/workspace"), vec![]);
+        let double_wildcard_rule =
+            TransformRule::new("rules/**/*.md", ".cursor/rules/**/*.mdc").with_extension("mdc");
+        let format_resource = PathBuf::from("rules/format.md");
+
+        let result = installer.apply_transform_rule(&double_wildcard_rule, &format_resource);
+
+        assert_eq!(
+            result,
+            PathBuf::from("/workspace/.cursor/rules/format.mdc"),
+            "Double wildcard should be replaced correctly before extension"
+        );
+    }
+
+    #[test]
+    fn test_apply_transform_rule_nested_path_double_wildcard_with_extension() {
+        let installer = Installer::new(Path::new("/workspace"), vec![]);
+        let nested_rule =
+            TransformRule::new("rules/**/*.md", ".cursor/rules/**/*.mdc").with_extension("mdc");
+        let nested_resource = PathBuf::from("rules/subdir/nested.md");
+
+        let result = installer.apply_transform_rule(&nested_rule, &nested_resource);
+
+        assert_eq!(
+            result,
+            PathBuf::from("/workspace/.cursor/rules/subdir/nested.mdc"),
+            "Nested path should be preserved with correct extension"
+        );
+    }
+
+    #[test]
+    fn test_apply_transform_rule_name_placeholder_with_extension() {
+        let installer = Installer::new(Path::new("/workspace"), vec![]);
+        let name_placeholder_rule =
+            TransformRule::new("rules/{name}.md", ".cursor/rules/{name}.mdc").with_extension("mdc");
+        let debug_resource = PathBuf::from("rules/debug.md");
+
+        let result = installer.apply_transform_rule(&name_placeholder_rule, &debug_resource);
+
+        assert_eq!(
+            result,
+            PathBuf::from("/workspace/.cursor/rules/debug.mdc"),
+            "Name placeholder should be replaced correctly"
+        );
     }
 }

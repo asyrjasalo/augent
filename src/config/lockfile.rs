@@ -25,6 +25,26 @@ pub struct LockedBundle {
     /// Bundle name
     pub name: String,
 
+    /// Bundle description
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+
+    /// Bundle version (for reference only)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+
+    /// Bundle author
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+
+    /// Bundle license
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+
+    /// Bundle homepage URL
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub homepage: Option<String>,
+
     /// Resolved source
     pub source: LockedSource,
 
@@ -181,6 +201,11 @@ impl LockedBundle {
     ) -> Self {
         Self {
             name: name.into(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: LockedSource::Dir {
                 path: path.into(),
                 hash: hash.into(),
@@ -199,6 +224,11 @@ impl LockedBundle {
     ) -> Self {
         Self {
             name: name.into(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
             source: LockedSource::Git {
                 url: url.into(),
                 git_ref: None,

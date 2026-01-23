@@ -301,7 +301,6 @@ bundles: []
 }
 
 #[test]
-#[ignore]
 fn test_list_detailed_shows_all_metadata_fields() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -346,7 +345,6 @@ bundles: []
 }
 
 #[test]
-#[ignore]
 fn test_list_detailed_format_readability() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

@@ -31,7 +31,7 @@ CLI help is the primary documentation source. Users should get answers without l
 **Format:**
 
 ```text
-augent - AI configuration manager
+augent - AI package manager
 
 USAGE:
     augent <COMMAND>
@@ -92,7 +92,7 @@ The README provides essential introduction and quick start, linking to detailed 
 ```markdown
 # Augent
 
-AI configuration manager for managing AI coding agent resources.
+AI package manager for managing AI coding agent resources.
 
 ## Quick Start
 

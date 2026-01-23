@@ -86,6 +86,24 @@ fn display_bundle_detailed(
     let workspace_bundle = workspace_config.find_bundle(&bundle.name);
 
     println!("  {}", bundle.name);
+
+    // Display metadata if available
+    if let Some(ref description) = bundle.description {
+        println!("    Description: {}", description);
+    }
+    if let Some(ref version) = bundle.version {
+        println!("    Version: {}", version);
+    }
+    if let Some(ref author) = bundle.author {
+        println!("    Author: {}", author);
+    }
+    if let Some(ref license) = bundle.license {
+        println!("    License: {}", license);
+    }
+    if let Some(ref homepage) = bundle.homepage {
+        println!("    Homepage: {}", homepage);
+    }
+
     println!("    Source: {}", source_str);
     println!("    Files: {}", bundle.files.len());
 

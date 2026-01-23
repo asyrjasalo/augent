@@ -12,9 +12,8 @@ fn augent_cmd() -> Command {
     Command::cargo_bin("augent").unwrap()
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_install_from_github_short_form() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -37,9 +36,8 @@ fn test_install_from_github_short_form() {
     assert!(workspace.file_exists(".augent/augent.lock"));
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_install_from_https_git_url() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -60,9 +58,8 @@ fn test_install_from_https_git_url() {
     assert!(workspace.file_exists(".augent/augent.lock"));
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_install_with_specific_ref() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -141,9 +138,8 @@ fn test_install_with_specific_ref() {
     assert!(lockfile.contains("v1.0.0") || lockfile.contains("resolved_sha"));
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_install_with_subdirectory() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -241,9 +237,8 @@ fn test_install_from_ssh_git_url_fails_without_ssh_keys() {
         );
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_bundle_discovery_with_multiple_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -327,15 +322,15 @@ fn test_bundle_discovery_with_multiple_bundles() {
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", &git_url])
+        .write_stdin("1\n")
         .assert()
         .success();
 
     assert!(workspace.file_exists(".augent/augent.lock"));
 }
 
-// TODO: Enable when file:// URL support is implemented
+// file:// URL support is fully implemented
 #[test]
-#[ignore]
 fn test_discover_multiple_bundles_in_repository() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
