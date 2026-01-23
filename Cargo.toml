@@ -6,7 +6,7 @@ rust-version = "1.85"
 authors = ["Anssi Syrjäsalo"]
 description = "AI configuration manager for managing AI coding agent resources across multiple platforms"
 repository = "https://github.com/asyrjasalo/augent"
-license = "MIT"
+license = "AGPL-3.0"
 keywords = ["ai", "agent", "configuration", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 
