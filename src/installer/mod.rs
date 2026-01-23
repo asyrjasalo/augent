@@ -546,12 +546,12 @@ mod tests {
         assert!(
             resources
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("commands/debug.md"))
+                .any(|r| r.bundle_path == Path::new("commands/debug.md"))
         );
         assert!(
             resources
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("commands/test.md"))
+                .any(|r| r.bundle_path == Path::new("commands/test.md"))
         );
     }
 

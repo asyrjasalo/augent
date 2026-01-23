@@ -320,8 +320,8 @@ mod tests {
         // Resolve by branch name (master/main is the default)
         let sha = resolve_ref(&repo, Some("master")).or_else(|_| resolve_ref(&repo, Some("main")));
 
-        if sha.is_ok() {
-            assert_eq!(sha.unwrap(), commit_oid.to_string());
+        if let Ok(sha) = sha {
+            assert_eq!(sha, commit_oid.to_string());
         }
     }
 

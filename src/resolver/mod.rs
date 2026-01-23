@@ -602,12 +602,13 @@ bundles:
         let mut resolver = Resolver::new(temp.path());
         let result = resolver.resolve("./bundle-a");
 
-        if result.is_err() {
-            eprintln!("Error: {:?}", result.as_ref().unwrap_err());
-        }
-
-        assert!(result.is_ok());
-        let bundles = result.unwrap();
+        let bundles = match result {
+            Ok(bundles) => bundles,
+            Err(ref e) => {
+                eprintln!("Error: {:?}", e);
+                panic!("Expected Ok result");
+            }
+        };
 
         // Should be in order: C, B, A (dependencies first)
         assert_eq!(bundles.len(), 3);
