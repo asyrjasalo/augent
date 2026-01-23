@@ -10,6 +10,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
 
 jobs:
   # Linting and formatting - runs first as prerequisite

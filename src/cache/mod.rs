@@ -32,7 +32,13 @@ const BUNDLES_DIR: &str = "bundles";
 /// Get the default cache directory path
 ///
 /// Returns `~/.cache/augent` on Unix or equivalent on other platforms.
+///
+/// Can be overridden with the `AUGENT_CACHE_DIR` environment variable.
 pub fn cache_dir() -> Result<PathBuf> {
+    if let Ok(cache_dir) = std::env::var("AUGENT_CACHE_DIR") {
+        return Ok(PathBuf::from(cache_dir));
+    }
+
     let base = dirs::cache_dir().ok_or_else(|| AugentError::CacheOperationFailed {
         message: "Could not determine cache directory".to_string(),
     })?;

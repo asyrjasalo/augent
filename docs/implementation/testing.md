@@ -471,6 +471,63 @@ Complex tests should have comments explaining:
 
 ---
 
+## Merge Strategy Test Coverage
+
+All merge strategies must have comprehensive test coverage:
+
+### Unit Tests (`src/platform/merge.rs`)
+
+**Replace Strategy:**
+
+- Basic replacement behavior
+- Empty inputs
+
+**Shallow Merge:**
+
+- Top-level key replacement
+- Null value handling
+- Array replacement (no deduplication)
+- JSON parse error handling
+
+**Deep Merge:**
+
+- Nested object merging
+- Null value behavior
+- Array deduplication (primitives and objects)
+- Complex nesting (3+ levels)
+- JSON parse error handling
+
+**Composite Merge:**
+
+- Content concatenation with separator
+- Whitespace handling
+- Empty inputs (existing and new)
+- Multiple sequential merges
+
+### Integration Tests (`tests/install_merge_tests.rs`)
+
+- Replace merge with real CLI for regular files
+- Composite merge for AGENTS.md across multiple installations
+- Composite merge for mcp.jsonc with real CLI
+- Deep merge for JSON/YAML files with nested structures
+- Deep merge for nested JSON/YAML structures
+- Shallow merge verification with real CLI
+- Multiple composite merges (3+ bundles)
+- Deep merge array deduplication via CLI
+- Error handling for invalid JSON in bundle files
+- JSONC comment preservation (if supported)
+
+### Key Edge Cases Covered
+
+1. **Null values**: How null values behave in deep vs shallow merge
+2. **Array behavior**: Shallow vs deep merge for arrays
+3. **Complex nesting**: 3+ level nested object merging
+4. **Error handling**: Invalid JSON, parse failures
+5. **Platform-specific**: Different merge strategies for different platforms
+6. **Multiple merges**: Sequential merge operations
+
+---
+
 ## Summary
 
 - **Two-tier approach:** Unit tests + Integration tests with REAL CLI

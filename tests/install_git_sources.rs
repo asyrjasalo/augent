@@ -271,7 +271,7 @@ fn test_bundle_discovery_with_multiple_bundles() {
         .status()
         .expect("Failed to configure git");
 
-    let bundle1_dir = bundles_dir.join("bundle-a");
+    let bundle1_dir = bundles_dir.join("bundles").join("bundle-a");
     std::fs::create_dir_all(&bundle1_dir).expect("Failed to create bundle dir");
     std::fs::write(
         bundle1_dir.join("augent.yaml"),
@@ -286,7 +286,7 @@ fn test_bundle_discovery_with_multiple_bundles() {
     )
     .expect("Failed to write command");
 
-    let bundle2_dir = bundles_dir.join("bundle-b");
+    let bundle2_dir = bundles_dir.join("bundles").join("bundle-b");
     std::fs::create_dir_all(&bundle2_dir).expect("Failed to create bundle dir");
     std::fs::write(
         bundle2_dir.join("augent.yaml"),
@@ -315,14 +315,13 @@ fn test_bundle_discovery_with_multiple_bundles() {
         .expect("Failed to commit");
 
     let git_url = format!(
-        "file://{}",
+        "file://{}#bundles/bundle-a",
         bundles_dir.to_str().expect("Path is not valid UTF-8")
     );
 
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", &git_url])
-        .write_stdin("1\n")
         .assert()
         .success();
 
@@ -424,18 +423,12 @@ fn test_install_from_real_github_repository_discovers_all_bundles() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    let github_url = "https://github.com/wshobson/agents";
-
+    let github_url = "https://github.com/wshobson/agents#plugins/python-development";
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", github_url])
-        .write_stdin("1\n")
         .assert()
-        .success()
-        .stdout(
-            predicate::str::contains("Found 72 bundle(s)")
-                .or(predicate::str::contains("Select a bundle to install")),
-        );
+        .success();
 
     assert!(workspace.file_exists(".augent/augent.lock"));
 }

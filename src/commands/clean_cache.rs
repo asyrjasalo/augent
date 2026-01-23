@@ -85,6 +85,10 @@ mod tests {
         let cache_dir = temp.path().join("cache");
         std::fs::create_dir_all(&cache_dir).unwrap();
 
+        unsafe {
+            std::env::set_var("AUGENT_CACHE_DIR", temp.path());
+        }
+
         let result = show_cache_stats();
         assert!(result.is_ok());
     }

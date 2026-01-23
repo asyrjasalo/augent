@@ -14,7 +14,6 @@
 //! 6. Update configuration files
 //! 7. Commit transaction (or rollback on error)
 
-use std::io::{self, BufRead, Write};
 use std::path::Path;
 
 use crate::cli::InstallArgs;
@@ -24,7 +23,7 @@ use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
 use crate::platform::{self, Platform, detection};
-use crate::resolver::{DiscoveredBundle, Resolver};
+use crate::resolver::Resolver;
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
@@ -300,7 +299,6 @@ fn update_configs(
 mod tests {
     use super::*;
     use crate::source::GitSource;
-    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[test]
@@ -444,29 +442,6 @@ mod tests {
         assert_eq!(lockfile.name, "@test/workspace");
         assert_eq!(lockfile.bundles.len(), 1);
         assert_eq!(lockfile.bundles[0].name, "@test/bundle");
-    }
-
-    #[test]
-    fn test_select_bundle_interactively_multiple() {
-        let bundles = vec![
-            crate::resolver::DiscoveredBundle {
-                name: "@test/bundle1".to_string(),
-                path: PathBuf::from("/tmp/bundle1"),
-                description: Some("First bundle".to_string()),
-            },
-            crate::resolver::DiscoveredBundle {
-                name: "@test/bundle2".to_string(),
-                path: PathBuf::from("/tmp/bundle2"),
-                description: Some("Second bundle".to_string()),
-            },
-        ];
-
-        let mock_input = b"1\n";
-        let cursor = io::Cursor::new(mock_input);
-
-        let selected = select_bundle_interactively(&bundles, cursor).unwrap();
-
-        assert_eq!(selected.name, "@test/bundle1");
     }
 
     #[test]

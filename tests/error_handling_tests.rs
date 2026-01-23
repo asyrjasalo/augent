@@ -125,17 +125,29 @@ bundles: []
 
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    use std::os::unix::fs::PermissionsExt;
-    let agent_dir = workspace.path.join(".claude");
-    std::fs::set_permissions(&agent_dir, std::fs::Permissions::from_mode(0o000))
-        .expect("Failed to set permissions");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let agent_dir = workspace.path.join(".claude");
+        std::fs::set_permissions(&agent_dir, std::fs::Permissions::from_mode(0o000))
+            .expect("Failed to set permissions");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
-        .assert()
-        .failure();
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .assert()
+            .failure();
 
-    std::fs::set_permissions(&agent_dir, std::fs::Permissions::from_mode(0o755))
-        .expect("Failed to restore permissions");
+        std::fs::set_permissions(&agent_dir, std::fs::Permissions::from_mode(0o755))
+            .expect("Failed to restore permissions");
+    }
+
+    #[cfg(not(unix))]
+    {
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .assert()
+            .success();
+    }
 }
