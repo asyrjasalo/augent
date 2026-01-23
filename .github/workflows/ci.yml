@@ -75,6 +75,7 @@ jobs:
             use_cross: false
             artifact_name: augent.exe
             archive_name: augent-aarch64-windows.zip
+            build_only: true  # No ARM64 Windows runner available to run tests
 
     steps:
       - name: Checkout code
@@ -114,12 +115,23 @@ jobs:
             ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-
 
       - name: Run tests
+        if: matrix.build_only != true
         shell: bash
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross test --release --target ${{ matrix.target }}
           else
             cargo test --release --target ${{ matrix.target }}
+          fi
+
+      - name: Build release binary
+        if: matrix.build_only == true
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
           fi
 
       - name: Create archive (Unix)
