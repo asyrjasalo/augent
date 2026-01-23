@@ -220,9 +220,10 @@ fn generate_lockfile(
 fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<LockedBundle> {
     // Discover files in the bundle
     let resources = Installer::discover_resources(&bundle.source_path)?;
+    // Normalize paths to always use forward slashes (Unix-style) for cross-platform consistency
     let files: Vec<String> = resources
         .iter()
-        .map(|r| r.bundle_path.to_string_lossy().to_string())
+        .map(|r| r.bundle_path.to_string_lossy().replace('\\', "/"))
         .collect();
 
     // Calculate hash
