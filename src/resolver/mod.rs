@@ -701,4 +701,53 @@ bundles:
         let result = resolver.resolve("./bundle");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_is_bundle_directory() {
+        let temp = TempDir::new().unwrap();
+        let bundle_dir = temp.path().join("test-bundle");
+
+        std::fs::create_dir(&bundle_dir).unwrap();
+        std::fs::create_dir(bundle_dir.join("commands")).unwrap();
+        std::fs::write(bundle_dir.join("augent.yaml"), "name: test\nbundles: []").unwrap();
+
+        let resolver = Resolver::new(temp.path());
+        assert!(resolver.is_bundle_directory(&bundle_dir));
+
+        let non_bundle_dir = temp.path().join("not-a-bundle");
+        std::fs::create_dir(&non_bundle_dir).unwrap();
+
+        assert!(!resolver.is_bundle_directory(&non_bundle_dir));
+    }
+
+    #[test]
+    fn test_get_bundle_name_from_config() {
+        let temp = TempDir::new().unwrap();
+        let bundle_dir = temp.path().join("test-bundle");
+
+        std::fs::create_dir(&bundle_dir).unwrap();
+        std::fs::write(
+            bundle_dir.join("augent.yaml"),
+            "name: \"@test/custom-bundle\"\nbundles: []\n",
+        )
+        .unwrap();
+
+        let resolver = Resolver::new(temp.path());
+        let name = resolver.get_bundle_name(&bundle_dir).unwrap();
+
+        assert_eq!(name, "@test/custom-bundle");
+    }
+
+    #[test]
+    fn test_get_bundle_name_from_dir() {
+        let temp = TempDir::new().unwrap();
+        let bundle_dir = temp.path().join("custom-bundle");
+
+        std::fs::create_dir(&bundle_dir).unwrap();
+
+        let resolver = Resolver::new(temp.path());
+        let name = resolver.get_bundle_name(&bundle_dir).unwrap();
+
+        assert_eq!(name, "custom-bundle");
+    }
 }

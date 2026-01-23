@@ -194,7 +194,6 @@ pub fn clear_cache() -> Result<()> {
 }
 
 /// Get cache statistics
-#[allow(dead_code)]
 pub fn cache_stats() -> Result<CacheStats> {
     let path = bundles_cache_dir()?;
 
@@ -265,7 +264,6 @@ fn dir_size(path: &Path) -> Result<u64> {
 
 /// Cache statistics
 #[derive(Debug, Default)]
-#[allow(dead_code)]
 pub struct CacheStats {
     /// Number of unique repositories cached
     pub repositories: usize,
@@ -277,7 +275,6 @@ pub struct CacheStats {
 
 impl CacheStats {
     /// Format total size as human-readable string
-    #[allow(dead_code)]
     pub fn formatted_size(&self) -> String {
         let size = self.total_size as f64;
         if size < 1024.0 {
@@ -382,5 +379,76 @@ mod tests {
         };
         let content_path = get_bundle_content_path(&source_no_subdir, &cache_path);
         assert_eq!(content_path, PathBuf::from("/cache/repo/abc123"));
+    }
+
+    #[test]
+    fn test_is_cached() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let cache_base = temp_dir.path().join("cache");
+        std::fs::create_dir_all(&cache_base).unwrap();
+
+        assert!(is_cached("https://github.com/test/repo.git", "abc123").is_ok());
+
+        let bundle_path = cache_base.join("github.com-test-repo").join("abc123");
+        std::fs::create_dir_all(&bundle_path).unwrap();
+
+        assert!(is_cached("https://github.com/test/repo.git", "abc123").is_ok());
+    }
+
+    #[test]
+    fn test_get_cached() {
+        let result = get_cached("https://github.com/test/repo.git", "abc123");
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn test_clear_cache() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let cache_base = temp_dir.path().join("cache");
+        std::fs::create_dir_all(&cache_base).unwrap();
+
+        let bundle_path = cache_base.join("bundles").join("test-repo").join("abc123");
+        std::fs::create_dir_all(&bundle_path).unwrap();
+
+        assert!(bundle_path.exists());
+
+        let result = clear_cache();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_cache_stats() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let cache_base = temp_dir.path().join("cache");
+        std::fs::create_dir_all(&cache_base).unwrap();
+
+        let stats = cache_stats().unwrap();
+        assert_eq!(stats.repositories, 0);
+        assert_eq!(stats.versions, 0);
+        assert_eq!(stats.total_size, 0);
+    }
+
+    #[test]
+    fn test_dir_size() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let test_dir = temp_dir.path().join("test");
+        std::fs::create_dir_all(&test_dir).unwrap();
+
+        let file_path = test_dir.join("test.txt");
+        std::fs::write(&file_path, b"hello world").unwrap();
+
+        let size = dir_size(&test_dir).unwrap();
+        assert_eq!(size, 11);
+    }
+
+    #[test]
+    fn test_cache_stats_gb() {
+        let stats = CacheStats {
+            repositories: 1,
+            versions: 1,
+            total_size: 1024 * 1024 * 1024 * 2,
+        };
+        assert_eq!(stats.formatted_size(), "2.0 GB");
     }
 }

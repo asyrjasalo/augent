@@ -1,0 +1,170 @@
+# Platform Support
+
+Augent supports multiple AI coding agent platforms through a flexible platform system.
+
+## Supported Platforms
+
+### Claude Code
+
+- **Platform ID:** `claude`
+- **Directory:** `.claude/`
+- **Detection:** `.claude` directory or `CLAUDE.md` file
+- **Resource Locations:**
+  - Commands: `.claude/prompts/*.md`
+  - Rules: `.claude/rules/*.md`
+  - Agents: `.claude/agents/*.md`
+  - Skills: `.claude/skills/*.md`
+  - MCP Config: `.claude/mcp.json`
+
+### Cursor AI
+
+- **Platform ID:** `cursor`
+- **Directory:** `.cursor/`
+- **Detection:** `.cursor` directory or `AGENTS.md` file
+- **Resource Locations:**
+  - Commands: `.cursor/rules/*.mdc`
+  - Rules: `.cursor/rules/*.mdc`
+  - Agents: `.cursor/agents/*.mdc`
+  - Skills: `.cursor/skills/*.mdc`
+  - MCP Config: `.cursor/mcp.json`
+
+### OpenCode
+
+- **Platform ID:** `opencode`
+- **Directory:** `.opencode/`
+- **Detection:** `.opencode` directory or `AGENTS.md` file
+- **Resource Locations:**
+  - Commands: `.opencode/commands/*.md`
+  - Rules: `.opencode/rules/*.md`
+  - Agents: `.opencode/agents/*.md`
+  - Skills: `.opencode/skills/*.md`
+  - MCP Config: `.opencode/mcp.json`
+
+## Platform Detection
+
+Augent automatically detects which platforms are present in your workspace:
+
+1. **Directory Detection:** Checks for platform-specific directories (`.claude`, `.cursor`, `.opencode`)
+2. **File Detection:** Checks for platform-specific root files (`CLAUDE.md`, `AGENTS.md`)
+
+By default, Augent installs bundles for all detected platforms. You can override this with the `--for` flag.
+
+## Installing for Specific Platforms
+
+```bash
+# Install for all detected platforms
+augent install github:author/bundle
+
+# Install for specific platforms only
+augent install github:author/bundle --for claude
+
+# Install for multiple specific platforms
+augent install github:author/bundle --for claude cursor
+
+# List detected platforms
+augent list --platforms
+```
+
+## Adding New Platforms
+
+You can add support for new AI coding agents by creating a `platforms.jsonc` configuration file in your workspace's `.augent/` directory.
+
+**Note:** This requires understanding the target platform's resource file format and directory structure.
+
+For the full schema documentation, see [Platform Configuration Schema](platforms_schema.md).
+
+### Example: Adding a New Platform
+
+Create `.augent/platforms.jsonc`:
+
+```jsonc
+{
+  "platforms": [
+    {
+      "id": "myagent",
+      "name": "My AI Agent",
+      "directory": ".myagent",
+      "detection": [".myagent", "MYAGENT.md"],
+      "transforms": [
+        {
+          "from": "commands/*.md",
+          "to": ".myagent/commands/{name}.md",
+          "merge": "replace"
+        },
+        {
+          "from": "rules/*.md",
+          "to": ".myagent/rules/{name}.md",
+          "merge": "replace"
+        },
+        {
+          "from": "agents/*.md",
+          "to": ".myagent/agents/{name}.md",
+          "merge": "replace"
+        },
+        {
+          "from": "skills/*.md",
+          "to": ".myagent/skills/{name}.md",
+          "merge": "replace"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".myagent/mcp.json",
+          "merge": "composite"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": ".myagent/AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Platform Configuration Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier (used in `--for` flag) |
+| `name` | string | Human-readable display name |
+| `directory` | string | Platform directory (relative to workspace root) |
+| `detection` | array | Patterns that indicate platform presence |
+| `transforms` | array | Rules for converting universal paths to platform-specific paths |
+
+For detailed schema information and all available options, see [Platform Configuration Schema](platforms_schema.md).
+
+## Resource Transformations
+
+Augent automatically transforms universal resource formats to platform-specific formats:
+
+| Universal Format | Claude | Cursor | OpenCode |
+|-----------------|--------|--------|----------|
+| `commands/*.md` | `.claude/prompts/*.md` | `.cursor/rules/*.mdc` | `.opencode/commands/*.md` |
+| `rules/*.md` | `.claude/rules/*.md` | `.cursor/rules/*.mdc` | `.opencode/rules/*.md` |
+| `agents/*.md` | `.claude/agents/*.md` | `.cursor/agents/*.mdc` | `.opencode/agents/*.md` |
+| `skills/*.md` | `.claude/skills/*.md` | `.cursor/skills/*.mdc` | `.opencode/skills/*.md` |
+| `mcp.jsonc` | `.claude/mcp.json` | `.cursor/mcp.json` | `.opencode/mcp.json` |
+| `AGENTS.md` | `CLAUDE.md` | `.cursor/AGENTS.md` | `.opencode/AGENTS.md` |
+
+## Merge Strategies
+
+When multiple bundles provide the same resource, Augent uses merge strategies:
+
+- **replace:** Later bundles completely overwrite earlier ones
+- **shallow:** Merge top-level keys only (for structured files)
+- **deep:** Recursively merge nested structures (for structured files)
+- **composite:** Merge text files using delimiters (preserves all content)
+
+Special handling:
+
+- `AGENTS.md` and `mcp.jsonc` use composite merge by default
+- Most other resources use replace merge
+
+For detailed merge behavior, see [Platform Configuration Schema](platforms_schema.md#merge-strategies).
+
+## See Also
+
+- [Bundle Format](bundles.md) - Universal resource format
+- [Commands Reference](commands.md) - CLI commands for managing platforms
+- [Platform Configuration Schema](platforms_schema.md) - Full schema documentation

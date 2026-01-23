@@ -108,9 +108,9 @@ AI configuration manager for managing AI coding agent resources.
 
 ## Documentation
 
-- [Commands Reference](docs/COMMANDS.md)
-- [Bundle Format](docs/BUNDLES.md)
-- [Platform Support](docs/PLATFORMS.md)
+- [Commands Reference](docs/commands.md)
+- [Bundle Format](docs/bundles.md)
+- [Platform Support](docs/platforms.md)
 
 ## License
 
@@ -131,12 +131,16 @@ Detailed documentation lives in `docs/` directory.
 
 | File | Content |
 |------|---------|
-| `docs/COMMANDS.md` | All commands with detailed examples |
-| `docs/BUNDLES.md` | Bundle format, augent.yaml, lockfile |
-| `docs/PLATFORMS.md` | Supported platforms, adding new platforms |
+| `docs/commands.md` | All commands with detailed examples |
+| `docs/bundles.md` | Bundle format, augent.yaml, lockfile |
+| `docs/platforms.md` | Supported platforms, adding new platforms |
 | `docs/MIGRATION.md` | Migrating from Claude Code plugins, OpenPackage |
 
-**Template for docs/COMMANDS.md:**
+**File Naming Convention:**
+
+User-facing documentation files in `docs/` root use lowercase filenames (e.g., `commands.md`, `bundles.md`, `workspace.md`). This convention helps distinguish user-facing documentation from internal implementation documentation in `docs/implementation/` (which may use uppercase).
+
+**Template for docs/commands.md:**
 
 ```markdown
 # Commands Reference
@@ -185,8 +189,8 @@ Install with frozen lockfile (CI):
 
 ### See Also
 
-- [Bundle Format](BUNDLES.md)
-- [Platform Support](PLATFORMS.md)
+- [Bundle Format](bundles.md)
+- [Platform Support](platforms.md)
 ```
 
 ---
@@ -201,12 +205,12 @@ Internal docs live in `docs/implementation/`.
 
 | File | Purpose |
 |------|---------|
-| `PRD.md` | Product Requirements Document |
-| `PLAN.md` | Implementation plan with epics/features/tasks |
-| `TASKS.md` | Task tracking checklist |
-| `TESTING.md` | Testing strategy and requirements |
-| `ARCHITECTURE.md` | Architecture decisions and diagrams |
-| `DOCUMENTATION.md` | This file |
+| `prd.md` | Product Requirements Document |
+| `plan.md` | Implementation plan with epics/features/tasks |
+| `tasks.md` | Task tracking checklist |
+| `testing.md` | Testing strategy and requirements |
+| `architecture.md` | Architecture decisions and diagrams |
+| `documentation.md` | This file |
 | `specs/` | Feature specifications |
 
 ### Feature Specifications (docs/implementation/specs/)
@@ -251,13 +255,13 @@ Brief description of what this feature does.
 
 ## References
 
-- [PRD section](../PRD.md#section)
-- [Architecture ADR](../ARCHITECTURE.md#adr-xxx)
+- [PRD section](../prd.md#section)
+- [Architecture ADR](../adrs/XXX-name.md)
 ```
 
 ### Architecture Decision Records
 
-ADRs live in `docs/implementation/ARCHITECTURE.md`.
+ADRs live in `docs/implementation/adrs/`. Each ADR is a separate Markdown file following the standard ADR format with status, date, context, decision, and consequences sections.
 
 **Rules:**
 
@@ -290,7 +294,7 @@ What happens as a result.
 ### For New Features
 
 1. Add specification to `docs/implementation/specs/FEATURE.md`
-2. Update `docs/implementation/ARCHITECTURE.md` if architectural impact
+2. Update `docs/implementation/architecture.md` if architectural impact
 3. Add user-facing docs to `docs/FEATURE.md` or update existing
 4. Update CLI help text in code
 5. Update README.md if command changes
@@ -299,12 +303,12 @@ What happens as a result.
 
 1. No documentation changes unless behavior changes
 2. If behavior changes, update relevant docs
-3. Add test (see TESTING.md)
+3. Add test (see testing.md)
 
 ### For Architecture Changes
 
 1. **Confirm with user before implementing**
-2. Add new ADR to ARCHITECTURE.md
+2. Add new ADR to architecture.md
 3. Update relevant documentation
 4. Never remove existing ADRs
 
@@ -365,9 +369,9 @@ Use tables for reference material:
 
 ### Before Release
 
-- [ ] All commands documented in `docs/COMMANDS.md`
-- [ ] Bundle format documented in `docs/BUNDLES.md`
-- [ ] Platform support documented in `docs/PLATFORMS.md`
+- [ ] All commands documented in `docs/commands.md`
+- [ ] Bundle format documented in `docs/bundles.md`
+- [ ] Platform support documented in `docs/platforms.md`
 - [ ] README.md is accurate and concise
 - [ ] CLI help text is complete and fits on screen
 - [ ] All links work
@@ -461,8 +465,8 @@ From PRD:
 
 ## References
 
-- PRD: [Section](../PRD.md#section)
-- ARCHITECTURE: [ADR-XXX](../ARCHITECTURE.md#adr-xxx)
+- PRD: [Section](../prd.md#section)
+- ARCHITECTURE: [ADR-XXX](../adrs/XXX-name.md)
 ```
 
 ---
@@ -476,7 +480,7 @@ From PRD:
 | docs/*.md | docs/ directory | All users |
 | Implementation docs | docs/implementation/ | Developers |
 | Feature specs | docs/implementation/specs/ | Developers |
-| ADRs | ARCHITECTURE.md | Developers |
+| ADRs | architecture.md | Developers |
 
 **Key Principles:**
 

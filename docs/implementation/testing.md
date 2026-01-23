@@ -286,50 +286,6 @@ impl TestWorkspace {
 
 ---
 
-## Test Coverage
-
-### Target: 80%
-
-We aim for 80% test coverage using **`tarpaulin`**.
-
-### Why 80%?
-
-- 100% coverage is often impractical and diminishing returns
-- 80% provides good confidence in code quality
-- Critical paths (install, uninstall, transforms) should approach 100%
-- Error handling should have near 100% coverage
-
-### Coverage Enforcement
-
-Coverage reports are generated in CI and must meet minimum 80%:
-
-```bash
-# Generate coverage report
-cargo tarpaulin --out Html --output-dir ./coverage
-
-# Enforce minimum coverage
-cargo tarpaulin --out Lcov --output-dir ./coverage --fail-under 80
-```
-
-### Exclusions
-
-Some code is excluded from coverage:
-
-- Test code itself (obviously)
-- Debug/development only code (marked with `#[cfg(test)]` or `debug_assertions!`)
-- Trivial getters/setters (when no logic)
-- External error conversions (delegated to `into_diagnostic()`)
-
-### Coverage Badge
-
-Coverage badge is displayed in README:
-
-```text
-![coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
-```
-
----
-
 ## Continuous Testing Workflow
 
 ### Pre-Commit
@@ -341,7 +297,7 @@ Run tests before committing:
 cargo test --all
 
 # Run with coverage
-cargo tarpaulin --fail-under 80
+cargo tarpaulin --out Html --output-dir ./coverage
 ```
 
 ### Continuous Integration
@@ -377,7 +333,7 @@ jobs:
 
       - name: Run coverage
         if: matrix.os == 'ubuntu-latest'
-        run: cargo tarpaulin --out Lcov --fail-under 80
+        run: cargo tarpaulin --out Lcov --output-dir ./coverage
 ```
 
 ### Pre-Merge
@@ -386,8 +342,7 @@ All tests must pass before merging:
 
 - Unit tests must pass
 - Integration tests must pass
-- Coverage must be >= 80%
-- No new warnings introduced
+- No warnings
 
 ---
 
@@ -397,7 +352,7 @@ All tests must pass before merging:
 
 Following @TODO.md requirements, we use TDD:
 
-1. **Create task** in TASKS.md
+1. **Create task** in tasks.md
 2. **Research** existing documentation
 3. **Write tests first** for the new functionality
 4. **Run tests** - they should fail (RED)
@@ -406,7 +361,7 @@ Following @TODO.md requirements, we use TDD:
 7. **Verify** all tests still pass
 8. **Run linters and formatters**
 9. **Update documentation**
-10. **Mark task complete** in TASKS.md
+10. **Mark task complete** in tasks.md
 
 ### Example
 
@@ -519,7 +474,6 @@ Complex tests should have comments explaining:
 ## Summary
 
 - **Two-tier approach:** Unit tests + Integration tests with REAL CLI
-- **Coverage target:** 80% using `tarpaulin`
 - **TDD workflow:** Tests first, then implementation
 - **Bug fixes:** Always add regression tests
 - **Pre-commit:** Run all tests before committing

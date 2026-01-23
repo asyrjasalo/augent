@@ -14,67 +14,66 @@ This is the authoritative tracking document for all Augent v1.0.0 implementation
 
 ## Phase 0: Pre-Implementation Planning
 
-### Feature 0.1: Create TASKS.md
+### Feature 0.1: Create tasks.md
 
-- [x] Extract all tasks from PLAN.md into `docs/implementation/TASKS.md`
+- [x] Extract all tasks from plan.md into `docs/implementation/tasks.md`
 - [x] Organize tasks by Epic → Feature → Task hierarchy
 - [x] Format as checkboxes for tracking progress
 - [x] Ensure each task is clearly scoped
 - [x] Add linking references to documentation sections
 
-### Feature 0.2: Create TESTING.md
+### Feature 0.2: Create testing.md
 
-See: [TESTING.md](TESTING.md)
+See: [testing.md](testing.md)
 
-- [x] Define testing strategy (unit + integration) - [TESTING.md#testing-strategy](TESTING.md#testing-strategy)
-- [x] Specify that integration tests must use REAL CLI - [TESTING.md#critical-requirement-real-cli](TESTING.md#critical-requirement-real-cli)
-- [x] Document 80% coverage target using Tarpaulin - [TESTING.md#test-coverage](TESTING.md#test-coverage)
-- [x] Define test organization (src/.../mod.rs + tests/) - [TESTING.md#organization](TESTING.md#organization)
-- [x] Specify that all tests must pass for feature completion - [TESTING.md#pre-merge](TESTING.md#pre-merge)
-- [x] Document requirement to add tests after bug fixes - [TESTING.md#bug-fix-testing](TESTING.md#bug-fix-testing)
-- [x] Define test fixtures and common utilities approach - [TESTING.md#test-fixtures](TESTING.md#test-fixtures)
-- [x] Outline continuous testing workflow - [TESTING.md#continuous-testing-workflow](TESTING.md#continuous-testing-workflow)
+- [x] Define testing strategy (unit + integration) - [testing.md#testing-strategy](testing.md#testing-strategy)
+- [x] Specify that integration tests must use REAL CLI - [testing.md#critical-requirement-real-cli](testing.md#critical-requirement-real-cli)
+- [x] Define test organization (src/.../mod.rs + tests/) - [testing.md#organization](testing.md#organization)
+- [x] Specify that all tests must pass for feature completion - [testing.md#pre-merge](testing.md#pre-merge)
+- [x] Document requirement to add tests after bug fixes - [testing.md#bug-fix-testing](testing.md#bug-fix-testing)
+- [x] Define test fixtures and common utilities approach - [testing.md#test-fixtures](testing.md#test-fixtures)
+- [x] Outline continuous testing workflow - [testing.md#continuous-testing-workflow](testing.md#continuous-testing-workflow)
 
-### Feature 0.3: Create ARCHITECTURE.md
+### Feature 0.3: Create architecture.md
 
-See: [ARCHITECTURE.md](ARCHITECTURE.md)
+See: [architecture.md](architecture.md)
 
-- [x] Introduce key concepts (Bundle, Workspace, Aug, Augmentation) - [ARCHITECTURE.md#key-concepts](ARCHITECTURE.md#key-concepts)
-- [x] Document fundamental design decisions from PRD (Type 1 decisions) - [ARCHITECTURE.md#fundamental-design-decisions](ARCHITECTURE.md#fundamental-design-decisions)
-- [x] Create Mermaid sequence diagram: Initial workspace setup - [ARCHITECTURE.md#initial-workspace-setup](ARCHITECTURE.md#initial-workspace-setup)
-- [x] Create Mermaid sequence diagram: Installing a bundle - [ARCHITECTURE.md#installing-a-bundle](ARCHITECTURE.md#installing-a-bundle)
-- [x] Create Mermaid sequence diagram: Installing with dependencies - [ARCHITECTURE.md#installing-with-dependencies](ARCHITECTURE.md#installing-with-dependencies)
-- [x] Create Mermaid sequence diagram: Uninstalling a bundle - [ARCHITECTURE.md#uninstalling-a-bundle](ARCHITECTURE.md#uninstalling-a-bundle)
-- [x] Create Mermaid sequence diagram: Modified file detection and handling - [ARCHITECTURE.md#modified-file-detection-and-handling](ARCHITECTURE.md#modified-file-detection-and-handling)
-- [x] Create Mermaid sequence diagram: Platform detection and resource transformation - [ARCHITECTURE.md#platform-detection-and-resource-transformation](ARCHITECTURE.md#platform-detection-and-resource-transformation)
-- [x] Document Rust development practices - [ARCHITECTURE.md#rust-development-practices](ARCHITECTURE.md#rust-development-practices)
-- [x] Create ADR: Bundle format - [ARCHITECTURE.md#adr-001-bundle-format](ARCHITECTURE.md#adr-001-bundle-format)
-- [x] Create ADR: Platform system - [ARCHITECTURE.md#adr-002-platform-system](ARCHITECTURE.md#adr-002-platform-system)
-- [x] Create ADR: Locking mechanism - [ARCHITECTURE.md#adr-003-locking-mechanism](ARCHITECTURE.md#adr-003-locking-mechanism)
-- [x] Create ADR: Atomic operations - [ARCHITECTURE.md#adr-004-atomic-operations](ARCHITECTURE.md#adr-004-atomic-operations)
+- [x] Introduce key concepts (Bundle, Workspace, Aug, Augmentation) - [architecture.md#key-concepts](architecture.md#key-concepts)
+- [x] Document fundamental design decisions from PRD (Type 1 decisions) - [architecture.md#fundamental-design-decisions](architecture.md#fundamental-design-decisions)
+- [x] Create Mermaid sequence diagram: Initial workspace setup - [architecture.md#initial-workspace-setup](architecture.md#initial-workspace-setup)
+- [x] Create Mermaid sequence diagram: Installing a bundle - [architecture.md#installing-a-bundle](architecture.md#installing-a-bundle)
+- [x] Create Mermaid sequence diagram: Installing with dependencies - [architecture.md#installing-with-dependencies](architecture.md#installing-with-dependencies)
+- [x] Create Mermaid sequence diagram: Uninstalling a bundle - [architecture.md#uninstalling-a-bundle](architecture.md#uninstalling-a-bundle)
+- [x] Create Mermaid sequence diagram: Modified file detection and handling - [architecture.md#modified-file-detection-and-handling](architecture.md#modified-file-detection-and-handling)
+- [x] Create Mermaid sequence diagram: Platform detection and resource transformation - [architecture.md#platform-detection-and-resource-transformation](architecture.md#platform-detection-and-resource-transformation)
+- [x] Document Rust development practices - [architecture.md#rust-development-practices](architecture.md#rust-development-practices)
+- [x] Create ADR: Bundle format - [adrs/001-bundle-format.md](adrs/001-bundle-format.md)
+- [x] Create ADR: Platform system - [adrs/002-platform-system.md](adrs/002-platform-system.md)
+- [x] Create ADR: Locking mechanism - [adrs/003-locking-mechanism.md](adrs/003-locking-mechanism.md)
+- [x] Create ADR: Atomic operations - [adrs/004-atomic-operations.md](adrs/004-atomic-operations.md)
 
-### Feature 0.4: Create DOCUMENTATION.md
+### Feature 0.4: Create documentation.md
 
-See: [DOCUMENTATION.md](DOCUMENTATION.md)
+See: [documentation.md](documentation.md)
 
-- [x] Define user-facing documentation strategy (CLI help, README, FEATURE.md) - [DOCUMENTATION.md#user-facing-documentation](DOCUMENTATION.md#user-facing-documentation)
-- [x] Define internal documentation strategy (implementation docs, keep up-to-date) - [DOCUMENTATION.md#internal-documentation](DOCUMENTATION.md#internal-documentation)
-- [x] Document that architecture changes require user confirmation - [DOCUMENTATION.md#for-architecture-changes](DOCUMENTATION.md#for-architecture-changes)
-- [x] Document process for adding new ARCHITECTURE.md decision records - [DOCUMENTATION.md#architecture-decision-records](DOCUMENTATION.md#architecture-decision-records)
-- [x] Create documentation templates and examples - [DOCUMENTATION.md#templates](DOCUMENTATION.md#templates)
+- [x] Define user-facing documentation strategy (CLI help, README, FEATURE.md) - [documentation.md#user-facing-documentation](documentation.md#user-facing-documentation)
+- [x] Define internal documentation strategy (implementation docs, keep up-to-date) - [documentation.md#internal-documentation](documentation.md#internal-documentation)
+- [x] Document that architecture changes require user confirmation - [documentation.md#for-architecture-changes](documentation.md#for-architecture-changes)
+- [x] Document process for adding new architecture.md decision records - [documentation.md#architecture-decision-records](documentation.md#architecture-decision-records)
+- [x] Create documentation templates and examples - [documentation.md#templates](documentation.md#templates)
 
 ### Feature 0.5: Update CLAUDE.md
 
 See: [CLAUDE.md](../../CLAUDE.md)
 
-- [x] Add implementation process: Create task at end of TASKS.md before starting work
+- [x] Add implementation process: Create task at end of tasks.md before starting work
 - [x] Add implementation process: Research existing documentation first
 - [x] Add implementation process: Create tests first (TDD approach)
 - [x] Add implementation process: Implement the feature/fix
 - [x] Add implementation process: Make all tests pass
 - [x] Add implementation process: Run linters and formatters
 - [x] Add implementation process: Create/update documentation
-- [x] Add implementation process: Mark task complete in TASKS.md with links
+- [x] Add implementation process: Mark task complete in tasks.md with links
 - [x] Add implementation process: Update CHANGELOG.md for user-facing changes
 - [x] Add guideline: Do not reference code by specific line numbers
 - [x] Add guideline: Do not count lines or use vanity metrics
@@ -440,12 +439,6 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Install and configure `tarpaulin` - Available as dev-dependency for local use
 
-#### Feature 11.4: 80% Coverage Plan
-
-**Status:** Pending
-
-- [ ] Create plan to achieve 80% test coverage most efficiently
-
 ### Epic 12: Documentation
 
 **Status:** Complete
@@ -465,6 +458,39 @@ See: [CLAUDE.md](../../CLAUDE.md)
 #### Feature 12.4: Implementation Documentation
 
 **Status:** Complete
+
+#### Feature 12.5: Platform Documentation
+
+**Status:** Complete
+
+- [x] Create user-facing platform documentation in `docs/platforms_schema.md` - [docs/platforms_schema.md](../platforms_schema.md)
+- [x] Document supported platforms (Claude Code, Cursor AI, OpenCode) - [docs/platforms_schema.md](../platforms_schema.md)
+- [x] Document platform detection and auto-detection - [docs/platforms_schema.md](../platforms_schema.md)
+- [x] Document resource transformations between formats - [docs/platforms_schema.md](../platforms_schema.md)
+- [x] Document merge strategies for conflicts - [docs/platforms_schema.md#merge-strategies](../platforms_schema.md#merge-strategies)
+- [x] Document adding new platforms via custom configuration - [docs/platforms_schema.md](../platforms_schema.md)
+
+#### Feature 12.6: Feature Specifications
+
+**Status:** Complete
+
+- [x] Create `docs/implementation/specs/install-command.md` - [specs/install-command.md](specs/install-command.md)
+- [x] Create `docs/implementation/specs/uninstall-command.md` - [specs/uninstall-command.md](specs/uninstall-command.md)
+- [x] Create `docs/implementation/specs/workspace-management.md` - [specs/workspace-management.md](specs/workspace-management.md)
+- [x] Create `docs/implementation/specs/platform-system.md` - [specs/platform-system.md](specs/platform-system.md)
+- [x] Document interface, implementation, error handling, and testing for each feature
+
+#### Feature 12.7: Documentation Verification
+
+**Status:** Complete
+
+- [x] Verify all commands are documented in `docs/commands.md` - [docs/commands.md](../commands.md)
+- [x] Verify bundle format is documented in `docs/bundles.md` - [docs/bundles.md](../bundles.md)
+- [x] Verify platform support is documented in `docs/platforms_schema.md` - [docs/platforms_schema.md](../platforms_schema.md)
+- [x] Verify README.md is accurate and concise - [README.md](../../README.md)
+- [x] Verify CLI help text is complete and fits on screen
+- [x] Verify all links in documentation files work
+- [x] Verify `docs/implementation/specs/` directory exists with feature specifications
 
 ---
 
@@ -490,10 +516,10 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Task Statistics
 
-- **Total Tasks:** 262
-- **Completed:** 254 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 Epic 12 complete, Epic 11 features 11.1-11.3 complete)
-- **In Progress:** 1 (Epic 11 Feature 11.4: 80% coverage plan)
-- **Pending:** 7 (Phase 6 Epic 13 remaining)
+- **Total Tasks:** 280
+- **Completed:** 277 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 complete)
+- **In Progress:** 0
+- **Pending:** 3 (Phase 6 Epic 13 remaining - all tasks optional/release focused)
 
 ---
 

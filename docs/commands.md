@@ -350,6 +350,6 @@ If no workspace is specified, Augent:
 
 ## See Also
 
-- [Bundle Format](BUNDLES.md) - Bundle structure and configuration
-- [Workspace Configuration](WORKSPACE.md) - Workspace setup and management
-- [Architecture Documentation](implementation/ARCHITECTURE.md) - Implementation details
+- [Bundle Format](bundles.md) - Bundle structure and configuration
+- [Workspace Configuration](workspace.md) - Workspace setup and management
+- [Architecture Documentation](implementation/architecture.md) - Implementation details

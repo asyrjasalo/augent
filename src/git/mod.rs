@@ -407,4 +407,30 @@ mod tests {
         let result = open(temp.path().join("nonexistent").as_path());
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_resolve_reference_full_sha() {
+        let temp = TempDir::new().unwrap();
+        let repo = Repository::init(temp.path()).unwrap();
+
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+        let tree_id = {
+            let mut index = repo.index().unwrap();
+            index.write_tree().unwrap()
+        };
+        let tree = repo.find_tree(tree_id).unwrap();
+        let commit_oid = repo
+            .commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .unwrap();
+
+        let commit = repo.find_commit(commit_oid).unwrap();
+        let full_sha = commit.id().to_string();
+
+        let result = resolve_reference(&repo, &full_sha);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap().id(),
+            git2::Oid::from_str(&full_sha).unwrap()
+        );
+    }
 }

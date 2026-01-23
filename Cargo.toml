@@ -28,7 +28,7 @@ serde_json = "1"
 git2 = { version = "0.19", default-features = false, features = ["ssh"] }
 # Use system git via gitoxide instead of libgit2 to avoid OpenSSL issues
 # git2 = { version = "0.19", default-features = false, features = ["ssh"] }
-gix = { version = "0.70", features = ["blocking-network-client"] }
+gix = { version = "0.78", features = ["blocking-network-client"] }
 # auth-git2 is deprecated, use git2's built-in auth callback instead
 
 # File system operations

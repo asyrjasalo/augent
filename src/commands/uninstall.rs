@@ -26,7 +26,7 @@ pub fn run(args: UninstallArgs) -> Result<()> {
             path: current_dir.display().to_string(),
         })?;
 
-    let mut workspace = Workspace::open(&workspace_root)?;
+    let mut workspace = crate::workspace::Workspace::open(&workspace_root)?;
 
     let bundle_name = args.name.clone();
 
@@ -382,7 +382,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut workspace = Workspace::open(workspace_path).unwrap();
+        let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
         workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
 
@@ -419,7 +419,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut workspace = Workspace::open(workspace_path).unwrap();
+        let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
         workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
 
@@ -510,7 +510,7 @@ bundles:
         )
         .unwrap();
 
-        let mut workspace = Workspace::open(workspace_path).unwrap();
+        let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
 
         update_configs(&mut workspace, "bundle1").unwrap();
 
@@ -543,7 +543,7 @@ bundles:
         )
         .unwrap();
 
-        let mut workspace = Workspace::open(workspace_path).unwrap();
+        let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
         workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
 
@@ -635,5 +635,67 @@ bundles:
         fs::write(dir.join("file2.md"), "content").unwrap();
 
         assert!(!is_dir_empty(&dir).unwrap());
+    }
+
+    #[test]
+    fn test_find_dependent_bundles() {
+        let mut lockfile = Lockfile::new("@test/workspace");
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "bundle1".to_string(),
+            source: crate::config::LockedSource::Dir {
+                path: ".augent/bundles/bundle1".to_string(),
+                hash: "hash1".to_string(),
+            },
+            files: vec!["file1.txt".to_string()],
+        });
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "bundle2".to_string(),
+            source: crate::config::LockedSource::Dir {
+                path: ".augent/bundles/bundle2".to_string(),
+                hash: "hash2".to_string(),
+            },
+            files: vec!["file1.txt".to_string()],
+        });
+
+        let mut workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+
+        workspace_config.add_bundle(crate::config::WorkspaceBundle {
+            name: "bundle1".to_string(),
+            enabled: {
+                let mut enabled = std::collections::HashMap::new();
+                enabled.insert(
+                    "file1.txt".to_string(),
+                    vec![".opencode/file1.txt".to_string()],
+                );
+                enabled
+            },
+        });
+
+        workspace_config.add_bundle(crate::config::WorkspaceBundle {
+            name: "bundle2".to_string(),
+            enabled: {
+                let mut enabled = std::collections::HashMap::new();
+                enabled.insert(
+                    "file1.txt".to_string(),
+                    vec![".cursor/file1.txt".to_string()],
+                );
+                enabled
+            },
+        });
+
+        let workspace = crate::workspace::Workspace {
+            root: TempDir::new().unwrap().path().to_path_buf(),
+            augent_dir: std::path::PathBuf::from(".augent"),
+            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
+            workspace_config,
+            lockfile,
+        };
+
+        let dependents = find_dependent_bundles(&workspace, "bundle1").unwrap();
+
+        assert_eq!(dependents.len(), 1);
+        assert!(dependents.contains(&"bundle2".to_string()));
     }
 }

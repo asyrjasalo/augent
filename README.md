@@ -97,9 +97,9 @@ my-bundle/
 
 ## Documentation
 
-- [Commands Reference](docs/COMMANDS.md) - Detailed command documentation
-- [Bundle Format](docs/BUNDLES.md) - Bundle structure and configuration
-- [Workspace Configuration](docs/WORKSPACE.md) - Workspace setup and management
+- [Commands Reference](docs/commands.md) - Detailed command documentation
+- [Bundle Format](docs/bundles.md) - Bundle structure and configuration
+- [Workspace Configuration](docs/workspace.md) - Workspace setup and management
 
 ## Why Augent?
 

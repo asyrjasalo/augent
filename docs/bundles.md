@@ -196,7 +196,7 @@ Special file merged into workspace `AGENTS.md`:
 customSetting: value
 ```
 
-**Merge behavior:** Composite merge with delimiter (see [Workspace Configuration](WORKSPACE.md)).
+**Merge behavior:** Composite merge with delimiter (see [Workspace Configuration](workspace.md)).
 
 ### Root Files (`root/`)
 
@@ -360,6 +360,6 @@ bundles:
 
 ## See Also
 
-- [Commands Reference](COMMANDS.md) - How to install and manage bundles
-- [Workspace Configuration](WORKSPACE.md) - How bundles integrate into workspaces
-- [Architecture Documentation](implementation/ARCHITECTURE.md) - Transformation and merge logic
+- [Commands Reference](commands.md) - How to install and manage bundles
+- [Workspace Configuration](workspace.md) - How bundles integrate into workspaces
+- [Architecture Documentation](implementation/architecture.md) - Transformation and merge logic

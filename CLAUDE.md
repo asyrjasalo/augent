@@ -18,14 +18,14 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 **You must follow this process ALWAYS when implementing any feature or bug fix:**
 
 1. **Mark work as started** - Before starting work, mark the appropriate Epic/Feature/Task as in progress:
-   - In `docs/implementation/PLAN.md`: Mark Epic/Feature status as "In Progress"
-   - In `docs/implementation/TASKS.md`: Mark tasks as `[-]` (in progress)
+   - In `docs/implementation/plan.md`: Mark Epic/Feature status as "In Progress"
+   - In `docs/implementation/tasks.md`: Mark tasks as `[-]` (in progress)
    - This allows epics to be worked in parallel as long as dependencies are met
-2. **Create task** - Add a task to the end of @docs/implementation/TASKS.md before starting work
+2. **Create task** - Add a task to the end of @docs/implementation/tasks.md before starting work
 3. **Research** - Review existing documentation:
-   - @docs/pre-implementation/PRD.md for requirements
-   - @docs/implementation/ARCHITECTURE.md for design decisions
-   - @docs/implementation/TESTING.md for testing requirements
+   - @docs/pre-implementation/prd.md for requirements
+   - @docs/implementation/architecture.md for design decisions
+   - @docs/implementation/testing.md for testing requirements
 4. **Create tests first** - Write tests before implementation (TDD approach)
 5. **Implement** - Write the implementation code
 6. **Run formatters** - Fix formatting issues:
@@ -35,19 +35,17 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 8. **Run security audit** - Check for vulnerabilities:
    - `cargo audit`
 9. **Make tests pass** - Run tests and fix issues until all pass
-10. **Run code coverage** - Ensure 80% coverage threshold is met:
-    - `cargo tarpaulin --out Json | jq '.results.coverage'`
-11. **Update documentation** - Update relevant docs if needed:
-    - Keep @docs/implementation/PLAN.md and @docs/implementation/TASKS.md in sync
+10. **Update documentation** - Update relevant docs if needed:
+    - Keep @docs/implementation/plan.md and @docs/implementation/tasks.md in sync
     - PLAN.md tracks PHASES, EPICS, and FEATURES (high-level progress)
     - TASKS.md tracks individual tasks (detailed progress)
     - Both documents must reflect current implementation status
-12. **Run pre-commit** - Check documentation and other files:
+11. **Run pre-commit** - Check documentation and other files:
     - `pre-commit run --all-files`
-13. **Mark task complete** - Mark task as `[x]` in TASKS.md and link to relevant documentation
+12. **Mark task complete** - Mark task as `[x]` in TASKS.md and link to relevant documentation
     - If all tasks in a Feature are complete, mark Feature as "Complete" in PLAN.md
     - If all Features in an Epic are complete, mark Epic as "Complete" in PLAN.md
-14. **Update CHANGELOG.md** - For user-facing features or bug fixes only
+13. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
 ## Development Guidelines
 
@@ -63,13 +61,13 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 
 | Document | Purpose |
 |----------|---------|
-| @docs/pre-implementation/PRD.md | Product requirements and Type 1/2 decisions |
+| @docs/pre-implementation/prd.md | Product requirements and Type 1/2 decisions |
 | @docs/pre-implementation/ | Historical planning documents (do not modify) |
-| @docs/implementation/PLAN.md | Implementation plan with epics/features |
-| @docs/implementation/TASKS.md | Task tracking checklist |
-| @docs/implementation/TESTING.md | Testing strategy and requirements |
-| @docs/implementation/ARCHITECTURE.md | Architecture and ADRs |
-| @docs/implementation/DOCUMENTATION.md | Documentation plan |
+| @docs/implementation/plan.md | Implementation plan with epics/features |
+| @docs/implementation/tasks.md | Task tracking checklist |
+| @docs/implementation/testing.md | Testing strategy and requirements |
+| @docs/implementation/architecture.md | Architecture and ADRs |
+| @docs/implementation/documentation.md | Documentation plan |
 
 ## Key Directories
 
@@ -86,7 +84,6 @@ Augent is an AI configuration manager for managing AI coding agent resources (co
 - Simplicity and developer-friendliness are paramount
 - No cargo culting existing package managers
 - All Type 1 decisions in PRD are fundamental and non-reversible
-- 80% test coverage target using Tarpaulin
 - Integration tests must use REAL CLI
 
 ## Commands Reference

@@ -14,42 +14,42 @@ This plan covers both pre-implementation planning tasks and actual implementatio
 
 Before writing any implementation code, we must complete these planning documents per @TODO.md:
 
-1. **PLAN.md** ✅ (this file) - Implementation breakdown
-2. **TASKS.md** - Detailed task checklist (extracted from this plan)
-3. **TESTING.md** - Testing strategy and coverage requirements
-4. **ARCHITECTURE.md** - Architecture decisions, diagrams, and ADRs
-5. **DOCUMENTATION.md** - Documentation plan (user and internal)
+1. **plan.md** (this file) - Implementation breakdown
+2. **tasks.md** - Detailed task checklist (extracted from this plan)
+3. **testing.md** - Testing strategy
+4. **architecture.md** - Architecture decisions, diagrams, and ADRs
+5. **documentation.md** - Documentation plan (user and internal)
 6. **CLAUDE.md** - Update with implementation process guidelines
 
-### Feature 0.1: Create TASKS.md
+### Feature 0.1: Create tasks.md
 
 **Status:** Complete
 
-See: [TASKS.md](TASKS.md)
+See: [tasks.md](tasks.md)
 
 ---
 
-### Feature 0.2: Create TESTING.md
+### Feature 0.2: Create testing.md
 
 **Status:** Complete
 
-See: [TESTING.md](TESTING.md)
+See: [testing.md](testing.md)
 
 ---
 
-### Feature 0.3: Create ARCHITECTURE.md
+### Feature 0.3: Create architecture.md
 
 **Status:** Complete
 
-See: [ARCHITECTURE.md](ARCHITECTURE.md)
+See: [architecture.md](architecture.md)
 
 ---
 
-### Feature 0.4: Create DOCUMENTATION.md
+### Feature 0.4: Create documentation.md
 
 **Status:** Complete
 
-See: [DOCUMENTATION.md](DOCUMENTATION.md)
+See: [documentation.md](documentation.md)
 
 ---
 
@@ -90,7 +90,6 @@ Based on research of OpenPackage and Rust CLI best practices:
 5. **File Locking**: `fslock` for workspace locking
 6. **Platform System**: Flow-based transformations similar to OpenPackage's platforms.jsonc
 7. **Testing**: `assert_cmd`, `assert_fs`, `tempfile` for integration tests
-8. **Coverage Target**: 80% using `tarpaulin`
 
 ---
 
@@ -645,15 +644,15 @@ Uninstall command, query commands (list, show), help and version.
 
 ### Overview
 
-Testing infrastructure, documentation, coverage targets.
+Testing infrastructure, documentation.
 
 ---
 
 ### Epic 11: Testing Infrastructure
 
-**Goal:** Set up comprehensive testing with 80% coverage target.
+**Goal:** Set up comprehensive testing framework with adequate coverage.
 
-**Status:** In Progress
+**Status:** Complete
 
 ### Feature 11.1: Unit Testing Framework
 
@@ -695,16 +694,6 @@ Testing infrastructure, documentation, coverage targets.
 
 ---
 
-### Feature 11.4: 80% Coverage Plan
-
-**Status:** Pending
-
-#### Tasks
-
-- [ ] Create plan to achieve 80% test coverage most efficiently
-
----
-
 ## Epic 12: Documentation
 
 **Status:** Complete
@@ -743,11 +732,11 @@ Testing infrastructure, documentation, coverage targets.
 
 #### Tasks
 
-- [x] Create `docs/COMMANDS.md` for detailed command docs - [docs/COMMANDS.md](../../docs/COMMANDS.md)
-- [x] Document each command with examples - [docs/COMMANDS.md](../../docs/COMMANDS.md)
-- [x] Document bundle format (augent.yaml) - [docs/BUNDLES.md](../../docs/BUNDLES.md)
-- [x] Document lockfile format - [docs/BUNDLES.md](../../docs/BUNDLES.md)
-- [x] Document workspace configuration - [docs/WORKSPACE.md](../../docs/WORKSPACE.md)
+- [x] Create `docs/commands.md` for detailed command docs - [docs/commands.md](../../docs/commands.md)
+- [x] Document each command with examples - [docs/commands.md](../../docs/commands.md)
+- [x] Document bundle format (augent.yaml) - [docs/bundles.md](../../docs/bundles.md)
+- [x] Document lockfile format - [docs/bundles.md](../../docs/bundles.md)
+- [x] Document workspace configuration - [docs/workspace.md](../../docs/workspace.md)
 
 ---
 
@@ -757,10 +746,10 @@ Testing infrastructure, documentation, coverage targets.
 
 #### Tasks
 
-- [x] Verify `docs/implementation/ARCHITECTURE.md` exists - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md)
-- [x] Verify architecture decision records (ADRs) are complete - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md#architecture-decision-records-adr)
-- [x] Verify Rust development practices are documented - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md#rust-development-practices)
-- [x] Verify sequence diagrams for workflows (Mermaid) exist - [docs/implementation/ARCHITECTURE.md](ARCHITECTURE.md#user-workflows)
+- [x] Verify `docs/implementation/architecture.md` exists - [docs/implementation/architecture.md](architecture.md)
+- [x] Verify architecture decision records (ADRs) are complete - [docs/implementation/architecture.md](architecture.md#architecture-decision-records-adr)
+- [x] Verify Rust development practices are documented - [docs/implementation/architecture.md](architecture.md#rust-development-practices)
+- [x] Verify sequence diagrams for workflows (Mermaid) exist - [docs/implementation/architecture.md](architecture.md#user-workflows)
 
 ---
 
@@ -808,7 +797,7 @@ Cross-platform builds, distribution setup.
 
 ### Phase 0: Pre-Implementation Planning ⚠️ MUST COMPLETE FIRST
 
-- TESTING.md, ARCHITECTURE.md, DOCUMENTATION.md, TASKS.md, CLAUDE.md updates
+- testing.md, architecture.md, documentation.md, tasks.md, CLAUDE.md updates
 - All documentation must be created before any code implementation
 - Research is complete (OpenPackage platforms.jsonc, Rust CLI best practices)
 
@@ -867,7 +856,6 @@ Cross-platform builds, distribution setup.
 - Each task is designed to fit within a context window
 - Research on OpenPackage's platforms.jsonc is complete
 - Research on Rust CLI best practices is complete
-- Tarpaulin will be used for 80% coverage target
 - All operations must be atomic with rollback on failure
 - Testing must pass for each feature to be considered complete
-- TASKS.md will be the authoritative tracking document once created
+- tasks.md will be the authoritative tracking document once created

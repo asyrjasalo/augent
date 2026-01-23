@@ -474,4 +474,97 @@ mod tests {
 
         assert!(selected.name == "@test/bundle1" || selected.name == "@test/bundle2");
     }
+
+    #[test]
+    fn test_update_configs_adds_new_bundle() {
+        let temp = TempDir::new().unwrap();
+
+        let mut workspace = crate::workspace::Workspace {
+            root: temp.path().to_path_buf(),
+            augent_dir: temp.path().join(".augent"),
+            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
+            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
+            lockfile: crate::config::Lockfile::new("@test/workspace"),
+        };
+
+        std::fs::create_dir(temp.path().join("commands")).unwrap();
+        std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
+
+        let bundle = crate::resolver::ResolvedBundle {
+            name: "@external/bundle".to_string(),
+            dependency: None,
+            source_path: temp.path().to_path_buf(),
+            resolved_sha: None,
+            git_source: None,
+            config: None,
+        };
+
+        let mut workspace_bundle = crate::config::WorkspaceBundle::new("@external/bundle");
+        workspace_bundle.add_file(
+            "commands/test.md",
+            vec![".cursor/commands/test.md".to_string()],
+        );
+
+        update_configs(
+            &mut workspace,
+            temp.path().to_string_lossy().to_string().as_str(),
+            &[bundle],
+            vec![workspace_bundle],
+        )
+        .unwrap();
+
+        assert!(workspace.bundle_config.has_dependency("@external/bundle"));
+        assert!(
+            workspace
+                .workspace_config
+                .find_bundle("@external/bundle")
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn test_update_configs_handles_existing_bundle() {
+        let temp = TempDir::new().unwrap();
+
+        let mut workspace = crate::workspace::Workspace {
+            root: temp.path().to_path_buf(),
+            augent_dir: temp.path().join(".augent"),
+            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
+            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
+            lockfile: crate::config::Lockfile::new("@test/workspace"),
+        };
+
+        std::fs::create_dir(temp.path().join("commands")).unwrap();
+        std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
+
+        let bundle = crate::resolver::ResolvedBundle {
+            name: "@existing/bundle".to_string(),
+            dependency: None,
+            source_path: temp.path().to_path_buf(),
+            resolved_sha: None,
+            git_source: None,
+            config: None,
+        };
+
+        let mut workspace_bundle = crate::config::WorkspaceBundle::new("@existing/bundle");
+        workspace_bundle.add_file(
+            "commands/test.md",
+            vec![".cursor/commands/test.md".to_string()],
+        );
+
+        update_configs(
+            &mut workspace,
+            temp.path().to_string_lossy().to_string().as_str(),
+            &[bundle],
+            vec![workspace_bundle],
+        )
+        .unwrap();
+
+        assert!(
+            workspace
+                .workspace_config
+                .find_bundle("@existing/bundle")
+                .is_some()
+        );
+    }
 }

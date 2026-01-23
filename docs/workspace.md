@@ -432,6 +432,6 @@ Error: Lockfile would change (use --frozen to fail)
 
 ## See Also
 
-- [Commands Reference](COMMANDS.md) - Managing workspaces via CLI
-- [Bundle Format](BUNDLES.md) - Creating and publishing bundles
-- [Architecture Documentation](implementation/ARCHITECTURE.md) - Implementation details
+- [Commands Reference](commands.md) - Managing workspaces via CLI
+- [Bundle Format](bundles.md) - Creating and publishing bundles
+- [Architecture Documentation](implementation/architecture.md) - Implementation details
