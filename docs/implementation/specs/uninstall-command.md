@@ -307,7 +307,7 @@ where
 
 ## References
 
-- PRD: [Uninstall Command](../../pre-implementation/prd.md#uninstall-command)
+- PRD: [CLI Commands](../../pre-implementation/prd.md#cli-commands)
 - ARCHITECTURE: [Uninstalling a Bundle](../architecture.md#uninstalling-a-bundle)
 - ARCHITECTURE: [ADR-004: Atomic Operations](../adrs/004-atomic-operations.md)
 - USER DOCS: [Commands Reference - uninstall](../../commands.md#uninstall)

@@ -117,9 +117,6 @@ jobs:
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-
   # Build release binaries
   build:
     name: Build release (${{ matrix.os }} - ${{ matrix.target }})

@@ -286,7 +286,7 @@ where
 
 ## References
 
-- PRD: [Install Command](../../pre-implementation/prd.md#install-command)
+- PRD: [CLI Commands](../../pre-implementation/prd.md#cli-commands)
 - ARCHITECTURE: [Installing a Bundle](../architecture.md#installing-a-bundle)
 - ARCHITECTURE: [Installing with Dependencies](../architecture.md#installing-with-dependencies)
 - ARCHITECTURE: [ADR-003: Locking Mechanism](../adrs/003-locking-mechanism.md)
