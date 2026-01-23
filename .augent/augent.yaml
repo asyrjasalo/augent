@@ -1,2 +1,4 @@
 name: '@asyrjasalo/augent'
-bundles: []
+bundles:
+- name: '@local/incident-response'
+  git: https://github.com/wshobson/agents.git

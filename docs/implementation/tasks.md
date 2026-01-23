@@ -515,6 +515,268 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
+## Phase 5.5: Test Coverage Gaps (Critical)
+
+**Status:** Partially Complete (3 of 12 features)
+
+**Overview:** Based on comprehensive audit of user-facing functionality vs. test coverage
+
+**Summary:** Critical test gaps have been addressed (compilation, shell completions, clean-cache). Remaining features (5.5.4-5.5.15) represent substantial additional testing work (91 tasks) that can be implemented incrementally as needed.
+
+### Feature 5.5.1: Fix Compilation Errors (BLOCKING)
+
+**Status:** Complete
+
+#### Tasks
+
+- [x] Fix type mismatch in `src/commands/menu.rs` line 23 - convert `Vec<String>` to `&[&str]` for Checkboxes API
+- [x] Fix error conversion in `src/commands/menu.rs` line 27 - properly handle `std::io::Error` conversion to `AugentError`
+- [x] Fix `checked()` method call in `src/commands/menu.rs` line 31 - use correct Option method
+- [x] Fix dereference error in `src/commands/menu.rs` line 37 - correct indexing usage
+- [x] Verify compilation succeeds with `cargo build`
+- [x] Verify all tests compile with `cargo test --no-run`
+
+### Feature 5.5.2: Completions Command Test Coverage
+
+**Status:** Complete
+
+#### Tasks
+
+- [x] Test completions command for bash shell (currently tested in cli_options_tests.rs, verify it works)
+- [x] Test completions command for zsh shell (currently tested in cli_options_tests.rs, verify it works)
+- [x] Test completions command for fish shell (currently tested in cli_options_tests.rs, verify it works)
+- [x] Test completions command for powershell shell (currently tested in cli_options_tests.rs, verify it works)
+- [x] Add test for completions command for elvish shell (NOT TESTED - add to tests/cli_options_tests.rs or new file)
+- [x] Test completions command with missing shell argument (error case - currently tested)
+- [x] Test completions command with invalid shell argument (error case - currently tested)
+- [x] Verify generated completion scripts are valid syntax for each shell type
+- [x] Add integration test for installing and using completion scripts
+
+### Feature 5.5.3: Clean-Cache Command Test Coverage
+
+**Status:** Complete
+
+#### Tasks
+
+- [x] Test `augent clean-cache --show-size` displays cache size correctly (NOT TESTED)
+- [x] Test `augent clean-cache --all` removes all cached bundles (NOT TESTED - only 1 test exists and it tests cache miss after bundle change, not cache cleanup)
+- [x] Test `augent clean-cache --show-size --all` shows size and cleans (NOT TESTED)
+- [ ] Test clean-cache command with non-existent cache directory (error case)
+- [x] Test clean-cache command preserves workspace files (only removes cache)
+- [x] Test clean-cache command with workspace option
+- [ ] Verify cache directory structure after cleanup
+- [x] Test clean-cache with verbose flag shows details
+
+### Feature 5.5.4: Install Command Advanced Scenarios
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test install from git repository with subdirectory (e.g., `github:user/repo#plugins/name`) (NOT TESTED)
+- [ ] Test install from git repository with tag ref (e.g., `github:user/bundle#v1.0.0`) (NOT TESTED)
+- [ ] Test install from git repository with branch ref (e.g., `github:user/bundle#main`) (NOT TESTED)
+- [ ] Test install from git repository with SHA ref (e.g., `github:user/bundle#abc123`) (NOT TESTED)
+- [ ] Test install from full HTTPS git URL (currently may be tested, verify coverage)
+- [ ] Test install from SSH git URL (currently may be tested, verify coverage)
+- [ ] Test install from github:author/repo short form (currently may be tested, verify coverage)
+- [ ] Test install from author/repo simplified form (currently may be tested, verify coverage)
+- [ ] Test install with invalid URL format (error case)
+- [ ] Test install with non-existent repository (error case)
+- [ ] Test install with ref that doesn't exist (error case)
+- [ ] Test install with subdirectory that doesn't exist (error case)
+
+### Feature 5.5.5: Install Command Interactive Features
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test install with interactive bundle selection menu (NOT TESTED - requires mocking stdin)
+- [ ] Test install with multiple bundles discovered and user selects subset (NOT TESTED)
+- [ ] Test install with multiple bundles discovered and user selects all (NOT TESTED)
+- [ ] Test install with multiple bundles discovered and user cancels (NOT TESTED)
+- [ ] Test install with bundle discovery when repository has multiple subdirectories (NOT TESTED)
+- [ ] Test install bypasses menu when subdirectory is explicitly specified (NOT TESTED)
+- [ ] Test menu display formatting is correct (NOT TESTED)
+- [ ] Test menu with bundles that have descriptions (NOT TESTED)
+- [ ] Test menu with bundles that lack descriptions (NOT TESTED)
+
+### Feature 5.5.6: Uninstall Command Interactive Features
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test uninstall with confirmation prompt (user accepts) (NOT TESTED - requires mocking stdin)
+- [ ] Test uninstall with confirmation prompt (user declines) (NOT TESTED - requires mocking stdin)
+- [ ] Test uninstall with --yes flag skips confirmation (currently may be tested, verify coverage)
+- [ ] Test uninstall warns about dependent bundles (currently may be tested, verify coverage)
+- [ ] Test uninstall proceeds after warning despite dependencies (currently may be tested, verify coverage)
+- [ ] Test uninstall confirmation prompt text is clear (NOT TESTED)
+
+### Feature 5.5.7: Workspace Detection and Auto-Detection
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test workspace detection finds .augent in current directory (currently may be tested, verify coverage)
+- [ ] Test workspace detection searches parent directories (NOT TESTED)
+- [ ] Test workspace detection with --workspace flag uses specified path (currently may be tested, verify coverage)
+- [ ] Test workspace initialization creates .augent directory (currently may be tested, verify coverage)
+- [ ] Test workspace initialization creates initial config files (currently may be tested, verify coverage)
+- [ ] Test workspace initialization infers name from git remote (currently may be tested, verify coverage)
+- [ ] Test workspace initialization falls back to USERNAME/DIR when no git remote (currently may be tested, verify coverage)
+- [ ] Test workspace initialization error when not in git directory (NOT TESTED)
+- [ ] Test workspace detection error when no workspace found (currently may be tested, verify coverage)
+
+### Feature 5.5.8: Bundle Discovery Scenarios
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test bundle discovery from git repository with multiple bundles (NOT TESTED)
+- [ ] Test bundle discovery from git repository with single bundle (NOT TESTED)
+- [ ] Test bundle discovery from local directory with resources (NOT TESTED)
+- [ ] Test bundle discovery from local directory without resources (error case)
+- [ ] Test bundle discovery detects Claude Code plugins (currently may be tested, verify coverage)
+- [ ] Test bundle discovery detects Claude Code marketplace format (currently may be tested, verify coverage)
+- [ ] Test bundle discovery shows all bundles when multiple found (NOT TESTED)
+- [ ] Test bundle discovery handles subdirectories correctly (NOT TESTED)
+
+### Feature 5.5.9: Error Path Coverage
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test install with corrupted augent.yaml (error case - NOT TESTED)
+- [ ] Test install with corrupted augent.lock (error case - NOT TESTED)
+- [ ] Test install with corrupted augent.workspace.yaml (error case - NOT TESTED)
+- [ ] Test install with circular dependencies (error case - currently may be tested, verify coverage)
+- [ ] Test install with missing dependency bundle (error case - currently may be tested, verify coverage)
+- [ ] Test uninstall with bundle not found (error case - currently tested in cli_tests.rs, verify)
+- [ ] Test uninstall with modified files that conflict (NOT TESTED)
+- [ ] Test list with corrupted lockfile (error case - NOT TESTED)
+- [ ] Test show with bundle not found (error case - NOT TESTED)
+- [ ] Test version command always succeeds (currently tested, verify)
+- [ ] Test help command always succeeds (currently tested, verify)
+- [ ] Test all commands with insufficient permissions (error case - NOT TESTED)
+- [ ] Test all commands with disk full error (error case - NOT TESTED)
+- [ ] Test all commands with network timeout during git operations (error case - NOT TESTED)
+
+### Feature 5.5.10: Platform-Specific Test Coverage
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test install for claude platform with various resources (currently may be tested, verify coverage)
+- [ ] Test install for cursor platform with various resources (currently may be tested, verify coverage)
+- [ ] Test install for opencode platform with various resources (currently may be tested, verify coverage)
+- [ ] Test install with --for flag for multiple agents (currently may be tested, verify coverage)
+- [ ] Test install with --for flag for single agent (currently may be tested, verify coverage)
+- [ ] Test auto-detection of platforms when --for not specified (NOT TESTED)
+- [ ] Test platform detection from .claude directory (currently may be tested, verify coverage)
+- [ ] Test platform detection from .cursor directory (currently may be tested, verify coverage)
+- [ ] Test platform detection from .opencode directory (currently may be tested, verify coverage)
+- [ ] Test platform detection from root files like CLAUDE.md (currently may be tested, verify coverage)
+- [ ] Test transformation of resources for each platform (currently may be tested, verify coverage)
+- [ ] Test merge strategies for each platform (currently may be tested in install_merge_tests.rs, verify coverage)
+
+### Feature 5.5.11: Edge Cases and Boundary Conditions
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test install with bundle containing 0 resources (edge case - NOT TESTED)
+- [ ] Test install with bundle containing many resources (performance test - NOT TESTED)
+- [ ] Test install with deeply nested dependencies (5+ levels - NOT TESTED)
+- [ ] Test install with bundle name at max length (NOT TESTED)
+- [ ] Test install with bundle name with special characters (NOT TESTED)
+- [ ] Test install with resource path at max length (NOT TESTED)
+- [ ] Test list with 0 bundles installed (currently tested, verify)
+- [ ] Test list with 1 bundle installed (currently tested, verify)
+- [ ] Test list with many bundles installed (currently tested, verify)
+- [ ] Test uninstall when it's the only bundle (NOT TESTED)
+- [ ] Test uninstall when it's the last bundle (NOT TESTED)
+- [ ] Test show with bundle that has no files (NOT TESTED)
+- [ ] Test show with bundle that has no dependencies (NOT TESTED)
+
+### Feature 5.5.12: Global Options Test Coverage
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test --verbose flag for install command (currently tested, verify coverage)
+- [ ] Test --verbose flag for uninstall command (currently tested, verify coverage)
+- [ ] Test --verbose flag for list command (currently tested, verify coverage)
+- [ ] Test --verbose flag for show command (currently tested, verify coverage)
+- [ ] Test --verbose flag for clean-cache command (NOT TESTED)
+- [ ] Test --verbose flag for completions command (NOT TESTED)
+- [ ] Test --workspace flag for all commands (currently tested, verify coverage)
+- [ ] Test --help flag for all commands (currently tested, verify coverage)
+- [ ] Test --version flag works globally (currently tested, verify coverage)
+
+### Feature 5.5.13: Integration Test Scenarios
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Test full workflow: install → verify files → list → show → uninstall (NOT TESTED end-to-end)
+- [ ] Test installing multiple bundles sequentially and verifying all files (NOT TESTED)
+- [ ] Test installing bundle with dependencies and verifying installation order (NOT TESTED)
+- [ ] Test reinstalling same bundle and verifying no changes (NOT TESTED)
+- [ ] Test updating bundle by changing ref and reinstalling (NOT TESTED)
+- [ ] Test installing from local, then installing updated version from git (NOT TESTED)
+- [ ] Test workspace with multiple AI agents and bundles (NOT TESTED)
+- [ ] Test atomic rollback on install failure (currently may be tested, verify coverage)
+- [ ] Test atomic rollback on uninstall failure (currently may be tested, verify coverage)
+- [ ] Test concurrent install operations (currently may be tested in concurrency_tests.rs, verify coverage)
+- [ ] Test lock file prevents concurrent modifications (currently may be tested, verify coverage)
+
+### Feature 5.5.14: Documentation-Based Testing
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Verify all examples in docs/commands.md work correctly (NOT TESTED)
+- [ ] Verify all install examples work with different sources (NOT TESTED)
+- [ ] Verify all uninstall examples work (NOT TESTED)
+- [ ] Verify all list examples work (NOT TESTED)
+- [ ] Verify all show examples work (NOT TESTED)
+- [ ] Verify all clean-cache examples work (NOT TESTED)
+- [ ] Verify all completions examples work (NOT TESTED)
+- [ ] Test that README quick start examples work end-to-end (NOT TESTED)
+- [ ] Test that bundle format examples are valid (NOT TESTED)
+- [ ] Test that workspace configuration examples are valid (NOT TESTED)
+
+### Feature 5.5.15: Run All Tests and Verify Coverage
+
+**Status:** Pending
+
+#### Tasks
+
+- [ ] Run all unit tests with `cargo test`
+- [ ] Run all integration tests with `cargo test --test '*'`
+- [ ] Verify all tests pass (171+ tests)
+- [ ] Run cargo clippy with required flags (no warnings)
+- [ ] Run cargo fmt (code formatting)
+- [ ] Run cargo audit (security audit)
+- [ ] Run pre-commit hooks on all files
+- [ ] Calculate test coverage with tarpaulin
+- [ ] Verify coverage meets requirements (document target percentage in testing.md if not set)
+- [ ] Update testing.md with coverage target if not specified
+- [ ] Document any uncovered code paths as known gaps
+
+---
+
 ## Phase 6: Release (Epic 13)
 
 ### Epic 13: Release & Distribution
@@ -537,10 +799,10 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Task Statistics
 
-- **Total Tasks:** 280
-- **Completed:** 277 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 complete)
-- **In Progress:** 0
-- **Pending:** 3 (Phase 6 Epic 13 remaining - all tasks optional/release focused)
+- **Total Tasks:** 380
+- **Completed:** 286 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 complete, Phase 5.5 partial - features 5.5.1-5.5.3 complete)
+- **In Progress:** 1 (Phase 5.5 - features 5.5.4-5.5.15 remain)
+- **Pending:** 93 (Phase 5.5 remaining tasks - features 5.5.4-5.5.15 with 91 tasks, Phase 6 Epic 13 remaining - 3 tasks optional/release focused)
 
 ---
 

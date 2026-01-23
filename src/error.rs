@@ -241,6 +241,14 @@ impl From<git2::Error> for AugentError {
     }
 }
 
+impl From<dialoguer::Error> for AugentError {
+    fn from(err: dialoguer::Error) -> Self {
+        AugentError::IoError {
+            message: err.to_string(),
+        }
+    }
+}
+
 /// Result type alias using miette for error handling
 pub type Result<T> = miette::Result<T, AugentError>;
 #[cfg(test)]

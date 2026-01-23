@@ -1,4 +1,22 @@
 {
   "name": "@asyrjasalo/augent",
-  "bundles": []
+  "bundles": [
+    {
+      "name": "@local/incident-response",
+      "source": {
+        "type": "dir",
+        "path": "/Users/asyrjasalo/Library/Caches/augent/bundles/github.com-wshobson-agents/1135ac606247648d9e4724f027280d4114282858/plugins/incident-response",
+        "hash": "blake3:db737fdc1ffea1437f1866031d32ab0504d88a00b21a951781c1cbe4cc37d11d"
+      },
+      "files": [
+        "commands/incident-response.md",
+        "commands/smart-fix.md",
+        "agents/incident-responder.md",
+        "agents/devops-troubleshooter.md",
+        "skills/on-call-handoff-patterns/SKILL.md",
+        "skills/incident-runbook-templates/SKILL.md",
+        "skills/postmortem-writing/SKILL.md"
+      ]
+    }
+  ]
 }

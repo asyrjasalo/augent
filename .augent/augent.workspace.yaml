@@ -1,2 +1,18 @@
 name: '@asyrjasalo/augent'
-bundles: []
+bundles:
+- name: '@local/incident-response'
+  enabled:
+    agents/devops-troubleshooter.md:
+    - .claude/agents/devops-troubleshooter.md
+    skills/on-call-handoff-patterns/SKILL.md:
+    - .claude/skills/on-call-handoff-patterns/SKILL.md
+    skills/incident-runbook-templates/SKILL.md:
+    - .opencode/skills/incident-runbook-templates/SKILL.md
+    commands/incident-response.md:
+    - .claude/commands/incident-response.md
+    agents/incident-responder.md:
+    - .claude/agents/incident-responder.md
+    skills/postmortem-writing/SKILL.md:
+    - .claude/skills/postmortem-writing/SKILL.md
+    commands/smart-fix.md:
+    - .claude/commands/smart-fix.md

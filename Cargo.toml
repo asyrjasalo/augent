@@ -50,6 +50,7 @@ regex = "1"
 
 # Terminal UI
 crossterm = "0.28"
+dialoguer = "0.11"
 
 [dev-dependencies]
 # Integration testing

@@ -50,6 +50,15 @@ fn test_completions_powershell() {
 }
 
 #[test]
+fn test_completions_elvish() {
+    augent_cmd()
+        .args(["completions", "--shell", "elvish"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("edit:"));
+}
+
+#[test]
 fn test_completions_missing_shell() {
     augent_cmd()
         .args(["completions"])
@@ -481,6 +490,21 @@ fn test_zsh_completion_script_valid() {
 }
 
 #[test]
+fn test_powershell_completion_script_valid() {
+    let output = augent_cmd()
+        .args(["completions", "--shell", "powershell"])
+        .output()
+        .expect("Failed to generate powershell completions");
+
+    assert!(output.status.success());
+
+    let script = String::from_utf8_lossy(&output.stdout);
+
+    assert!(!script.contains("ERROR"));
+    assert!(!script.contains("syntax error"));
+}
+
+#[test]
 fn test_fish_completion_script_valid() {
     let output = augent_cmd()
         .args(["completions", "--shell", "fish"])
@@ -492,6 +516,23 @@ fn test_fish_completion_script_valid() {
     let script = String::from_utf8_lossy(&output.stdout);
 
     assert!(script.contains("complete"));
+
+    assert!(!script.contains("ERROR"));
+    assert!(!script.contains("syntax error"));
+}
+
+#[test]
+fn test_elvish_completion_script_valid() {
+    let output = augent_cmd()
+        .args(["completions", "--shell", "elvish"])
+        .output()
+        .expect("Failed to generate elvish completions");
+
+    assert!(output.status.success());
+
+    let script = String::from_utf8_lossy(&output.stdout);
+
+    assert!(script.contains("edit:"));
 
     assert!(!script.contains("ERROR"));
     assert!(!script.contains("syntax error"));
