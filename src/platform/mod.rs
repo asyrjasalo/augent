@@ -333,6 +333,23 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".windsurf/rules/**/*.md",
             ))
             .with_transform(TransformRule::new("skills/**/*", ".windsurf/skills/**/*")),
+        // Gemini CLI
+        Platform::new("gemini", "Gemini CLI", ".gemini")
+            .with_detection(".gemini")
+            .with_detection("GEMINI.md")
+            .with_transform(TransformRule::new("skills/**/*", ".gemini/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "commands/**/*.toml",
+                ".gemini/commands/**/*.toml",
+            ))
+            .with_transform(
+                TransformRule::new("mcp.jsonc", ".gemini/settings.json")
+                    .with_merge(MergeStrategy::Deep),
+            )
+            .with_transform(
+                TransformRule::new("AGENTS.md", "GEMINI.md").with_merge(MergeStrategy::Composite),
+            )
+            .with_transform(TransformRule::new("root/**/*", ".gemini/**/*")),
     ]
 }
 
@@ -378,7 +395,7 @@ mod tests {
     #[test]
     fn test_default_platforms() {
         let platforms = default_platforms();
-        assert_eq!(platforms.len(), 14);
+        assert_eq!(platforms.len(), 15);
 
         let ids: Vec<_> = platforms.iter().map(|p| p.id.as_str()).collect();
         assert!(ids.contains(&"antigravity"));
@@ -388,6 +405,7 @@ mod tests {
         assert!(ids.contains(&"codex"));
         assert!(ids.contains(&"cursor"));
         assert!(ids.contains(&"factory"));
+        assert!(ids.contains(&"gemini"));
         assert!(ids.contains(&"kilo"));
         assert!(ids.contains(&"kiro"));
         assert!(ids.contains(&"opencode"));

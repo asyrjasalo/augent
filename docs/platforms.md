@@ -270,14 +270,12 @@ Augent automatically transforms universal resource formats to platform-specific 
 | `mcp.jsonc` | `.cursor/mcp.json` | `.factory/settings/mcp.json` | `.kilocode/mcp.json` | `.kiro/settings/mcp.json` | `.opencode/mcp.json` | `.qwen/settings.json` | `.roo/mcp.json` |
 | `AGENTS.md` | `.cursor/AGENTS.md` | `.factory/AGENTS.md` | `.kilocode/AGENTS.md` | | `.opencode/AGENTS.md` | `.qwen/QWEN.md` | `.roo/AGENTS.md` |
 
-| Universal | Warp | Windsurf |
-|----------|------|----------|
-| `commands/**/*.md` | | |
-| `rules/**/*.md` | | `.windsurf/rules/**/*.md` |
-| `agents/**/*.md` |  |  |
-| `skills/**/*` | | `.windsurf/skills/**/*` |
-| `mcp.jsonc` |  |  |
-| `AGENTS.md` | `WARP.md` |  |
+| Universal | Warp | Windsurf | Gemini CLI |
+| `rules/**/*.md` | | |  |
+| `agents/**/*.md` | | |  |
+| `skills/**/*` | | `.windsurf/skills/**/*` | `.gemini/skills/**/*` |
+| `mcp.jsonc` | | | `.gemini/settings.json` |
+| `AGENTS.md` | `WARP.md` | `GEMINI.md` |
 
 ## Merge Strategies
 

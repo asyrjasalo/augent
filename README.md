@@ -111,3 +111,7 @@ my-bundle/
 ## License
 
 AGPL v3 - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+Platform conversion approach inspired by [OpenPackage](https://github.com/enulus/OpenPackage).
