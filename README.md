@@ -1,6 +1,6 @@
 # Augent
 
-Augments AI coding agents (such as OpenCode, Claude Code, Cursor) with resources (such as skills, subagents, commands, rules and MCP servers) in a lean, reproducible, and intuitive manner.
+Augments AI coding agents (such as OpenCode, Claude Code, Cursor) with resources (such as skills, subagents, commands, rules and MCP servers) in a reproducible, platform independent and intuitive manner.
 
 What it does:
 
