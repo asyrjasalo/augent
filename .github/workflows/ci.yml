@@ -12,9 +12,29 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # Test on all platforms
-  test:
-    name: Test (${{ matrix.os }} - ${{ matrix.target }})
+  # Linting and formatting - runs first as prerequisite
+  lint:
+    name: Lint and format check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # Test and build on all platforms in parallel
+  build:
+    name: Build (${{ matrix.os }} - ${{ matrix.target }})
+    needs: [lint]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -24,26 +44,38 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             use_cross: false
+            artifact_name: augent
+            archive_name: augent-x86_64-linux.tar.gz
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             use_cross: true
+            artifact_name: augent
+            archive_name: augent-aarch64-linux.tar.gz
 
           # macOS
           - os: macos-latest
             target: x86_64-apple-darwin
             use_cross: false
+            artifact_name: augent
+            archive_name: augent-x86_64-macos.tar.gz
           - os: macos-latest
             target: aarch64-apple-darwin
             use_cross: false
+            artifact_name: augent
+            archive_name: augent-aarch64-macos.tar.gz
 
           # Windows
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             use_cross: false
+            artifact_name: augent.exe
+            archive_name: augent-x86_64-windows.zip
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             use_cross: false
-            build_only: true  # No ARM64 Windows runner to run tests
+            artifact_name: augent.exe
+            archive_name: augent-aarch64-windows.zip
+            build_only: true  # No ARM64 Windows runner available to run tests
 
     steps:
       - name: Checkout code
@@ -92,11 +124,6 @@ jobs:
             cargo test --release --target ${{ matrix.target }}
           fi
 
-      - name: Build only (no tests)
-        if: matrix.build_only == true
-        shell: bash
-        run: cargo build --release --target ${{ matrix.target }}
-
       - name: Run clippy
         if: matrix.build_only != true
         shell: bash
@@ -106,106 +133,6 @@ jobs:
           else
             cargo clippy --release --target ${{ matrix.target }} -- -D warnings
           fi
-
-  # Linting and formatting
-  lint:
-    name: Lint and format check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-  # Build release binaries
-  build:
-    name: Build release (${{ matrix.os }} - ${{ matrix.target }})
-    needs: [test, lint]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          # Linux
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            use_cross: false
-            artifact_name: augent
-            archive_name: augent-x86_64-linux.tar.gz
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            use_cross: true
-            artifact_name: augent
-            archive_name: augent-aarch64-linux.tar.gz
-
-          # macOS
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            use_cross: false
-            artifact_name: augent
-            archive_name: augent-x86_64-macos.tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            use_cross: false
-            artifact_name: augent
-            archive_name: augent-aarch64-macos.tar.gz
-
-          # Windows
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            use_cross: false
-            artifact_name: augent.exe
-            archive_name: augent-x86_64-windows.zip
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-            use_cross: true
-            artifact_name: augent.exe
-            archive_name: augent-aarch64-windows.zip
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          target: ${{ matrix.target }}
-
-      - name: Install cross (for cross-compilation)
-        if: matrix.use_cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-index-
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-
 
       - name: Build release binary
         shell: bash
@@ -236,7 +163,7 @@ jobs:
   # Release (only on tags)
   release:
     name: Create release
-    needs: [build]
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
