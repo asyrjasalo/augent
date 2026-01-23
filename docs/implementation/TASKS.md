@@ -440,6 +440,12 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Install and configure `tarpaulin` - Available as dev-dependency for local use
 
+#### Feature 11.4: 80% Coverage Plan
+
+**Status:** Pending
+
+- [ ] Create plan to achieve 80% test coverage most efficiently
+
 ### Epic 12: Documentation
 
 **Status:** Complete
@@ -484,8 +490,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Task Statistics
 
-- **Total Tasks:** 261
-- **Completed:** 254 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 Epic 11 & 12 complete)
+- **Total Tasks:** 262
+- **Completed:** 254 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 Epic 12 complete, Epic 11 features 11.1-11.3 complete)
+- **In Progress:** 1 (Epic 11 Feature 11.4: 80% coverage plan)
 - **Pending:** 7 (Phase 6 Epic 13 remaining)
 
 ---
@@ -496,14 +503,3 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - Each task must be completed and checked off
 - Tests must pass for each feature to be complete
 - All operations must be atomic with rollback on failure
-
----
-
-## Epic 12 Tasks In Progress
-
-### Epic 12: Documentation
-
-- [-] Write comprehensive help text for all CLI commands - Feature 12.1
-- [-] Update README.md with better introduction and quick start - Feature 12.2
-- [-] Create docs/FEATURE.md for detailed feature documentation - Feature 12.3
-- [-] Update docs/implementation/ARCHITECTURE.md with missing content - Feature 12.4
