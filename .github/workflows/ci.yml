@@ -10,13 +10,14 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
 
 jobs:
   # Linting and formatting - runs first as prerequisite
   lint:
     name: Lint and format check
     runs-on: ubuntu-latest
+    env:
+      AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,6 +38,8 @@ jobs:
     name: Build (${{ matrix.os }} - ${{ matrix.target }})
     needs: [lint]
     runs-on: ${{ matrix.os }}
+    env:
+      AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
     strategy:
       fail-fast: false
       matrix:
