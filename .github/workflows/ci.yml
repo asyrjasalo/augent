@@ -16,8 +16,6 @@ jobs:
   lint:
     name: Lint and format check
     runs-on: ubuntu-latest
-    env:
-      AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,9 +26,13 @@ jobs:
           components: rustfmt
 
       - name: Check formatting
+        env:
+          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         run: cargo fmt --all -- --check
 
       - name: Run clippy
+        env:
+          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         run: cargo clippy --all-targets --all-features -- -D warnings
 
   # Test and build on all platforms in parallel
@@ -38,8 +40,6 @@ jobs:
     name: Build (${{ matrix.os }} - ${{ matrix.target }})
     needs: [lint]
     runs-on: ${{ matrix.os }}
-    env:
-      AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +120,8 @@ jobs:
 
       - name: Run tests
         if: matrix.build_only != true
+        env:
+          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         shell: bash
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
@@ -130,6 +132,8 @@ jobs:
 
       - name: Build release binary
         if: matrix.build_only == true
+        env:
+          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         shell: bash
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
