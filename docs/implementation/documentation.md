@@ -108,9 +108,9 @@ AI package manager for managing AI coding agent resources.
 
 ## Documentation
 
-- [Commands Reference](docs/commands.md)
-- [Bundle Format](docs/bundles.md)
-- [Platform Support](docs/platforms.md)
+- [Commands Reference](../../commands.md)
+- [Bundle Format](../../bundles.md)
+- [Platform Support](../../platforms.md)
 
 ## License
 
@@ -255,8 +255,8 @@ Brief description of what this feature does.
 
 ## References
 
-- [PRD section](../prd.md#section)
-- [Architecture ADR](../adrs/XXX-name.md)
+- [PRD section](../pre-implementation/prd.md#section)
+- [Architecture ADR](./adrs/XXX-name.md)
 ```
 
 ### Architecture Decision Records
@@ -465,8 +465,8 @@ From PRD:
 
 ## References
 
-- PRD: [Section](../prd.md#section)
-- ARCHITECTURE: [ADR-XXX](../adrs/XXX-name.md)
+- PRD: [Section](../pre-implementation/prd.md#section)
+- ARCHITECTURE: [ADR-XXX](./adrs/XXX-name.md)
 ```
 
 ---

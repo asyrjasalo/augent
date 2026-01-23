@@ -326,6 +326,41 @@ bundles: []
 }
 
 #[test]
+fn test_workspace_detection_error_no_workspace_found() {
+    let workspace = common::TestWorkspace::new();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("No workspace"))
+                .or(predicate::str::contains("workspace directory")),
+        );
+}
+
+#[test]
+fn test_workspace_detection_error_in_nested_directory() {
+    let workspace = common::TestWorkspace::new();
+
+    let nested = workspace.path.join("deep/nested/dir");
+    std::fs::create_dir_all(&nested).expect("Failed to create nested dirs");
+
+    augent_cmd()
+        .current_dir(&nested)
+        .args(["list"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("No workspace"))
+                .or(predicate::str::contains("workspace directory")),
+        );
+}
+
+#[test]
 fn test_modified_file_preservation_multiple_files_reinstall() {
     let workspace = common::TestWorkspace::new();
 

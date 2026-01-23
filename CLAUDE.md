@@ -49,7 +49,7 @@ It does NOT:
 12. **Update documentation** - Update relevant @docs/
 13. **Run pre-commit** - Check documentation and other files:
     - `pre-commit run --all-files`
-14. **Mark task complete** - Mark task as `[x]` in TASKS.md and link to relevant documentation
+14. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation
 15. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
 ## Development Guidelines

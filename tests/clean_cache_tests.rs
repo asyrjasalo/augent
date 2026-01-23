@@ -227,3 +227,92 @@ bundles: []
         .assert()
         .success();
 }
+
+#[test]
+fn test_clean_cache_non_existent_directory() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["clean-cache", "--all"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["clean-cache", "--show-size"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Cache is empty"));
+}
+
+#[test]
+fn test_clean_cache_directory_structure_after_cleanup() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    workspace.create_bundle("test-bundle2");
+    workspace.write_file(
+        "bundles/test-bundle2/augent.yaml",
+        r#"name: "@test/test-bundle2"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle2/commands/test2.md", "# Test2\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle2", "--for", "claude"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".claude/commands/test.md"));
+    assert!(workspace.file_exists(".claude/commands/test2.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["clean-cache", "--all"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["clean-cache", "--show-size"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Cache is empty"));
+
+    assert!(workspace.file_exists(".claude/commands/test.md"));
+    assert!(workspace.file_exists(".claude/commands/test2.md"));
+}

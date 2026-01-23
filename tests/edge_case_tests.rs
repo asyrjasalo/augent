@@ -287,3 +287,150 @@ fn test_install_bundle_without_augent_yaml() {
         .success()
         .stdout(predicate::str::contains("Installed"));
 }
+
+#[test]
+fn test_install_with_many_resources() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+
+    for i in 0..50 {
+        let path = format!("bundles/test-bundle/commands/cmd{:02}.md", i);
+        workspace.write_file(&path, &format!("# Command {}\n", i));
+    }
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    for i in 0..50 {
+        let path = format!(".claude/commands/cmd{:02}.md", i);
+        assert!(workspace.file_exists(&path));
+    }
+}
+
+#[test]
+fn test_list_with_many_bundles() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    for i in 1..16 {
+        let name = format!("bundle-{:02}", i);
+        workspace.create_bundle(&name);
+        workspace.write_file(
+            &format!("bundles/{}/augent.yaml", name),
+            &format!(
+                r#"name: "@test/{}"
+bundles: []"#,
+                name
+            ),
+        );
+        workspace.write_file(
+            &format!("bundles/{}/commands/{}.md", name, name),
+            &format!("# {}\n", name),
+        );
+
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["install", &format!("./bundles/{}", name), "--for", "claude"])
+            .assert()
+            .success();
+    }
+
+    let output = augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .output()
+        .expect("Failed to run list");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for i in 1..16 {
+        assert!(stdout.contains(&format!("bundle-{:02}", i)));
+    }
+}
+
+#[test]
+fn test_uninstall_when_only_bundle() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".claude/commands/test.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["uninstall", "@test/test-bundle", "-y"])
+        .assert()
+        .success();
+
+    assert!(!workspace.file_exists(".claude/commands/test.md"));
+}
+
+#[test]
+fn test_uninstall_when_last_bundle() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    for i in 1..4 {
+        let name = format!("bundle-{}", i);
+        workspace.create_bundle(&name);
+        workspace.write_file(
+            &format!("bundles/{}/augent.yaml", name),
+            &format!(
+                r#"name: "@test/{}"
+bundles: []"#,
+                name
+            ),
+        );
+        workspace.write_file(
+            &format!("bundles/{}/commands/{}.md", name, name),
+            &format!("# {}\n", name),
+        );
+
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["install", &format!("./bundles/{}", name), "--for", "claude"])
+            .assert()
+            .success();
+    }
+
+    assert!(workspace.file_exists(".claude/commands/bundle-1.md"));
+    assert!(workspace.file_exists(".claude/commands/bundle-2.md"));
+    assert!(workspace.file_exists(".claude/commands/bundle-3.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["uninstall", "@test/bundle-3", "-y"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".claude/commands/bundle-1.md"));
+    assert!(workspace.file_exists(".claude/commands/bundle-2.md"));
+    assert!(!workspace.file_exists(".claude/commands/bundle-3.md"));
+}
