@@ -437,7 +437,17 @@ mod tests {
         let dir = cache_dir();
         assert!(dir.is_ok());
         let path = dir.unwrap();
-        assert!(path.ends_with("augent"));
+
+        if std::env::var("AUGENT_CACHE_DIR").is_ok() {
+            // When AUGENT_CACHE_DIR is set, use that value
+            assert_eq!(
+                path,
+                std::path::PathBuf::from(std::env::var("AUGENT_CACHE_DIR").unwrap())
+            );
+        } else {
+            // Default behavior: path ends with "augent"
+            assert!(path.ends_with("augent"));
+        }
     }
 
     #[test]
