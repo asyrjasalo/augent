@@ -81,10 +81,29 @@ impl Resolver {
     /// Resolve a bundle from a source string
     ///
     /// This is the main entry point for resolving a bundle and its dependencies.
-    /// Returns the resolved bundles in installation order (dependencies first).
+    /// Returns resolved bundles in installation order (dependencies first).
     pub fn resolve(&mut self, source: &str) -> Result<Vec<ResolvedBundle>> {
         let bundle_source = BundleSource::parse(source)?;
         self.resolve_source(&bundle_source, None)?;
+
+        // Get all resolved bundles in topological order
+        let order = self.topological_sort()?;
+
+        Ok(order)
+    }
+
+    /// Resolve multiple bundles from source strings
+    ///
+    /// This is similar to resolve() but accepts multiple source strings.
+    /// Returns all resolved bundles in topological order.
+    pub fn resolve_multiple(&mut self, sources: &[String]) -> Result<Vec<ResolvedBundle>> {
+        let mut all_bundles = Vec::new();
+
+        for source in sources {
+            let bundle_source = BundleSource::parse(source)?;
+            let bundle = self.resolve_source(&bundle_source, None)?;
+            all_bundles.push(bundle);
+        }
 
         // Get all resolved bundles in topological order
         let order = self.topological_sort()?;
@@ -125,21 +144,42 @@ impl Resolver {
                 path: full_path.clone(),
                 description: self.get_bundle_description(&full_path),
             });
-        } else if let Ok(entries) = std::fs::read_dir(&full_path) {
-            for entry in entries.flatten() {
-                let entry_path = entry.path();
-                if entry_path.is_dir() && self.is_bundle_directory(&entry_path) {
-                    let name = self.get_bundle_name(&entry_path)?;
-                    discovered.push(DiscoveredBundle {
-                        name,
-                        path: entry_path.clone(),
-                        description: self.get_bundle_description(&entry_path),
-                    });
-                }
-            }
+        } else {
+            self.scan_directory_recursively(&full_path, &mut discovered);
         }
 
         Ok(discovered)
+    }
+
+    /// Recursively scan a directory for bundle directories
+    fn scan_directory_recursively(&self, dir: &Path, discovered: &mut Vec<DiscoveredBundle>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+
+                if entry_path.is_dir() {
+                    let file_name = entry_path.file_name();
+                    if let Some(name) = file_name {
+                        let name_str = name.to_string_lossy();
+                        if name_str.starts_with('.') {
+                            continue;
+                        }
+                    }
+
+                    if self.is_bundle_directory(&entry_path) {
+                        if let Ok(name) = self.get_bundle_name(&entry_path) {
+                            discovered.push(DiscoveredBundle {
+                                name,
+                                path: entry_path.clone(),
+                                description: self.get_bundle_description(&entry_path),
+                            });
+                        }
+                    } else {
+                        self.scan_directory_recursively(&entry_path, discovered);
+                    }
+                }
+            }
+        }
     }
 
     /// Discover bundles in a cached git repository

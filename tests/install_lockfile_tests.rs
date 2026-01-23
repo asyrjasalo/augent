@@ -128,10 +128,9 @@ fn test_frozen_fails_when_lockfile_missing() {
 }
 
 // file:// URL support is fully implemented
-// Note: This test may fail in some environments if git SHA resolution is slow or times out
+// Tests that file:// URLs with fragments are treated as git sources and include SHA in lockfile
 #[test]
-#[ignore = "Git SHA resolution can be slow in test environments"]
-fn test_lockfile_sha_resolution_for_branches_that_moved() {
+fn test_lockfile_sha_resolution_for_git_source() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -185,8 +184,9 @@ fn test_lockfile_sha_resolution_for_branches_that_moved() {
         .status()
         .expect("Failed to commit");
 
+    // Add fragment (#main) to force git source treatment (file:// without fragment is directory source)
     let git_url = format!(
-        "file://{}",
+        "file://{}#main",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 

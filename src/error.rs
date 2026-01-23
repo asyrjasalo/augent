@@ -50,10 +50,10 @@ pub enum AugentError {
     #[diagnostic(code(augent::git::operation_failed))]
     GitOperationFailed { message: String },
 
-    #[error("Failed to clone repository: {url}")]
+    #[error("Failed to clone repository: {url}: {reason}")]
     #[diagnostic(
         code(augent::git::clone_failed),
-        help("Check that URL is correct and you have access to the repository")
+        help("Check that URL is correct and you have access to repository")
     )]
     #[allow(dead_code, unused_assignments)]
     GitCloneFailed { url: String, reason: String },

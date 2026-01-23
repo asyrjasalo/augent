@@ -217,31 +217,27 @@ bundles: []
     assert!(output.contains("bundle-2"), "bundle-2 should be installed");
 }
 
-// NOTE: Shallow merge is not implemented as a default strategy for mcp.jsonc
-// because the Cursor platform uses Deep merge for mcp.jsonc files.
-// Shallow merge is primarily useful for top-level configuration keys, which
-// is not a primary use case for mcp.jsonc structure. This test is disabled.
+// Tests deep merge behavior for JSON files (used by default platforms for mcp.jsonc)
 #[test]
-#[ignore = "Shallow merge is configured as Deep for mcp.jsonc on standard platforms"]
-fn test_shallow_merge_for_json_yaml_files() {
+fn test_deep_merge_for_json_yaml_files() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    let bundle = workspace.create_bundle("test-bundle");
+    let bundle1 = workspace.create_bundle("bundle-1");
+    let bundle2 = workspace.create_bundle("bundle-2");
 
     workspace.write_file(
-        "bundles/test-bundle/augent.yaml",
+        "bundles/bundle-1/augent.yaml",
         r#"
-name: "@test/bundle"
+name: "@test/bundle-1"
 bundles: []
 "#,
     );
 
-    // First mcp.jsonc file with some keys
-    std::fs::create_dir_all(&bundle).unwrap();
+    std::fs::create_dir_all(&bundle1).unwrap();
     std::fs::write(
-        bundle.join("mcp.jsonc"),
+        bundle1.join("mcp.jsonc"),
         r#"{
   "mcpServers": {
     "server1": {
@@ -249,18 +245,26 @@ bundles: []
       "args": ["-y", "server1"]
     },
     "shared": {
-      "value": "original"
+      "nested": {
+        "value": "original"
+      }
     }
   }
 }"#,
     )
     .expect("Failed to write mcp.jsonc");
 
-    // Second mcp.jsonc file in root directory
-    let bundle_root = bundle.join("root");
-    std::fs::create_dir_all(&bundle_root).unwrap();
+    workspace.write_file(
+        "bundles/bundle-2/augent.yaml",
+        r#"
+name: "@test/bundle-2"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(&bundle2).unwrap();
     std::fs::write(
-        bundle_root.join("mcp.jsonc"),
+        bundle2.join("mcp.jsonc"),
         r#"{
   "mcpServers": {
     "server2": {
@@ -277,22 +281,32 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/test-bundle"])
+        .args(["install", "./bundles/bundle-1"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-2"])
         .assert()
         .success();
 
     let content = workspace.read_file(".cursor/mcp.json");
     assert!(
         content.contains("server1"),
-        "Shallow merge should preserve server1 from first mcp.jsonc"
+        "Deep merge should preserve server1 from bundle-1"
     );
     assert!(
         content.contains("server2"),
-        "Shallow merge should include server2 from second mcp.jsonc"
+        "Deep merge should add server2 from bundle-2"
     );
     assert!(
-        content.contains("updated"),
-        "Shallow merge should use updated value from second mcp.jsonc"
+        content.contains("\"value\": \"updated\""),
+        "Deep merge should update shared.value from bundle-2"
+    );
+    assert!(
+        content.contains("nested"),
+        "Deep merge should preserve nested object from bundle-1's 'shared' key"
     );
 }
 

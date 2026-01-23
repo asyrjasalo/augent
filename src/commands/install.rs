@@ -14,10 +14,11 @@
 //! 6. Update configuration files
 //! 7. Commit transaction (or rollback on error)
 
-use std::io::{self, Write};
+use std::io::{self, BufRead, Write};
 use std::path::Path;
 
 use crate::cli::InstallArgs;
+use crate::commands::menu::select_bundles_interactively;
 use crate::config::{BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
@@ -57,42 +58,6 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
     }
 }
 
-fn select_bundle_interactively(bundles: &[DiscoveredBundle]) -> Result<DiscoveredBundle> {
-    println!("\nFound {} bundle(s):", bundles.len());
-
-    for (i, bundle) in bundles.iter().enumerate() {
-        println!("  {}. {}", i + 1, bundle.name);
-        if let Some(ref desc) = bundle.description {
-            println!("     Description: {}", desc);
-        }
-    }
-
-    print!("\nSelect a bundle to install [1-{}]: ", bundles.len());
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .map_err(|e| AugentError::IoError {
-            message: format!("Failed to read input: {}", e),
-        })?;
-
-    let selection: usize = input.trim().parse().map_err(|_| AugentError::IoError {
-        message: "Please enter a valid number".to_string(),
-    })?;
-
-    if selection == 0 || selection > bundles.len() {
-        return Err(AugentError::IoError {
-            message: format!(
-                "Invalid selection. Please enter a number between 1 and {}",
-                bundles.len()
-            ),
-        });
-    }
-
-    Ok(bundles[selection - 1].clone())
-}
-
 /// Perform the actual installation
 fn do_install(
     args: &InstallArgs,
@@ -106,9 +71,15 @@ fn do_install(
     let discovered = resolver.discover_bundles(&args.source)?;
 
     let resolved_bundles = if discovered.len() > 1 {
-        let selected = select_bundle_interactively(&discovered)?;
-        let selected_path = selected.path.to_string_lossy().to_string();
-        resolver.resolve(&selected_path)?
+        let selected = select_bundles_interactively(&discovered)?;
+        if selected.is_empty() {
+            return Ok(());
+        }
+        let selected_paths: Vec<String> = selected
+            .iter()
+            .map(|b| b.path.to_string_lossy().to_string())
+            .collect();
+        resolver.resolve_multiple(&selected_paths)?
     } else {
         resolver.resolve(&args.source)?
     };
@@ -137,7 +108,7 @@ fn do_install(
 
     // Check --frozen flag
     if args.frozen {
-        // Verify that the lockfile wouldn't change
+        // Verify that lockfile wouldn't change
         let new_lockfile = generate_lockfile(workspace, &resolved_bundles)?;
         if !workspace.lockfile.equals(&new_lockfile) {
             return Err(AugentError::LockfileOutdated);
@@ -476,21 +447,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_select_bundle_interactively_single() {
-        let bundles = vec![crate::resolver::DiscoveredBundle {
-            name: "@test/bundle1".to_string(),
-            path: PathBuf::from("/tmp/bundle1"),
-            description: Some("First bundle".to_string()),
-        }];
-
-        let selected = select_bundle_interactively(&bundles).unwrap();
-
-        assert_eq!(selected.name, "@test/bundle1");
-    }
-
-    #[test]
-    #[ignore]
     fn test_select_bundle_interactively_multiple() {
         let bundles = vec![
             crate::resolver::DiscoveredBundle {
@@ -505,9 +461,12 @@ mod tests {
             },
         ];
 
-        let selected = select_bundle_interactively(&bundles).unwrap();
+        let mock_input = b"1\n";
+        let cursor = io::Cursor::new(mock_input);
 
-        assert!(selected.name == "@test/bundle1" || selected.name == "@test/bundle2");
+        let selected = select_bundle_interactively(&bundles, cursor).unwrap();
+
+        assert_eq!(selected.name, "@test/bundle1");
     }
 
     #[test]

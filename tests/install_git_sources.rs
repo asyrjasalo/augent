@@ -419,8 +419,7 @@ fn test_discover_multiple_bundles_in_repository() {
 }
 
 #[test]
-#[ignore = "Requires real network call to GitHub - run with: cargo test -- --ignored"]
-fn test_install_from_real_github_repository_without_augent_yaml() {
+fn test_install_from_real_github_repository_discovers_all_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
@@ -430,13 +429,13 @@ fn test_install_from_real_github_repository_without_augent_yaml() {
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", github_url])
+        .write_stdin("1\n")
         .assert()
-        .failure()
-        .stderr(
-            predicate::str::contains("augent.yaml")
-                .or(predicate::str::contains("bundle"))
-                .or(predicate::str::contains("not found")),
+        .success()
+        .stdout(
+            predicate::str::contains("Found 72 bundle(s)")
+                .or(predicate::str::contains("Select a bundle to install")),
         );
 
-    assert!(!workspace.file_exists(".augent/augent.lock"));
+    assert!(workspace.file_exists(".augent/augent.lock"));
 }
