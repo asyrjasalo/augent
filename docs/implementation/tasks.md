@@ -22,9 +22,9 @@ Update when you have started a feature and completed a feature (in **Status:** a
 ## Task Statistics
 
 - **Total Tasks:** 435
-- **Completed:** 354 (Phase 0-4 complete, Epic 11-12 complete, Epic 13 partial - 146 of 152 tasks)
+- **Completed:** 358 (Phase 0-4 complete, Epic 11-12 complete, Epic 13 partial - 150 of 152 tasks)
 - **In Progress:** 3 (Epic 13 - Feature 13.9: 10 of 13 tasks, 3 require mocking)
-- **Pending:** 78 (Epic 13 - 22 tasks remaining across 2 features + Phase 6 Epic 14 optional - 25 tasks)
+- **Pending:** 74 (Epic 13 - 18 tasks remaining across 1 feature + Phase 6 Epic 14 optional - 25 tasks)
 - **Optional:** 25 (Phase 6 Epic 14 - optional, release-focused)
 
 ---
@@ -571,7 +571,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 13: Test Coverage Gaps
 
-**Status:** Partially Complete (6 of 15 features complete, 1 feature in progress, 1 feature partial, 146 of 152 tasks complete)
+**Status:** Partially Complete (7 of 15 features complete, 1 feature in progress, 150 of 152 tasks complete)
 **Working on:** Feature 13.9: Error Path Coverage
 
 ### Overview
@@ -580,7 +580,7 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 ### Summary
 
-**Completed Features (54 tasks):**
+**Completed Features (60 tasks):**
 
 - [x] Feature 13.1: Fix Compilation Errors - Complete (6 tasks)
 - [x] Feature 13.2: Completions Command Test Coverage - Complete (9 tasks)
@@ -588,12 +588,13 @@ Additional test coverage improvements based on audit of user-facing functionalit
 - [x] Feature 13.11: Edge Cases and Boundary Conditions - Complete (12 tasks)
 - [x] Feature 13.10: Platform-Specific Test Coverage - Complete (11 tasks)
 - [x] Feature 13.12: Global Options Test Coverage - Complete (9 tasks)
+- [x] Feature 13.7: Workspace Detection and Auto-Detection - Complete (9 tasks)
 - [x] Feature 13.15: Run All Tests and Verify Coverage - Complete (7 of 11 tasks)
 - [-] Feature 13.9: Error Path Coverage - In Progress (10 of 13 tasks, 3 require mocking)
 
-### Remaining Features (13.4, 13.5, 13.6, 13.7, 13.8, 13.9, 13.14)
+### Remaining Features (13.4, 13.5, 13.6, 13.8, 13.9, 13.14)
 
-- 14 tasks remain (Feature 13.4: 1 task, Feature 13.5: 0 tasks - already in tasks.md, Feature 13.6: 0 tasks - already in tasks.md, Feature 13.7: 4 tasks, Feature 13.8: 0 tasks - already in tasks.md, Feature 13.9: 3 tasks - require mocking, Feature 13.14: 10 tasks - manual verification)
+- 10 tasks remain (Feature 13.4: 1 task, Feature 13.5: 0 tasks - already in tasks.md, Feature 13.6: 0 tasks - already in tasks.md, Feature 13.8: 0 tasks - already in tasks.md, Feature 13.9: 3 tasks - require mocking, Feature 13.14: 10 tasks - manual verification)
 - These represent additional edge cases, integration scenarios, and documentation-based testing
 
 #### Feature 13.1: Fix Compilation Errors
@@ -677,17 +678,17 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 #### Feature 13.7: Workspace Detection and Auto-Detection
 
-**Status:** Partially Complete (5 of 9 tasks)
+**Status:** Complete
 
 - [x] Test workspace detection finds .augent in current directory
 - [x] Test workspace detection searches parent directories
 - [x] Test workspace detection with --workspace flag uses specified path
-- [ ] Test workspace initialization creates .augent directory
+- [x] Test workspace initialization creates .augent directory
 - [x] Test workspace initialization creates initial config files
-- [ ] Test workspace initialization infers name from git remote
-- [ ] Test workspace initialization falls back to USERNAME/DIR when no git remote
-- [ ] Test workspace initialization error when not in git directory
-- [ ] Test workspace detection error when no workspace found
+- [x] Test workspace initialization infers name from git remote
+- [x] Test workspace initialization falls back to USERNAME/DIR when no git remote
+- [x] Test workspace initialization error when not in git directory
+- [x] Test workspace detection error when no workspace found
 
 #### Feature 13.8: Bundle Discovery Scenarios
 

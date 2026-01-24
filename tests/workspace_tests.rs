@@ -118,15 +118,15 @@ bundles: []
 
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent.augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
 
-    let workspace_config = workspace.read_file(".augent.augent.workspace.yaml");
+    let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
     assert!(workspace_config.contains("name: '@user/test-project'"));
 
-    let bundle_config = workspace.read_file(".augent.augent.yaml");
+    let bundle_config = workspace.read_file(".augent/augent.yaml");
     assert!(bundle_config.contains("name: '@user/test-project'"));
 
-    let lockfile = workspace.read_file(".augent.augent.lock");
+    let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(lockfile.contains("\"name\": \"@user/test-project\""));
 
     // Bundle should be listed
@@ -165,20 +165,27 @@ bundles: []
         .or_else(|_| std::env::var("USERNAME"))
         .unwrap_or_else(|_| "user".to_string());
 
-    let expected_name = format!("@{}/workspace", username);
-    println!("Expected workspace name: {}", expected_name);
-
     let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
-    println!("Workspace config:\n{}", workspace_config);
-    assert!(workspace_config.contains(&format!("name: {}", expected_name)));
+
+    assert!(
+        workspace_config.contains(&format!("name: '@{}/", username)),
+        "Workspace config should have name format: '@username/'\nGot:\n{}",
+        workspace_config
+    );
 
     let bundle_config = workspace.read_file(".augent/augent.yaml");
-    println!("Bundle config:\n{}", bundle_config);
-    assert!(bundle_config.contains(&format!("name: {}", expected_name)));
+    assert!(
+        bundle_config.contains(&format!("name: '@{}/", username)),
+        "Bundle config should have name format: '@username/'\nGot:\n{}",
+        bundle_config
+    );
 
     let lockfile = workspace.read_file(".augent/augent.lock");
-    println!("Lockfile:\n{}", lockfile);
-    assert!(lockfile.contains(&format!("\"name\": \"{}\"", expected_name)));
+    assert!(
+        lockfile.contains(&format!("\"name\": \"@{}/", username)),
+        "Lockfile should have name format: '@username/'\nGot:\n{}",
+        lockfile
+    );
 
     augent_cmd()
         .current_dir(&workspace.path)
