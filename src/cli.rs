@@ -67,7 +67,7 @@ pub enum Commands {
                    Install from GitHub:\n    augent install github:author/debug-tools\n\n\
                    Install from local directory:\n    augent install ./my-bundle\n\n\
                    Install from Git URL:\n    augent install https://github.com/author/bundle.git\n\n\
-                   Install for specific agents:\n    augent install ./bundle --for cursor opencode\n\n\
+                   Install for specific platforms:\n    augent install ./bundle --for cursor opencode\n\n\
                    Install with frozen lockfile (CI/CD):\n    augent install github:author/bundle --frozen\n\n\
                    Install from subdirectory:\n    augent install github:author/repo#plugins/name\n\n\
                    Install specific version:\n    augent install github:author/bundle#v1.0.0\n\
@@ -76,9 +76,9 @@ pub struct InstallArgs {
     /// Bundle source (path, URL, or github:author/repo)
     pub source: String,
 
-    /// Install only for specific agents (e.g., --for cursor opencode)
-    #[arg(long = "for", value_name = "AGENT", num_args = 1..)]
-    pub agents: Vec<String>,
+    /// Install only for specific platforms (e.g., --for cursor opencode)
+    #[arg(long = "for", value_name = "PLATFORM", num_args = 1..)]
+    pub platforms: Vec<String>,
 
     /// Fail if lockfile would change
     #[arg(long)]
@@ -171,7 +171,7 @@ mod tests {
         match cli.command {
             Commands::Install(args) => {
                 assert_eq!(args.source, "github:author/bundle");
-                assert!(args.agents.is_empty());
+                assert!(args.platforms.is_empty());
                 assert!(!args.frozen);
             }
             _ => panic!("Expected Install command"),
@@ -194,7 +194,7 @@ mod tests {
         match cli.command {
             Commands::Install(args) => {
                 assert_eq!(args.source, "./local-bundle");
-                assert_eq!(args.agents, vec!["cursor", "opencode"]);
+                assert_eq!(args.platforms, vec!["cursor", "opencode"]);
                 assert!(args.frozen);
             }
             _ => panic!("Expected Install command"),

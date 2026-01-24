@@ -1,4 +1,4 @@
-//! Platform detection for finding AI agents in a workspace
+//! Platform detection for finding AI coding platforms in a workspace
 
 #![allow(dead_code)]
 

@@ -1,7 +1,7 @@
 //! Transformation engine for converting resources between formats
 //!
 //! This module handles:
-//! - Platform detection (which AI agents are present in a workspace)
+//! - Platform detection (which AI coding platforms are present in a workspace)
 //! - Resource transformation (universal format → platform-specific format)
 //! - Merge strategies for special files (AGENTS.md, mcp.jsonc)
 

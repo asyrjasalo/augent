@@ -113,7 +113,7 @@ fn do_install(
     }
 
     // Detect target platforms
-    let platforms = detect_target_platforms(&workspace.root, &args.agents)?;
+    let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
     if platforms.is_empty() {
         return Err(AugentError::NoPlatformsDetected);
     }
@@ -182,8 +182,8 @@ fn do_install(
 }
 
 /// Detect target platforms based on workspace and --for flag
-fn detect_target_platforms(workspace_root: &Path, agents: &[String]) -> Result<Vec<Platform>> {
-    if agents.is_empty() {
+fn detect_target_platforms(workspace_root: &Path, platforms: &[String]) -> Result<Vec<Platform>> {
+    if platforms.is_empty() {
         // Auto-detect platforms in workspace
         let detected = detection::detect_platforms(workspace_root)?;
         if detected.is_empty() {
@@ -193,7 +193,7 @@ fn detect_target_platforms(workspace_root: &Path, agents: &[String]) -> Result<V
         Ok(detected)
     } else {
         // Use specified platforms
-        detection::get_platforms(agents)
+        detection::get_platforms(platforms)
     }
 }
 

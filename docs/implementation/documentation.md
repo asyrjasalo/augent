@@ -73,7 +73,7 @@ ARGS:
     <SOURCE>    Bundle source (path, URL, or github:author/repo)
 
 OPTIONS:
-    --for <AGENT>...    Install only for specific agents
+    --for <PLATFORM>...    Install only for specific platforms
     --frozen            Fail if lockfile would change
     -h, --help          Print help
 
@@ -163,7 +163,7 @@ Install bundles from various sources.
 
 | Option | Description |
 |--------|-------------|
-| `--for <AGENT>...` | Install only for specific agents |
+| `--for <PLATFORM>...` | Install only for specific platforms |
 | `--frozen` | Fail if lockfile would change |
 
 ### Source Formats
@@ -181,7 +181,7 @@ Install bundles from various sources.
 Install from GitHub:
     augent install github:author/debug-tools
 
-Install for specific agents:
+Install for specific platforms:
     augent install ./bundle --for cursor opencode
 
 Install with frozen lockfile (CI):

@@ -48,7 +48,7 @@ bundles: []
         .stdout(predicate::str::contains("test-bundle"))
         .stdout(predicate::str::contains("Source:"))
         .stdout(predicate::str::contains("Files:"))
-        .stdout(predicate::str::contains("Agents:"));
+        .stdout(predicate::str::contains("Platforms:"));
 }
 
 // ============================================================================
@@ -306,7 +306,7 @@ bundles: []
         .stdout(predicate::str::contains("Homepage:"))
         .stdout(predicate::str::contains("Source:"))
         .stdout(predicate::str::contains("Files:"))
-        .stdout(predicate::str::contains("Agents:"));
+        .stdout(predicate::str::contains("Platforms:"));
 }
 
 #[test]

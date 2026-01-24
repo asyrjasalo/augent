@@ -144,7 +144,7 @@ fn do_uninstall(
         }
     }
 
-    cleanup_empty_agent_dirs(workspace, transaction)?;
+    cleanup_empty_platform_dirs(workspace, transaction)?;
 
     update_configs(workspace, name)?;
 
@@ -278,26 +278,26 @@ fn determine_files_to_remove(
     Ok(files_to_remove)
 }
 
-/// Clean up empty agent directories
-fn cleanup_empty_agent_dirs(workspace: &Workspace, transaction: &mut Transaction) -> Result<()> {
-    let agent_dirs = [
+/// Clean up empty platform directories
+fn cleanup_empty_platform_dirs(workspace: &Workspace, transaction: &mut Transaction) -> Result<()> {
+    let platform_dirs = [
         workspace.root.join(".opencode"),
         workspace.root.join(".cursor"),
         workspace.root.join(".claude"),
     ];
 
-    for agent_dir in &agent_dirs {
-        if !agent_dir.exists() {
+    for platform_dir in &platform_dirs {
+        if !platform_dir.exists() {
             continue;
         }
 
-        if is_dir_empty(agent_dir)? {
-            fs::remove_dir(agent_dir).map_err(|e| AugentError::FileWriteFailed {
-                path: agent_dir.display().to_string(),
+        if is_dir_empty(platform_dir)? {
+            fs::remove_dir(platform_dir).map_err(|e| AugentError::FileWriteFailed {
+                path: platform_dir.display().to_string(),
                 reason: e.to_string(),
             })?;
 
-            transaction.track_dir_created(agent_dir);
+            transaction.track_dir_created(platform_dir);
         }
     }
 

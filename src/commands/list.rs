@@ -1,7 +1,7 @@
 //! List command implementation
 //!
 //! This command lists all installed bundles with their sources,
-//! enabled agents, and file counts.
+//! enabled platforms, and file counts.
 
 use std::path::PathBuf;
 
@@ -64,13 +64,13 @@ fn display_bundle_simple(
     workspace_config: &crate::config::WorkspaceConfig,
     _detailed: bool,
 ) {
-    let agents = get_agents_for_bundle(&bundle.name, workspace_config);
+    let platforms = get_platforms_for_bundle(&bundle.name, workspace_config);
     let source_str = format_source(&bundle.source);
 
     println!("  {}", bundle.name);
     println!("    Source: {}", source_str);
-    if !agents.is_empty() {
-        println!("    Agents: {}", agents.join(", "));
+    if !platforms.is_empty() {
+        println!("    Platforms: {}", platforms.join(", "));
     }
     println!("    Files: {}", bundle.files.len());
 }
@@ -81,7 +81,7 @@ fn display_bundle_detailed(
     workspace_config: &crate::config::WorkspaceConfig,
     detailed: bool,
 ) {
-    let agents = get_agents_for_bundle(&bundle.name, workspace_config);
+    let platforms = get_platforms_for_bundle(&bundle.name, workspace_config);
     let source_str = format_source_detailed(&bundle.source);
     let workspace_bundle = workspace_config.find_bundle(&bundle.name);
 
@@ -107,8 +107,8 @@ fn display_bundle_detailed(
     println!("    Source: {}", source_str);
     println!("    Files: {}", bundle.files.len());
 
-    if !agents.is_empty() {
-        println!("    Agents: {}", agents.join(", "));
+    if !platforms.is_empty() {
+        println!("    Platforms: {}", platforms.join(", "));
     }
 
     if detailed && !bundle.files.is_empty() {
@@ -186,8 +186,8 @@ fn format_source_detailed(source: &LockedSource) -> String {
     }
 }
 
-/// Get list of agents that have files installed from this bundle
-fn get_agents_for_bundle(
+/// Get list of platforms that have files installed from this bundle
+fn get_platforms_for_bundle(
     bundle_name: &str,
     workspace_config: &crate::config::WorkspaceConfig,
 ) -> Vec<String> {
@@ -196,21 +196,21 @@ fn get_agents_for_bundle(
         None => return vec![],
     };
 
-    let mut agents = std::collections::HashSet::new();
+    let mut platforms = std::collections::HashSet::new();
     for locations in workspace_bundle.enabled.values() {
         for location in locations {
-            if let Some(agent) = location.split('/').next() {
-                let agent = agent.trim_start_matches('.');
-                if !agent.is_empty() {
-                    agents.insert(agent.to_string());
+            if let Some(platform) = location.split('/').next() {
+                let platform = platform.trim_start_matches('.');
+                if !platform.is_empty() {
+                    platforms.insert(platform.to_string());
                 }
             }
         }
     }
 
-    let mut agents: Vec<String> = agents.into_iter().collect();
-    agents.sort();
-    agents
+    let mut platforms: Vec<String> = platforms.into_iter().collect();
+    platforms.sort();
+    platforms
 }
 
 #[cfg(test)]
@@ -245,7 +245,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_agents_for_bundle() {
+    fn test_get_platforms_for_bundle() {
         let mut workspace_config = WorkspaceConfig::new("@test/bundle");
         let mut bundle = WorkspaceBundle::new("test-bundle");
 
@@ -261,17 +261,17 @@ mod tests {
 
         workspace_config.add_bundle(bundle);
 
-        let agents = get_agents_for_bundle("test-bundle", &workspace_config);
-        assert_eq!(agents.len(), 3);
-        assert!(agents.contains(&"opencode".to_string()));
-        assert!(agents.contains(&"cursor".to_string()));
-        assert!(agents.contains(&"claude".to_string()));
+        let platforms = get_platforms_for_bundle("test-bundle", &workspace_config);
+        assert_eq!(platforms.len(), 3);
+        assert!(platforms.contains(&"opencode".to_string()));
+        assert!(platforms.contains(&"cursor".to_string()));
+        assert!(platforms.contains(&"claude".to_string()));
     }
 
     #[test]
-    fn test_get_agents_for_bundle_empty() {
+    fn test_get_platforms_for_bundle_empty() {
         let workspace_config = WorkspaceConfig::new("@test/bundle");
-        let agents = get_agents_for_bundle("non-existent", &workspace_config);
-        assert!(agents.is_empty());
+        let platforms = get_platforms_for_bundle("non-existent", &workspace_config);
+        assert!(platforms.is_empty());
     }
 }

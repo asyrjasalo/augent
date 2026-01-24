@@ -245,13 +245,13 @@ Augent automatically detects installed AI agents:
    - `CLAUDE.md` → Claude Code
    - `AGENTS.md` → Generic/OpenCode
 
-### Installing for Specific Agents
+### Installing for Specific Platforms
 
 ```bash
-# Install only for specific agents
+# Install only for specific platforms
 augent install ./bundle --for cursor opencode
 
-# Auto-detect agents
+# Auto-detect platforms
 augent install ./bundle
 ```
 

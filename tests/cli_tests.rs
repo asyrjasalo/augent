@@ -163,7 +163,9 @@ bundles:
         .stdout(predicate::str::contains("test-bundle-2"))
         .stdout(predicate::str::contains("Files: 2"))
         .stdout(predicate::str::contains("Files: 1"))
-        .stdout(predicate::str::contains("Agents: claude, cursor, opencode"));
+        .stdout(predicate::str::contains(
+            "Platforms: claude, cursor, opencode",
+        ));
 }
 
 #[test]

@@ -38,7 +38,7 @@ augent install [OPTIONS] <SOURCE>
 
 **Options:**
 
-- `--for <AGENT>...`: Install only for specific agents
+- `--for <PLATFORM>...`: Install only for specific platforms
 - `--frozen`: Fail if lockfile would change
 - `-w, --workspace <PATH>`: Workspace directory
 - `-v, --verbose`: Enable verbose output

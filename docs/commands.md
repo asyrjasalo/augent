@@ -6,7 +6,7 @@ Complete documentation for all Augent commands.
 
 ## install
 
-Install bundles from various sources and configure them for your AI agents.
+Install bundles from various sources and configure them for your AI coding platforms.
 
 ### Syntax
 
@@ -24,7 +24,7 @@ augent install [OPTIONS] <SOURCE>
 
 | Option | Description |
 |--------|-------------|
-| `--for <AGENT>...` | Install only for specific agents (e.g., `--for cursor opencode`) |
+| `--for <PLATFORM>...` | Install only for specific platforms (e.g., `--for cursor opencode`) |
 | `--frozen` | Fail if lockfile would change (useful for CI/CD) |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
@@ -50,7 +50,7 @@ augent install github:author/debug-tools
 # Install from local directory
 augent install ./my-bundle
 
-# Install for specific agents
+# Install for specific platforms
 augent install ./bundle --for cursor opencode
 
 # Install with frozen lockfile (CI/CD)
