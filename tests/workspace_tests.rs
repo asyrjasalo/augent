@@ -513,8 +513,9 @@ bundles: []
     let augent_dir = workspace.path.join(".augent");
     assert!(augent_dir.is_dir());
 
+    // Bundles directory is created lazily when needed
     let bundles_dir = augent_dir.join("bundles");
-    assert!(bundles_dir.is_dir());
+    assert!(!bundles_dir.exists());
 
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));

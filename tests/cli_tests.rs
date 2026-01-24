@@ -37,7 +37,33 @@ fn test_version_output() {
 
 #[test]
 fn test_uninstall_stub() {
+    let temp = common::TestWorkspace::new();
+    let augent_dir = temp.create_augent_dir();
+
+    // Create minimal workspace config
+    let bundle_config_content = r#"name: "@test/workspace"
+bundles: []
+"#;
+    fs::write(augent_dir.join("augent.yaml"), bundle_config_content)
+        .expect("Failed to write bundle config");
+
+    let lockfile_content = r#"{
+  "name": "@test/workspace",
+  "bundles": []
+}"#;
+    fs::write(augent_dir.join("augent.lock"), lockfile_content).expect("Failed to write lockfile");
+
+    let workspace_config_content = r#"name: "@test/workspace"
+bundles: []
+"#;
+    fs::write(
+        augent_dir.join("augent.workspace.yaml"),
+        workspace_config_content,
+    )
+    .expect("Failed to write workspace config");
+
     augent_cmd()
+        .current_dir(&temp.path)
         .args(["uninstall", "my-bundle"])
         .assert()
         .failure()

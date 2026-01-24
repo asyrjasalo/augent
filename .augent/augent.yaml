@@ -1,4 +1,4 @@
 name: '@asyrjasalo/augent'
 bundles:
-- name: '@local/incident-response'
+- name: '@local/agent-orchestration'
   git: https://github.com/wshobson/agents.git

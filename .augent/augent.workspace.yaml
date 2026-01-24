@@ -1,18 +1,13 @@
 name: '@asyrjasalo/augent'
 bundles:
-- name: '@local/incident-response'
+- name: '@local/agent-orchestration'
   enabled:
-    agents/devops-troubleshooter.md:
-    - .claude/agents/devops-troubleshooter.md
-    skills/on-call-handoff-patterns/SKILL.md:
-    - .claude/skills/on-call-handoff-patterns/SKILL.md
-    skills/incident-runbook-templates/SKILL.md:
-    - .opencode/skills/incident-runbook-templates/SKILL.md
-    commands/incident-response.md:
-    - .claude/commands/incident-response.md
-    agents/incident-responder.md:
-    - .claude/agents/incident-responder.md
-    skills/postmortem-writing/SKILL.md:
-    - .claude/skills/postmortem-writing/SKILL.md
-    commands/smart-fix.md:
-    - .claude/commands/smart-fix.md
+    commands/improve-agent.md:
+    - .claude/commands/improve-agent.md
+    - .opencode/commands/improve-agent.md
+    agents/context-manager.md:
+    - .claude/agents/context-manager.md
+    - .opencode/agents/context-manager.md
+    commands/multi-agent-optimize.md:
+    - .claude/commands/multi-agent-optimize.md
+    - .opencode/commands/multi-agent-optimize.md

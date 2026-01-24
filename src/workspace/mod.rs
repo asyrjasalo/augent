@@ -128,9 +128,15 @@ impl Workspace {
     pub fn init(root: &Path) -> Result<Self> {
         let augent_dir = root.join(WORKSPACE_DIR);
 
-        // Create directory structure
+        // Create .augent directory
         fs::create_dir_all(&augent_dir)?;
-        fs::create_dir_all(augent_dir.join(BUNDLES_DIR))?;
+
+        // Create .gitignore to exclude lock file
+        let gitignore_path = augent_dir.join(".gitignore");
+        fs::write(&gitignore_path, ".lock\n").map_err(|e| AugentError::FileWriteFailed {
+            path: gitignore_path.display().to_string(),
+            reason: e.to_string(),
+        })?;
 
         // Infer workspace name
         let name = Self::infer_workspace_name(root);
@@ -392,6 +398,9 @@ impl Drop for WorkspaceGuard {
     fn drop(&mut self) {
         // Release the lock
         let _ = self.lock.unlock();
+
+        // Remove the lock file - it will be recreated when needed
+        let _ = fs::remove_file(&self.lock_path);
     }
 }
 
@@ -613,7 +622,8 @@ mod tests {
 
         // Check directory structure
         assert!(temp.path().join(WORKSPACE_DIR).is_dir());
-        assert!(temp.path().join(WORKSPACE_DIR).join(BUNDLES_DIR).is_dir());
+        // Bundles directory is created lazily when needed, not during init
+        assert!(!temp.path().join(WORKSPACE_DIR).join(BUNDLES_DIR).exists());
 
         // Check config files
         assert!(
@@ -629,6 +639,12 @@ mod tests {
                 .join(WORKSPACE_CONFIG_FILE)
                 .exists()
         );
+
+        // Check .gitignore file
+        let gitignore_path = temp.path().join(WORKSPACE_DIR).join(".gitignore");
+        assert!(gitignore_path.exists());
+        let content = fs::read_to_string(&gitignore_path).unwrap();
+        assert_eq!(content, ".lock\n");
 
         // Check name format
         assert!(workspace.bundle_config.name.starts_with('@'));
@@ -708,11 +724,15 @@ mod tests {
         // Acquire lock
         let guard = workspace.lock().unwrap();
 
-        // Lock should be held
-        assert!(temp.path().join(WORKSPACE_DIR).join(LOCK_FILE).exists());
+        // Lock file should exist while lock is held
+        let lock_file_path = temp.path().join(WORKSPACE_DIR).join(LOCK_FILE);
+        assert!(lock_file_path.exists());
 
-        // Drop releases lock
+        // Drop releases lock and removes lock file
         drop(guard);
+
+        // Lock file should be removed after release
+        assert!(!lock_file_path.exists());
     }
 
     #[test]
@@ -744,7 +764,8 @@ mod tests {
             bundles_dir,
             temp.path().join(WORKSPACE_DIR).join(BUNDLES_DIR)
         );
-        assert!(bundles_dir.is_dir());
+        // Directory is created lazily when needed, not during init
+        assert!(!bundles_dir.exists());
     }
 }
 
