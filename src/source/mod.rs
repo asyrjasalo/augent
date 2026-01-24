@@ -7,7 +7,7 @@
 //! - GitHub web UI URLs: `https://github.com/user/repo/tree/ref/path`
 //! - With ref: `github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`
 //! - With subdirectory: `github:user/repo:plugins/bundle-name`
-//! - With ref and subdirectory: `github:user/repo#main:plugins/bundle-name`
+//! - With ref and subdirectory: `github:user/repo:plugins/bundle-name#main`
 //!
 //! ## Module Organization
 //!
