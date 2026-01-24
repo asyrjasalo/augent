@@ -10,10 +10,90 @@ permissions:
   contents: write
 
 jobs:
-  # Build platform binaries
+
+  # Verify tag is on main branch
+  verify-tag:
+    name: Verify tag is on main branch
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main branch
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # Get the commit SHA that the tag points to
+          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref }})
+
+          # Check if this commit is reachable from main branch
+          if ! git merge-base --is-ancestor $TAG_COMMIT origin/main; then
+            echo "Error: Tag ${{ github.ref }} is not on the main branch"
+            echo "Tags must be created from the main branch for releases"
+            exit 1
+          fi
+
+          echo "✓ Tag is on main branch"
+
+      - name: Skip tag check for manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "⚠️ Skipping tag verification for manual workflow dispatch"
+
+  # Verify CI tests passed
+  verify-ci:
+    name: Verify CI tests passed
+    runs-on: ubuntu-latest
+    needs: [verify-tag]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for CI workflow to complete
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'Build (ubuntu-latest - x86_64-unknown-linux-gnu)'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Check CI workflow status
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the commit SHA that the tag points to
+          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref }})
+
+          # Check if CI workflow passed for this commit
+          WORKFLOW_STATUS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${TAG_COMMIT}&status=completed&per_page=1" \
+            --jq '.workflow_runs[0].conclusion')
+
+          if [ "$WORKFLOW_STATUS" != "success" ]; then
+            echo "Error: CI workflow did not pass for commit ${TAG_COMMIT}"
+            echo "Workflow status: ${WORKFLOW_STATUS}"
+            echo "Please ensure all CI tests pass before creating a release tag"
+            exit 1
+          fi
+
+          echo "✓ CI tests passed"
+
+      - name: Skip CI check for manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "⚠️ Skipping CI verification for manual workflow dispatch"
+
+  # Build standalone binaries for GitHub release
   build-binaries:
-    name: Build binary for ${{ matrix.platform }}-${{ matrix.arch }}
+    name: Build binaries on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: [verify-ci]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -22,37 +102,31 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             platform: linux
-            arch: x86_64
-            binary_name: augent
+            archive: tar.gz
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             platform: linux
-            arch: aarch64
-            binary_name: augent
+            archive: tar.gz
 
           # macOS
           - os: macos-latest
             target: x86_64-apple-darwin
             platform: macos
-            arch: x86_64
-            binary_name: augent
+            archive: tar.gz
           - os: macos-latest
             target: aarch64-apple-darwin
             platform: macos
-            arch: aarch64
-            binary_name: augent
+            archive: tar.gz
 
           # Windows
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             platform: windows
-            arch: x86_64
-            binary_name: augent.exe
+            archive: zip
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             platform: windows
-            arch: aarch64
-            binary_name: augent.exe
+            archive: zip
 
     steps:
       - name: Checkout code
@@ -61,33 +135,57 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.target }}
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (for cross-compilation)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Package binary
         shell: bash
         run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} dist/
-          cd dist
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            7z a augent-${{ matrix.platform }}-${{ matrix.arch }}.zip ${{ matrix.binary_name }}
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross build --release --target ${{ matrix.target }}
           else
-            tar czf augent-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.binary_name }}
+            cargo build --release --target ${{ matrix.target }}
           fi
+
+      - name: Create archive (Unix)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          ARCHIVE_NAME="augent-v${VERSION}-${{ matrix.target }}"
+          mkdir -p "${ARCHIVE_NAME}"
+          cp "target/${{ matrix.target }}/release/augent" "${ARCHIVE_NAME}/"
+          cp README.md LICENSE "${ARCHIVE_NAME}/" || true
+          tar -czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
+          echo "ARCHIVE_PATH=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_ENV
+
+      - name: Create archive (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
+          $ARCHIVE_NAME = "augent-v$VERSION-${{ matrix.target }}"
+          New-Item -ItemType Directory -Path $ARCHIVE_NAME
+          Copy-Item "target/${{ matrix.target }}/release/augent.exe" "$ARCHIVE_NAME/"
+          if (Test-Path README.md) { Copy-Item README.md "$ARCHIVE_NAME/" }
+          if (Test-Path LICENSE) { Copy-Item LICENSE "$ARCHIVE_NAME/" }
+          Compress-Archive -Path $ARCHIVE_NAME -DestinationPath "$ARCHIVE_NAME.zip"
+          echo "ARCHIVE_PATH=$ARCHIVE_NAME.zip" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.platform }}-${{ matrix.arch }}
-          path: dist/augent-${{ matrix.platform }}-${{ matrix.arch }}.*
+          name: binary-${{ matrix.target }}
+          path: ${{ env.ARCHIVE_PATH }}
 
   # Build Python wheels for PyPI (not for GitHub release)
   build-wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: [build-binaries]
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -147,6 +245,7 @@ jobs:
   publish-crates:
     name: Publish to crates.io
     runs-on: ubuntu-latest
+    needs: [build-binaries]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
