@@ -111,7 +111,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Create Cargo.toml with core dependencies (clap, miette, serde, git2, etc.)
 - [x] Set up workspace structure
-- [x] Configure Cargo features for optional platforms
+- [x] Configure Cargo features for platforms
 - [x] Set up pre-commit hooks configuration
 - [x] Configure CI/CD workflow for cross-platform builds
 - [x] Create initial CLI stub
