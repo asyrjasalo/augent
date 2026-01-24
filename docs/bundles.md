@@ -313,6 +313,23 @@ augent install https://github.com/author/bundle.git
 augent install git@github.com:author/bundle.git
 ```
 
+### GitHub Web UI URL
+
+You can copy URLs directly from your browser when viewing a repository on GitHub:
+
+```bash
+# Install from a specific branch/tag and subdirectory
+augent install https://github.com/author/repo/tree/main/plugins/bundle-name
+
+# Install from a specific tag/release
+augent install https://github.com/author/repo/tree/v1.0.0
+
+# Install nested subdirectories
+augent install https://github.com/author/repo/tree/main/deeply/nested/path/to/bundle
+```
+
+**Note:** This format automatically extracts the ref (branch/tag) and subdirectory path from the URL.
+
 ### Local Directory
 
 ```bash

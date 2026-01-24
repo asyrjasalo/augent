@@ -4,6 +4,7 @@
 //! - Local directory paths: `./bundles/my-bundle`, `../shared-bundle`
 //! - Git repositories: `https://github.com/user/repo.git`, `git@github.com:user/repo.git`
 //! - GitHub short-form: `github:author/repo`, `author/repo`
+//! - GitHub web UI URLs: `https://github.com/user/repo/tree/ref/path`
 //! - With ref: `github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`
 //! - With subdirectory: `github:user/repo:plugins/bundle-name`
 //! - With ref and subdirectory: `github:user/repo#main:plugins/bundle-name`
@@ -65,6 +66,7 @@ impl BundleSource {
     /// - `github:user/repo` - GitHub repository
     /// - `user/repo` - GitHub repository (short form)
     /// - `https://github.com/user/repo.git` - Git HTTPS URL
+    /// - `https://github.com/user/repo/tree/ref/path` - GitHub web UI URL
     /// - `git@github.com:user/repo.git` - Git SSH URL
     /// - `file://` URLs with fragments (`#ref` or `#subdir`) are treated as git sources
     /// - Any of the above with `#subdir` for subdirectory
@@ -169,6 +171,17 @@ impl GitSource {
     pub fn parse(input: &str) -> Result<Self> {
         let input = input.trim();
 
+        // Check for GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
+        if let Some(github_parts) = Self::parse_github_web_ui_url(input) {
+            let (owner, repo, git_ref, subdirectory) = github_parts;
+            return Ok(Self {
+                url: format!("https://github.com/{}/{}.git", owner, repo),
+                git_ref: Some(git_ref),
+                subdirectory,
+                resolved_sha: None,
+            });
+        }
+
         let (main_part, ref_part) = if let Some(hash_pos) = input.find('#') {
             (&input[..hash_pos], Some(&input[hash_pos + 1..]))
         } else if let Some(at_pos) = input.find('@') {
@@ -252,6 +265,39 @@ impl GitSource {
             subdirectory,
             resolved_sha: None,
         })
+    }
+
+    /// Parse GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
+    /// Returns: (owner, repo, ref, optional_subdirectory)
+    fn parse_github_web_ui_url(input: &str) -> Option<(String, String, String, Option<String>)> {
+        // Must start with https://github.com/
+        let without_prefix = input.strip_prefix("https://github.com/")?;
+
+        // Split into parts: {owner}/{repo}/tree/{ref}/{path...}
+        let parts: Vec<&str> = without_prefix.split('/').collect();
+
+        // Need at least: owner, repo, "tree", ref (minimum 4 parts)
+        if parts.len() < 4 {
+            return None;
+        }
+
+        // Check that parts[2] is "tree"
+        if parts[2] != "tree" {
+            return None;
+        }
+
+        let owner = parts[0].to_string();
+        let repo = parts[1].to_string();
+        let git_ref = parts[3].to_string();
+
+        // Path is everything after the ref (parts[4..])
+        let subdirectory = if parts.len() > 4 {
+            Some(parts[4..].join("/"))
+        } else {
+            None
+        };
+
+        Some((owner, repo, git_ref, subdirectory))
     }
 
     /// Parse the URL portion (without fragment)
@@ -454,5 +500,81 @@ mod tests {
 
         git.resolved_sha = Some("abc123".to_string());
         assert_eq!(git.cache_key(), "github.com-author-repo/abc123");
+    }
+
+    #[test]
+    fn test_parse_github_web_ui_url_with_ref_and_subdir() {
+        let source = BundleSource::parse(
+            "https://github.com/wshobson/agents/tree/main/plugins/api-testing-observability",
+        )
+        .unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/wshobson/agents.git");
+        assert_eq!(git.git_ref, Some("main".to_string()));
+        assert_eq!(
+            git.subdirectory,
+            Some("plugins/api-testing-observability".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_github_web_ui_url_with_ref_only() {
+        let source = BundleSource::parse("https://github.com/author/repo/tree/v1.0.0").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
+        assert!(git.subdirectory.is_none());
+    }
+
+    #[test]
+    fn test_parse_github_web_ui_url_nested_subdir() {
+        let source = BundleSource::parse(
+            "https://github.com/user/repo/tree/main/deeply/nested/path/to/bundle",
+        )
+        .unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/user/repo.git");
+        assert_eq!(git.git_ref, Some("main".to_string()));
+        assert_eq!(
+            git.subdirectory,
+            Some("deeply/nested/path/to/bundle".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_github_web_ui_url_branch_with_slash() {
+        let source = BundleSource::parse(
+            "https://github.com/user/repo/tree/feature/new-feature/plugins/bundle",
+        )
+        .unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/user/repo.git");
+        // Note: This parses the branch as "feature" and includes "new-feature/plugins/bundle" as subdirectory
+        // This is a known limitation - branches with slashes in web UI URLs are ambiguous
+        assert_eq!(git.git_ref, Some("feature".to_string()));
+        assert_eq!(
+            git.subdirectory,
+            Some("new-feature/plugins/bundle".to_string())
+        );
+    }
+
+    #[test]
+    fn test_github_web_ui_url_not_tree() {
+        // URLs without /tree/ should not be parsed as web UI URLs
+        let source =
+            BundleSource::parse("https://github.com/author/repo/blob/main/README.md").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        // Should be parsed as a regular HTTPS URL
+        assert_eq!(
+            git.url,
+            "https://github.com/author/repo/blob/main/README.md"
+        );
+        assert!(git.git_ref.is_none());
+        assert!(git.subdirectory.is_none());
     }
 }
