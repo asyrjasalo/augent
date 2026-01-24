@@ -103,20 +103,6 @@ Core infrastructure and data models, platform system for extensibility - essenti
 
 ---
 
-## Architecture Decisions Summary
-
-Based on research of OpenPackage and Rust CLI best practices:
-
-1. **CLI Framework**: `clap` v4+ with derive API
-2. **Error Handling**: `miette` + `thiserror` for human-readable errors
-3. **Configuration**: `serde` + `serde_yaml`
-4. **Git Operations**: `git2` + `auth-git2` (delegates to git's auth)
-5. **File Locking**: `fslock` for workspace locking
-6. **Platform System**: Flow-based transformations similar to OpenPackage's platforms.jsonc
-7. **Testing**: `assert_cmd`, `assert_fs`, `tempfile` for integration tests
-
----
-
 ### Epic 1: Foundation & Project Setup
 
 **Goal:** Set up project structure, build system, and core infrastructure.

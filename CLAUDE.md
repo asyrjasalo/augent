@@ -62,6 +62,31 @@ It does NOT:
 - Error messages should be clear and human-readable
 - Operations must be atomic - workspace should never be left in inconsistent state
 
+### Task Entry Format in tasks.md
+
+When adding or updating tasks in `docs/implementation/tasks.md`:
+
+**For completed tasks:**
+
+- Use clear, high-level descriptions
+- DO NOT include file paths (e.g., `src/platform/mod.rs`)
+- DO NOT include line numbers (e.g., `line 42`)
+- DO NOT include method names (e.g., `get_platform()`, `merge_platforms()`)
+- DO NOT include test function names (e.g., `test_install_with_subdirectory`)
+- DO NOT include implementation details (e.g., "implemented in install.rs")
+
+**Good examples:**
+
+- ✅ Test install from git repository with subdirectory
+- ✅ Test platform detection from .claude directory
+- ✅ Implement glob pattern matching for file paths
+
+**Bad examples:**
+
+- ❌ Test install from git repository (test_install_with_subdirectory)
+- ❌ Implement platform detection - get_platform in src/platform/detection.rs
+- ❌ Add resource conflict detection logic - find_conflicts() and has_conflict() in WorkspaceBundle
+
 ## CRITICAL: GIT OPERATIONS RESTRICTIONS
 
 **YOU MUST NEVER, UNDER ANY CIRCUMSTANCES, RUN THE FOLLOWING GIT COMMANDS:**

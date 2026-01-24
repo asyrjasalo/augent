@@ -45,7 +45,7 @@ See: [testing.md](testing.md)
 
 - [x] Define testing strategy (unit + integration)
 - [x] Specify that integration tests must use REAL CLI
-- [x] Define test organization (src/.../mod.rs + tests/)
+- [x] Define test organization
 - [x] Specify that all tests must pass for feature completion
 - [x] Document requirement to add tests after bug fixes
 - [x] Define test fixtures and common utilities approach
@@ -106,34 +106,34 @@ See: [CLAUDE.md](../../CLAUDE.md)
 #### Feature 1.1: Project Structure & Build Configuration
 
 - [x] Create Cargo.toml with core dependencies (clap, miette, serde, git2, etc.)
-- [x] Set up workspace structure: `src/`, `tests/`, `docs/`, `examples/`
+- [x] Set up workspace structure
 - [x] Configure Cargo features for optional platforms
 - [x] Set up pre-commit hooks configuration
 - [x] Configure CI/CD workflow for cross-platform builds
-- [x] Create initial `src/main.rs` with basic CLI stub
+- [x] Create initial CLI stub
 
 #### Feature 1.2: Error Handling Framework
 
-- [x] Define core error types in `src/error.rs` using `thiserror`
+- [x] Define core error types using `thiserror`
 - [x] Set up `miette` integration for pretty error diagnostics
-- [x] Implement `Result<T>` type alias using `miette::Result`
+- [x] Implement `Result<T>` type alias
 - [x] Add error codes and help text for common scenarios
-- [x] Create error wrapper utilities with `.wrap_err()` patterns
+- [x] Create error wrapper utilities with error wrapping patterns
 - [x] Write unit tests for error conversion and display
 
 #### Feature 1.3: Configuration File Handling
 
-- [x] Define data structures for `augent.yaml` in `src/config/bundle.rs`
-- [x] Define data structures for `augent.lock` in `src/config/lockfile.rs`
-- [x] Define data structures for `augent.workspace.yaml` in `src/config/workspace.rs`
+- [x] Define data structures for `augent.yaml`
+- [x] Define data structures for `augent.lock`
+- [x] Define data structures for `augent.workspace.yaml`
 - [x] Implement YAML serialization/deserialization with `serde_yaml`
 - [x] Add validation logic for config file schemas
-- [x] Implement config file merging behavior - merge() methods already exist in BundleConfig, Lockfile, WorkspaceConfig
+- [x] Implement config file merging behavior
 - [x] Write tests for config file parsing and validation
 
 #### Feature 1.4: CLI Framework Setup
 
-- [x] Create main CLI struct with derive API in `src/cli.rs`
+- [x] Create main CLI struct with derive API
 - [x] Define subcommand enums: Install, Uninstall, List, Show, Help, Version
 - [x] Set up global options (verbose, workspace path)
 - [x] Configure command-specific arguments
@@ -155,19 +155,19 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Define `Lockfile` struct with resolved dependencies
 - [x] Define `LockedBundle` struct (name, source, files, hash)
-- [x] Define `LockedFile` representation - files tracked as Vec<String> in LockedBundle
+- [x] Define `LockedFile` representation
 - [x] Implement lockfile serialization/deserialization
 - [x] Add lockfile validation (SHA resolution, hash verification)
-- [x] Implement lockfile comparison for detecting changes - equals() method exists in Lockfile
+- [x] Implement lockfile comparison for detecting changes
 - [x] Write tests for lockfile operations
 
 #### Feature 2.3: Resource Models
 
 - [x] Define `Resource` struct (path, bundle_source, content_hash)
 - [x] Define `Augmentation` struct (agent-specific installed resource)
-- [x] Define `WorkspaceBundle` model (workspace's own bundle) - type alias in resource/mod.rs
+- [x] Define `WorkspaceBundle` model (workspace's own bundle)
 - [x] Implement resource path mapping utilities
-- [x] Add resource conflict detection logic - find_conflicts() and has_conflict() in WorkspaceBundle, find_all_conflicts() and check_conflicts_for_new_bundle() in WorkspaceConfig
+- [x] Add resource conflict detection logic
 - [x] Write tests for resource model operations
 
 ### Epic 3: Platform System
@@ -175,11 +175,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 #### Feature 3.1: Platform Configuration Schema
 
 - [x] Design `platforms.jsonc` schema (based on OpenPackage research)
-- [x] Define `Platform` struct in `src/platform/mod.rs`
-- [x] Define `PlatformFlow` struct (from, to, map operations) - TransformRule in [src/platform/mod.rs](../../src/platform/mod.rs)
+- [x] Define `Platform` struct
+- [x] Define `PlatformFlow` struct (from, to, map operations)
 - [x] Define merge strategy enum (replace, shallow, deep, composite)
 - [x] Create default built-in platform definitions
-- [x] Implement platform config loading and merging - PlatformLoader::load() and merge_platforms() in [src/platform/loader.rs](../../src/platform/loader.rs)
+- [x] Implement platform config loading and merging
 - [x] Write tests for platform config parsing
 
 #### Feature 3.2: Platform Detection
@@ -187,18 +187,18 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement platform detection by checking for directories (`.claude/`, `.cursor/`, `.opencode/`)
 - [x] Implement platform detection by checking for root files (CLAUDE.md, AGENTS.md)
 - [x] Add detection pattern matching (glob patterns)
-- [x] Create platform alias resolution - get_platform in [src/platform/detection.rs](../../src/platform/detection.rs)
-- [x] Implement auto-detection for `--for` flag - resolve_platforms in [src/platform/detection.rs](../../src/platform/detection.rs)
+- [x] Create platform alias resolution - get_platform
+- [x] Implement auto-detection for `--for` flag - resolve_platforms
 - [x] Write tests for platform detection logic
 
 #### Feature 3.3: Transformation Engine
 
-- [x] Define transformation operations (map, rename, pipeline, switch) - TransformRule in [src/platform/mod.rs](../../src/platform/mod.rs)
-- [x] Implement glob pattern matching for file paths - matches_pattern() in [src/platform/transform.rs](../../src/platform/transform.rs)
-- [x] Implement path mapping (universal → platform-specific) - TransformEngine in [src/platform/transform.rs](../../src/platform/transform.rs)
-- [x] Implement reverse path mapping (platform-specific → universal) - extract_name() in [src/platform/transform.rs](../../src/platform/transform.rs)
-- [x] Create transformation operation registry - TransformEngine.rule_cache + TransformRule builder pattern in [src/platform/mod.rs](../../src/platform/mod.rs) and [src/platform/transform.rs](../../src/platform/transform.rs)
-- [x] Implement pipeline execution engine - TransformEngine in [src/platform/transform.rs](../../src/platform/transform.rs)
+- [x] Define transformation operations (map, rename, pipeline, switch)
+- [x] Implement glob pattern matching for file paths
+- [x] Implement path mapping (universal → platform-specific)
+- [x] Implement reverse path mapping (platform-specific → universal)
+- [x] Create transformation operation registry
+- [x] Implement pipeline execution engine
 - [x] Write tests for transformation operations
 
 #### Feature 3.4: Merge Strategies
@@ -239,7 +239,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement cache key generation from URL
 - [x] Implement bundle download and caching logic
 - [x] Add cache hit/miss tracking
-- [x] Implement cache cleanup - `augent clean-cache` command in [src/commands/clean_cache.rs](../../src/commands/clean_cache.rs)
+- [x] Implement cache cleanup - `augent clean-cache` command
 - [x] Write tests for cache operations
 
 #### Feature 4.4: Bundle Discovery
@@ -247,7 +247,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Scan local directories for bundle resources
 - [x] Scan git repositories for bundles/subdirectories
 - [x] Detect Claude Code plugins and marketplaces
-- [x] Create interactive menu for multiple discovered bundles - implemented in [src/commands/install.rs](../../src/commands/install.rs) and [src/resolver/mod.rs](../../src/resolver/mod.rs)
+- [x] Create interactive menu for multiple discovered bundles
 - [x] Implement bundle discovery when source path is explicitly specified
 - [x] Write tests for discovery logic
 
@@ -595,30 +595,29 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 - 14 tasks remain (Feature 13.4: 1 task, Feature 13.5: 0 tasks - already in tasks.md, Feature 13.6: 0 tasks - already in tasks.md, Feature 13.7: 4 tasks, Feature 13.8: 0 tasks - already in tasks.md, Feature 13.9: 3 tasks - require mocking, Feature 13.14: 10 tasks - manual verification)
 - These represent additional edge cases, integration scenarios, and documentation-based testing
-- Can be implemented incrementally as needed
 
 #### Feature 13.1: Fix Compilation Errors
 
 **Status:** Complete
 
-- [x] Fix type mismatch in `src/commands/menu.rs` - convert `Vec<String>` to `&[&str]` for Checkboxes API
-- [x] Fix error conversion in `src/commands/menu.rs` - properly handle `std::io::Error` conversion to `AugentError`
-- [x] Fix `checked()` method call in `src/commands/menu.rs` - use correct Option method
-- [x] Fix dereference error in `src/commands/menu.rs` - correct indexing usage
-- [x] Verify compilation succeeds with `cargo build`
-- [x] Verify all tests compile with `cargo test --no-run`
+- [x] Fix type mismatch - convert `Vec<String>` to `&[&str]` for Checkboxes API
+- [x] Fix error conversion - properly handle standard IO error conversion
+- [x] Fix checked method call - use correct Option method
+- [x] Fix dereference error - correct indexing usage
+- [x] Verify compilation succeeds with cargo build
+- [x] Verify all tests compile with cargo test --no-run
 
 #### Feature 13.2: Completions Command Test Coverage
 
 **Status:** Complete
 
-- [x] Test completions command for bash shell (currently tested in cli_options_tests.rs, verify it works)
-- [x] Test completions command for zsh shell (currently tested in cli_options_tests.rs, verify it works)
-- [x] Test completions command for fish shell (currently tested in cli_options_tests.rs, verify it works)
-- [x] Test completions command for powershell shell (currently tested in cli_options_tests.rs, verify it works)
-- [x] Add test for completions command for elvish shell (NOT TESTED - add to tests/cli_options_tests.rs or new file)
-- [x] Test completions command with missing shell argument (error case - currently tested)
-- [x] Test completions command with invalid shell argument (error case - currently tested)
+- [x] Test completions command for bash shell
+- [x] Test completions command for zsh shell
+- [x] Test completions command for fish shell
+- [x] Test completions command for powershell shell
+- [x] Add test for completions command for elvish shell
+- [x] Test completions command with missing shell argument
+- [x] Test completions command with invalid shell argument
 - [x] Verify generated completion scripts are valid syntax for each shell type
 - [x] Add integration test for installing and using completion scripts
 
@@ -626,91 +625,69 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 **Status:** Complete
 
-- [x] Test `augent clean-cache --show-size` displays cache size correctly - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_show_size)
-- [x] Test `augent clean-cache --all` removes all cached bundles - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_all)
-- [x] Test `augent clean-cache --show-size --all` shows size and cleans - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_show_size_all)
-- [x] Test clean-cache command with non-existent cache directory (error case) - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_non_existent_directory, test_clean_cache_truly_non_existent_cache_dir)
-- [x] Test clean-cache command preserves workspace files (only removes cache) - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_preserves_workspace_files)
-- [x] Test clean-cache command with workspace option - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_with_workspace_option)
-- [x] Verify cache directory structure after cleanup - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_directory_structure_after_cleanup)
-- [x] Test clean-cache with verbose flag shows details - [tests/clean_cache_tests.rs](../../tests/clean_cache_tests.rs) (test_clean_cache_verbose)
-
-**Implementation Notes:**
-
-All 8 tests pass, including edge cases like non-existent cache directories, workspace file preservation, and cache directory structure verification. Tests use both real cache scenarios and simulated non-existent directories via environment variable overrides.
+- [x] Test `augent clean-cache --show-size` displays cache size correctly
+- [x] Test `augent clean-cache --all` removes all cached bundles
+- [x] Test `augent clean-cache --show-size --all` shows size and cleans
+- [x] Test clean-cache command with non-existent cache directory (error case)
+- [x] Test clean-cache command preserves workspace files (only removes cache)
+- [x] Test clean-cache command with workspace option
+- [x] Verify cache directory structure after cleanup
+- [x] Test clean-cache with verbose flag shows details
 
 #### Feature 13.4: Install Command Advanced Scenarios
 
 **Status:** Complete
 
-- [x] Test install from git repository with subdirectory (e.g., `github:user/repo#plugins/name`) (test_install_with_subdirectory)
-- [x] Test install from git repository with tag ref (e.g., `github:user/bundle#v1.0.0`) (test_install_with_specific_ref)
-- [x] Test install from git repository with branch ref (e.g., `github:user/bundle#main`) (test_install_with_branch_ref)
-- [x] Test install from git repository with SHA ref (e.g., `github:user/bundle#abc123`) (test_install_with_sha_ref)
-- [x] Test install from full HTTPS git URL (test_install_from_https_git_url)
-- [x] Test install from SSH git URL (test_install_from_ssh_git_url_fails_without_ssh_keys)
-- [x] Test install from github:author/repo short form (test_parse_github_shorthand)
-- [x] Test install from author/repo simplified form (test_parse_github_implicit)
-- [x] Test install with invalid URL format (error case) (test_install_with_invalid_url_format)
-- [x] Test install with non-existent repository (error case) (test_install_with_nonexistent_repository)
-- [x] Test install with ref that doesn't exist (error case) (test_install_with_nonexistent_ref)
-- [x] Test install with subdirectory that doesn't exist (error case) (test_install_with_nonexistent_subdirectory)
-
-**Implementation Notes:**
-
-Integration tests use `file://` URLs to test git source functionality without network dependencies. Unit tests in `src/source/mod.rs` verify parsing of all GitHub short-form formats (`github:author/repo` and `author/repo`). All 20 integration tests pass, and all 12 GitHub parsing unit tests pass.
+- [x] Test install from git repository with subdirectory (e.g., `github:user/repo#plugins/name`)
+- [x] Test install from git repository with tag ref (e.g., `github:user/bundle#v1.0.0`)
+- [x] Test install from git repository with branch ref (e.g., `github:user/bundle#main`)
+- [x] Test install from git repository with SHA ref (e.g., `github:user/bundle#abc123`)
+- [x] Test install from full HTTPS git URL
+- [x] Test install from SSH git URL
+- [x] Test install from github:author/repo short form
+- [x] Test install from author/repo simplified form
+- [x] Test install with invalid URL format (error case)
+- [x] Test install with non-existent repository (error case)
+- [x] Test install with ref that doesn't exist (error case)
+- [x] Test install with subdirectory that doesn't exist (error case)
 
 #### Feature 13.5: Install Command Interactive Features
 
 **Status:** Complete
 
-- [x] Test install with interactive bundle selection menu (NOT TESTED - requires mocking stdin) - Implemented in interactive_menu_tests.rs (5 tests)
-- [x] Test install with multiple bundles discovered and user selects subset - Implemented in interactive_menu_tests.rs
-- [x] Test install with multiple bundles discovered and user selects all - Implemented in interactive_menu_tests.rs
-- [x] Test install with multiple bundles discovered and user cancels - Implemented in interactive_menu_tests.rs (2 tests: empty selection, escape)
-- [x] Test install bypasses menu when subdirectory is explicitly specified - Implemented in install_interactive_tests.rs (10 tests)
-- [x] Test menu display formatting is correct - Implemented in interactive_menu_tests.rs (test shows prompt and instructions)
-- [x] Test menu with bundles that have descriptions - Implemented in interactive_menu_tests.rs
-- [x] Test menu with bundles that lack descriptions - Implemented in interactive_menu_tests.rs
-
-**Additional tests implemented for robustness:**
-
-- Menu navigation with arrow keys
-- Menu selection toggle (deselect selected items)
-- Large bundle list handling (scrolling with 15+ bundles)
-
-**Documentation:** See tests/INTERACTIVE_TESTING.md for interactive testing patterns and guide
+- [x] Test install with interactive bundle selection menu
+- [x] Test install with multiple bundles discovered and user selects subset
+- [x] Test install with multiple bundles discovered and user selects all
+- [x] Test install with multiple bundles discovered and user cancels
+- [x] Test install bypasses menu when subdirectory is explicitly specified
+- [x] Test menu display formatting is correct
+- [x] Test menu with bundles that have descriptions
+- [x] Test menu with bundles that lack descriptions
 
 #### Feature 13.6: Uninstall Command Interactive Features
 
 **Status:** Complete
 
-- [x] Test uninstall with confirmation prompt (user accepts) (NOT TESTED - requires mocking stdin) - Implemented in uninstall_interactive_tests.rs (2 tests: "y", "yes")
-- [x] Test uninstall with confirmation prompt (user declines) (NOT TESTED - requires mocking stdin) - Implemented in uninstall_interactive_tests.rs (3 tests: "n", "no", empty)
-- [x] Test uninstall with --yes flag skips confirmation (currently may be tested, verify coverage) - Implemented in uninstall_interactive_tests.rs
-- [x] Test uninstall warns about dependent bundles (currently may be tested, verify coverage) - Implemented in uninstall.rs and tested in uninstall_interactive_tests.rs
-- [x] Test uninstall proceeds after warning despite dependencies (currently may be tested, verify coverage) - Implemented in uninstall.rs and tested in uninstall_interactive_tests.rs
-- [x] Test uninstall confirmation prompt text is clear - Implemented in uninstall_interactive_tests.rs
-
-**Additional tests implemented:**
-
-- Uppercase "YES" acceptance
-- Mixed case "YeS" acceptance
-- Trailing whitespace handling ("y ")
+- [x] Test uninstall with confirmation prompt (user accepts)
+- [x] Test uninstall with confirmation prompt (user declines)
+- [x] Test uninstall with --yes flag skips confirmation
+- [x] Test uninstall warns about dependent bundles
+- [x] Test uninstall proceeds after warning despite dependencies
+- [x] Test uninstall confirmation prompt text is clear
 
 #### Feature 13.7: Workspace Detection and Auto-Detection
 
 **Status:** Partially Complete (5 of 9 tasks)
 
-- [x] Test workspace detection finds .augent in current directory (currently may be tested, verify coverage)
+- [x] Test workspace detection finds .augent in current directory
 - [x] Test workspace detection searches parent directories
-- [x] Test workspace detection with --workspace flag uses specified path (currently may be tested, verify coverage)
-- [ ] Test workspace initialization creates .augent directory (currently may be tested, verify coverage)
-- [x] Test workspace initialization creates initial config files (currently may be tested, verify coverage)
-- [ ] Test workspace initialization infers name from git remote (currently may be tested, verify coverage)
-- [ ] Test workspace initialization falls back to USERNAME/DIR when no git remote (currently may be tested, verify coverage)
+- [x] Test workspace detection with --workspace flag uses specified path
+- [ ] Test workspace initialization creates .augent directory
+- [x] Test workspace initialization creates initial config files
+- [ ] Test workspace initialization infers name from git remote
+- [ ] Test workspace initialization falls back to USERNAME/DIR when no git remote
 - [ ] Test workspace initialization error when not in git directory
-- [ ] Test workspace detection error when no workspace found (currently may be tested, verify coverage)
+- [ ] Test workspace detection error when no workspace found
 
 #### Feature 13.8: Bundle Discovery Scenarios
 
@@ -720,8 +697,8 @@ Integration tests use `file://` URLs to test git source functionality without ne
 - [ ] Test bundle discovery from git repository with single bundle
 - [ ] Test bundle discovery from local directory with resources
 - [ ] Test bundle discovery from local directory without resources (error case)
-- [ ] Test bundle discovery detects Claude Code plugins (currently may be tested, verify coverage)
-- [ ] Test bundle discovery detects Claude Code marketplace format (currently may be tested, verify coverage)
+- [ ] Test bundle discovery detects Claude Code plugins
+- [ ] Test bundle discovery detects Claude Code marketplace format
 - [ ] Test bundle discovery shows all bundles when multiple found
 - [ ] Test bundle discovery handles subdirectories correctly
 
@@ -729,85 +706,85 @@ Integration tests use `file://` URLs to test git source functionality without ne
 
 **Status:** Partially Complete (5 of 13 tasks)
 
-- [x] Test install with corrupted augent.yaml (error case - NOT TESTED)
-- [x] Test install with corrupted augent.lock (error case - NOT TESTED)
-- [x] Test install with corrupted augent.workspace.yaml (error case - NOT TESTED)
-- [ ] Test install with circular dependencies (error case - currently may be tested, verify coverage)
-- [ ] Test install with missing dependency bundle (error case - currently may be tested, verify coverage)
-- [ ] Test uninstall with bundle not found (error case - currently tested in cli_tests.rs, verify)
+- [x] Test install with corrupted augent.yaml
+- [x] Test install with corrupted augent.lock
+- [x] Test install with corrupted augent.workspace.yaml
+- [ ] Test install with circular dependencies (error case)
+- [ ] Test install with missing dependency bundle (error case)
+- [ ] Test uninstall with bundle not found (error case)
 - [ ] Test uninstall with modified files that conflict
-- [x] Test list with corrupted lockfile (error case - NOT TESTED)
-- [x] Test show with bundle not found (error case - NOT TESTED)
-- [ ] Test version command always succeeds (currently tested, verify)
-- [ ] Test help command always succeeds (currently tested, verify)
-- [ ] Test all commands with insufficient permissions (error case - NOT TESTED)
-- [ ] Test all commands with disk full error (error case - NOT TESTED)
-- [ ] Test all commands with network timeout during git operations (error case - NOT TESTED)
+- [x] Test list with corrupted lockfile
+- [x] Test show with bundle not found
+- [ ] Test version command always succeeds
+- [ ] Test help command always succeeds
+- [ ] Test all commands with insufficient permissions
+- [ ] Test all commands with disk full error
+- [ ] Test all commands with network timeout during git operations
 
 #### Feature 13.10: Platform-Specific Test Coverage
 
 **Status:** Complete
 
-- [x] Test install for claude platform with various resources (currently may be tested, verify coverage) (test_all_resource_types_commands_rules_skills_agents_mcp_servers)
-- [x] Test install for cursor platform with various resources (currently may be tested, verify coverage) (test_cursor_rules_transformation)
-- [x] Test install for opencode platform with various resources (currently may be tested, verify coverage) (test_opencode_all_transformations)
-- [x] Test install with --for flag for multiple agents (currently may be tested, verify coverage) (test_install_for_multiple_agents)
-- [x] Test install with --for flag for single agent (currently may be tested, verify coverage) (test_install_for_single_agent)
-- [x] Test auto-detection of platforms when --for not specified (test_install_auto_detect_platforms)
-- [x] Test platform detection from .claude directory (currently may be tested, verify coverage) (test_platform_detection_order_with_multiple_platforms)
-- [x] Test platform detection from .cursor directory (currently may be tested, verify coverage) (test_platform_detection_order_with_multiple_platforms)
-- [x] Test platform detection from .opencode directory (currently may be tested, verify coverage) (test_platform_detection_order_with_multiple_platforms)
-- [x] Test platform detection from root files like CLAUDE.md (currently may be tested, verify coverage) (test_platform_detection_order_with_root_files)
-- [x] Test transformation of resources for each platform (currently may be tested, verify coverage) (test_claude_commands_transformation, test_claude_rules_transformation, test_claude_skills_transformation, test_cursor_rules_transformation, test_opencode_all_transformations)
-- [x] Test merge strategies for each platform (currently may be tested in install_merge_tests.rs, verify coverage) (test_replace_merge_strategy_for_regular_files, test_composite_merge_for_agents_md, test_composite_merge_for_mcp_jsonc, test_deep_merge_for_json_yaml_files, test_deep_merge_for_nested_json_yaml_structures)
+- [x] Test install for claude platform with various resources
+- [x] Test install for cursor platform with various resources
+- [x] Test install for opencode platform with various resources
+- [x] Test install with --for flag for multiple agents
+- [x] Test install with --for flag for single agent
+- [x] Test auto-detection of platforms when --for not specified
+- [x] Test platform detection from .claude directory
+- [x] Test platform detection from .cursor directory
+- [x] Test platform detection from .opencode directory
+- [x] Test platform detection from root files like CLAUDE.md
+- [x] Test transformation of resources for each platform
+- [x] Test merge strategies for each platform
 
 #### Feature 13.11: Edge Cases and Boundary Conditions
 
 **Status:** Complete
 
-- [x] Test install with bundle containing 0 resources (edge case - NOT TESTED) (test_install_bundle_with_empty_resources)
-- [x] Test install with bundle containing many resources (performance test - NOT TESTED) (test_install_with_many_resources - 50 files)
-- [x] Test install with deeply nested dependencies (5+ levels - NOT TESTED) (test_install_with_deeply_nested_dependencies - 5 levels)
-- [x] Test install with bundle name at max length (test_install_with_long_bundle_name - 200 characters)
-- [x] Test install with bundle name with special characters (test_invalid_bundle_name_with_special_chars)
-- [x] Test install with resource path at max length (test_install_with_long_resource_path)
-- [x] Test list with 0 bundles installed (currently tested, verify) (test_complete_roundtrip)
-- [x] Test list with 1 bundle installed (currently tested, verify) (covered by multiple tests)
-- [x] Test list with many bundles installed (currently tested, verify) (test_list_with_many_bundles - 15 bundles)
-- [x] Test uninstall when it's the only bundle (test_uninstall_when_only_bundle)
-- [x] Test uninstall when it's the last bundle (test_uninstall_when_last_bundle)
-- [x] Test show with bundle that has no files (test_show_with_bundle_that_has_no_files)
-- [x] Test show with bundle that has no dependencies (test_show_displays_no_dependencies)
+- [x] Test install with bundle containing 0 resources (edge case)
+- [x] Test install with bundle containing many resources (performance test)
+- [x] Test install with deeply nested dependencies (5+ levels)
+- [x] Test install with bundle name at max length
+- [x] Test install with bundle name with special characters
+- [x] Test install with resource path at max length
+- [x] Test list with 0 bundles installed
+- [x] Test list with 1 bundle installed
+- [x] Test list with many bundles installed
+- [x] Test uninstall when it's the only bundle
+- [x] Test uninstall when it's the last bundle
+- [x] Test show with bundle that has no files
+- [x] Test show with bundle that has no dependencies
 
 #### Feature 13.12: Global Options Test Coverage
 
 **Status:** Complete
 
-- [x] Test --verbose flag for install command (currently tested, verify coverage) (test_install_verbose)
-- [x] Test --verbose flag for uninstall command (currently tested, verify coverage) (test_uninstall_verbose)
-- [x] Test --verbose flag for list command (currently tested, verify coverage) (test_list_verbose)
-- [x] Test --verbose flag for show command (currently tested, verify coverage) (test_show_verbose)
-- [x] Test --verbose flag for clean-cache command (test_clean_cache_verbose)
-- [x] Test --verbose flag for completions command (test_completions_verbose)
-- [x] Test --workspace flag for all commands (currently tested, verify coverage) (test_list_with_workspace_option, test_show_with_workspace_option, test_install_with_workspace_option, test_uninstall_with_workspace_option, test_clean_cache_with_workspace_option)
-- [x] Test --help flag for all commands (currently tested, verify coverage) (test_help_shows_all_commands, test_install_help, test_uninstall_help, test_help_fits_on_one_screen, test_install_help_fits_on_one_screen)
-- [x] Test --version flag works globally (currently tested, verify coverage) (test_version_shows_rust_version, test_version_shows_build_info, tests/cli_tests.rs test_version_output)
+- [x] Test --verbose flag for install command
+- [x] Test --verbose flag for uninstall command
+- [x] Test --verbose flag for list command
+- [x] Test --verbose flag for show command
+- [x] Test --verbose flag for clean-cache command
+- [x] Test --verbose flag for completions command
+- [x] Test --workspace flag for all commands
+- [x] Test --help flag for all commands
+- [x] Test --version flag works globally
 
 #### Feature 13.13: Integration Test Scenarios
 
 **Status:** Pending
 
-- [ ] Test full workflow: install → verify files → list → show → uninstall (NOT TESTED end-to-end)
+- [ ] Test full workflow: install → verify files → list → show → uninstall
 - [ ] Test installing multiple bundles sequentially and verifying all files
 - [ ] Test installing bundle with dependencies and verifying installation order
 - [ ] Test reinstalling same bundle and verifying no changes
 - [ ] Test updating bundle by changing ref and reinstalling
 - [ ] Test installing from local, then installing updated version from git
 - [ ] Test workspace with multiple AI agents and bundles
-- [ ] Test atomic rollback on install failure (currently may be tested, verify coverage)
-- [ ] Test atomic rollback on uninstall failure (currently may be tested, verify coverage)
-- [ ] Test concurrent install operations (currently may be tested in concurrency_tests.rs, verify coverage)
-- [ ] Test lock file prevents concurrent modifications (currently may be tested, verify coverage)
+- [ ] Test atomic rollback on install failure
+- [ ] Test atomic rollback on uninstall failure
+- [ ] Test concurrent install operations
+- [ ] Test lock file prevents concurrent modifications
 
 #### Feature 13.14: Documentation-Based Testing
 
