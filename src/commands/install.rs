@@ -176,18 +176,80 @@ fn do_install_from_yaml(
         (resolved, true) // Mark that we should update lockfile
     } else {
         // Use lockfile - respects exact SHAs, no fetching unless needed from cache
-        println!("Using locked versions from augent.lock...");
+        // If lockfile is empty/doesn't exist, automatically create it
+        let lockfile_is_empty = workspace.lockfile.bundles.is_empty();
 
-        let resolved = locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
+        let resolved = if lockfile_is_empty {
+            // Lockfile doesn't exist or is empty - resolve dependencies and create it
+            println!("Lockfile not found or empty. Resolving dependencies...");
 
-        if resolved.is_empty() {
-            return Err(AugentError::BundleNotFound {
-                name: "No bundles found in augent.lock".to_string(),
-            });
-        }
+            let mut resolver = Resolver::new(&workspace.root);
 
-        println!("Prepared {} bundle(s)", resolved.len());
-        (resolved, false) // Don't update lockfile
+            // Get all bundle sources from augent.yaml
+            let bundle_sources: Vec<String> = workspace
+                .bundle_config
+                .bundles
+                .iter()
+                .map(|dep| {
+                    // Reconstruct source string from dependency
+                    if let Some(ref git_url) = dep.git {
+                        let mut source = git_url.clone();
+                        if let Some(ref git_ref) = dep.git_ref {
+                            source.push('#');
+                            source.push_str(git_ref);
+                        }
+                        if let Some(ref subdir) = dep.subdirectory {
+                            source.push(':');
+                            source.push_str(subdir);
+                        }
+                        source
+                    } else if let Some(ref subdir) = dep.subdirectory {
+                        // Local dependency
+                        subdir.clone()
+                    } else {
+                        String::new()
+                    }
+                })
+                .collect();
+
+            if bundle_sources.is_empty() {
+                return Err(AugentError::BundleNotFound {
+                    name: "No bundles defined in augent.yaml".to_string(),
+                });
+            }
+
+            println!("Resolving {} bundle(s)...", bundle_sources.len());
+
+            // Resolve all bundles and their dependencies
+            let resolved = resolver.resolve_multiple(&bundle_sources)?;
+
+            if resolved.is_empty() {
+                return Err(AugentError::BundleNotFound {
+                    name: "No bundles found in augent.yaml".to_string(),
+                });
+            }
+
+            println!("Resolved {} bundle(s)", resolved.len());
+            resolved
+        } else {
+            // Lockfile exists - use it
+            println!("Using locked versions from augent.lock...");
+
+            let resolved =
+                locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
+
+            if resolved.is_empty() {
+                return Err(AugentError::BundleNotFound {
+                    name: "No bundles found in augent.lock".to_string(),
+                });
+            }
+
+            println!("Prepared {} bundle(s)", resolved.len());
+            resolved
+        };
+
+        // Update lockfile if --update was given OR if lockfile was empty
+        (resolved, args.update || lockfile_is_empty)
     };
 
     // Detect target platforms
@@ -352,11 +414,7 @@ fn do_install(
     };
 
     if resolved_bundles.is_empty() {
-        let source_display = args
-            .source
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("unknown");
+        let source_display = args.source.as_deref().unwrap_or("unknown");
         return Err(AugentError::BundleNotFound {
             name: format!("No bundles found at source '{}'", source_display),
         });
@@ -401,7 +459,7 @@ fn do_install(
     }
 
     // Update configuration files
-    let source_str = args.source.as_ref().map(|s| s.as_str()).unwrap_or("");
+    let source_str = args.source.as_deref().unwrap_or("");
     update_configs(workspace, source_str, &resolved_bundles, workspace_bundles)?;
 
     // Save workspace

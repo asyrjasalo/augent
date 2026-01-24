@@ -71,15 +71,10 @@ pub enum Commands {
 /// Arguments for the install command
 #[derive(Parser, Debug)]
 #[command(after_help = "EXAMPLES:\n  \
-                   Install from augent.yaml (no source):\n    augent install\n\n\
-                   Install from GitHub:\n    augent install github:author/debug-tools\n\n\
+                   Install from GitHub:\n    augent install github:author/bundle\n\n\
                    Install from local directory:\n    augent install ./my-bundle\n\n\
-                   Install from Git URL:\n    augent install https://github.com/author/bundle.git\n\n\
-                   Install for specific platforms:\n    augent install ./bundle --for cursor opencode\n\n\
-                   Install with frozen lockfile (CI/CD):\n    augent install github:author/bundle --frozen\n\n\
-                   Install from subdirectory:\n    augent install github:author/repo#plugins/name\n\n\
-                   Install specific version:\n    augent install github:author/bundle#v1.0.0\n\
-                   Select all bundles without interactive menu:\n    augent install ./repo --select-all")]
+                   Install for specific platforms:\n    augent install ./bundle --for cursor\n\n\
+                   Install with frozen lockfile:\n    augent install github:author/bundle --frozen")]
 pub struct InstallArgs {
     /// Bundle source (path, URL, or github:author/repo). If not provided, reads from augent.yaml
     pub source: Option<String>,

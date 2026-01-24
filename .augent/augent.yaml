@@ -4,20 +4,11 @@ bundles:
 - name: '@wshobson/agents'
   git: https://github.com/wshobson/agents.git
   subdirectory: plugins/agent-orchestration
-- name: '@octocat/Hello-World'
-  git: https://github.com/octocat/Hello-World.git
-- name: '@davila7/claude-code-templates'
-  git: https://github.com/davila7/claude-code-templates.git
-  ref: main
 - name: '@davila7/claude-code-templates/ai-ml-toolkit'
   git: https://github.com/davila7/claude-code-templates.git
-  subdirectory: $virtual/ai-ml-toolkit
-  ref: main
+  subdirectory: $plugin/ai-ml-toolkit
+  ref: v1.27.0
 - name: '@davila7/claude-code-templates/devops-automation'
   git: https://github.com/davila7/claude-code-templates.git
-  subdirectory: $virtual/devops-automation
-  ref: main
-- name: '@wshobson/agents/application-performance'
-  git: https://github.com/wshobson/agents.git
-  subdirectory: $virtual/application-performance
+  subdirectory: $plugin/devops-automation
   ref: main

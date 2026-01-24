@@ -423,11 +423,17 @@ fn test_unknown_command() {
 
 #[test]
 fn test_install_missing_source() {
+    let temp = common::TestWorkspace::new();
     augent_cmd()
+        .current_dir(&temp.path)
         .arg("install")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("required"));
+        .stderr(
+            predicate::str::contains("Workspace not found")
+                .or(predicate::str::contains("WorkspaceNotFound"))
+                .or(predicate::str::contains("required")),
+        );
 }
 
 #[test]

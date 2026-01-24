@@ -1,7 +1,7 @@
 //! Marketplace configuration for .claude-plugin/marketplace.json
 //!
 //! This module handles parsing and management of marketplace.json files
-//! which declare virtual bundles that reference resources scattered across a repository.
+//! which declare marketplace plugins that reference resources scattered across a repository.
 
 use crate::error::{AugentError, Result};
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use std::path::Path;
 
 /// Marketplace configuration (.claude-plugin/marketplace.json)
 ///
-/// Defines a collection of virtual bundles (plugins) that reference resources
+/// Defines a collection of marketplace plugins that reference resources
 /// spread across the repository rather than being contained in a single directory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketplaceConfig {
@@ -19,7 +19,7 @@ pub struct MarketplaceConfig {
 
 /// A bundle definition in marketplace.json
 ///
-/// Represents a virtual bundle with resources scattered across the repository.
+/// Represents a marketplace plugin with resources scattered across the repository.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketplaceBundle {
     pub name: String,

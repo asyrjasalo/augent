@@ -311,7 +311,7 @@ impl Resolver {
 
         let mut discovered = self.discover_local_bundles(&content_path)?;
 
-        // Check if this repo has a marketplace.json (virtual bundles)
+        // Check if this repo has a marketplace.json (marketplace plugins)
         let has_marketplace = content_path
             .join(".claude-plugin/marketplace.json")
             .is_file();
@@ -330,7 +330,7 @@ impl Resolver {
                     .filter(|s| !s.is_empty());
 
                 // If path == content_path (empty subdirectory) and we have marketplace.json,
-                // this is a virtual bundle - use bundle name as subdirectory marker
+                // this is a marketplace plugin - use bundle name as subdirectory marker
                 if stripped.is_none() && has_marketplace {
                     Some(format!("$plugin/{}", bundle.name))
                 } else {
@@ -430,9 +430,9 @@ impl Resolver {
 
         // Check if this is a marketplace bundle (has .claude-plugin/marketplace.json)
         let marketplace_json = full_path.join(".claude-plugin/marketplace.json");
-        let is_virtual = marketplace_json.is_file();
+        let is_plugin_bundle = marketplace_json.is_file();
 
-        let source_path = if is_virtual {
+        let source_path = if is_plugin_bundle {
             // Determine bundle name first
             let bundle_name = match dependency {
                 Some(dep) => dep.name.clone(),
@@ -510,10 +510,10 @@ impl Resolver {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
         let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
 
-        // Check if this is a virtual marketplace bundle (subdirectory starts with $plugin/)
+        // Check if this is a marketplace plugin (subdirectory starts with $plugin/)
         let content_path = if let Some(ref subdir) = source.subdirectory {
             if let Some(bundle_name) = subdir.strip_prefix("$plugin/") {
-                // This is a virtual marketplace bundle - create synthetic directory
+                // This is a marketplace plugin - create synthetic directory
                 let marketplace_json = cache_path.join(".claude-plugin/marketplace.json");
                 if !marketplace_json.is_file() {
                     return Err(AugentError::BundleNotFound {
@@ -578,7 +578,7 @@ impl Resolver {
 
                     let base_name = format!("@{}/{}", author, repo);
 
-                    // Check if this is a virtual marketplace bundle
+                    // Check if this is a marketplace plugin
                     if let Some(ref subdir) = source.subdirectory {
                         if let Some(bundle_name) = subdir.strip_prefix("$plugin/") {
                             // Include the specific bundle name from marketplace in full path
@@ -657,7 +657,7 @@ impl Resolver {
 
     /// Create a synthetic bundle directory from marketplace.json definition
     ///
-    /// For virtual bundles defined in marketplace.json, creates a cache directory
+    /// For marketplace plugins defined in marketplace.json, creates a cache directory
     /// with copies of all referenced resources.
     fn create_synthetic_bundle(
         &self,
@@ -1275,11 +1275,11 @@ bundles:
     }
 
     #[test]
-    fn test_virtual_marketplace_bundle_naming() {
-        // Test that virtual marketplace bundles get unique names from subdirectory
+    fn test_marketplace_plugin_naming() {
+        // Test that marketplace plugins get unique names from subdirectory
         let _temp = TempDir::new().unwrap();
 
-        // Create two virtual marketplace bundles with same URL but different subdirectories
+        // Create two marketplace plugins with same URL but different subdirectories
         let source1 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
@@ -1294,7 +1294,7 @@ bundles:
             resolved_sha: None,
         };
 
-        // Verify names are derived from virtual subdirectory, not from URL
+        // Verify names are derived from marketplace plugin subdirectory, not from URL
         // Note: We can't easily test resolve_git directly without setting up mock git repos,
         // but we can verify the logic by checking that the naming logic is correct
 
