@@ -102,18 +102,6 @@ bundles: []
         .assert()
         .success();
 
-    // Debug: List files in .cursor/rules/
-    let rules_dir = workspace.path.join(".cursor/rules");
-    if rules_dir.exists() {
-        println!("Files in .cursor/rules/:");
-        for entry in std::fs::read_dir(&rules_dir).unwrap() {
-            let entry = entry.unwrap();
-            println!("  {:?}", entry.file_name());
-        }
-    } else {
-        println!(".cursor/rules/ does not exist");
-    }
-
     // Cursor rules should get .mdc extension per platform definition
     // Note: If this fails, check if extension transformation is working in installer
     assert!(

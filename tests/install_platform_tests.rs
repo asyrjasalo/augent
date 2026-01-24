@@ -366,24 +366,6 @@ bundles: []
         .assert()
         .success();
 
-    // Debug: list .claude directory
-    if let Ok(entries) = std::fs::read_dir(workspace.path.join(".claude")) {
-        for entry in entries.filter_map(Result::ok) {
-            println!("[DEBUG] {:?}: {:?}", entry.path(), entry.file_type());
-            if entry.path().is_dir() {
-                if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
-                    for sub_entry in sub_entries.filter_map(Result::ok) {
-                        println!(
-                            "[DEBUG]   {:?}: {:?}",
-                            sub_entry.path(),
-                            sub_entry.file_type()
-                        );
-                    }
-                }
-            }
-        }
-    }
-
     assert!(
         workspace.file_exists(".claude/commands/deploy.md"),
         "Commands should transform to .claude/commands/"

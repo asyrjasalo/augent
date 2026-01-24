@@ -128,7 +128,6 @@ bundles: []
         .success();
 
     let content = workspace.read_file("AGENTS.md");
-    eprintln!("AGENTS.md content:\n---\n{}\n---", content);
     assert!(
         content.contains("Bundle 1 Configuration"),
         "AGENTS.md should contain content from bundle-1"
