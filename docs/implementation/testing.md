@@ -350,7 +350,7 @@ All tests must pass before merging:
 
 ### Workflow
 
-Following @TODO.md requirements, we use TDD:
+Following requirements, we use TDD:
 
 1. **Create task** in tasks.md
 2. **Research** existing documentation
