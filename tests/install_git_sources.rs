@@ -205,7 +205,7 @@ fn test_install_with_subdirectory() {
         .expect("Failed to commit");
 
     let git_url = format!(
-        "file://{}#bundles/my-bundle",
+        "file://{}:bundles/my-bundle",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
@@ -315,7 +315,7 @@ fn test_bundle_discovery_with_multiple_bundles() {
         .expect("Failed to commit");
 
     let git_url = format!(
-        "file://{}#bundles/bundle-a",
+        "file://{}:bundles/bundle-a",
         bundles_dir.to_str().expect("Path is not valid UTF-8")
     );
 
@@ -404,7 +404,7 @@ fn test_discover_multiple_bundles_in_repository() {
         .expect("Failed to commit");
 
     let git_url = format!(
-        "file://{}#bundles/bundle-a",
+        "file://{}:bundles/bundle-a",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
@@ -423,7 +423,7 @@ fn test_install_from_real_github_repository_discovers_all_bundles() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    let github_url = "https://github.com/wshobson/agents#plugins/python-development";
+    let github_url = "https://github.com/wshobson/agents:plugins/python-development";
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", github_url])
@@ -685,7 +685,7 @@ fn test_install_with_nonexistent_subdirectory() {
 
     let repo_path = workspace.create_mock_git_repo("test-repo");
     let git_url = format!(
-        "file://{}#nonexistent/path/to/bundle",
+        "file://{}:nonexistent/path/to/bundle",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 

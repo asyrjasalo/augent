@@ -291,7 +291,7 @@ fn test_discover_nested_bundle_with_subdirectory_path() {
 
     // Install with explicit subdirectory
     let git_url = format!(
-        "file://{}#packages/pkg-a",
+        "file://{}:packages/pkg-a",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
