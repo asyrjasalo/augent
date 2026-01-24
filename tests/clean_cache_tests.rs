@@ -263,6 +263,25 @@ bundles: []
 }
 
 #[test]
+fn test_clean_cache_truly_non_existent_cache_dir() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let cache_base = temp_dir.path();
+
+    augent_cmd()
+        .env("AUGENT_CACHE_DIR", cache_base)
+        .args(["clean-cache", "--show-size"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Cache is empty"));
+
+    augent_cmd()
+        .env("AUGENT_CACHE_DIR", cache_base)
+        .args(["clean-cache", "--all"])
+        .assert()
+        .success();
+}
+
+#[test]
 fn test_clean_cache_directory_structure_after_cleanup() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -300,6 +319,12 @@ bundles: []
     assert!(workspace.file_exists(".claude/commands/test.md"));
     assert!(workspace.file_exists(".claude/commands/test2.md"));
 
+    let cache_dir = dirs::cache_dir()
+        .map(|p| p.join("augent").join("bundles"))
+        .expect("Could not determine cache directory");
+
+    let cache_existed_before = cache_dir.exists();
+
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["clean-cache", "--all"])
@@ -315,4 +340,14 @@ bundles: []
 
     assert!(workspace.file_exists(".claude/commands/test.md"));
     assert!(workspace.file_exists(".claude/commands/test2.md"));
+
+    if cache_existed_before {
+        let bundle_count_after = std::fs::read_dir(&cache_dir)
+            .map(|entries| entries.count())
+            .unwrap_or(0);
+        assert_eq!(
+            bundle_count_after, 0,
+            "All bundles should be removed from cache directory"
+        );
+    }
 }

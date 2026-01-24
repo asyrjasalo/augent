@@ -432,3 +432,272 @@ fn test_install_from_real_github_repository_discovers_all_bundles() {
 
     assert!(workspace.file_exists(".augent/augent.lock"));
 }
+
+#[test]
+fn test_install_with_branch_ref() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let repo_path = workspace.path.join("git-repo");
+    std::fs::create_dir_all(&repo_path).expect("Failed to create repo");
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to init git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::fs::write(
+        repo_path.join("augent.yaml"),
+        "name: \"@test/bundle\"\nbundles: []\nversion: \"1.0.0\"\n",
+    )
+    .expect("Failed to write augent.yaml");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Initial commit"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    std::process::Command::new("git")
+        .args(["checkout", "-b", "develop"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to create branch");
+
+    std::fs::write(
+        repo_path.join("augent.yaml"),
+        "name: \"@test/bundle\"\nbundles: []\nversion: \"1.1.0\"\n",
+    )
+    .expect("Failed to update augent.yaml");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Update version"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    let git_url = format!(
+        "file://{}#develop",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".augent/augent.lock"));
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(lockfile.contains("develop") || lockfile.contains("resolved_sha"));
+}
+
+#[test]
+fn test_install_with_sha_ref() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let repo_path = workspace.path.join("git-repo");
+    std::fs::create_dir_all(&repo_path).expect("Failed to create repo");
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to init git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::fs::write(
+        repo_path.join("augent.yaml"),
+        "name: \"@test/bundle\"\nbundles: []\n",
+    )
+    .expect("Failed to write augent.yaml");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Initial commit"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(&repo_path)
+        .output()
+        .expect("Failed to get SHA");
+    let sha = String::from_utf8(output.stdout)
+        .expect("Invalid UTF-8")
+        .trim()
+        .to_string();
+
+    let git_url = format!(
+        "file://{}#{}",
+        repo_path.to_str().expect("Path is not valid UTF-8"),
+        sha
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".augent/augent.lock"));
+}
+
+#[test]
+fn test_install_with_invalid_url_format() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "not:a:valid:format:://url"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("invalid")
+                .or(predicate::str::contains("parse"))
+                .or(predicate::str::contains("source")),
+        );
+}
+
+#[test]
+fn test_install_with_nonexistent_repository() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args([
+            "install",
+            "https://github.com/this-user-should-not-exist-12345/nonexistent-repo",
+        ])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("clone"))
+                .or(predicate::str::contains("repository"))
+                .or(predicate::str::contains("git")),
+        );
+}
+
+#[test]
+fn test_install_with_nonexistent_ref() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let repo_path = workspace.create_mock_git_repo("test-repo");
+    let git_url = format!(
+        "file://{}#nonexistent-branch",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("ref"))
+                .or(predicate::str::contains("branch"))
+                .or(predicate::str::contains("checkout")),
+        );
+}
+
+#[test]
+fn test_install_with_nonexistent_subdirectory() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let repo_path = workspace.create_mock_git_repo("test-repo");
+    let git_url = format!(
+        "file://{}#nonexistent/path/to/bundle",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("directory"))
+                .or(predicate::str::contains("subdirectory"))
+                .or(predicate::str::contains("bundle")),
+        );
+}

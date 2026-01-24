@@ -236,3 +236,33 @@ bundles: []
         .stdout(predicate::str::contains("rules/rule1.md"))
         .stdout(predicate::str::contains("skills/skill1.md"));
 }
+
+#[test]
+fn test_show_with_bundle_that_has_no_files() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("empty-bundle");
+    workspace.write_file(
+        "bundles/empty-bundle/augent.yaml",
+        r#"
+name: "@test/empty-bundle"
+description: "Bundle with no files"
+bundles: []
+"#,
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/empty-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@test/empty-bundle"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Files: None").or(predicate::str::contains("0 files")));
+}

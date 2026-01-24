@@ -339,3 +339,119 @@ bundles:
                 .or(predicate::str::contains("BundleNotFound")),
         );
 }
+
+#[test]
+fn test_deeply_nested_dependencies_five_levels() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let bundle_a = workspace.create_bundle("bundle-a");
+    let bundle_b = workspace.create_bundle("bundle-b");
+    let bundle_c = workspace.create_bundle("bundle-c");
+    let bundle_d = workspace.create_bundle("bundle-d");
+    let bundle_e = workspace.create_bundle("bundle-e");
+
+    workspace.write_file(
+        "bundles/bundle-e/augent.yaml",
+        r#"
+name: "@test/bundle-e"
+bundles:
+  - name: "@test/bundle-d"
+    subdirectory: ../bundle-d
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_e.join("commands")).unwrap();
+    std::fs::write(bundle_e.join("commands").join("e.md"), "# E depends on D")
+        .expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-d/augent.yaml",
+        r#"
+name: "@test/bundle-d"
+bundles:
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_d.join("commands")).unwrap();
+    std::fs::write(bundle_d.join("commands").join("d.md"), "# D depends on C")
+        .expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-c/augent.yaml",
+        r#"
+name: "@test/bundle-c"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_c.join("commands")).unwrap();
+    std::fs::write(bundle_c.join("commands").join("c.md"), "# C depends on B")
+        .expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles:
+  - name: "@test/bundle-a"
+    subdirectory: ../bundle-a
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_b.join("commands")).unwrap();
+    std::fs::write(bundle_b.join("commands").join("b.md"), "# B depends on A")
+        .expect("Failed to write command");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles: []
+"#,
+    );
+
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(bundle_a.join("commands").join("a.md"), "# A has no deps")
+        .expect("Failed to write command");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-e"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/e.md"));
+    assert!(workspace.file_exists(".cursor/commands/d.md"));
+    assert!(workspace.file_exists(".cursor/commands/c.md"));
+    assert!(workspace.file_exists(".cursor/commands/b.md"));
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+
+    let lockfile = workspace.read_file(".augent/augent.lock");
+
+    let pos_a = lockfile
+        .find("\"name\": \"@test/bundle-a\"")
+        .expect("Bundle A not found in lockfile");
+    let pos_b = lockfile
+        .find("\"name\": \"@test/bundle-b\"")
+        .expect("Bundle B not found in lockfile");
+    let pos_c = lockfile
+        .find("\"name\": \"@test/bundle-c\"")
+        .expect("Bundle C not found in lockfile");
+    let pos_d = lockfile
+        .find("\"name\": \"@test/bundle-d\"")
+        .expect("Bundle D not found in lockfile");
+    let pos_e = lockfile
+        .find("\"name\": \"@test/bundle-e\"")
+        .expect("Bundle E not found in lockfile");
+
+    assert!(
+        pos_a < pos_b && pos_b < pos_c && pos_c < pos_d && pos_d < pos_e,
+        "Dependencies should be ordered before dependents in lockfile: A < B < C < D < E"
+    );
+}

@@ -434,3 +434,118 @@ bundles: []"#,
     assert!(workspace.file_exists(".claude/commands/bundle-2.md"));
     assert!(!workspace.file_exists(".claude/commands/bundle-3.md"));
 }
+
+#[test]
+fn test_install_with_deeply_nested_dependencies() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    for i in (1..=5).rev() {
+        let bundle_name = format!("bundle-{}", i);
+        workspace.create_bundle(&bundle_name);
+
+        let mut config = format!(
+            r#"name: "@test/{}"
+bundles: []"#,
+            bundle_name
+        );
+
+        if i < 5 {
+            let next_bundle = format!("bundle-{}", i + 1);
+            config = format!(
+                r#"name: "@test/{}"
+bundles:
+  - name: "@test/{}"
+    subdirectory: ../{}"#,
+                bundle_name, next_bundle, next_bundle
+            );
+        }
+
+        workspace.write_file(&format!("bundles/{}/augent.yaml", bundle_name), &config);
+        workspace.write_file(
+            &format!("bundles/{}/commands/{}.md", bundle_name, bundle_name),
+            &format!("# {}\n", bundle_name),
+        );
+    }
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-1", "--for", "claude"])
+        .assert()
+        .success();
+
+    for i in 1..=5 {
+        let path = format!(".claude/commands/bundle-{}.md", i);
+        assert!(workspace.file_exists(&path));
+    }
+}
+
+#[test]
+fn test_install_with_long_bundle_name() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    let long_name = "a".repeat(200);
+    let bundle_name = format!("long-{}", &long_name);
+    workspace.create_bundle(&bundle_name);
+    workspace.write_file(
+        &format!("bundles/{}/augent.yaml", bundle_name),
+        &format!(
+            r#"name: "@test/{}"
+bundles: []"#,
+            bundle_name
+        ),
+    );
+    workspace.write_file(
+        &format!("bundles/{}/commands/test.md", bundle_name),
+        "# Test\n",
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args([
+            "install",
+            &format!("./bundles/{}", bundle_name),
+            "--for",
+            "claude",
+        ])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".claude/commands/test.md"));
+}
+
+#[test]
+fn test_install_with_long_resource_path() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []"#,
+    );
+
+    let deep_path = format!(
+        "commands/{}/{}/{}/{}",
+        "a".repeat(40),
+        "b".repeat(40),
+        "c".repeat(40),
+        "d".repeat(40)
+    );
+    let file_path = format!("bundles/test-bundle/{}", deep_path);
+
+    workspace.write_file(&file_path, "# Deep file\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(&format!(".claude/{}", deep_path)));
+}

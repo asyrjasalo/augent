@@ -71,7 +71,7 @@ It does NOT:
 
 **These commands are strictly prohibited because:**
 
-1. They can destroy user's work
+1. They can destroy user's (or another agent's) work
 2. They can undo changes the user intentionally made
 3. They can break the git history in unrecoverable ways
 4. They are DANGEROUS and should never be run by an AI agent

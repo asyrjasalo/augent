@@ -215,3 +215,39 @@ fn test_version_command_always_succeeds() {
 fn test_help_command_always_succeeds() {
     augent_cmd().args(["help"]).assert().success();
 }
+
+#[test]
+fn test_uninstall_with_modified_files_succeeds() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file(
+        "bundles/test-bundle/commands/test.md",
+        "# Original content\n",
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    workspace.modify_file(".cursor/commands/test.md", "# Modified content\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["uninstall", "@test/test-bundle", "-y"])
+        .assert()
+        .success();
+
+    assert!(!workspace.file_exists(".cursor/commands/test.md"));
+}

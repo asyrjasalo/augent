@@ -4,6 +4,8 @@
 
 This is the authoritative tracking document for all Augent implementation tasks. Tasks are organized by Epic → Feature → Task hierarchy.
 
+Update when you have started a feature and completed a feature (in **Status:** and **Working on:**) so work can be done in parallel.
+
 **Status Legend:**
 
 - `[ ]` - Not started
@@ -20,9 +22,9 @@ This is the authoritative tracking document for all Augent implementation tasks.
 ## Task Statistics
 
 - **Total Tasks:** 425
-- **Completed:** 253 (Phase 0-4 complete, Epic 11-12 complete, Epic 13 partial - 37 of 152 tasks)
-- **In Progress:** 0
-- **Pending:** 172 (Epic 13 - 115 tasks remaining across 9 features + Phase 6 Epic 14 optional - 25 tasks)
+- **Completed:** 330 (Phase 0-4 complete, Epic 11-12 complete, Epic 13 partial - 114 of 152 tasks)
+- **In Progress:** 3 (Epic 13 - Feature 13.9: 10 of 13 tasks, 3 require mocking)
+- **Pending:** 92 (Epic 13 - 38 tasks remaining across 4 features + Phase 6 Epic 14 optional - 25 tasks)
 - **Optional:** 25 (Phase 6 Epic 14 - optional, release-focused)
 
 ---
@@ -569,7 +571,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 13: Test Coverage Gaps
 
-**Status:** Partially Complete (2 of 15 features complete, 4 features partial, 37 of 152 tasks complete)
+**Status:** Partially Complete (4 of 15 features complete, 1 feature in progress, 3 features partial, 114 of 152 tasks complete)
+**Working on:** Feature 13.9: Error Path Coverage
 
 ### Overview
 
@@ -577,27 +580,23 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 ### Summary
 
-**Completed Features (15 tasks):**
+**Completed Features (38 tasks):**
 
 - [x] Feature 13.1: Fix Compilation Errors - Complete (6 tasks)
 - [x] Feature 13.2: Completions Command Test Coverage - Complete (9 tasks)
+- [x] Feature 13.11: Edge Cases and Boundary Conditions - Complete (12 tasks)
+- [x] Feature 13.10: Platform-Specific Test Coverage - Complete (11 tasks)
 
-**Partially Complete Features (4 features, 42 tasks total, 22 done):**
+**Partially Complete Features (3 features, 15 tasks total, 10 done):**
 
 - [x] Feature 13.3: Clean-Cache Command Test Coverage - Partial (6 of 8 tasks)
 - [x] Feature 13.7: Workspace Detection - Partial (5 of 9 tasks)
-- [x] Feature 13.9: Error Path Coverage - Partial (5 of 13 tasks)
-- [x] Feature 13.11: Edge Cases - Partial (6 of 12 tasks)
+- [-] Feature 13.9: Error Path Coverage - In Progress (10 of 13 tasks, 3 require mocking)
+- [x] Feature 13.10: Platform-Specific Test Coverage - Complete (11 tasks)
 
-### Tests Added: 23 new tests across 3 files
+### Remaining Features (13.4, 13.5, 13.6, 13.8, 13.9, 13.12, 13.14, 13.15)
 
-- tests/error_path_tests.rs (5 tests)
-- tests/workspace_detection_tests.rs (6 tests, later removed due to duplicates)
-- tests/cli_options_tests.rs (elvish completions + validation tests)
-
-### Remaining Features (13.4, 13.5, 13.6, 13.8, 13.10, 13.12, 13.13, 13.14, 13.15)
-
-- 115 tasks remain
+- 92 tasks remain
 - These represent additional edge cases, integration scenarios, and documentation-based testing
 - Can be implemented incrementally as needed
 
@@ -729,38 +728,38 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 #### Feature 13.10: Platform-Specific Test Coverage
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Test install for claude platform with various resources (currently may be tested, verify coverage)
-- [ ] Test install for cursor platform with various resources (currently may be tested, verify coverage)
-- [ ] Test install for opencode platform with various resources (currently may be tested, verify coverage)
-- [ ] Test install with --for flag for multiple agents (currently may be tested, verify coverage)
-- [ ] Test install with --for flag for single agent (currently may be tested, verify coverage)
-- [ ] Test auto-detection of platforms when --for not specified (NOT TESTED)
-- [ ] Test platform detection from .claude directory (currently may be tested, verify coverage)
-- [ ] Test platform detection from .cursor directory (currently may be tested, verify coverage)
-- [ ] Test platform detection from .opencode directory (currently may be tested, verify coverage)
-- [ ] Test platform detection from root files like CLAUDE.md (currently may be tested, verify coverage)
-- [ ] Test transformation of resources for each platform (currently may be tested, verify coverage)
-- [ ] Test merge strategies for each platform (currently may be tested in install_merge_tests.rs, verify coverage)
+- [x] Test install for claude platform with various resources (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_all_resource_types_commands_rules_skills_agents_mcp_servers)
+- [x] Test install for cursor platform with various resources (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_cursor_rules_transformation)
+- [x] Test install for opencode platform with various resources (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_opencode_all_transformations)
+- [x] Test install with --for flag for multiple agents (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_install_for_multiple_agents)
+- [x] Test install with --for flag for single agent (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_install_for_single_agent)
+- [x] Test auto-detection of platforms when --for not specified (NOT TESTED) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_install_auto_detect_platforms)
+- [x] Test platform detection from .claude directory (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_platform_detection_order_with_multiple_platforms)
+- [x] Test platform detection from .cursor directory (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_platform_detection_order_with_multiple_platforms)
+- [x] Test platform detection from .opencode directory (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_platform_detection_order_with_multiple_platforms)
+- [x] Test platform detection from root files like CLAUDE.md (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_platform_detection_order_with_root_files)
+- [x] Test transformation of resources for each platform (currently may be tested, verify coverage) - [tests/install_platform_tests.rs](../../tests/install_platform_tests.rs) (test_claude_commands_transformation, test_claude_rules_transformation, test_claude_skills_transformation, test_cursor_rules_transformation, test_opencode_all_transformations)
+- [x] Test merge strategies for each platform (currently may be tested in install_merge_tests.rs, verify coverage) - [tests/install_merge_tests.rs](../../tests/install_merge_tests.rs) (test_replace_merge_strategy_for_regular_files, test_composite_merge_for_agents_md, test_composite_merge_for_mcp_jsonc, test_deep_merge_for_json_yaml_files, test_deep_merge_for_nested_json_yaml_structures)
 
 #### Feature 13.11: Edge Cases and Boundary Conditions
 
-**Status:** Partially Complete (6 of 12 tasks)
+**Status:** Complete
 
-- [x] Test install with bundle containing 0 resources (edge case - NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs)
-- [ ] Test install with bundle containing many resources (performance test - NOT TESTED)
-- [ ] Test install with deeply nested dependencies (5+ levels - NOT TESTED)
-- [ ] Test install with bundle name at max length (NOT TESTED)
-- [x] Test install with bundle name with special characters (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) - NEW TEST ADDED
-- [ ] Test install with resource path at max length (NOT TESTED)
-- [x] Test list with 0 bundles installed (currently tested, verify) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs)
-- [x] Test list with 1 bundle installed (currently tested, verify) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs)
-- [ ] Test list with many bundles installed (currently tested, verify)
-- [ ] Test uninstall when it's the only bundle (NOT TESTED)
-- [ ] Test uninstall when it's the last bundle (NOT TESTED)
-- [x] Test show with bundle that has no files (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) - NEW TEST ADDED
-- [x] Test show with bundle that has no dependencies (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) - NEW TEST ADDED
+- [x] Test install with bundle containing 0 resources (edge case - NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_install_bundle_with_empty_resources)
+- [x] Test install with bundle containing many resources (performance test - NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_install_with_many_resources - 50 files)
+- [x] Test install with deeply nested dependencies (5+ levels - NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_install_with_deeply_nested_dependencies - 5 levels)
+- [x] Test install with bundle name at max length (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_install_with_long_bundle_name - 200 characters)
+- [x] Test install with bundle name with special characters (NOT TESTED) - [tests/error_handling_tests.rs](../../tests/error_handling_tests.rs) (test_invalid_bundle_name_with_special_chars)
+- [x] Test install with resource path at max length (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_install_with_long_resource_path)
+- [x] Test list with 0 bundles installed (currently tested, verify) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_complete_roundtrip)
+- [x] Test list with 1 bundle installed (currently tested, verify) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (covered by multiple tests)
+- [x] Test list with many bundles installed (currently tested, verify) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_list_with_many_bundles - 15 bundles)
+- [x] Test uninstall when it's the only bundle (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_uninstall_when_only_bundle)
+- [x] Test uninstall when it's the last bundle (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) (test_uninstall_when_last_bundle)
+- [x] Test show with bundle that has no files (NOT TESTED) - [tests/show_command_tests.rs](../../tests/show_command_tests.rs) (test_show_with_bundle_that_has_no_files)
+- [x] Test show with bundle that has no dependencies (NOT TESTED) - [tests/show_command_tests.rs](../../tests/show_command_tests.rs) (test_show_displays_no_dependencies)
 
 #### Feature 13.12: Global Options Test Coverage
 

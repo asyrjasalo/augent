@@ -1,16 +1,17 @@
 //! Common test utilities for Augent integration tests
 
+mod interactive;
+
+pub use interactive::InteractiveTest;
+
 use assert_cmd::Command;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-/// A test workspace for integration tests
 #[allow(dead_code)]
 pub struct TestWorkspace {
-    /// Temporary directory
     #[allow(dead_code)]
     pub temp: TempDir,
-    /// Path to workspace root
     pub path: PathBuf,
 }
 

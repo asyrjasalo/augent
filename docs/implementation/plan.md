@@ -28,7 +28,7 @@ This plan covers both pre-implementation planning and actual implementation of A
 - [Complete] Phase 2: Core Functionality (Epics 4-5) - Complete
 - [Complete] Phase 3: Install Command (Epic 6) - Complete
 - [Complete] Phase 4: Additional Commands (Epics 7-10) - Complete
-- [Partial] Phase 5: Quality Assurance (Epics 11-13) - Partially Complete (Epics 11-12 complete, Epic 13 partial)
+- [Partial] Phase 5: Quality Assurance (Epics 11-13) - Partially Complete (Epics 11-12 complete, Epic 13 partial - 7 of 15 features complete)
 - [Pending] Phase 6: Release (Epic 14) - Pending (optional, release-focused)
 
 ---
@@ -389,7 +389,7 @@ Testing infrastructure, documentation.
 
 ### Epic 13: Test Coverage Gaps
 
-**Status:** Partially Complete (2 of 15 features complete)
+**Status:** Partially Complete (7 of 15 features complete)
 
 Additional test coverage improvements based on audit of user-facing functionality.
 
@@ -397,8 +397,14 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 - [x] Feature 13.1: Fix Compilation Errors - Complete
 - [x] Feature 13.2: Completions Command Test Coverage - Complete
+- [x] Feature 13.3: Clean-Cache Command Test Coverage - Complete
+- [x] Feature 13.4: Install Command Advanced Scenarios - Complete
+- [x] Feature 13.5: Install Command Interactive Features - Complete (8 new tests added)
+- [x] Feature 13.6: Uninstall Command Interactive Features - Partial (verified existing tests, documented limitations for confirmation prompt testing)
+- [x] Feature 13.7: Workspace Detection and Auto-Detection - Complete
+- [x] Feature 13.13: Integration Test Scenarios - Complete (6 new tests added)
 
-**Remaining Features (13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9, 13.10, 13.11, 13.12, 13.13, 13.14, 13.15):**
+**Remaining Features (13.8, 13.9, 13.10, 13.11, 13.12, 13.14, 13.15):**
 
 - These represent additional edge cases, integration scenarios, and documentation-based testing
 - Can be implemented incrementally as needed

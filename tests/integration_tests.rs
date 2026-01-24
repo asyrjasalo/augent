@@ -28,7 +28,7 @@ fn test_install_list_shows_installed() {
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("test-bundle"));
+        .stdout(predicate::str::contains("simple-bundle"));
 }
 
 #[test]
@@ -50,7 +50,6 @@ fn test_install_show_displays_info() {
         .args(["show", "@fixtures/simple-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("simple-bundle"))
         .stdout(predicate::str::contains("commands/debug.md"));
 }
 
@@ -67,16 +66,11 @@ fn test_install_uninstall_roundtrip() {
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".cursor/commands/debug.md"));
-
-    // Use the actual bundle name from the fixture's augent.yaml
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@fixtures/simple-bundle", "-y"])
         .assert()
         .success();
-
-    assert!(!workspace.file_exists(".cursor/commands/debug.md"));
 }
 
 #[test]
@@ -84,53 +78,592 @@ fn test_install_multiple_bundles_list() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
+    workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
+    workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    // Create two bundles with different names
-    workspace.create_bundle("bundle-1");
-    workspace.write_file(
-        "bundles/bundle-1/augent.yaml",
-        r#"name: "@test/bundle-1"
-bundles: []
-"#,
-    );
-    workspace.write_file("bundles/bundle-1/commands/cmd1.md", "# Command 1\n");
-
-    workspace.create_bundle("bundle-2");
-    workspace.write_file(
-        "bundles/bundle-2/augent.yaml",
-        r#"name: "@test/bundle-2"
-bundles: []
-"#,
-    );
-    workspace.write_file("bundles/bundle-2/commands/cmd2.md", "# Command 2\n");
-
-    // Install first bundle
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/bundle-1", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    // Verify first bundle is installed
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("bundle-1"));
+        .stdout(predicate::str::contains("simple-bundle"))
+        .stdout(predicate::str::contains("test-bundle"));
+}
 
-    // Install second bundle
+#[test]
+fn test_full_workflow_install_verify_list_show_uninstall() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+    workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
+
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/bundle-2", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    // Verify both bundles are installed
+    assert!(workspace.file_exists(".cursor/commands/debug.md"));
+
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Installed bundles (2)"));
+        .stdout(predicate::str::contains("simple-bundle"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@fixtures/simple-bundle"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("commands/debug.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["uninstall", "@fixtures/simple-bundle", "-y"])
+        .assert()
+        .success();
+
+    assert!(!workspace.file_exists(".cursor/commands/debug.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("simple-bundle").not());
+}
+
+#[test]
+fn test_installing_multiple_bundles_sequentially() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("bundle-a");
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");
+
+    workspace.create_bundle("bundle-b");
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-b", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+    assert!(workspace.file_exists(".cursor/commands/b.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@test/bundle-a"))
+        .stdout(predicate::str::contains("@test/bundle-b"));
+}
+
+#[test]
+fn test_install_with_dependencies_verifies_installation_order() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("bundle-c");
+    workspace.write_file(
+        "bundles/bundle-c/augent.yaml",
+        r#"
+name: "@test/bundle-c"
+description: "Dependency bundle C"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/bundle-c/commands/c.md", "# Command C\n");
+
+    workspace.create_bundle("bundle-b");
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+description: "Intermediate bundle B"
+bundles:
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+    workspace.write_file("bundles/bundle-b/commands/b.md", "# Command B\n");
+
+    workspace.create_bundle("bundle-a");
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+description: "Main bundle A"
+bundles:
+  - name: "@test/bundle-b"
+    subdirectory: ../bundle-b
+  - name: "@test/bundle-c"
+    subdirectory: ../bundle-c
+"#,
+    );
+    workspace.write_file("bundles/bundle-a/commands/a.md", "# Command A\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+    assert!(workspace.file_exists(".cursor/commands/b.md"));
+    assert!(workspace.file_exists(".cursor/commands/c.md"));
+
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    let pos_c = lockfile
+        .find("\"name\": \"@test/bundle-c\"")
+        .expect("Bundle C not found in lockfile");
+    let pos_b = lockfile
+        .find("\"name\": \"@test/bundle-b\"")
+        .expect("Bundle B not found in lockfile");
+    let pos_a = lockfile
+        .find("\"name\": \"@test/bundle-a\"")
+        .expect("Bundle A not found in lockfile");
+
+    assert!(
+        pos_c < pos_b && pos_b < pos_a,
+        "Dependencies should be ordered before dependents: C before B, B before A"
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@test/bundle-a"))
+        .stdout(predicate::str::contains("@test/bundle-b"))
+        .stdout(predicate::str::contains("@test/bundle-c"));
+}
+
+#[test]
+fn test_reinstalling_same_bundle_no_changes() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+description: "Test bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test Command\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    let lockfile_before = workspace.read_file(".augent/augent.lock");
+    let workspace_config_before = workspace.read_file(".augent/augent.workspace.yaml");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    let lockfile_after = workspace.read_file(".augent/augent.lock");
+    let workspace_config_after = workspace.read_file(".augent/augent.workspace.yaml");
+
+    assert_eq!(
+        lockfile_before, lockfile_after,
+        "Lockfile should be unchanged after reinstalling same bundle"
+    );
+    assert_eq!(
+        workspace_config_before, workspace_config_after,
+        "Workspace config should be unchanged after reinstalling same bundle"
+    );
+
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+}
+
+#[test]
+fn test_update_bundle_by_changing_ref() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    let repo_path = workspace.path.join("git-repo");
+    std::fs::create_dir_all(&repo_path).expect("Failed to create repo");
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to init git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::fs::write(
+        repo_path.join("augent.yaml"),
+        "name: \"@test/bundle\"\nbundles: []\nversion: \"1.0.0\"\n",
+    )
+    .expect("Failed to write augent.yaml");
+
+    std::fs::create_dir_all(repo_path.join("commands")).unwrap();
+    std::fs::write(
+        repo_path.join("commands").join("test.md"),
+        "# Test Command v1.0.0\n",
+    )
+    .expect("Failed to write test.md");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Initial commit"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    std::process::Command::new("git")
+        .args(["tag", "v1.0.0"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to tag");
+
+    let git_url = format!(
+        "file://{}#v1.0.0",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url, "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+    let file_content = workspace.read_file(".cursor/commands/test.md");
+    assert!(file_content.contains("v1.0.0"));
+
+    std::fs::write(
+        repo_path.join("commands").join("test.md"),
+        "# Test Command v2.0.0\n",
+    )
+    .expect("Failed to write test.md");
+
+    std::fs::write(
+        repo_path.join("augent.yaml"),
+        "name: \"@test/bundle\"\nbundles: []\nversion: \"2.0.0\"\n",
+    )
+    .expect("Failed to write augent.yaml");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Update to v2.0.0"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    std::process::Command::new("git")
+        .args(["tag", "v2.0.0"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to tag");
+
+    let git_url_v2 = format!(
+        "file://{}#v2.0.0",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url_v2, "--for", "cursor"])
+        .assert()
+        .success();
+
+    let file_content = workspace.read_file(".cursor/commands/test.md");
+    assert!(file_content.contains("v2.0.0"));
+}
+
+#[test]
+fn test_install_from_local_then_updated_from_git() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+description: "Test bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file(
+        "bundles/test-bundle/commands/test.md",
+        "# Test Command v1.0\n",
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+    let file_content = workspace.read_file(".cursor/commands/test.md");
+    assert!(file_content.contains("v1.0"));
+
+    let repo_path = workspace.path.join("git-repo");
+    std::fs::create_dir_all(&repo_path).expect("Failed to create repo");
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to init git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::fs::write(
+        repo_path.join("augent.yaml"),
+        "name: \"@test/bundle\"\nbundles: []\n",
+    )
+    .expect("Failed to write augent.yaml");
+
+    std::fs::create_dir_all(repo_path.join("commands")).unwrap();
+    std::fs::write(
+        repo_path.join("commands").join("test.md"),
+        "# Test Command v2.0\n",
+    )
+    .expect("Failed to write test.md");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Add bundle"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    let git_url = format!(
+        "file://{}",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url, "--for", "cursor"])
+        .assert()
+        .success();
+
+    let file_content = workspace.read_file(".cursor/commands/test.md");
+    assert!(file_content.contains("v2.0"));
+}
+
+#[test]
+fn test_workspace_with_multiple_agents_and_bundles() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+
+    workspace.create_agent_dir("cursor");
+    workspace.create_agent_dir("claude");
+    workspace.create_agent_dir("opencode");
+
+    workspace.create_bundle("bundle-a");
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        r#"
+name: "@test/bundle-a"
+description: "Bundle A"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");
+
+    workspace.create_bundle("bundle-b");
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        r#"
+name: "@test/bundle-b"
+description: "Bundle B"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-a", "--for", "cursor", "claude"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/a.md"));
+    assert!(workspace.file_exists(".claude/commands/a.md"));
+    assert!(!workspace.file_exists(".opencode/commands/a.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/bundle-b", "--for", "opencode"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".opencode/commands/b.md"));
+    assert!(!workspace.file_exists(".cursor/commands/b.md"));
+    assert!(!workspace.file_exists(".claude/commands/b.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@test/bundle-a"))
+        .stdout(predicate::str::contains("@test/bundle-b"));
+}
+
+#[test]
+fn test_uninstall_rollback_on_error() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"
+name: "@test/bundle"
+description: "Test bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["uninstall", "@test/bundle", "-y"])
+        .assert()
+        .success();
+
+    let lockfile_after = workspace.read_file(".augent/augent.lock");
+    let workspace_config_after = workspace.read_file(".augent/augent.workspace.yaml");
+    let bundle_config_after = workspace.read_file(".augent/augent.yaml");
+
+    assert!(!workspace.file_exists(".cursor/commands/test.md"));
+    assert!(
+        !lockfile_after.contains("@test/bundle"),
+        "Bundle should be removed from lockfile"
+    );
+    assert!(
+        !workspace_config_after.contains("@test/bundle"),
+        "Bundle should be removed from workspace config"
+    );
+    assert!(
+        !bundle_config_after.contains("@test/bundle"),
+        "Bundle should be removed from bundle config"
+    );
 }

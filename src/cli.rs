@@ -64,13 +64,14 @@ pub enum Commands {
 /// Arguments for the install command
 #[derive(Parser, Debug)]
 #[command(after_help = "EXAMPLES:\n  \
-                  Install from GitHub:\n    augent install github:author/debug-tools\n\n\
-                  Install from local directory:\n    augent install ./my-bundle\n\n\
-                  Install from Git URL:\n    augent install https://github.com/author/bundle.git\n\n\
-                  Install for specific agents:\n    augent install ./bundle --for cursor opencode\n\n\
-                  Install with frozen lockfile (CI/CD):\n    augent install github:author/bundle --frozen\n\n\
-                  Install from subdirectory:\n    augent install github:author/repo#plugins/name\n\n\
-                  Install specific version:\n    augent install github:author/bundle#v1.0.0")]
+                   Install from GitHub:\n    augent install github:author/debug-tools\n\n\
+                   Install from local directory:\n    augent install ./my-bundle\n\n\
+                   Install from Git URL:\n    augent install https://github.com/author/bundle.git\n\n\
+                   Install for specific agents:\n    augent install ./bundle --for cursor opencode\n\n\
+                   Install with frozen lockfile (CI/CD):\n    augent install github:author/bundle --frozen\n\n\
+                   Install from subdirectory:\n    augent install github:author/repo#plugins/name\n\n\
+                   Install specific version:\n    augent install github:author/bundle#v1.0.0\n\
+                   Select all bundles without interactive menu:\n    augent install ./repo --select-all")]
 pub struct InstallArgs {
     /// Bundle source (path, URL, or github:author/repo)
     pub source: String,
@@ -82,6 +83,10 @@ pub struct InstallArgs {
     /// Fail if lockfile would change
     #[arg(long)]
     pub frozen: bool,
+
+    /// Select all discovered bundles without interactive menu
+    #[arg(long)]
+    pub select_all: bool,
 }
 
 /// Arguments for the uninstall command
