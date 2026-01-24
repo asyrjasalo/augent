@@ -135,7 +135,7 @@ fn test_install_with_specific_ref() {
 
     assert!(workspace.file_exists(".augent/augent.lock"));
     let lockfile = workspace.read_file(".augent/augent.lock");
-    assert!(lockfile.contains("v1.0.0") || lockfile.contains("resolved_sha"));
+    assert!(lockfile.contains("v1.0.0") || lockfile.contains("\"sha\""));
 }
 
 // file:// URL support is fully implemented
@@ -531,7 +531,7 @@ fn test_install_with_branch_ref() {
 
     assert!(workspace.file_exists(".augent/augent.lock"));
     let lockfile = workspace.read_file(".augent/augent.lock");
-    assert!(lockfile.contains("develop") || lockfile.contains("resolved_sha"));
+    assert!(lockfile.contains("develop") || lockfile.contains("\"sha\""));
 }
 
 #[test]

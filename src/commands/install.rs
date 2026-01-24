@@ -70,6 +70,7 @@ fn do_install(
     let discovered = resolver.discover_bundles(&args.source)?;
 
     let resolved_bundles = if discovered.len() > 1 {
+        // Multiple bundles found - show interactive menu
         let selected = select_bundles_interactively(&discovered)?;
         if selected.is_empty() {
             return Ok(());
@@ -79,7 +80,27 @@ fn do_install(
             .map(|b| b.path.to_string_lossy().to_string())
             .collect();
         resolver.resolve_multiple(&selected_paths)?
+    } else if discovered.len() == 1 {
+        // Single bundle found
+        // Check if the original source was a git source with ref/subdirectory
+        // If so, use the original source to preserve git metadata
+        let bundle_source = BundleSource::parse(&args.source)?;
+        if let BundleSource::Git(ref git_source) = bundle_source {
+            if git_source.git_ref.is_some() || git_source.subdirectory.is_some() {
+                // Use original source to preserve git metadata
+                resolver.resolve(&args.source)?
+            } else {
+                // No ref/subdirectory, use discovered path
+                let bundle_path = discovered[0].path.to_string_lossy().to_string();
+                resolver.resolve_multiple(&[bundle_path])?
+            }
+        } else {
+            // Not a git source, use discovered path
+            let bundle_path = discovered[0].path.to_string_lossy().to_string();
+            resolver.resolve_multiple(&[bundle_path])?
+        }
     } else {
+        // No bundles discovered - resolve source directly (might be a bundle itself)
         resolver.resolve(&args.source)?
     };
 

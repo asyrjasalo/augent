@@ -1,10 +1,22 @@
 # Interactive Testing Guide
 
-This guide explains how to write automated tests for CLI commands that require user interaction (menus, confirmations, etc.).
+This guide explains how to write stable, reliable automated tests for CLI commands that require user interaction (menus, confirmations, etc.).
 
 ## Overview
 
 Augent uses `dialoguer` for interactive UI elements, which reads directly from the terminal (not stdin). This means we cannot use standard stdin redirection in tests. Instead, we use **PTY (pseudo-terminal)** to simulate real user interaction.
+
+## Stability Improvements (2026-01-24)
+
+The PTY-based testing infrastructure has been enhanced with:
+
+1. **Synchronization** - Wait for specific text before sending input
+2. **Configurable timeouts** - Adjust timeouts for slower systems
+3. **Better error handling** - Clear error messages on timeout or EOF
+4. **Menu action helpers** - High-level API for common menu interactions
+5. **Improved output reading** - Robust handling of WouldBlock and EOF
+
+These improvements make tests more stable and less prone to timing-related failures.
 
 ## Infrastructure
 
@@ -26,6 +38,9 @@ use common::InteractiveTest;
 // Create new interactive test
 let mut test = InteractiveTest::new("augent", &["install", "./repo"], &workspace.path)?;
 
+// NEW: Wait for menu to render (synchronization)
+test.wait_for_text("Select bundles", Duration::from_secs(5))?;
+
 // Send keystrokes
 test.send_space()?;      // Select/deselect
 test.send_down()?;       // Navigate down
@@ -36,9 +51,43 @@ test.send_escape()?;     // Cancel
 // Wait for command to complete
 let output = test.wait_for_output()?;
 
+// Wait with custom timeout
+let output = test.wait_for_output_with_timeout(Duration::from_secs(30))?;
+
 // Check exit status
 let status = test.status()?;
 ```
+
+### NEW: Menu Action Helpers
+
+For cleaner, more readable tests:
+
+```rust
+use common::{MenuAction, send_menu_actions};
+
+// Wait for menu first
+test.wait_for_text("Select bundles", Duration::from_secs(5))?;
+
+// Send a sequence of menu actions
+send_menu_actions(
+    &mut test,
+    &[
+        MenuAction::SelectCurrent,  // Select first item
+        MenuAction::MoveDown,       // Move to next item
+        MenuAction::SelectCurrent,  // Select second item
+        MenuAction::Confirm,        // Press Enter
+    ],
+)?;
+```
+
+Available actions:
+
+- `MenuAction::SelectCurrent` - Press Space to toggle selection
+- `MenuAction::MoveDown` - Press Down arrow
+- `MenuAction::MoveUp` - Press Up arrow
+- `MenuAction::Confirm` - Press Enter
+- `MenuAction::Cancel` - Press Escape
+- `MenuAction::Wait(Duration)` - Wait for specified duration
 
 ### Convenience Function
 
@@ -55,9 +104,9 @@ let output = run_interactive(
 
 ## Test Patterns
 
-### Pattern 1: Menu Selection Tests
+### Pattern 1: Menu Selection Tests (NEW PATTERN)
 
-Test that the interactive menu works correctly:
+Test that the interactive menu works correctly using new synchronization methods:
 
 ```rust
 #[test]
@@ -70,28 +119,32 @@ fn test_menu_selects_all() {
     workspace.create_bundle("repo/bundle-a");
     workspace.create_bundle("repo/bundle-b");
 
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )?;
 
-    // Wait for menu to render
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    // NEW: Wait for menu to render (synchronization point)
+    test.wait_for_text("Select bundles", Duration::from_secs(5))
+        .expect("Menu should appear");
 
-    // Select bundles using space
-    test.send_space()?;
-    std::thread::sleep(std::time::Duration::from_millis(50));
-    test.send_input("\x1b[B")?; // Down arrow
-    std::thread::sleep(std::time::Duration::from_millis(50));
-    test.send_space()?;
-    std::thread::sleep(std::time::Duration::from_millis(50));
-
-    // Confirm with enter
-    test.send_input("\n")?;
+    // NEW: Use menu action helpers for clarity
+    use common::MenuAction;
+    common::send_menu_actions(
+        &mut test,
+        &[
+            MenuAction::SelectCurrent,  // Select bundle-a
+            MenuAction::MoveDown,
+            MenuAction::SelectCurrent,  // Select bundle-b
+            MenuAction::Confirm,
+        ],
+    )?;
 
     let output = test.wait_for_output()?;
     assert!(output.contains("installed"));
+    assert!(workspace.file_exists(".claude/commands/test.md"));
 }
 ```
 
@@ -208,11 +261,87 @@ test.send_input("\x1b[B")?;
 std::thread::sleep(std::time::Duration::from_millis(50));
 ```
 
-### Recommended Delays
+### Recommended Delays (DEPRECATED - Use Synchronization Instead)
+
+**OLD APPROACH (Unreliable):**
 
 - After creating test: 200ms (let menu render)
 - Between keystrokes: 20-50ms
 - After final keystroke: 50ms (before confirming)
+
+**NEW APPROACH (Reliable):**
+
+- Use `wait_for_text()` instead of fixed sleeps
+- Use `MenuAction` helpers which include appropriate delays
+- Only use explicit delays when absolutely necessary
+
+## Best Practices (NEW)
+
+### 1. Always Wait for UI Before Sending Input
+
+❌ **Bad** - Race condition:
+
+```rust
+let mut test = InteractiveTest::new(...)?;
+std::thread::sleep(Duration::from_millis(200)); // Hope 200ms is enough
+test.send_space()?;
+```
+
+✅ **Good** - Synchronized:
+
+```rust
+let mut test = InteractiveTest::new(...)?;
+test.wait_for_text("Select bundles", Duration::from_secs(5))?;
+test.send_space()?;
+```
+
+### 2. Use Menu Action Helpers
+
+❌ **Bad** - Hard to read and unreliable:
+
+```rust
+test.send_space()?;
+std::thread::sleep(Duration::from_millis(50));
+test.send_input("\x1b[B")?;
+std::thread::sleep(Duration::from_millis(50));
+test.send_space()?;
+std::thread::sleep(Duration::from_millis(50));
+test.send_input("\n")?;
+```
+
+✅ **Good** - Clear intent and stable:
+
+```rust
+use common::MenuAction;
+common::send_menu_actions(
+    &mut test,
+    &[
+        MenuAction::SelectCurrent,
+        MenuAction::MoveDown,
+        MenuAction::SelectCurrent,
+        MenuAction::Confirm,
+    ],
+)?;
+```
+
+### 3. Handle Timeouts Gracefully
+
+```rust
+let output = test
+    .wait_for_text("Expected text", Duration::from_secs(5))
+    .expect("Menu should appear within 5 seconds");
+```
+
+### 4. Verify Output Contains Expected Text
+
+```rust
+let output = test.wait_for_output()?;
+assert!(
+    output.contains("installed"),
+    "Output should confirm installation. Got: {}",
+    output
+);
+```
 
 ## Common Pitfalls
 

@@ -75,23 +75,56 @@ impl InteractiveTest {
     }
 
     pub fn wait_for_output(&mut self) -> std::io::Result<String> {
-        thread::sleep(Duration::from_millis(200));
+        self.wait_for_output_with_timeout(Duration::from_secs(10))
+    }
 
+    pub fn wait_for_output_with_timeout(&mut self, timeout: Duration) -> std::io::Result<String> {
         let mut output = String::new();
         let mut buffer = [0u8; 4096];
+        let start = std::time::Instant::now();
+        let mut no_data_count = 0;
+        const MAX_NO_DATA: usize = 20; // Allow up to 1 second of no data (20 * 50ms)
 
         loop {
+            if start.elapsed() > timeout {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout waiting for output",
+                ));
+            }
+
             match self.pty.read(&mut buffer) {
-                Ok(0) => break,
+                Ok(0) => {
+                    // EOF - process has closed the PTY
+                    break;
+                }
                 Ok(n) => {
                     output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
+                    no_data_count = 0; // Reset counter on successful read
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    if let Some(status) = self.child.try_wait().unwrap() {
-                        if status.success() {
-                            break;
+                    // Check if process has exited
+                    if let Ok(Some(_status)) = self.child.try_wait() {
+                        // Process exited, do multiple final read attempts to ensure we get all output
+                        for _ in 0..5 {
+                            thread::sleep(Duration::from_millis(50));
+                            match self.pty.read(&mut buffer) {
+                                Ok(n) if n > 0 => {
+                                    output
+                                        .push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
+                                }
+                                _ => {}
+                            }
                         }
+                        break;
                     }
+
+                    no_data_count += 1;
+                    if no_data_count > MAX_NO_DATA {
+                        // No data for too long, assume we're done
+                        break;
+                    }
+
                     thread::sleep(Duration::from_millis(50));
                 }
                 Err(e) => return Err(e),
@@ -101,6 +134,42 @@ impl InteractiveTest {
         let _ = self.child.wait();
 
         Ok(output)
+    }
+
+    pub fn wait_for_text(&mut self, expected: &str, timeout: Duration) -> std::io::Result<String> {
+        let mut accumulated = String::new();
+        let mut buffer = [0u8; 4096];
+        let start = std::time::Instant::now();
+
+        loop {
+            if start.elapsed() > timeout {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!("Timeout waiting for text: '{}'", expected),
+                ));
+            }
+
+            match self.pty.read(&mut buffer) {
+                Ok(0) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::UnexpectedEof,
+                        format!("EOF before finding text: '{}'", expected),
+                    ));
+                }
+                Ok(n) => {
+                    let chunk = std::str::from_utf8(&buffer[..n]).unwrap_or("");
+                    accumulated.push_str(chunk);
+
+                    if accumulated.contains(expected) {
+                        return Ok(accumulated);
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(50));
+                }
+                Err(e) => return Err(e),
+            }
+        }
     }
 
     pub fn status(&mut self) -> std::io::Result<std::process::ExitStatus> {
@@ -128,10 +197,57 @@ pub fn run_interactive<P: AsRef<Path>>(
 ) -> std::io::Result<String> {
     let mut test = InteractiveTest::new(program, args, workdir)?;
 
+    // Wait for menu to appear before sending input
+    let _ = test.wait_for_text("Select bundles", Duration::from_secs(5))?;
+
     for input in inputs {
         test.send_input(input)?;
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(Duration::from_millis(100));
     }
 
     test.wait_for_output()
+}
+
+/// Helper to send a sequence of menu actions with proper synchronization
+#[allow(dead_code)]
+pub fn send_menu_actions(
+    test: &mut InteractiveTest,
+    actions: &[MenuAction],
+) -> std::io::Result<()> {
+    for action in actions {
+        match action {
+            MenuAction::SelectCurrent => {
+                test.send_space()?;
+            }
+            MenuAction::MoveDown => {
+                test.send_down()?;
+            }
+            MenuAction::MoveUp => {
+                test.send_up()?;
+            }
+            MenuAction::Confirm => {
+                test.send_enter()?;
+            }
+            MenuAction::Cancel => {
+                test.send_escape()?;
+            }
+            MenuAction::Wait(duration) => {
+                thread::sleep(*duration);
+            }
+        }
+        // Add a small delay between actions for menu to update
+        thread::sleep(Duration::from_millis(100));
+    }
+    Ok(())
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub enum MenuAction {
+    SelectCurrent,
+    MoveDown,
+    MoveUp,
+    Confirm,
+    Cancel,
+    Wait(Duration),
 }

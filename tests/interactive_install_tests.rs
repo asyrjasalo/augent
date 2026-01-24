@@ -1,108 +1,75 @@
 mod common;
 
-use std::io::{Read, Write};
+use common::InteractiveTest;
+use std::path::PathBuf;
+
+fn augent_bin_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_BIN_EXE_augent"))
+}
 
 #[test]
-#[ignore] // PTY-based test that may hang in CI environments - run manually
 fn test_install_with_menu_selects_all_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    let bundle_a = workspace.path.join("bundles/bundle-a");
-    std::fs::create_dir_all(&bundle_a).expect("Failed to create bundle-a");
-    std::fs::write(
-        bundle_a.join("augent.yaml"),
+    workspace.create_bundle("bundles");
+    workspace.create_bundle("bundles/bundle-a");
+    workspace.create_bundle("bundles/bundle-b");
+
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
         "name: \"@test/bundle-a\"\nbundles: []\n",
-    )
-    .expect("Failed to write augent.yaml");
-    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
-    std::fs::write(bundle_a.join("commands").join("a.md"), "# Bundle A\n")
-        .expect("Failed to write command");
+    );
+    workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");
 
-    let bundle_b = workspace.path.join("bundles/bundle-b");
-    std::fs::create_dir_all(&bundle_b).expect("Failed to create bundle-b");
-    std::fs::write(
-        bundle_b.join("augent.yaml"),
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
         "name: \"@test/bundle-b\"\nbundles: []\n",
+    );
+    workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
+
+    let augent_path = augent_bin_path();
+    let mut test = InteractiveTest::new(
+        augent_path.to_str().unwrap(),
+        &["install", "./bundles", "--for", "cursor"],
+        &workspace.path,
     )
-    .expect("Failed to write augent.yaml");
-    std::fs::create_dir_all(bundle_b.join("commands")).unwrap();
-    std::fs::write(bundle_b.join("commands").join("b.md"), "# Bundle B\n")
-        .expect("Failed to write command");
+    .expect("Failed to create interactive test");
 
-    let augent_bin = env!("CARGO_BIN_EXE_augent");
+    // Wait for menu to render before sending input
+    test.wait_for_text("Select bundles", std::time::Duration::from_secs(5))
+        .expect("Menu should appear");
 
-    let (mut pty, pts) = pty_process::blocking::open()
-        .map_err(|e| std::io::Error::other(format!("{}", e)))
-        .expect("Failed to open PTY");
+    // Select all bundles
+    use common::MenuAction;
+    common::send_menu_actions(
+        &mut test,
+        &[
+            MenuAction::SelectCurrent, // Select bundle-a
+            MenuAction::MoveDown,
+            MenuAction::SelectCurrent, // Select bundle-b
+            MenuAction::Confirm,
+        ],
+    )
+    .expect("Failed to send menu actions");
 
-    pty.resize(pty_process::Size::new(24, 80))
-        .map_err(|e| std::io::Error::other(format!("{}", e)))
-        .expect("Failed to resize PTY");
+    let output = test.wait_for_output().expect("Failed to wait for output");
 
-    let mut _child = pty_process::blocking::Command::new(augent_bin)
-        .arg("install")
-        .arg("./bundles")
-        .current_dir(&workspace.path)
-        .spawn(pts)
-        .map_err(|e| std::io::Error::other(format!("{}", e)))
-        .expect("Failed to spawn augent process");
+    // Verify output indicates success (case-insensitive check)
+    let output_lower = output.to_lowercase();
+    assert!(
+        output_lower.contains("installed"),
+        "Output should indicate installation. Got: {}",
+        output
+    );
 
-    let mut menu_prompt_found = false;
-
-    let timeout = std::time::Duration::from_secs(10);
-    let start = std::time::Instant::now();
-
-    while start.elapsed() < timeout {
-        let mut buf = [0u8; 1024];
-        match pty.read(&mut buf) {
-            Ok(n) if n > 0 => {
-                let text = String::from_utf8_lossy(&buf[..n]);
-
-                if text.contains("Select bundles") {
-                    menu_prompt_found = true;
-
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-
-                    pty.write_all(b"\x1b[A").expect("Failed to write move up");
-                    pty.flush().expect("Failed to flush");
-                    pty.write_all(b" ").expect("Failed to write space");
-                    pty.flush().expect("Failed to flush");
-                    pty.write_all(b"\x1b[B").expect("Failed to write move down");
-                    pty.flush().expect("Failed to flush");
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-
-                    pty.write_all(b" ").expect("Failed to write space");
-                    pty.flush().expect("Failed to flush");
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-
-                    pty.write_all(b" ").expect("Failed to write space");
-                    pty.flush().expect("Failed to flush");
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-
-                    pty.write_all(b"\n").expect("Failed to write enter");
-                    pty.flush().expect("Failed to flush");
-                    break;
-                }
-            }
-            Ok(_) => {
-                continue;
-            }
-            Err(_) => {
-                break;
-            }
-        }
-    }
-
-    let _ = _child.wait().expect("Failed to wait for child");
-
-    assert!(menu_prompt_found, "Menu prompt should have appeared");
-
+    // Verify files were installed
     assert!(workspace.file_exists(".cursor/commands/a.md"));
     assert!(workspace.file_exists(".cursor/commands/b.md"));
 
-    let list_output = std::process::Command::new(augent_bin)
+    // Verify via list command
+    let list_output = std::process::Command::new(augent_path)
         .arg("list")
         .current_dir(&workspace.path)
         .output()
