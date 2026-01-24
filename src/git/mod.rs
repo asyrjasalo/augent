@@ -69,6 +69,11 @@ pub fn clone(url: &str, target: &Path) -> Result<Repository> {
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
 
+    // Shallow clone for remote URLs only (not supported for local file:// URLs)
+    if !url.starts_with("file://") {
+        fetch_options.depth(1);
+    }
+
     let mut builder = RepoBuilder::new();
     builder.fetch_options(fetch_options);
 

@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::cache;
-use crate::config::{BundleConfig, BundleDependency};
+use crate::config::{BundleConfig, BundleDependency, MarketplaceConfig};
 use crate::error::{AugentError, Result};
 use crate::source::{BundleSource, GitSource};
 
@@ -146,6 +146,13 @@ impl Resolver {
 
         let mut discovered = Vec::new();
 
+        // Check for marketplace.json first
+        let marketplace_json = full_path.join(".claude-plugin/marketplace.json");
+        if marketplace_json.is_file() {
+            return self.discover_marketplace_bundles(&marketplace_json, &full_path);
+        }
+
+        // Otherwise, use traditional directory scanning
         if self.is_bundle_directory(&full_path) {
             let name = self.get_bundle_name(&full_path)?;
             discovered.push(DiscoveredBundle {
@@ -156,6 +163,27 @@ impl Resolver {
             });
         } else {
             self.scan_directory_recursively(&full_path, &mut discovered);
+        }
+
+        Ok(discovered)
+    }
+
+    /// Discover bundles from marketplace.json
+    fn discover_marketplace_bundles(
+        &self,
+        marketplace_json: &Path,
+        repo_root: &Path,
+    ) -> Result<Vec<DiscoveredBundle>> {
+        let config = MarketplaceConfig::from_file(marketplace_json)?;
+
+        let mut discovered = Vec::new();
+        for bundle_def in config.plugins {
+            discovered.push(DiscoveredBundle {
+                name: bundle_def.name.clone(),
+                path: repo_root.to_path_buf(), // Points to repo root, not bundle dir
+                description: Some(bundle_def.description.clone()),
+                git_source: None,
+            });
         }
 
         Ok(discovered)
@@ -304,8 +332,29 @@ impl Resolver {
             });
         }
 
-        // Try to load augent.yaml
-        let config = self.load_bundle_config(&full_path)?;
+        // Check if this is a marketplace bundle (has .claude-plugin/marketplace.json)
+        let marketplace_json = full_path.join(".claude-plugin/marketplace.json");
+        let is_virtual = marketplace_json.is_file();
+
+        let source_path = if is_virtual {
+            // Determine bundle name first
+            let bundle_name = match dependency {
+                Some(dep) => dep.name.clone(),
+                None => path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string(),
+            };
+
+            // Create synthetic directory for this bundle
+            self.create_synthetic_bundle(&full_path, &bundle_name, &marketplace_json)?
+        } else {
+            full_path.clone()
+        };
+
+        // Try to load augent.yaml from source path
+        let config = self.load_bundle_config(&source_path)?;
 
         // Determine bundle name
         let name = match &config {
@@ -334,7 +383,7 @@ impl Resolver {
         // Resolve dependencies first with the bundle's directory as context
         if let Some(cfg) = &config {
             for dep in &cfg.bundles {
-                self.resolve_dependency_with_context(dep, &full_path)?;
+                self.resolve_dependency_with_context(dep, &source_path)?;
             }
         }
 
@@ -344,7 +393,7 @@ impl Resolver {
         let resolved = ResolvedBundle {
             name: name.clone(),
             dependency: dependency.cloned(),
-            source_path: full_path,
+            source_path,
             resolved_sha: None,
             resolved_ref: None,
             git_source: None,
@@ -449,6 +498,135 @@ impl Resolver {
         self.resolved.insert(name, resolved.clone());
 
         Ok(resolved)
+    }
+
+    /// Create a synthetic bundle directory from marketplace.json definition
+    ///
+    /// For virtual bundles defined in marketplace.json, creates a cache directory
+    /// with copies of all referenced resources.
+    fn create_synthetic_bundle(
+        &self,
+        repo_root: &Path,
+        bundle_name: &str,
+        marketplace_json: &Path,
+    ) -> Result<std::path::PathBuf> {
+        // Parse marketplace.json to get resource paths
+        let marketplace_config = MarketplaceConfig::from_file(marketplace_json)?;
+
+        // Find this bundle in marketplace
+        let bundle_def = marketplace_config
+            .plugins
+            .iter()
+            .find(|b| b.name == bundle_name)
+            .ok_or_else(|| AugentError::BundleNotFound {
+                name: format!("Bundle '{}' not found in marketplace.json", bundle_name),
+            })?;
+
+        // Create cache directory structure: .augent/cache/marketplace/{bundle_name}/
+        let cache_root = self
+            .workspace_root
+            .join(".augent")
+            .join("cache")
+            .join("marketplace");
+        std::fs::create_dir_all(&cache_root)?;
+
+        let synthetic_dir = cache_root.join(bundle_name);
+
+        // Create synthetic directory
+        std::fs::create_dir_all(&synthetic_dir)?;
+
+        // Copy resources from marketplace definition
+        self.copy_resources(repo_root, &synthetic_dir, bundle_def)?;
+
+        // Generate augent.yaml for synthetic bundle
+        self.generate_synthetic_config(&synthetic_dir, bundle_def)?;
+
+        Ok(synthetic_dir)
+    }
+
+    /// Copy resources from repository to synthetic bundle directory
+    fn copy_resources(
+        &self,
+        repo_root: &Path,
+        target_dir: &Path,
+        bundle_def: &crate::config::MarketplaceBundle,
+    ) -> Result<()> {
+        use std::fs;
+
+        // Helper function to copy a list of resource paths
+        let copy_list = |resource_list: &[String], target_subdir: &str| -> Result<()> {
+            let target_path = target_dir.join(target_subdir);
+            if !resource_list.is_empty() {
+                std::fs::create_dir_all(&target_path)?;
+            }
+
+            for resource_path in resource_list {
+                let source = repo_root.join(resource_path.trim_start_matches("./"));
+                if !source.exists() {
+                    continue; // Skip non-existent resources
+                }
+
+                let file_name = source
+                    .file_name()
+                    .ok_or_else(|| AugentError::FileNotFound {
+                        path: source.display().to_string(),
+                    })?;
+                let dest = target_path.join(file_name);
+
+                fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
+                    message: format!(
+                        "Failed to copy {} to {}: {}",
+                        source.display(),
+                        dest.display(),
+                        e
+                    ),
+                })?;
+            }
+
+            Ok(())
+        };
+
+        // Copy all resource types
+        copy_list(&bundle_def.commands, "commands")?;
+        copy_list(&bundle_def.agents, "agents")?;
+        copy_list(&bundle_def.skills, "skills")?;
+        copy_list(&bundle_def.mcp_servers, "mcp_servers")?;
+        copy_list(&bundle_def.rules, "rules")?;
+        copy_list(&bundle_def.hooks, "hooks")?;
+
+        Ok(())
+    }
+
+    /// Generate augent.yaml for synthetic bundle
+    fn generate_synthetic_config(
+        &self,
+        target_dir: &Path,
+        bundle_def: &crate::config::MarketplaceBundle,
+    ) -> Result<()> {
+        let config = BundleConfig {
+            name: bundle_def.name.clone(),
+            version: bundle_def.version.clone(),
+            description: Some(bundle_def.description.clone()),
+            author: None,
+            license: None,
+            homepage: None,
+            bundles: vec![], // Marketplace bundles have no dependencies
+        };
+
+        let yaml_content =
+            serde_yaml::to_string(&config).map_err(|e| AugentError::ConfigReadFailed {
+                path: target_dir.join("augent.yaml").display().to_string(),
+                reason: format!("Failed to serialize config: {}", e),
+            })?;
+
+        std::fs::write(target_dir.join("augent.yaml"), yaml_content).map_err(|e| {
+            AugentError::FileWriteFailed {
+                path: target_dir.join("augent.yaml").display().to_string(),
+                reason: format!("Failed to write config: {}", e),
+            }
+        })?;
+
+        Ok(())
     }
 
     #[allow(dead_code)]

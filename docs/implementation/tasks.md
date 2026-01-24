@@ -21,8 +21,8 @@ Update when you have started a feature and completed a feature (in **Status:** a
 
 ## Task Statistics
 
-- **Total Tasks:** 438
-- **Completed:** 432 (Phase 0-5 complete, Phase 6 Feature 14.1 complete - 432 tasks)
+- **Total Tasks:** 447
+- **Completed:** 441 (Phase 0-5 complete, Phase 6 Feature 13.16, 14.1 complete - 441 tasks)
 - **Pending:** 6 (Phase 6 Feature 14.2 - 6 tasks)
 
 ---
@@ -870,5 +870,21 @@ Set up cross-platform builds and distribution.
 - [ ] Make release pipeline publish Python packages to PyPI
 - [ ] Prepare release 0.1.0
 - [ ] Document release process in @CLAUDE.md
+
+---
+
+### Feature 13.16: Marketplace.json Support for Bundle Discovery
+
+**Status:** Complete
+
+- [x] Create MarketplaceConfig struct in src/config/marketplace.rs for parsing marketplace.json
+- [x] Add marketplace.json detection in discover_local_bundles()
+- [x] Implement discover_marketplace_bundles() to parse marketplace.json and create DiscoveredBundle entries
+- [x] Add detection for virtual bundles in resolve_local()
+- [x] Implement create_synthetic_bundle() to create cache directories with copied resources
+- [x] Write tests for marketplace.json parsing
+- [x] Write tests for virtual bundle discovery and resolution
+- [x] Update documentation for bundle discovery to mention marketplace.json support
+- [x] Run all tests and verify no regressions
 
 ---
