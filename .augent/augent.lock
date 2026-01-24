@@ -28,6 +28,17 @@
         "hash": "blake3:73810482cd64886141b0d07873bad96c3ea3a56e42cb2e766636b0d4101e073d"
       },
       "files": []
+    },
+    {
+      "name": "@davila7/claude-code-templates",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/davila7/claude-code-templates.git",
+        "ref": "main",
+        "sha": "f41bf2382d271b2cac6d6caee8428fcfeca72387",
+        "hash": "blake3:af3ee6d4eab16269bbb614d990050706b178bace1c8f23bd42b1df31d536fa66"
+      },
+      "files": []
     }
   ]
 }

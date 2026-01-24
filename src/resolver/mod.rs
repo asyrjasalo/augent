@@ -7,12 +7,86 @@
 //! - Resolving dependencies recursively
 
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::cache;
-use crate::config::{BundleConfig, BundleDependency, MarketplaceConfig};
+use crate::config::{BundleConfig, BundleDependency, MarketplaceBundle, MarketplaceConfig};
 use crate::error::{AugentError, Result};
 use crate::source::{BundleSource, GitSource};
+
+/// Count of resources by type for a bundle
+#[derive(Debug, Clone, Default)]
+pub struct ResourceCounts {
+    pub commands: usize,
+    pub rules: usize,
+    pub agents: usize,
+    pub skills: usize,
+}
+
+impl ResourceCounts {
+    /// Create from marketplace bundle definition
+    pub fn from_marketplace(bundle: &MarketplaceBundle) -> Self {
+        ResourceCounts {
+            commands: bundle.commands.len(),
+            rules: bundle.rules.len(),
+            agents: bundle.agents.len(),
+            skills: bundle.skills.len(),
+        }
+    }
+
+    /// Count resources from a bundle directory path
+    pub fn from_path(path: &Path) -> Self {
+        ResourceCounts {
+            commands: count_files_in_dir(path.join("commands")),
+            rules: count_files_in_dir(path.join("rules")),
+            agents: count_files_in_dir(path.join("agents")),
+            skills: count_files_in_dir(path.join("skills")),
+        }
+    }
+
+    /// Format counts for display (e.g., "5 commands, 2 agents")
+    pub fn format(&self) -> Option<String> {
+        let parts = [
+            ("command", self.commands),
+            ("rule", self.rules),
+            ("agent", self.agents),
+            ("skill", self.skills),
+        ];
+
+        let non_zero: Vec<String> = parts
+            .iter()
+            .filter(|(_, count)| *count > 0)
+            .map(|(name, count)| {
+                if *count == 1 {
+                    format!("1 {}", name)
+                } else {
+                    format!("{} {}s", count, name)
+                }
+            })
+            .collect();
+
+        if non_zero.is_empty() {
+            None
+        } else {
+            Some(non_zero.join(", "))
+        }
+    }
+}
+
+/// Count files recursively in a directory
+fn count_files_in_dir(dir: PathBuf) -> usize {
+    if !dir.is_dir() {
+        return 0;
+    }
+
+    match std::fs::read_dir(dir) {
+        Ok(entries) => entries
+            .filter_map(std::result::Result::ok)
+            .filter(|entry| entry.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+            .count(),
+        Err(_) => 0,
+    }
+}
 
 /// A resolved bundle with all information needed for installation
 #[derive(Debug, Clone)]
@@ -55,6 +129,9 @@ pub struct DiscoveredBundle {
 
     /// For git sources: the original git source info
     pub git_source: Option<GitSource>,
+
+    /// Resource counts for this bundle
+    pub resource_counts: ResourceCounts,
 }
 
 /// Dependency resolver for bundles
@@ -155,11 +232,13 @@ impl Resolver {
         // Otherwise, use traditional directory scanning
         if self.is_bundle_directory(&full_path) {
             let name = self.get_bundle_name(&full_path)?;
+            let resource_counts = ResourceCounts::from_path(&full_path);
             discovered.push(DiscoveredBundle {
                 name,
                 path: full_path.clone(),
                 description: self.get_bundle_description(&full_path),
                 git_source: None,
+                resource_counts,
             });
         } else {
             self.scan_directory_recursively(&full_path, &mut discovered);
@@ -178,11 +257,13 @@ impl Resolver {
 
         let mut discovered = Vec::new();
         for bundle_def in config.plugins {
+            let resource_counts = ResourceCounts::from_marketplace(&bundle_def);
             discovered.push(DiscoveredBundle {
                 name: bundle_def.name.clone(),
                 path: repo_root.to_path_buf(), // Points to repo root, not bundle dir
                 description: Some(bundle_def.description.clone()),
                 git_source: None,
+                resource_counts,
             });
         }
 
@@ -206,11 +287,13 @@ impl Resolver {
 
                     if self.is_bundle_directory(&entry_path) {
                         if let Ok(name) = self.get_bundle_name(&entry_path) {
+                            let resource_counts = ResourceCounts::from_path(&entry_path);
                             discovered.push(DiscoveredBundle {
                                 name,
                                 path: entry_path.clone(),
                                 description: self.get_bundle_description(&entry_path),
                                 git_source: None,
+                                resource_counts,
                             });
                         }
                     } else {

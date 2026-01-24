@@ -1,5 +1,6 @@
 //! CLI definitions using clap derive API
 
+use clap::builder::{Styles, styling::AnsiColor};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -11,17 +12,23 @@ use std::path::PathBuf;
     name = "augent",
     author,
     version,
+    color = clap::ColorChoice::Always,
+    styles = Styles::styled()
+        .header(AnsiColor::Green.on_default().bold())
+        .usage(AnsiColor::Green.on_default().bold())
+        .literal(AnsiColor::Cyan.on_default().bold())
+        .placeholder(AnsiColor::Cyan.on_default()),
     about = "AI configuration manager for AI coding platforms",
     long_about = "Augent manages AI coding platform resources (commands, rules, skills, MCP servers) \
                   across multiple platforms (Claude, Cursor, OpenCode) in a platform-independent, \
                   reproducible manner.",
-    after_help = "EXAMPLES:\n    \
+    after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n    \
                   augent install github:author/bundle\n    \
                   augent install ./local-bundle\n    \
                   augent uninstall my-bundle\n    \
                   augent list\n    \
                   augent show my-bundle\n\n\
-                  DOCUMENTATION:\n    \
+                  \x1b[1m\x1b[32mDocumentation:\x1b[0m\n    \
                   https://github.com/asyrjasalo/augent"
 )]
 pub struct Cli {

@@ -3,13 +3,15 @@ name: '@asyrjasalo/augent'
 bundles:
 - name: '@wshobson/agents'
   enabled:
+    agents/ui-visual-validator.md:
+    - .claude/agents/ui-visual-validator.md
     commands/accessibility-audit.md:
     - .claude/commands/accessibility-audit.md
     skills/wcag-audit-patterns/SKILL.md:
     - .claude/skills/wcag-audit-patterns/SKILL.md
-    agents/ui-visual-validator.md:
-    - .claude/agents/ui-visual-validator.md
     skills/screen-reader-testing/SKILL.md:
     - .claude/skills/screen-reader-testing/SKILL.md
 - name: '@octocat/Hello-World'
+  enabled: {}
+- name: '@davila7/claude-code-templates'
   enabled: {}
