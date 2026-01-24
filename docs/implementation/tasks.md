@@ -322,6 +322,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 7: Uninstall Command
 
+**Goal:** Implement the `uninstall` command with safe removal.
+
 #### Feature 7.1: Bundle Dependency Analysis
 
 - [x] Find all bundles that depend on the target bundle - [src/commands/uninstall.rs](../../src/commands/uninstall.rs)
@@ -357,6 +359,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 8: List Command
 
+**Goal:** Implement the `list` command to show installed bundles.
+
 #### Feature 8.1: List Implementation
 
 **Status:** Complete
@@ -370,6 +374,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 9: Show Command
 
+**Goal:** Implement the `show` command to display bundle information.
+
 #### Feature 9.1: Show Implementation
 
 **Status:** Complete
@@ -382,6 +388,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Write tests for show command - [tests/cli_tests.rs](../../tests/cli_tests.rs)
 
 ### Epic 10: Help & Version Commands
+
+**Goal:** Implement help and version commands.
 
 #### Feature 10.1: Help Command
 
@@ -405,60 +413,177 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
-## Phase 5: Quality Assurance (Epics 11-12)
+## Phase 5: Quality Assurance (Epics 11-13)
+
+**Status:** Partially Complete (Epics 11-12 complete, Epic 13 partial)
 
 ### Epic 11: Testing Infrastructure
 
-- [x] Unit Testing Framework (4 tasks)
-- [x] Integration Testing Framework (4 tasks)
-- [x] Coverage Setup (1 task)
+**Status:** Complete
 
-### Epic 12: Documentation
-
-- [x] CLI Help Documentation
-- [x] README.md
-- [x] Feature Documentation
-- [x] Implementation Documentation
-- [x] Platform Documentation
-- [x] Feature Specifications
-- [x] Documentation Verification
-
----
-
-## Phase 5.5: Test Coverage Gaps (Critical)
-
-**Status:** Partially Complete (7 of 12 features)
-
-**Overview:** Based on comprehensive audit of user-facing functionality vs. test coverage
-
-**Summary:** Critical test gaps have been addressed (compilation, shell completions, clean-cache, workspace detection, error path, edge cases). Added 24 new tests across 3 test files.
-
-**Completed Features:**
-
-- 5.5.1: Compilation errors (6 tasks)
-- 5.5.2: Completions coverage (8 tasks)
-- 5.5.3: Clean-cache coverage (8 tasks)
-- 5.5.7: Workspace detection (9 tasks)
-- 5.5.9: Error path coverage (6 tasks) - partial coverage
-- 5.5.11: Edge cases (6 tasks) - partial coverage
-
-**Remaining Features (5 features, 69 tasks):**
-
-- 5.5.4: Install Command Advanced Scenarios (9 tasks) - Git refs/subdirs (complex)
-- 5.5.5: Install Command Interactive Features (8 tasks) - Menu selection (requires stdin mocking)
-- 5.5.6: Uninstall Command Interactive Features (6 tasks) - Confirmation prompts (requires stdin mocking)
-- 5.5.8: Bundle Discovery Scenarios (7 tasks) - Discovery logic tests
-- 5.5.10: Platform-Specific Test Coverage (11 tasks) - Platform-specific tests
-- 5.5.12: Global Options Test Coverage (9 tasks) - --verbose, --workspace flags
-- 5.5.13: Integration Test Scenarios (10 tasks) - Full workflow tests
-- 5.5.14: Documentation-Based Testing (8 tasks) - Verify examples work
-- 5.5.15: Run All Tests and Verify Coverage (8 tasks) - Final verification
-
-### Feature 5.5.1: Fix Compilation Errors
+#### Feature 11.1: Unit Testing Framework
 
 **Status:** Complete
 
-#### Tasks
+##### Tasks
+
+- [x] Set up `tempfile` for temporary directories in tests
+- [x] Create test fixtures for bundles
+- [x] Create test fixtures for platform configs
+- [x] Create common test utilities module
+- [x] Write unit tests for all data models
+- [x] Write unit tests for all transformation operations
+
+#### Feature 11.2: Integration Testing Framework
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Set up `assert_cmd` for CLI integration tests
+- [x] Set up `assert_fs` for file system assertions
+- [x] Create test workspace fixtures
+- [x] Write integration tests for `install` command
+- [x] Write integration tests for `uninstall` command
+- [x] Write integration tests for `list` and `show` commands
+
+#### Feature 11.3: Coverage Setup
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Install and configure `tarpaulin`
+
+#### Feature 11.4: Documentation-Based Feature Testing
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Test bundle metadata parsing and validation (augent.yaml)
+- [x] Test show command displays correct bundle information
+- [x] Test list command displays all installed bundles
+- [x] Test lockfile generation and validation
+- [x] Test workspace configuration initialization
+- [x] Test resource conflict detection and resolution
+
+### Epic 12: Documentation
+
+**Status:** Complete
+
+**Goal:** Create user-facing and internal documentation.
+
+#### Feature 12.1: CLI Help Documentation
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Write help text for all commands (fits on one screen) - [src/cli.rs](../../src/cli.rs)
+- [x] Add examples to help text - [src/cli.rs](../../src/cli.rs)
+- [x] Ensure help text is in CLI help format - [src/cli.rs](../../src/cli.rs)
+- [x] Test help output with different flags - [src/cli.rs](../../src/cli.rs)
+
+#### Feature 12.2: README.md
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Write essential introduction to Augent - [README.md](../../README.md)
+- [x] Include quick start example - [README.md](../../README.md)
+- [x] Link to detailed documentation for longer content - [README.md](../../README.md)
+- [x] Keep it concise but informative - [README.md](../../README.md)
+
+#### Feature 12.3: Feature Documentation
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Create `docs/commands.md` for detailed command docs - [docs/commands.md](../../docs/commands.md)
+- [x] Document each command with examples - [docs/commands.md](../../docs/commands.md)
+- [x] Document bundle format (augent.yaml) - [docs/bundles.md](../../docs/bundles.md)
+- [x] Document lockfile format - [docs/bundles.md](../../docs/bundles.md)
+- [x] Document workspace configuration - [docs/workspace.md](../../docs/workspace.md)
+
+#### Feature 12.4: Implementation Documentation
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Verify `docs/implementation/architecture.md` exists - [docs/implementation/architecture.md](architecture.md)
+- [x] Verify architecture decision records (ADRs) are complete - [docs/implementation/architecture.md](architecture.md#architecture-decision-records-adr)
+- [x] Verify Rust development practices are documented - [docs/implementation/architecture.md](architecture.md#rust-development-practices)
+- [x] Verify sequence diagrams for workflows (Mermaid) exist - [docs/implementation/architecture.md](architecture.md#user-workflows)
+
+#### Feature 12.5: Platform Documentation
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Create `docs/platforms_schema.md` for platform system documentation - [docs/platforms_schema.md](../../docs/platforms_schema.md)
+- [x] Document transformation rules and merge strategies - [docs/platforms_schema.md](../../docs/platforms_schema.md)
+
+#### Feature 12.6: Feature Specifications
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Create `docs/implementation/specs/install-command.md` - [docs/implementation/specs/install-command.md](specs/install-command.md)
+- [x] Create `docs/implementation/specs/uninstall-command.md` - [docs/implementation/specs/uninstall-command.md](specs/uninstall-command.md)
+- [x] Create `docs/implementation/specs/workspace-management.md` - [docs/implementation/specs/workspace-management.md](specs/workspace-management.md)
+- [x] Create `docs/implementation/specs/platform-system.md` - [docs/implementation/specs/platform-system.md](specs/platform-system.md)
+
+#### Feature 12.7: Documentation Verification
+
+**Status:** Complete
+
+##### Tasks
+
+- [x] Verify all documentation links are valid
+- [x] Verify all examples in documentation work correctly
+- [x] Ensure documentation is up-to-date with implementation
+- [x] Run `pre-commit run --all-files` to verify documentation formatting
+
+---
+
+### Epic 13: Test Coverage Gaps
+
+**Status:** Partially Complete (6 of 15 features, 37 of 152 tasks complete)
+
+### Overview
+
+Additional test coverage improvements based on audit of user-facing functionality.
+
+### Summary
+
+- [x] Feature 13.1: Fix Compilation Errors - Complete
+- [x] Feature 13.2: Completions Command Test Coverage - Complete (added elvish shell + validation)
+- [x] Feature 13.3: Clean-Cache Command Test Coverage - Partial (6 of 8 tasks)
+- [x] Feature 13.7: Workspace Detection - Partial (5 of 9 tasks)
+- [x] Feature 13.9: Error Path Coverage - Partial (5 of 13 tasks)
+- [x] Feature 13.11: Edge Cases - Partial (6 of 12 tasks)
+
+### Tests Added: 23 new tests across 3 files
+
+- tests/error_path_tests.rs (5 tests)
+- tests/workspace_detection_tests.rs (6 tests, later removed due to duplicates)
+- tests/cli_options_tests.rs (elvish completions + validation tests)
+
+### Remaining Features (13.4, 13.5, 13.6, 13.8, 13.10, 13.12, 13.13, 13.14, 13.15)
+
+- 115 tasks remain
+- These represent additional edge cases, integration scenarios, and documentation-based testing
+- Can be implemented incrementally as needed
+
+#### Feature 13.1: Fix Compilation Errors
+
+**Status:** Complete
 
 - [x] Fix type mismatch in `src/commands/menu.rs` line 23 - convert `Vec<String>` to `&[&str]` for Checkboxes API
 - [x] Fix error conversion in `src/commands/menu.rs` line 27 - properly handle `std::io::Error` conversion to `AugentError`
@@ -467,11 +592,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Verify compilation succeeds with `cargo build`
 - [x] Verify all tests compile with `cargo test --no-run`
 
-### Feature 5.5.2: Completions Command Test Coverage
+#### Feature 13.2: Completions Command Test Coverage
 
 **Status:** Complete
-
-#### Tasks
 
 - [x] Test completions command for bash shell (currently tested in cli_options_tests.rs, verify it works)
 - [x] Test completions command for zsh shell (currently tested in cli_options_tests.rs, verify it works)
@@ -483,11 +606,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Verify generated completion scripts are valid syntax for each shell type
 - [x] Add integration test for installing and using completion scripts
 
-### Feature 5.5.3: Clean-Cache Command Test Coverage
+#### Feature 13.3: Clean-Cache Command Test Coverage
 
-**Status:** Complete
-
-#### Tasks
+**Status:** Partially Complete (6 of 8 tasks)
 
 - [x] Test `augent clean-cache --show-size` displays cache size correctly (NOT TESTED)
 - [x] Test `augent clean-cache --all` removes all cached bundles (NOT TESTED - only 1 test exists and it tests cache miss after bundle change, not cache cleanup)
@@ -498,11 +619,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Verify cache directory structure after cleanup
 - [x] Test clean-cache with verbose flag shows details
 
-### Feature 5.5.4: Install Command Advanced Scenarios
+#### Feature 13.4: Install Command Advanced Scenarios
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test install from git repository with subdirectory (e.g., `github:user/repo#plugins/name`) (NOT TESTED)
 - [ ] Test install from git repository with tag ref (e.g., `github:user/bundle#v1.0.0`) (NOT TESTED)
@@ -517,11 +636,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test install with ref that doesn't exist (error case)
 - [ ] Test install with subdirectory that doesn't exist (error case)
 
-### Feature 5.5.5: Install Command Interactive Features
+#### Feature 13.5: Install Command Interactive Features
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test install with interactive bundle selection menu (NOT TESTED - requires mocking stdin)
 - [ ] Test install with multiple bundles discovered and user selects subset (NOT TESTED)
@@ -533,11 +650,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test menu with bundles that have descriptions (NOT TESTED)
 - [ ] Test menu with bundles that lack descriptions (NOT TESTED)
 
-### Feature 5.5.6: Uninstall Command Interactive Features
+#### Feature 13.6: Uninstall Command Interactive Features
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test uninstall with confirmation prompt (user accepts) (NOT TESTED - requires mocking stdin)
 - [ ] Test uninstall with confirmation prompt (user declines) (NOT TESTED - requires mocking stdin)
@@ -546,11 +661,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test uninstall proceeds after warning despite dependencies (currently may be tested, verify coverage)
 - [ ] Test uninstall confirmation prompt text is clear (NOT TESTED)
 
-### Feature 5.5.7: Workspace Detection and Auto-Detection
+#### Feature 13.7: Workspace Detection and Auto-Detection
 
 **Status:** Complete
-
-#### Tasks
 
 - [x] Test workspace detection finds .augent in current directory (currently may be tested, verify coverage) - [tests/workspace_tests.rs](../../tests/workspace_tests.rs)
 - [x] Test workspace detection searches parent directories (NOT TESTED) - [tests/workspace_tests.rs](../../tests/workspace_tests.rs)
@@ -562,11 +675,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test workspace initialization error when not in git directory (NOT TESTED)
 - [ ] Test workspace detection error when no workspace found (currently may be tested, verify coverage)
 
-### Feature 5.5.8: Bundle Discovery Scenarios
+#### Feature 13.8: Bundle Discovery Scenarios
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test bundle discovery from git repository with multiple bundles (NOT TESTED)
 - [ ] Test bundle discovery from git repository with single bundle (NOT TESTED)
@@ -577,11 +688,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test bundle discovery shows all bundles when multiple found (NOT TESTED)
 - [ ] Test bundle discovery handles subdirectories correctly (NOT TESTED)
 
-### Feature 5.5.9: Error Path Coverage
+#### Feature 13.9: Error Path Coverage
 
-**Status:** Complete
-
-#### Tasks
+**Status:** Partially Complete (5 of 13 tasks)
 
 - [x] Test install with corrupted augent.yaml (error case - NOT TESTED) - [tests/error_path_tests.rs](../../tests/error_path_tests.rs)
 - [x] Test install with corrupted augent.lock (error case - NOT TESTED) - [tests/error_path_tests.rs](../../tests/error_path_tests.rs)
@@ -598,11 +707,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test all commands with disk full error (error case - NOT TESTED)
 - [ ] Test all commands with network timeout during git operations (error case - NOT TESTED)
 
-### Feature 5.5.10: Platform-Specific Test Coverage
+#### Feature 13.10: Platform-Specific Test Coverage
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test install for claude platform with various resources (currently may be tested, verify coverage)
 - [ ] Test install for cursor platform with various resources (currently may be tested, verify coverage)
@@ -617,11 +724,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test transformation of resources for each platform (currently may be tested, verify coverage)
 - [ ] Test merge strategies for each platform (currently may be tested in install_merge_tests.rs, verify coverage)
 
-### Feature 5.5.11: Edge Cases and Boundary Conditions
+#### Feature 13.11: Edge Cases and Boundary Conditions
 
-**Status:** Complete
-
-#### Tasks
+**Status:** Partially Complete (6 of 12 tasks)
 
 - [x] Test install with bundle containing 0 resources (edge case - NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs)
 - [ ] Test install with bundle containing many resources (performance test - NOT TESTED)
@@ -637,11 +742,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Test show with bundle that has no files (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) - NEW TEST ADDED
 - [x] Test show with bundle that has no dependencies (NOT TESTED) - [tests/edge_case_tests.rs](../../tests/edge_case_tests.rs) - NEW TEST ADDED
 
-### Feature 5.5.12: Global Options Test Coverage
+#### Feature 13.12: Global Options Test Coverage
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test --verbose flag for install command (currently tested, verify coverage)
 - [ ] Test --verbose flag for uninstall command (currently tested, verify coverage)
@@ -653,11 +756,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test --help flag for all commands (currently tested, verify coverage)
 - [ ] Test --version flag works globally (currently tested, verify coverage)
 
-### Feature 5.5.13: Integration Test Scenarios
+#### Feature 13.13: Integration Test Scenarios
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Test full workflow: install → verify files → list → show → uninstall (NOT TESTED end-to-end)
 - [ ] Test installing multiple bundles sequentially and verifying all files (NOT TESTED)
@@ -671,11 +772,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test concurrent install operations (currently may be tested in concurrency_tests.rs, verify coverage)
 - [ ] Test lock file prevents concurrent modifications (currently may be tested, verify coverage)
 
-### Feature 5.5.14: Documentation-Based Testing
+#### Feature 13.14: Documentation-Based Testing
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Verify all examples in docs/commands.md work correctly (NOT TESTED)
 - [ ] Verify all install examples work with different sources (NOT TESTED)
@@ -688,11 +787,9 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [ ] Test that bundle format examples are valid (NOT TESTED)
 - [ ] Test that workspace configuration examples are valid (NOT TESTED)
 
-### Feature 5.5.15: Run All Tests and Verify Coverage
+#### Feature 13.15: Run All Tests and Verify Coverage
 
 **Status:** Pending
-
-#### Tasks
 
 - [ ] Run all unit tests with `cargo test`
 - [ ] Run all integration tests with `cargo test --test '*'`
@@ -708,18 +805,30 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ---
 
-## Phase d: Release (Epic 13)
+## Phase 6: Release (Epic 14)
 
-### Epic 13: Release & Distribution
+### Epic 14: Release & Distribution
 
-#### Feature 13.1: Cross-Platform Builds
+**Status:** Pending (optional, release-focused)
+
+### Goal
+
+Set up cross-platform builds and distribution.
+
+#### Feature 14.1: Cross-Platform Builds
+
+**Status:** Pending
 
 - [ ] Configure `cargo-zigbuild` for cross-compilation
 - [ ] Set up build matrix: Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64, ARM64)
 - [ ] Configure GitHub Actions for automated builds
 - [ ] Test builds on all target platforms
 
-#### Feature 13.2: Release Artifacts
+---
+
+#### Feature 14.2: Release Artifacts
+
+**Status:** Pending
 
 - [ ] Set up GitHub Releases workflow
 - [ ] Create installation script for Unix systems
@@ -730,37 +839,55 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Task Statistics
 
-- **Total Tasks:** 380
-- **Completed:** 286 (Phase 0 complete, Phase 1 complete, Phase 2 complete, Phase 3 complete, Phase 4 complete, Phase 5 complete)
+- **Total Tasks:** 425
+- **Completed:** 253 (Phase 0-4 complete, Epic 11-12 complete, Epic 13 partial - 37 of 152 tasks)
 - **In Progress:** 0
-- **Pending:** 94 (Phase 5.5 partial - 6 of 12 features complete with 69 tasks remaining; Phase 6 Epic 13 optional - 25 tasks optional/release focused)
+- **Pending:** 172 (Epic 13 - 115 tasks remaining across 9 features + Phase 6 Epic 14 optional - 25 tasks)
+- **Optional:** 25 (Phase 6 Epic 14 - optional, release-focused)
 
 ### Phase 5: Quality Assurance - COMPLETE
 
 - Epic 11: Testing Infrastructure - Complete
-  - Feature 11.1: Unit Testing Framework (4 tasks)
-  - Feature 11.2: Integration Testing Framework (4 tasks)
+  - Feature 11.1: Unit Testing Framework (6 tasks)
+  - Feature 11.2: Integration Testing Framework (6 tasks)
   - Feature 11.3: Coverage Setup (1 task)
   - Feature 11.4: Documentation-Based Feature Testing (6 tasks)
 - Epic 12: Documentation - Complete
-  - Feature 12.1: CLI Help Documentation
-  - Feature 12.2: README.md
-  - Feature 12.3: Feature Documentation
-  - Feature 12.4: Implementation Documentation
-  - Feature 12.5: Platform Documentation
-  - Feature 12.6: Feature Specifications
-  - Feature 12.7: Documentation Verification
+  - Feature 12.1: CLI Help Documentation (4 tasks)
+  - Feature 12.2: README.md (4 tasks)
+  - Feature 12.3: Feature Documentation (5 tasks)
+  - Feature 12.4: Implementation Documentation (4 tasks)
+  - Feature 12.5: Platform Documentation (2 tasks)
+  - Feature 12.6: Feature Specifications (4 tasks)
+  - Feature 12.7: Documentation Verification (4 tasks)
 
-### Phase 5.5: Test Coverage Gaps - PARTIALLY COMPLETE (9 of 12 features)
+### Epic 13: Test Coverage Gaps - PARTIALLY COMPLETE (6 of 15 features, 37 of 152 tasks complete)
 
-- Feature 5.5.1: Fix Compilation Errors (6 tasks)
-- Feature 5.5.2: Completions Command Test Coverage (9 tasks)
-- Feature 5.5.3: Clean-Cache Command Test Coverage (7 tasks)
-- Feature 5.5.7: Workspace Detection and Auto-Detection (6 tasks)
-- Feature 5.5.9: Error Path Coverage (5 tasks - partial coverage)
-- Feature 5.5.11: Edge Cases and Boundary Conditions (4 tasks - partial coverage)
+**Completed Features (15 tasks):**
 
-**Note:** Phase 5 is complete. Phase 5.5 represents additional test coverage improvements. Critical gaps have been addressed (37 tasks completed). Remaining features (5.5.4, 5.5.5, 5.5.6, 5.5.8, 5.5.10, 5.5.12, 5.5.13, 5.5.14, 5.5.15) with 69 tasks can be implemented incrementally as needed for additional coverage.
+- Feature 13.1: Fix Compilation Errors (6 tasks)
+- Feature 13.2: Completions Command Test Coverage (9 tasks)
+
+**Partially Complete Features (4 features, 42 tasks total, 22 done):**
+
+- Feature 13.3: Clean-Cache Command Test Coverage (8 tasks) - 6 of 8 tasks complete
+- Feature 13.7: Workspace Detection and Auto-Detection (9 tasks) - 5 of 9 tasks complete
+- Feature 13.9: Error Path Coverage (13 tasks) - 5 of 13 tasks complete
+- Feature 13.11: Edge Cases and Boundary Conditions (12 tasks) - 6 of 12 tasks complete
+
+**Pending Features (9 features, 115 tasks):**
+
+- Feature 13.4: Install Command Advanced Scenarios (12 tasks)
+- Feature 13.5: Install Command Interactive Features (9 tasks)
+- Feature 13.6: Uninstall Command Interactive Features (6 tasks)
+- Feature 13.8: Bundle Discovery Scenarios (8 tasks)
+- Feature 13.10: Platform-Specific Test Coverage (12 tasks)
+- Feature 13.12: Global Options Test Coverage (9 tasks)
+- Feature 13.13: Integration Test Scenarios (12 tasks)
+- Feature 13.14: Documentation-Based Testing (10 tasks)
+- Feature 13.15: Run All Tests and Verify Coverage (11 tasks)
+
+**Note:** Phase 5 is partially complete (Epics 11-12 complete, Epic 13 partial). Epic 13 represents additional test coverage improvements. Basic testing infrastructure is established (37 tasks completed across 6 of 15 features). Remaining features (9 features, 115 tasks) can be implemented incrementally as needed for additional coverage.
 
 ---
 
@@ -778,6 +905,5 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [Complete] Phase 2: Core Functionality (Epics 4-5) - Complete
 - [Complete] Phase 3: Install Command (Epic 6) - Complete
 - [Complete] Phase 4: Additional Commands (Epics 7-10) - Complete
-- [Complete] Phase 5: Quality Assurance (Epics 11-12) - Complete
-- [Partial] Phase 5.5: Test Coverage Gaps - Partially Complete (6 of 12 features, 37 of 69 tasks)
-- [Pending] Phase d: Release (Epic 13) - Pending (optional, release-focused)
+- [Partial] Phase 5: Quality Assurance (Epics 11-12) - Partially Complete (Epic 11-12 complete, Epic 13 partial)
+- [Pending] Phase 6: Release (Epic 14) - Pending (optional, release-focused)
