@@ -142,6 +142,64 @@ impl BundleSource {
             _ => None,
         }
     }
+
+    /// Get a display string showing the full resolved URL
+    ///
+    /// This is useful for showing users exactly where a bundle is being installed from,
+    /// even when they use shorthand notation like `author/repo`.
+    ///
+    /// # Returns
+    ///
+    /// - For local directories: the path as-is
+    /// - For git sources: the full URL with ref and subdirectory appended if present
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use augent::source::BundleSource;
+    ///
+    /// // Local directory
+    /// let source = BundleSource::parse("./my-bundle").unwrap();
+    /// assert_eq!(source.display_url(), "./my-bundle");
+    ///
+    /// // GitHub shorthand
+    /// let source = BundleSource::parse("author/repo").unwrap();
+    /// assert_eq!(source.display_url(), "https://github.com/author/repo.git");
+    ///
+    /// // With ref
+    /// let source = BundleSource::parse("author/repo#v1.0.0").unwrap();
+    /// assert_eq!(source.display_url(), "https://github.com/author/repo.git#v1.0.0");
+    ///
+    /// // With subdirectory
+    /// let source = BundleSource::parse("author/repo:plugins/bundle").unwrap();
+    /// assert_eq!(source.display_url(), "https://github.com/author/repo.git:plugins/bundle");
+    ///
+    /// // With both
+    /// let source = BundleSource::parse("author/repo#main:plugins/bundle").unwrap();
+    /// assert_eq!(source.display_url(), "https://github.com/author/repo.git#main:plugins/bundle");
+    /// ```
+    pub fn display_url(&self) -> String {
+        match self {
+            BundleSource::Dir { path } => path.display().to_string(),
+            BundleSource::Git(git) => {
+                let mut url = git.url.clone();
+
+                // Append ref if present
+                if let Some(ref git_ref) = git.git_ref {
+                    url.push('#');
+                    url.push_str(git_ref);
+                }
+
+                // Append subdirectory if present
+                if let Some(ref subdir) = git.subdirectory {
+                    url.push(':');
+                    url.push_str(subdir);
+                }
+
+                url
+            }
+        }
+    }
 }
 
 impl GitSource {
@@ -576,5 +634,56 @@ mod tests {
         );
         assert!(git.git_ref.is_none());
         assert!(git.subdirectory.is_none());
+    }
+
+    #[test]
+    fn test_display_url_local() {
+        let source = BundleSource::parse("./my-bundle").unwrap();
+        assert_eq!(source.display_url(), "./my-bundle");
+    }
+
+    #[test]
+    fn test_display_url_github_shorthand() {
+        let source = BundleSource::parse("author/repo").unwrap();
+        assert_eq!(source.display_url(), "https://github.com/author/repo.git");
+    }
+
+    #[test]
+    fn test_display_url_with_ref() {
+        let source = BundleSource::parse("author/repo#v1.0.0").unwrap();
+        assert_eq!(
+            source.display_url(),
+            "https://github.com/author/repo.git#v1.0.0"
+        );
+    }
+
+    #[test]
+    fn test_display_url_with_subdirectory() {
+        let source = BundleSource::parse("author/repo:plugins/bundle").unwrap();
+        assert_eq!(
+            source.display_url(),
+            "https://github.com/author/repo.git:plugins/bundle"
+        );
+    }
+
+    #[test]
+    fn test_display_url_with_ref_and_subdirectory() {
+        let source = BundleSource::parse("author/repo#main:plugins/bundle").unwrap();
+        assert_eq!(
+            source.display_url(),
+            "https://github.com/author/repo.git#main:plugins/bundle"
+        );
+    }
+
+    #[test]
+    fn test_display_url_full_https() {
+        let source = BundleSource::parse("https://github.com/author/repo.git").unwrap();
+        assert_eq!(source.display_url(), "https://github.com/author/repo.git");
+    }
+
+    #[test]
+    fn test_display_url_ssh() {
+        let source = BundleSource::parse("git@github.com:author/repo.git").unwrap();
+        assert_eq!(source.display_url(), "git@github.com:author/repo.git");
     }
 }

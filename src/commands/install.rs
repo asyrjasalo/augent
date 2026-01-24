@@ -63,7 +63,9 @@ fn do_install(
     workspace: &mut Workspace,
     transaction: &mut Transaction,
 ) -> Result<()> {
-    println!("Installing from: {}", args.source);
+    // Parse source early to show full resolved URL to user
+    let source = BundleSource::parse(&args.source)?;
+    println!("Installing from: {}", source.display_url());
 
     let mut resolver = Resolver::new(&workspace.root);
 

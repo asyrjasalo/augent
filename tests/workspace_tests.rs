@@ -116,13 +116,18 @@ bundles: []
         .assert()
         .success();
 
-    // Verify workspace was initialized
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent.augent.workspace.yaml"));
 
-    let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
-    assert!(workspace_config.contains("name:"));
+    let workspace_config = workspace.read_file(".augent.augent.workspace.yaml");
+    assert!(workspace_config.contains("name: '@user/test-project'"));
+
+    let bundle_config = workspace.read_file(".augent.augent.yaml");
+    assert!(bundle_config.contains("name: '@user/test-project'"));
+
+    let lockfile = workspace.read_file(".augent.augent.lock");
+    assert!(lockfile.contains("\"name\": \"@user/test-project\""));
 
     // Bundle should be listed
     augent_cmd()
@@ -146,25 +151,35 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    // Install bundle - should use fallback naming
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    // Verify workspace was initialized with fallback name
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
 
-    let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
-    assert!(workspace_config.contains("name:"));
-    let username = std::env::var("USER").unwrap_or_default();
-    assert!(workspace_config.contains(&username));
-    let _username = username;
+    let username = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_else(|_| "user".to_string());
 
-    // Bundle should be listed
+    let expected_name = format!("@{}/workspace", username);
+    println!("Expected workspace name: {}", expected_name);
+
+    let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
+    println!("Workspace config:\n{}", workspace_config);
+    assert!(workspace_config.contains(&format!("name: {}", expected_name)));
+
+    let bundle_config = workspace.read_file(".augent/augent.yaml");
+    println!("Bundle config:\n{}", bundle_config);
+    assert!(bundle_config.contains(&format!("name: {}", expected_name)));
+
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    println!("Lockfile:\n{}", lockfile);
+    assert!(lockfile.contains(&format!("\"name\": \"{}\"", expected_name)));
+
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
@@ -465,6 +480,38 @@ bundles: []
         .args(["show", "@test/test-bundle"])
         .assert()
         .success();
+}
+
+#[test]
+fn test_workspace_initialization_creates_augent_directory() {
+    let workspace = common::TestWorkspace::new();
+
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".augent"));
+
+    let augent_dir = workspace.path.join(".augent");
+    assert!(augent_dir.is_dir());
+
+    let bundles_dir = augent_dir.join("bundles");
+    assert!(bundles_dir.is_dir());
+
+    assert!(workspace.file_exists(".augent/augent.yaml"));
+    assert!(workspace.file_exists(".augent/augent.lock"));
+    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
 }
 
 #[test]
