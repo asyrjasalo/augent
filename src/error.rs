@@ -92,18 +92,6 @@ pub enum AugentError {
     #[allow(dead_code, unused_assignments)]
     WorkspaceNotFound { path: String },
 
-    #[error("Workspace already locked by another process")]
-    #[diagnostic(
-        code(augent::workspace::locked),
-        help("Wait for the other process to finish or remove the lock file manually")
-    )]
-    WorkspaceLocked,
-
-    #[error("Failed to acquire workspace lock")]
-    #[diagnostic(code(augent::workspace::lock_failed))]
-    #[allow(dead_code, unused_assignments)]
-    WorkspaceLockFailed { reason: String },
-
     // Configuration errors
     #[error("Configuration file not found: {path}")]
     #[diagnostic(code(augent::config::not_found))]
@@ -362,20 +350,6 @@ mod tests {
         };
         assert!(err.to_string().contains("Workspace not found"));
         assert!(err.to_string().contains("/path/to/workspace"));
-    }
-
-    #[test]
-    fn test_workspace_locked_error() {
-        let err = AugentError::WorkspaceLocked;
-        assert!(err.to_string().contains("Workspace already locked"));
-    }
-
-    #[test]
-    fn test_workspace_lock_failed_error() {
-        let err = AugentError::WorkspaceLockFailed {
-            reason: "permission denied".to_string(),
-        };
-        assert!(err.to_string().contains("Failed to acquire workspace lock"));
     }
 
     #[test]

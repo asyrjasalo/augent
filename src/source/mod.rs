@@ -43,13 +43,13 @@ pub struct GitSource {
     /// Repository URL (HTTPS or SSH)
     pub url: String,
 
+    /// Subdirectory within repository
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subdirectory: Option<String>,
+
     /// Git ref (branch, tag, or SHA)
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
     pub git_ref: Option<String>,
-
-    /// Subdirectory within the repository
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subdirectory: Option<String>,
 
     /// Resolved SHA (populated after resolution)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -207,8 +207,8 @@ impl GitSource {
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
-            git_ref: None,
             subdirectory: None,
+            git_ref: None,
             resolved_sha: None,
         }
     }
@@ -304,8 +304,18 @@ impl GitSource {
                         if Self::parse_url(before_colon).is_ok() {
                             (Some(after_colon.to_string()), None, before_colon)
                         } else {
-                            // Not a repo:subdir pattern, use full main_part
-                            (None, None, main_part)
+                            // Not a repo:subdir pattern - this could be:
+                            // 1. github:author/repo:subdir (repo + subdirectory)
+                            // 2. Invalid repo like github:wshobson/agents (no subdirectory after repo)
+                            // In case 2, treat :subdir as a ref (not subdirectory)
+                            // This handles patterns like github:wshobson/agents:plugins/foo
+                            let is_repo_subdir_pattern = Self::parse_url(before_colon).is_err();
+                            if is_repo_subdir_pattern {
+                                (None, Some(after_colon.to_string()), before_colon)
+                            } else {
+                                // Not a repo:subdir pattern, use full main_part
+                                (None, None, main_part)
+                            }
                         }
                     } else {
                         (None, None, main_part)

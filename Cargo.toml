@@ -41,7 +41,6 @@ gix = { version = "0.78", features = ["blocking-network-client"] }
 # auth-git2 is deprecated, use git2's built-in auth callback instead
 
 # File system operations
-fslock = "0.2"
 walkdir = "2"
 tempfile = "3"
 dirs = "5"

@@ -123,42 +123,7 @@ fn find_workspace(start_path: &Path) -> Result<PathBuf> {
 3. If `.git/` found, auto-initialize workspace
 4. Otherwise, error
 
-#### 3. Workspace Locking
-
-Concurrent access is prevented using advisory file locks:
-
-```rust
-pub struct WorkspaceGuard {
-    _lock: fslock::LockFile,
-}
-
-impl WorkspaceGuard {
-    pub fn acquire(workspace_path: &Path) -> Result<Self> {
-        let lockfile_path = workspace_path.join(".augent/lock");
-        let mut lock = fslock::LockFile::open(&lockfile_path)?;
-
-        // Block until lock acquired
-        lock.lock()?;
-
-        Ok(WorkspaceGuard { _lock: lock })
-    }
-}
-
-impl Drop for WorkspaceGuard {
-    fn drop(&mut self) {
-        // Lock released on drop (RAII pattern)
-    }
-}
-```
-
-**Lock behavior:**
-
-- Acquired at start of any workspace-modifying operation
-- Released when guard goes out of scope
-- Prevents concurrent modifications
-- Multiple read operations allowed simultaneously
-
-#### 4. Configuration Management
+#### 3. Configuration Management
 
 Three configuration files track different aspects:
 
@@ -300,7 +265,6 @@ fn handle_modified_files(workspace: &mut Workspace, modified: Vec<ModifiedFile>)
 | Error Condition | Error Message | Recovery |
 |----------------|----------------|----------|
 | Workspace not found | "Workspace not found. Run in a git repository with .augent/" | Exit with error |
-| Lock acquisition failed | "Workspace is locked by another process" | Exit with error |
 | Invalid configuration | "Invalid augent.yaml: {reason}" | Exit with error |
 | Write permission denied | "Permission denied writing to {path}" | Exit with error |
 | Modified file copy failed | "Failed to copy modified file {file}: {reason}" | Abort operation |
@@ -313,7 +277,6 @@ fn handle_modified_files(workspace: &mut Workspace, modified: Vec<ModifiedFile>)
 - Bundle name inference from git remote
 - Bundle name inference fallbacks
 - Workspace detection (current dir, parent dir, not found)
-- Lock acquisition and release (RAII)
 - Atomic write operations
 - Modified file detection (hash comparison)
 
@@ -322,10 +285,8 @@ fn handle_modified_files(workspace: &mut Workspace, modified: Vec<ModifiedFile>)
 - Auto-initialize workspace when running install in git repo
 - Detect existing workspace
 - Use custom workspace location via `-w` flag
-- Concurrent access prevention (lock contention)
 - Modified files moved to workspace bundle
 - Workspace configuration persists across commands
-- Lock file released after operation completes
 
 ## References
 

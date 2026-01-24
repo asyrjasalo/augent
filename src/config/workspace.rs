@@ -51,7 +51,15 @@ impl WorkspaceConfig {
 
     /// Serialize workspace configuration to YAML string
     pub fn to_yaml(&self) -> Result<String> {
-        Ok(serde_yaml::to_string(self)?)
+        let yaml = serde_yaml::to_string(self)?;
+        // Insert empty line after name field for readability
+        // Split on first newline and add an extra newline between
+        let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
+        if parts.len() == 2 {
+            Ok(format!("{}\n\n{}", parts[0], parts[1]))
+        } else {
+            Ok(yaml)
+        }
     }
 
     /// Add a bundle to the workspace
@@ -214,6 +222,14 @@ bundles:
         assert!(yaml.contains("@test/bundle"));
         assert!(yaml.contains("dep1"));
         assert!(yaml.contains("commands/test.md"));
+        // Verify empty line after name field
+        assert!(yaml.contains("name: '@test/bundle'\n\n"));
+
+        // Verify round-trip works
+        let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();
+        assert_eq!(parsed.name, "@test/bundle");
+        assert_eq!(parsed.bundles.len(), 1);
+        assert_eq!(parsed.bundles[0].name, "dep1");
     }
 
     #[test]

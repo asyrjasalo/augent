@@ -67,14 +67,14 @@ pub enum LockedSource {
     Git {
         /// Repository URL
         url: String,
+        /// Subdirectory within repository (if any)
+        #[serde(skip_serializing_if = "std::option::Option::is_none")]
+        path: Option<String>,
         /// Original ref (branch, tag)
-        #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "ref")]
         git_ref: Option<String>,
         /// Resolved SHA
         sha: String,
-        /// Subdirectory within repository (if any)
-        #[serde(skip_serializing_if = "Option::is_none")]
-        path: Option<String>,
         /// BLAKE3 hash of bundle contents
         hash: String,
     },

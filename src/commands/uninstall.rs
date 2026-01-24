@@ -76,8 +76,6 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         }
     }
 
-    let _guard = workspace.lock()?;
-
     let mut transaction = Transaction::new(&workspace);
     transaction.backup_configs()?;
 

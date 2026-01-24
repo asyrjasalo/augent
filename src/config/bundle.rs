@@ -43,13 +43,13 @@ pub struct BundleDependency {
     /// Dependency name
     pub name: String,
 
-    /// Local subdirectory path (for bundles in same repo)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subdirectory: Option<String>,
-
     /// Git repository URL
     #[serde(skip_serializing_if = "Option::is_none")]
     pub git: Option<String>,
+
+    /// Local subdirectory path (for bundles in same repo)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subdirectory: Option<String>,
 
     /// Git ref (branch, tag, or SHA)
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
@@ -79,7 +79,15 @@ impl BundleConfig {
 
     /// Serialize bundle configuration to YAML string
     pub fn to_yaml(&self) -> Result<String> {
-        Ok(serde_yaml::to_string(self)?)
+        let yaml = serde_yaml::to_string(self)?;
+        // Insert empty line after name field for readability
+        // Split on first newline and add an extra newline between
+        let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
+        if parts.len() == 2 {
+            Ok(format!("{}\n\n{}", parts[0], parts[1]))
+        } else {
+            Ok(yaml)
+        }
     }
 
     /// Validate bundle configuration
@@ -228,6 +236,14 @@ bundles:
         let yaml = config.to_yaml().unwrap();
         assert!(yaml.contains("@test/bundle"));
         assert!(yaml.contains("dep1"));
+        // Verify empty line after name field
+        assert!(yaml.contains("name: '@test/bundle'\n\n"));
+
+        // Verify round-trip works
+        let parsed = BundleConfig::from_yaml(&yaml).unwrap();
+        assert_eq!(parsed.name, "@test/bundle");
+        assert_eq!(parsed.bundles.len(), 1);
+        assert_eq!(parsed.bundles[0].name, "dep1");
     }
 
     #[test]

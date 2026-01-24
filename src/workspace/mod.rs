@@ -2,7 +2,6 @@
 //!
 //! This module handles:
 //! - Workspace detection and initialization
-//! - Workspace locking for concurrent access
 //! - Modified file detection
 //!
 //! ## Workspace Structure
@@ -12,7 +11,6 @@
 //! ├── augent.yaml           # Workspace bundle config
 //! ├── augent.lock           # Resolved dependencies
 //! ├── augent.workspace.yaml # Per-agent file mappings
-//! ├── .lock                 # Advisory lock file
 //! └── bundles/              # Local bundle directories
 //! ```
 //!
@@ -20,8 +18,6 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-
-use fslock::LockFile;
 
 use crate::config::{BundleConfig, Lockfile, WorkspaceConfig};
 use crate::error::{AugentError, Result};
@@ -38,9 +34,6 @@ pub const LOCKFILE_NAME: &str = "augent.lock";
 
 /// Workspace config filename
 pub const WORKSPACE_CONFIG_FILE: &str = "augent.workspace.yaml";
-
-/// Lock file for workspace locking
-pub const LOCK_FILE: &str = ".lock";
 
 /// Bundles subdirectory
 pub const BUNDLES_DIR: &str = "bundles";
@@ -62,17 +55,6 @@ pub struct Workspace {
 
     /// Workspace configuration (augent.workspace.yaml)
     pub workspace_config: WorkspaceConfig,
-}
-
-/// RAII guard for workspace locking
-///
-/// Acquires an advisory file lock on creation and releases it on drop.
-/// This prevents concurrent modifications to the same workspace.
-#[derive(Debug)]
-pub struct WorkspaceGuard {
-    lock: LockFile,
-    #[allow(dead_code)]
-    lock_path: PathBuf,
 }
 
 impl Workspace {
@@ -130,13 +112,6 @@ impl Workspace {
 
         // Create .augent directory
         fs::create_dir_all(&augent_dir)?;
-
-        // Create .gitignore to exclude lock file
-        let gitignore_path = augent_dir.join(".gitignore");
-        fs::write(&gitignore_path, ".lock\n").map_err(|e| AugentError::FileWriteFailed {
-            path: gitignore_path.display().to_string(),
-            reason: e.to_string(),
-        })?;
 
         // Infer workspace name
         let name = Self::infer_workspace_name(root);
@@ -332,75 +307,6 @@ impl Workspace {
     /// Get the path to the bundles directory
     pub fn bundles_dir(&self) -> PathBuf {
         self.augent_dir.join(BUNDLES_DIR)
-    }
-
-    /// Acquire a lock on this workspace
-    pub fn lock(&self) -> Result<WorkspaceGuard> {
-        WorkspaceGuard::acquire(&self.augent_dir)
-    }
-}
-
-impl WorkspaceGuard {
-    /// Acquire a lock on the workspace
-    pub fn acquire(augent_dir: &Path) -> Result<Self> {
-        let lock_path = augent_dir.join(LOCK_FILE);
-
-        // Ensure the augent directory exists
-        if !augent_dir.is_dir() {
-            return Err(AugentError::WorkspaceNotFound {
-                path: augent_dir.display().to_string(),
-            });
-        }
-
-        // Create lock file and attempt to acquire lock
-        let mut lock =
-            LockFile::open(&lock_path).map_err(|e| AugentError::WorkspaceLockFailed {
-                reason: format!("Failed to open lock file: {}", e),
-            })?;
-
-        // Try to acquire the lock (blocking)
-        lock.lock().map_err(|_| AugentError::WorkspaceLocked)?;
-
-        Ok(Self { lock, lock_path })
-    }
-
-    /// Try to acquire a lock without blocking
-    pub fn try_acquire(augent_dir: &Path) -> Result<Option<Self>> {
-        let lock_path = augent_dir.join(LOCK_FILE);
-
-        if !augent_dir.is_dir() {
-            return Err(AugentError::WorkspaceNotFound {
-                path: augent_dir.display().to_string(),
-            });
-        }
-
-        let mut lock =
-            LockFile::open(&lock_path).map_err(|e| AugentError::WorkspaceLockFailed {
-                reason: format!("Failed to open lock file: {}", e),
-            })?;
-
-        // Try to acquire without blocking
-        let acquired = lock
-            .try_lock()
-            .map_err(|e| AugentError::WorkspaceLockFailed {
-                reason: format!("Failed to try lock: {}", e),
-            })?;
-
-        if acquired {
-            Ok(Some(Self { lock, lock_path }))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-impl Drop for WorkspaceGuard {
-    fn drop(&mut self) {
-        // Release the lock
-        let _ = self.lock.unlock();
-
-        // Remove the lock file - it will be recreated when needed
-        let _ = fs::remove_file(&self.lock_path);
     }
 }
 
@@ -640,12 +546,6 @@ mod tests {
                 .exists()
         );
 
-        // Check .gitignore file
-        let gitignore_path = temp.path().join(WORKSPACE_DIR).join(".gitignore");
-        assert!(gitignore_path.exists());
-        let content = fs::read_to_string(&gitignore_path).unwrap();
-        assert_eq!(content, ".lock\n");
-
         // Check name format
         assert!(workspace.bundle_config.name.starts_with('@'));
     }
@@ -714,44 +614,6 @@ mod tests {
         // Should contain @ and /
         assert!(name.starts_with('@'));
         assert!(name.contains('/'));
-    }
-
-    #[test]
-    fn test_workspace_lock_acquire_release() {
-        let temp = TempDir::new().unwrap();
-        let workspace = Workspace::init(temp.path()).unwrap();
-
-        // Acquire lock
-        let guard = workspace.lock().unwrap();
-
-        // Lock file should exist while lock is held
-        let lock_file_path = temp.path().join(WORKSPACE_DIR).join(LOCK_FILE);
-        assert!(lock_file_path.exists());
-
-        // Drop releases lock and removes lock file
-        drop(guard);
-
-        // Lock file should be removed after release
-        assert!(!lock_file_path.exists());
-    }
-
-    #[test]
-    fn test_workspace_lock_try_acquire() {
-        let temp = TempDir::new().unwrap();
-        let workspace = Workspace::init(temp.path()).unwrap();
-
-        // First acquire should succeed
-        let guard1 = WorkspaceGuard::try_acquire(&workspace.augent_dir).unwrap();
-        assert!(guard1.is_some());
-
-        // Second try should fail (lock held)
-        let guard2 = WorkspaceGuard::try_acquire(&workspace.augent_dir).unwrap();
-        assert!(guard2.is_none());
-
-        // After release, should succeed again
-        drop(guard1);
-        let guard3 = WorkspaceGuard::try_acquire(&workspace.augent_dir).unwrap();
-        assert!(guard3.is_some());
     }
 
     #[test]

@@ -37,18 +37,37 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
         })?,
     };
 
-    // Initialize or open workspace
-    let mut workspace = Workspace::init_or_open(&current_dir)?;
+    // Parse source and discover bundles BEFORE creating workspace
+    let source = BundleSource::parse(&args.source)?;
+    println!("Installing from: {}", source.display_url());
 
-    // Acquire workspace lock
-    let _guard = workspace.lock()?;
+    let resolver = Resolver::new(&current_dir);
+    let discovered = resolver.discover_bundles(&args.source)?;
+
+    // Show interactive menu if multiple bundles, auto-select if one
+    let discovered_count = discovered.len();
+    let selected_bundles = if discovered_count > 1 {
+        select_bundles_interactively(&discovered)?
+    } else if discovered_count == 1 {
+        discovered
+    } else {
+        vec![] // No bundles discovered - will be handled in do_install
+    };
+
+    // If user selected nothing from menu (and there were multiple), exit without creating workspace
+    if selected_bundles.is_empty() && discovered_count > 1 {
+        return Ok(());
+    }
+
+    // NOW initialize or open workspace (after user has selected bundles)
+    let mut workspace = Workspace::init_or_open(&current_dir)?;
 
     // Create transaction for atomic operations
     let mut transaction = Transaction::new(&workspace);
     transaction.backup_configs()?;
 
     // Perform installation
-    match do_install(&args, &mut workspace, &mut transaction) {
+    match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
         Ok(()) => {
             transaction.commit();
             Ok(())
@@ -60,50 +79,55 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
 /// Perform the actual installation
 fn do_install(
     args: &InstallArgs,
+    selected_bundles: &[crate::resolver::DiscoveredBundle],
     workspace: &mut Workspace,
     transaction: &mut Transaction,
 ) -> Result<()> {
-    // Parse source early to show full resolved URL to user
-    let source = BundleSource::parse(&args.source)?;
-    println!("Installing from: {}", source.display_url());
-
     let mut resolver = Resolver::new(&workspace.root);
 
-    let discovered = resolver.discover_bundles(&args.source)?;
-
-    let resolved_bundles = if discovered.len() > 1 {
-        // Multiple bundles found - show interactive menu
-        let selected = select_bundles_interactively(&discovered)?;
-        if selected.is_empty() {
-            return Ok(());
-        }
-        let selected_paths: Vec<String> = selected
-            .iter()
-            .map(|b| b.path.to_string_lossy().to_string())
-            .collect();
-        resolver.resolve_multiple(&selected_paths)?
-    } else if discovered.len() == 1 {
+    let resolved_bundles = if selected_bundles.is_empty() {
+        // No bundles discovered - resolve source directly (might be a bundle itself)
+        resolver.resolve(&args.source)?
+    } else if selected_bundles.len() == 1 {
         // Single bundle found
-        // Check if the original source was a git source with ref/subdirectory
-        // If so, use the original source to preserve git metadata
-        let bundle_source = BundleSource::parse(&args.source)?;
-        if let BundleSource::Git(ref git_source) = bundle_source {
-            if git_source.git_ref.is_some() || git_source.subdirectory.is_some() {
-                // Use original source to preserve git metadata
-                resolver.resolve(&args.source)?
-            } else {
-                // No ref/subdirectory, use discovered path
-                let bundle_path = discovered[0].path.to_string_lossy().to_string();
-                resolver.resolve_multiple(&[bundle_path])?
-            }
+        // Check if the discovered bundle has git source info
+        if let Some(ref git_source) = selected_bundles[0].git_source {
+            // Reconstruct the source string from git source to preserve git metadata
+            let source_string = format_git_source_string(git_source);
+            resolver.resolve(&source_string)?
         } else {
-            // Not a git source, use discovered path
-            let bundle_path = discovered[0].path.to_string_lossy().to_string();
+            // Local directory, use discovered path
+            let bundle_path = selected_bundles[0].path.to_string_lossy().to_string();
             resolver.resolve_multiple(&[bundle_path])?
         }
     } else {
-        // No bundles discovered - resolve source directly (might be a bundle itself)
-        resolver.resolve(&args.source)?
+        // Multiple bundles selected - check if any have git source
+        let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
+
+        if has_git_source {
+            // For git sources, resolve each bundle with its specific subdirectory
+            let mut all_bundles = Vec::new();
+            for discovered in selected_bundles {
+                if let Some(ref git_source) = discovered.git_source {
+                    let source_string = format_git_source_string(git_source);
+                    let bundles = resolver.resolve(&source_string)?;
+                    all_bundles.extend(bundles);
+                } else {
+                    // Local directory
+                    let bundle_path = discovered.path.to_string_lossy().to_string();
+                    let bundles = resolver.resolve_multiple(&[bundle_path])?;
+                    all_bundles.extend(bundles);
+                }
+            }
+            all_bundles
+        } else {
+            // All local directories
+            let selected_paths: Vec<String> = selected_bundles
+                .iter()
+                .map(|b| b.path.to_string_lossy().to_string())
+                .collect();
+            resolver.resolve_multiple(&selected_paths)?
+        }
     };
 
     if resolved_bundles.is_empty() {
@@ -176,6 +200,21 @@ fn do_install(
 
     for bundle in &resolved_bundles {
         println!("  - {}", bundle.name);
+
+        // Show files installed for this bundle
+        for (bundle_path, installed) in installer.installed_files() {
+            // Group by resource type for cleaner display
+            // Note: installed_files contains all bundles, so we check if this bundle_path
+            // belongs to the current bundle's source_path
+            if bundle_path.starts_with(&bundle.name)
+                || bundle_path.contains(&bundle.name.replace('@', ""))
+            {
+                println!(
+                    "    {} ({})",
+                    installed.bundle_path, installed.resource_type
+                );
+            }
+        }
     }
 
     Ok(())
@@ -225,12 +264,14 @@ fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<Lock
     // Calculate hash
     let bundle_hash = hash::hash_directory(&bundle.source_path)?;
 
+    eprintln!("DEBUG: bundle.resolved_ref = {:?}", bundle.resolved_ref);
+
     let source = if let Some(git_source) = &bundle.git_source {
         LockedSource::Git {
             url: git_source.url.clone(),
-            git_ref: git_source.git_ref.clone(),
+            git_ref: bundle.resolved_ref.clone(), // Use resolved_ref (actual branch name, not user-specified)
             sha: bundle.resolved_sha.clone().unwrap_or_default(),
-            path: git_source.subdirectory.clone(),
+            path: git_source.subdirectory.clone(), // Use subdirectory from git_source
             hash: bundle_hash,
         }
     } else {
@@ -268,6 +309,25 @@ fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<Lock
     })
 }
 
+/// Format a GitSource as a source string that can be parsed
+fn format_git_source_string(git_source: &crate::source::GitSource) -> String {
+    let mut url = git_source.url.clone();
+
+    // Append ref if present
+    if let Some(ref git_ref) = git_source.git_ref {
+        url.push('#');
+        url.push_str(git_ref);
+    }
+
+    // Append subdirectory if present
+    if let Some(ref subdir) = git_source.subdirectory {
+        url.push(':');
+        url.push_str(subdir);
+    }
+
+    url
+}
+
 /// Update workspace configuration files
 fn update_configs(
     workspace: &mut Workspace,
@@ -280,13 +340,29 @@ fn update_configs(
         if bundle.dependency.is_none() {
             // Root bundle (what user specified): add with original source specification
             if !workspace.bundle_config.has_dependency(&bundle.name) {
-                let bundle_source = BundleSource::parse(source)?;
-                let dependency = match bundle_source {
-                    BundleSource::Dir { path } => {
-                        BundleDependency::local(&bundle.name, path.to_string_lossy().to_string())
-                    }
-                    BundleSource::Git(git) => {
-                        BundleDependency::git(&bundle.name, &git.url, git.git_ref.clone())
+                // Use bundle.git_source directly to preserve subdirectory information
+                // from interactive selection (instead of re-parsing the original source string)
+                let dependency = if let Some(ref git_source) = bundle.git_source {
+                    // Git bundle - create dependency preserving subdirectory
+                    let mut dep = BundleDependency::git(
+                        &bundle.name,
+                        &git_source.url,
+                        git_source.git_ref.clone(),
+                    );
+                    // Preserve subdirectory from git_source
+                    dep.subdirectory = git_source.subdirectory.clone();
+                    dep
+                } else {
+                    // Local directory - parse original source string
+                    let bundle_source = BundleSource::parse(source)?;
+                    match bundle_source {
+                        BundleSource::Dir { path } => BundleDependency::local(
+                            &bundle.name,
+                            path.to_string_lossy().to_string(),
+                        ),
+                        BundleSource::Git(git) => {
+                            BundleDependency::git(&bundle.name, &git.url, git.git_ref.clone())
+                        }
                     }
                 };
                 workspace.bundle_config.add_dependency(dependency);
@@ -373,6 +449,7 @@ mod tests {
             dependency: None,
             source_path: temp.path().to_path_buf(),
             resolved_sha: None,
+            resolved_ref: None,
             git_source: None,
             config: None,
         };
@@ -393,8 +470,8 @@ mod tests {
 
         let git_source = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
-            git_ref: Some("main".to_string()),
             subdirectory: None,
+            git_ref: Some("main".to_string()),
             resolved_sha: Some("abc123".to_string()),
         };
 
@@ -403,6 +480,7 @@ mod tests {
             dependency: None,
             source_path: temp.path().to_path_buf(),
             resolved_sha: Some("abc123".to_string()),
+            resolved_ref: Some("main".to_string()),
             git_source: Some(git_source),
             config: None,
         };
@@ -415,6 +493,55 @@ mod tests {
         if let LockedSource::Git { sha, git_ref, .. } = &locked.source {
             assert_eq!(sha, "abc123");
             assert_eq!(git_ref, &Some("main".to_string()));
+        }
+    }
+
+    #[test]
+    fn test_create_locked_bundle_git_with_subdirectory() {
+        let temp = TempDir::new().unwrap();
+
+        // Create a simple bundle
+        std::fs::create_dir(temp.path().join("commands")).unwrap();
+        std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
+
+        let git_source = GitSource {
+            url: "https://github.com/test/repo.git".to_string(),
+            subdirectory: Some("plugins/accessibility-compliance".to_string()),
+            git_ref: None, // User didn't specify a ref
+            resolved_sha: Some("abc123".to_string()),
+        };
+
+        let bundle = crate::resolver::ResolvedBundle {
+            name: "@test/repo".to_string(),
+            dependency: None,
+            source_path: temp.path().to_path_buf(),
+            resolved_sha: Some("abc123".to_string()),
+            resolved_ref: Some("main".to_string()), // Actual resolved ref from HEAD
+            git_source: Some(git_source),
+            config: None,
+        };
+
+        let locked = create_locked_bundle(&bundle).unwrap();
+
+        // Verify bundle name doesn't include subdirectory
+        assert_eq!(locked.name, "@test/repo");
+
+        // Verify lockfile has both ref and path fields
+        if let LockedSource::Git {
+            url,
+            git_ref,
+            sha,
+            path,
+            ..
+        } = &locked.source
+        {
+            assert_eq!(url, "https://github.com/test/repo.git");
+            assert_eq!(git_ref, &Some("main".to_string())); // Actual resolved ref
+            assert_eq!(sha, "abc123");
+            assert_eq!(path, &Some("plugins/accessibility-compliance".to_string()));
+        // Subdirectory
+        } else {
+            panic!("Expected Git source");
         }
     }
 
@@ -456,6 +583,7 @@ mod tests {
             dependency: None,
             source_path: temp.path().to_path_buf(),
             resolved_sha: None,
+            resolved_ref: None,
             git_source: None,
             config: None,
         };
@@ -487,6 +615,7 @@ mod tests {
             dependency: None,
             source_path: temp.path().to_path_buf(),
             resolved_sha: None,
+            resolved_ref: None,
             git_source: None,
             config: None,
         };
@@ -534,6 +663,7 @@ mod tests {
             dependency: None,
             source_path: temp.path().to_path_buf(),
             resolved_sha: None,
+            resolved_ref: None,
             git_source: None,
             config: None,
         };

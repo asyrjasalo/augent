@@ -260,6 +260,28 @@ pub fn head_sha(repo: &Repository) -> Result<String> {
     Ok(commit.id().to_string())
 }
 
+/// Get the symbolic name of HEAD (e.g., "main", "master")
+///
+/// Returns the branch name if HEAD is not detached, None if HEAD is detached
+pub fn get_head_ref_name(repo: &Repository) -> Result<Option<String>> {
+    let head = repo.head().map_err(|e| AugentError::GitRefResolveFailed {
+        git_ref: "HEAD".to_string(),
+        reason: e.message().to_string(),
+    })?;
+
+    // Check if HEAD is symbolic (i.e., not detached)
+    // is_branch() returns true only for normal branch references
+    if head.is_branch() {
+        if let Some(refname) = head.shorthand() {
+            Ok(Some(refname.to_string()))
+        } else {
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -323,6 +345,55 @@ mod tests {
         if let Ok(sha) = sha {
             assert_eq!(sha, commit_oid.to_string());
         }
+    }
+
+    #[test]
+    fn test_get_head_ref_name() {
+        // Create a test repository
+        let temp = TempDir::new().unwrap();
+        let repo = Repository::init(temp.path()).unwrap();
+
+        // Create an initial commit
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+        let tree_id = {
+            let mut index = repo.index().unwrap();
+            index.write_tree().unwrap()
+        };
+        let tree = repo.find_tree(tree_id).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .unwrap();
+
+        // Get HEAD ref name (should be "master" or "main" depending on git version)
+        let ref_name = get_head_ref_name(&repo).unwrap();
+        assert!(ref_name.is_some());
+        assert!(ref_name == Some("master".to_string()) || ref_name == Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_get_head_ref_name_detached() {
+        // Create a test repository
+        let temp = TempDir::new().unwrap();
+        let repo = Repository::init(temp.path()).unwrap();
+
+        // Create an initial commit
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+        let tree_id = {
+            let mut index = repo.index().unwrap();
+            index.write_tree().unwrap()
+        };
+        let tree = repo.find_tree(tree_id).unwrap();
+        let commit_oid = repo
+            .commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .unwrap();
+
+        // Checkout the commit to detach HEAD
+        let oid = git2::Oid::from_str(&commit_oid.to_string()).unwrap();
+        let commit = repo.find_commit(oid).unwrap();
+        repo.set_head_detached(commit.id()).unwrap();
+
+        // Get HEAD ref name (should be None when detached)
+        let ref_name = get_head_ref_name(&repo).unwrap();
+        assert!(ref_name.is_none());
     }
 
     #[test]

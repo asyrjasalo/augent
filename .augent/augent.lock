@@ -1,4 +1,21 @@
 {
   "name": "@asyrjasalo/augent",
-  "bundles": []
+  "bundles": [
+    {
+      "name": "@wshobson/agents",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/wshobson/agents.git",
+        "path": "plugins/agent-orchestration",
+        "ref": null,
+        "sha": "1135ac606247648d9e4724f027280d4114282858",
+        "hash": "blake3:34810f1a72197e49305aef3ccdfa461b4960d21c4635ac5d64d51fc312902cae"
+      },
+      "files": [
+        "commands/multi-agent-optimize.md",
+        "commands/improve-agent.md",
+        "agents/context-manager.md"
+      ]
+    }
+  ]
 }

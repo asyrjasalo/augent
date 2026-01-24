@@ -276,15 +276,6 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Set up `.augent/bundles/` directory structure
 - [x] Write tests for workspace initialization
 
-#### Feature 5.2: Workspace Locking
-
-- [x] Implement advisory file lock using `fslock`
-- [x] Create `WorkspaceGuard` RAII wrapper
-- [x] Implement lock acquisition (blocking)
-- [x] Implement lock release on drop
-- [x] Add error handling for lock conflicts
-- [x] Write tests for concurrent access scenarios
-
 #### Feature 5.3: Modified File Detection
 
 - [x] Trace files from `augent.workspace.yaml` to source bundle/SHA

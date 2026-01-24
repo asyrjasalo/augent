@@ -1,6 +1,7 @@
 //! CLI integration tests using the REAL augent binary
 
 mod common;
+use common::TestWorkspace;
 
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -423,4 +424,105 @@ fn test_install_missing_source() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("required"));
+}
+
+#[test]
+fn test_install_git_subdirectory_creates_correct_name_and_type() {
+    let workspace = TestWorkspace::new();
+    workspace.create_augent_dir();
+    workspace.create_all_agent_dirs();
+
+    // Create a git repo with a subdirectory bundle
+    let repo_path = workspace.create_mock_git_repo("test-repo");
+
+    // Create a subdirectory with bundle content
+    let sub_dir = repo_path.join("subdir-bundle");
+    std::fs::create_dir_all(&sub_dir).expect("Failed to create subdirectory");
+
+    std::fs::write(
+        sub_dir.join("augent.yaml"),
+        r#"name: "@custom/subdir-bundle"
+bundles: []
+"#,
+    )
+    .expect("Failed to write augent.yaml");
+
+    std::fs::create_dir_all(sub_dir.join("commands")).expect("Failed to create commands dir");
+    std::fs::write(sub_dir.join("commands/test.md"), "# Test Command")
+        .expect("Failed to write command file");
+
+    // Commit the changes
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Add subdirectory bundle"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    // Write initial workspace config
+    workspace.write_file(
+        ".augent/augent.yaml",
+        r#"name: "@test/workspace"
+bundles: []
+"#,
+    );
+
+    // Run install with subdirectory selection (simulate menu selection by selecting first bundle)
+    let repo_url = format!(
+        "file://{}",
+        repo_path.display().to_string().replace('\\', "/")
+    );
+
+    // For now, we'll test with the full source string including subdirectory
+    // In real usage, users would select from an interactive menu
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args([
+            "install",
+            &format!("{}:subdir-bundle", repo_url),
+            "--for",
+            "claude",
+        ])
+        .assert()
+        .success();
+
+    // Verify the lockfile has the correct source type (git) and path (subdirectory)
+    let lockfile_content = workspace.read_file(".augent/augent.lock");
+    assert!(
+        lockfile_content.contains(r#""type": "git""#),
+        "Lockfile should have git source type"
+    );
+    assert!(
+        lockfile_content.contains(r#""path": "subdir-bundle""#),
+        "Lockfile should have subdirectory in path field"
+    );
+
+    // Verify the bundle config has the correct name (not @local/ and uses author/repo format)
+    let bundle_config_content = workspace.read_file(".augent/augent.yaml");
+    // The name depends on what the bundle config specifies, which is @custom/subdir-bundle
+    // or if not present, should be @test-repo/test-repo#subdir-bundle
+    assert!(
+        !bundle_config_content.contains("@local/"),
+        "Bundle config should not contain @local/ prefix for git bundles"
+    );
+    // When bundle has augent.yaml with custom name, that takes precedence
+    // But for bundles without augent.yaml, should extract author/repo from URL
+    if !bundle_config_content.contains("@custom/subdir-bundle") {
+        // Bundle doesn't have custom name in augent.yaml, should use URL-based name
+        // For file:// URLs, the repo name is the directory name
+        assert!(
+            bundle_config_content.contains("test-repo")
+                || bundle_config_content.contains("subdir-bundle"),
+            "Bundle config should contain repository name or subdirectory"
+        );
+    }
 }

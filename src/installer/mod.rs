@@ -39,6 +39,10 @@ pub struct DiscoveredResource {
 /// Result of installing a file
 #[derive(Debug, Clone)]
 pub struct InstalledFile {
+    /// Original bundle path (e.g., "commands/debug.md")
+    pub bundle_path: String,
+    /// Resource type (commands, rules, agents, skills, root, or file name)
+    pub resource_type: String,
     /// Target paths per platform (e.g., ".cursor/rules/debug.mdc")
     pub target_paths: Vec<String>,
 }
@@ -62,6 +66,7 @@ struct PendingInstallation {
     target_path: PathBuf,
     merge_strategy: MergeStrategy,
     bundle_path: String,
+    resource_type: String,
 }
 
 impl<'a> Installer<'a> {
@@ -193,6 +198,7 @@ impl<'a> Installer<'a> {
                             target_path: target,
                             merge_strategy: rule.merge,
                             bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                            resource_type: resource.resource_type.clone(),
                         });
                         found_rule = true;
                     }
@@ -206,6 +212,7 @@ impl<'a> Installer<'a> {
                         target_path: target,
                         merge_strategy: MergeStrategy::Replace,
                         bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                        resource_type: resource.resource_type.clone(),
                     });
                 }
             } else {
@@ -218,6 +225,7 @@ impl<'a> Installer<'a> {
                             target_path,
                             merge_strategy,
                             bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                            resource_type: resource.resource_type.clone(),
                         });
                     }
                 }
@@ -297,7 +305,13 @@ impl<'a> Installer<'a> {
             .unwrap_or(target_path);
         let target_paths = vec![relative.to_string_lossy().to_string()];
 
+        // Use resource_type from first installation (they all target the same path)
+        let resource_type = installations[0].resource_type.clone();
+        let bundle_path = installations[0].bundle_path.clone();
+
         let installed = InstalledFile {
+            bundle_path,
+            resource_type,
             target_paths: target_paths.clone(),
         };
 
@@ -305,6 +319,8 @@ impl<'a> Installer<'a> {
             self.installed_files.insert(
                 installation.bundle_path.clone(),
                 InstalledFile {
+                    bundle_path: installation.bundle_path.clone(),
+                    resource_type: installation.resource_type.clone(),
                     target_paths: target_paths.clone(),
                 },
             );
@@ -976,6 +992,7 @@ mod tests {
             dependency: None,
             source_path: temp.path().to_path_buf(),
             resolved_sha: None,
+            resolved_ref: None,
             git_source: None,
             config: None,
         };

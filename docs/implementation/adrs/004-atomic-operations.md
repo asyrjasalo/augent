@@ -12,7 +12,6 @@ Operations like `install` and `uninstall` modify multiple files. Failures mid-op
 - Backup configuration files before modification
 - Track all file operations during command execution
 - On any error, rollback all changes
-- Use OS-level advisory locks to prevent concurrent modification
 
 ## Implementation
 

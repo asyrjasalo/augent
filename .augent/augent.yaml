@@ -1,2 +1,6 @@
 name: '@asyrjasalo/augent'
-bundles: []
+
+bundles:
+- name: '@wshobson/agents'
+  git: https://github.com/wshobson/agents.git
+  subdirectory: plugins/agent-orchestration

@@ -454,32 +454,6 @@ URL slug: `github.com/author/repo` → `github.com-author-repo`
 
 ## Concurrency
 
-### Workspace Locking
-
-Use `fslock` for advisory file locks:
-
-```rust
-use fslock::LockFile;
-
-pub struct WorkspaceGuard {
-    lock: LockFile,
-}
-
-impl WorkspaceGuard {
-    pub fn acquire(path: &Path) -> Result<Self> {
-        let mut lock = LockFile::open(&path.join(".augent/.lock"))?;
-        lock.lock()?; // Blocking
-        Ok(Self { lock })
-    }
-}
-
-impl Drop for WorkspaceGuard {
-    fn drop(&mut self) {
-        self.lock.unlock().ok();
-    }
-}
-```
-
 ### CI/CD Considerations
 
 - `--frozen` flag for reproducible builds

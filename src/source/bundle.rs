@@ -32,10 +32,6 @@ pub struct BundleDependency {
     /// Dependency name
     pub name: String,
 
-    /// Local subdirectory path (for bundles in same repo)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subdirectory: Option<String>,
-
     /// Git repository URL
     #[serde(skip_serializing_if = "Option::is_none")]
     pub git: Option<String>,
@@ -43,6 +39,10 @@ pub struct BundleDependency {
     /// Git ref (branch, tag, or SHA)
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
     pub git_ref: Option<String>,
+
+    /// Local subdirectory path (for bundles in same repo)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subdirectory: Option<String>,
 }
 
 impl Bundle {
@@ -126,9 +126,9 @@ mod tests {
         );
         bundle.dependencies.push(BundleDependency {
             name: "dep1".to_string(),
-            subdirectory: Some("path/to/dep1".to_string()),
             git: None,
             git_ref: None,
+            subdirectory: Some("path/to/dep1".to_string()),
         });
         assert_eq!(bundle.dependencies.len(), 1);
     }
@@ -170,25 +170,25 @@ mod tests {
     fn test_dependency_validation() {
         let dep = BundleDependency {
             name: "dep1".to_string(),
-            subdirectory: Some("path".to_string()),
             git: None,
             git_ref: None,
+            subdirectory: Some("path".to_string()),
         };
         assert!(dep.validate().is_ok());
 
         let dep2 = BundleDependency {
             name: "".to_string(),
-            subdirectory: None,
             git: None,
             git_ref: None,
+            subdirectory: None,
         };
         assert!(dep2.validate().is_err());
 
         let dep3 = BundleDependency {
             name: "dep3".to_string(),
-            subdirectory: None,
             git: None,
             git_ref: None,
+            subdirectory: None,
         };
         assert!(dep3.validate().is_err());
     }

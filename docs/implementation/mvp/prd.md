@@ -204,12 +204,6 @@ augent version - show version number, build info, and Rust version
 - This ensures the workspace is never left in an inconsistent state due to a failed operation.
 - If configuration files (`augent.yaml`, `augent.lock`, `augent.workspace.yaml`) are corrupted or invalid, augent shows a clear error message indicating which file is invalid and what the problem is, then exits with a non-zero status code. No automatic fixes or restorations are performed.
 
-### Concurrency Control
-
-- augent uses OS-level advisory locks to prevent concurrent modifications to the same workspace.
-- If `augent install` or `augent uninstall` is run while another augent operation is in progress on the same workspace, the second process waits for the first to complete using advisory file locks.
-- This prevents corruption of configuration files and ensures workspace consistency.
-
 ### CI/CD Environments
 
 - augent works naturally in CI/CD environments without special flags or configuration.

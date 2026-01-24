@@ -97,12 +97,18 @@ pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
 /// Clones the repository, checks out the specified commit (or resolves the ref),
 /// and stores it in the cache directory.
 ///
-/// Returns the path to the cached bundle and the resolved SHA.
-pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String)> {
+/// Returns the path to the cached bundle, the resolved SHA, and the resolved ref name.
+pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
     // If we already have a resolved SHA and it's cached, return early
     if let Some(sha) = &source.resolved_sha {
         if let Some(path) = get_cached(&source.url, sha)? {
-            return Ok((path, sha.clone()));
+            // Get the actual ref name from the cached repository's HEAD
+            let resolved_ref = if source.git_ref.is_none() {
+                git::get_head_ref_name(&git::open(&path)?)?
+            } else {
+                source.git_ref.clone()
+            };
+            return Ok((path, sha.clone(), resolved_ref));
         }
     }
 
@@ -111,7 +117,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String)> {
         message: format!("Failed to create temp directory: {}", e),
     })?;
 
-    // Clone the repository
+    // Clone repository
     let repo = git::clone(&source.url, temp_dir.path())?;
 
     // Resolve the ref to a SHA
@@ -119,11 +125,27 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String)> {
 
     // Check if we already have this SHA cached
     if let Some(path) = get_cached(&source.url, &sha)? {
-        return Ok((path, sha));
+        // Get the actual ref name from the cached repository's HEAD
+        let resolved_ref = if source.git_ref.is_none() {
+            git::get_head_ref_name(&git::open(&path)?)?
+        } else {
+            source.git_ref.clone()
+        };
+        return Ok((path, sha, resolved_ref));
     }
 
-    // Checkout the specific commit
+    // Checkout specific commit
     git::checkout_commit(&repo, &sha)?;
+
+    // Determine the resolved ref name
+    // If user didn't specify a ref, we need to get the actual branch name from HEAD
+    let resolved_ref = if source.git_ref.is_none() {
+        // Get the branch name from HEAD before we checkout (which makes it detached)
+        git::get_head_ref_name(&repo)?
+    } else {
+        // User specified a ref, use that
+        source.git_ref.clone()
+    };
 
     // Determine the final cache path
     let cache_path = bundle_cache_path(&source.url, &sha)?;
@@ -139,7 +161,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String)> {
     // We need to copy instead since temp might be on different filesystem
     copy_dir_recursive(temp_dir.path(), &cache_path)?;
 
-    Ok((cache_path, sha))
+    Ok((cache_path, sha, resolved_ref))
 }
 
 /// Get the bundle content path, accounting for subdirectory
@@ -497,8 +519,8 @@ mod tests {
     fn test_get_bundle_content_path() {
         let source = GitSource {
             url: "https://github.com/author/repo.git".to_string(),
-            git_ref: None,
             subdirectory: Some("plugins/bundle".to_string()),
+            git_ref: None,
             resolved_sha: None,
         };
         let cache_path = PathBuf::from("/cache/repo/abc123");
@@ -510,8 +532,8 @@ mod tests {
 
         let source_no_subdir = GitSource {
             url: "https://github.com/author/repo.git".to_string(),
-            git_ref: None,
             subdirectory: None,
+            git_ref: None,
             resolved_sha: None,
         };
         let content_path = get_bundle_content_path(&source_no_subdir, &cache_path);

@@ -1,2 +1,11 @@
 name: '@asyrjasalo/augent'
-bundles: []
+
+bundles:
+- name: '@wshobson/agents'
+  enabled:
+    commands/multi-agent-optimize.md:
+    - .claude/commands/multi-agent-optimize.md
+    agents/context-manager.md:
+    - .claude/agents/context-manager.md
+    commands/improve-agent.md:
+    - .claude/commands/improve-agent.md

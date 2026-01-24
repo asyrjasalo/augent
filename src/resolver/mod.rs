@@ -31,6 +31,9 @@ pub struct ResolvedBundle {
     /// For git sources: the resolved SHA
     pub resolved_sha: Option<String>,
 
+    /// For git sources: the resolved ref name (e.g., "main", "master", or None if detached)
+    pub resolved_ref: Option<String>,
+
     /// For git sources: the original source info
     pub git_source: Option<GitSource>,
 
@@ -49,6 +52,9 @@ pub struct DiscoveredBundle {
 
     /// Optional bundle description
     pub description: Option<String>,
+
+    /// For git sources: the original git source info
+    pub git_source: Option<GitSource>,
 }
 
 /// Dependency resolver for bundles
@@ -146,6 +152,7 @@ impl Resolver {
                 name,
                 path: full_path.clone(),
                 description: self.get_bundle_description(&full_path),
+                git_source: None,
             });
         } else {
             self.scan_directory_recursively(&full_path, &mut discovered);
@@ -175,6 +182,7 @@ impl Resolver {
                                 name,
                                 path: entry_path.clone(),
                                 description: self.get_bundle_description(&entry_path),
+                                git_source: None,
                             });
                         }
                     } else {
@@ -187,10 +195,38 @@ impl Resolver {
 
     /// Discover bundles in a cached git repository
     fn discover_git_bundles(&self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
-        let (cache_path, _sha) = cache::cache_bundle(source)?;
+        let (cache_path, _sha, resolved_ref) = cache::cache_bundle(source)?;
         let content_path = cache::get_bundle_content_path(source, &cache_path);
 
-        self.discover_local_bundles(&content_path)
+        let mut discovered = self.discover_local_bundles(&content_path)?;
+
+        // Add git source info to each discovered bundle
+        // Each bundle gets its own subdirectory path relative to content_path
+        for bundle in &mut discovered {
+            // Calculate subdirectory path relative to content_path
+            let subdirectory = if bundle.path.starts_with(&content_path) {
+                bundle
+                    .path
+                    .strip_prefix(&content_path)
+                    .ok()
+                    .and_then(|p| p.to_str())
+                    .map(|s| s.trim_start_matches('/').to_string())
+                    .filter(|s| !s.is_empty())
+            } else {
+                None
+            };
+
+            // Create GitSource with this bundle's specific subdirectory
+            // Preserve resolved_ref from cache so it's available when resolving
+            bundle.git_source = Some(GitSource {
+                url: source.url.clone(),
+                subdirectory: subdirectory.or_else(|| source.subdirectory.clone()),
+                git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
+                resolved_sha: None,
+            });
+        }
+
+        Ok(discovered)
     }
 
     fn is_bundle_directory(&self, path: &Path) -> bool {
@@ -310,6 +346,7 @@ impl Resolver {
             dependency: dependency.cloned(),
             source_path: full_path,
             resolved_sha: None,
+            resolved_ref: None,
             git_source: None,
             config,
         };
@@ -325,8 +362,8 @@ impl Resolver {
         source: &GitSource,
         dependency: Option<&BundleDependency>,
     ) -> Result<ResolvedBundle> {
-        // Cache the bundle (clone if needed, resolve SHA)
-        let (cache_path, sha) = cache::cache_bundle(source)?;
+        // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
+        let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
 
         // Get the actual bundle content path (accounting for subdirectory)
         let content_path = cache::get_bundle_content_path(source, &cache_path);
@@ -351,14 +388,22 @@ impl Resolver {
             None => match dependency {
                 Some(dep) => dep.name.clone(),
                 None => {
-                    // Derive name from URL
-                    let url_name = source
-                        .url
-                        .rsplit('/')
-                        .next()
-                        .unwrap_or("bundle")
-                        .trim_end_matches(".git");
-                    format!("@git/{}", url_name)
+                    // Derive name from URL - format as @author/repo
+                    // Subdirectory is handled separately in BundleDependency, not in the name
+                    let url_clean = source.url.trim_end_matches(".git");
+                    let url_parts: Vec<&str> = url_clean.split('/').collect();
+
+                    let (author, repo) = if url_parts.len() >= 2 {
+                        (
+                            url_parts[url_parts.len() - 2],
+                            url_parts[url_parts.len() - 1],
+                        )
+                    } else {
+                        ("author", url_clean)
+                    };
+
+                    // Format name as @author/repo (without subdirectory)
+                    format!("@{}/{}", author, repo)
                 }
             },
         };
@@ -391,6 +436,7 @@ impl Resolver {
             dependency: dependency.cloned(),
             source_path: content_path,
             resolved_sha: Some(sha),
+            resolved_ref,
             git_source: Some(source.clone()),
             config,
         };
@@ -407,8 +453,8 @@ impl Resolver {
             // Git dependency
             let git_source = GitSource {
                 url: git_url.clone(),
-                git_ref: dep.git_ref.clone(),
                 subdirectory: dep.subdirectory.clone(),
+                git_ref: dep.git_ref.clone(),
                 resolved_sha: None,
             };
             BundleSource::Git(git_source)
@@ -439,8 +485,8 @@ impl Resolver {
             // Git dependency
             let git_source = GitSource {
                 url: git_url.clone(),
-                git_ref: dep.git_ref.clone(),
                 subdirectory: dep.subdirectory.clone(),
+                git_ref: dep.git_ref.clone(),
                 resolved_sha: None,
             };
             BundleSource::Git(git_source)

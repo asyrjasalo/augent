@@ -44,6 +44,11 @@ repos:
     hooks:
       - id: rumdl-fmt
         args: ["--disable", "MD013,MD033,MD041"]
+        files: |
+          (?x)^(
+            [^/]*\.md|
+            docs/.*\.md
+          )$
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.3.0
