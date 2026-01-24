@@ -332,7 +332,7 @@ impl Resolver {
                 // If path == content_path (empty subdirectory) and we have marketplace.json,
                 // this is a virtual bundle - use bundle name as subdirectory marker
                 if stripped.is_none() && has_marketplace {
-                    Some(format!("$virtual/{}", bundle.name))
+                    Some(format!("$plugin/{}", bundle.name))
                 } else {
                     stripped
                 }
@@ -510,9 +510,9 @@ impl Resolver {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
         let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
 
-        // Check if this is a virtual marketplace bundle (subdirectory starts with $virtual/)
+        // Check if this is a virtual marketplace bundle (subdirectory starts with $plugin/)
         let content_path = if let Some(ref subdir) = source.subdirectory {
-            if let Some(bundle_name) = subdir.strip_prefix("$virtual/") {
+            if let Some(bundle_name) = subdir.strip_prefix("$plugin/") {
                 // This is a virtual marketplace bundle - create synthetic directory
                 let marketplace_json = cache_path.join(".claude-plugin/marketplace.json");
                 if !marketplace_json.is_file() {
@@ -580,11 +580,11 @@ impl Resolver {
 
                     // Check if this is a virtual marketplace bundle
                     if let Some(ref subdir) = source.subdirectory {
-                        if let Some(bundle_name) = subdir.strip_prefix("$virtual/") {
+                        if let Some(bundle_name) = subdir.strip_prefix("$plugin/") {
                             // Include the specific bundle name from marketplace in full path
                             // Format: @author/repo/bundle-name
                             format!("{}/{}", base_name, bundle_name)
-                        } else if let Some(remaining_path) = subdir.strip_prefix("$virtual/") {
+                        } else if let Some(remaining_path) = subdir.strip_prefix("$plugin/") {
                             // Handle old format for backwards compatibility
                             format!("{}/{}", base_name, remaining_path)
                         } else {
@@ -1283,14 +1283,14 @@ bundles:
         let source1 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
-            subdirectory: Some("$virtual/bundle-one".to_string()),
+            subdirectory: Some("$plugin/bundle-one".to_string()),
             resolved_sha: None,
         };
 
         let source2 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
-            subdirectory: Some("$virtual/bundle-two".to_string()),
+            subdirectory: Some("$plugin/bundle-two".to_string()),
             resolved_sha: None,
         };
 
@@ -1298,34 +1298,34 @@ bundles:
         // Note: We can't easily test resolve_git directly without setting up mock git repos,
         // but we can verify the logic by checking that the naming logic is correct
 
-        // The fix ensures that when subdirectory starts with "$virtual/",
+        // The fix ensures that when subdirectory starts with "$plugin/",
         // the bundle name is derived from that subdirectory, not from the URL
         assert!(
             source1
                 .subdirectory
                 .as_ref()
                 .unwrap()
-                .starts_with("$virtual/")
+                .starts_with("$plugin/")
         );
         assert!(
             source2
                 .subdirectory
                 .as_ref()
                 .unwrap()
-                .starts_with("$virtual/")
+                .starts_with("$plugin/")
         );
 
         let name1 = source1
             .subdirectory
             .as_ref()
             .unwrap()
-            .strip_prefix("$virtual/")
+            .strip_prefix("$plugin/")
             .unwrap();
         let name2 = source2
             .subdirectory
             .as_ref()
             .unwrap()
-            .strip_prefix("$virtual/")
+            .strip_prefix("$plugin/")
             .unwrap();
 
         // Verify they have different names even though they share the same URL
