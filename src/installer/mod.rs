@@ -39,9 +39,6 @@ pub struct DiscoveredResource {
 /// Result of installing a file
 #[derive(Debug, Clone)]
 pub struct InstalledFile {
-    /// Source paths (universal format within bundle)
-    pub source_paths: Vec<String>,
-
     /// Target paths per platform (e.g., ".cursor/rules/debug.mdc")
     pub target_paths: Vec<String>,
 }
@@ -128,14 +125,29 @@ impl<'a> Installer<'a> {
         let resources = Self::discover_resources(&bundle.source_path)?;
         let pending_installations = self.collect_pending_installations(&resources, bundle)?;
 
-        let grouped = self.group_by_target(&pending_installations);
+        let grouped_by_target = self.group_by_target(&pending_installations);
 
         let mut workspace_bundle = WorkspaceBundle::new(&bundle.name);
-        for (ref target_path, ref installations) in grouped {
-            let installed = self.execute_installations(target_path, installations)?;
-            for source_path in installed.source_paths {
-                workspace_bundle.add_file(source_path, installed.target_paths.clone());
-            }
+
+        for (ref target_path, ref installations) in grouped_by_target {
+            let _installed = self.execute_installations(target_path, installations)?;
+        }
+
+        let mut source_to_targets: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+        for installation in &pending_installations {
+            let relative = installation
+                .target_path
+                .strip_prefix(self.workspace_root)
+                .unwrap_or(&installation.target_path);
+            source_to_targets
+                .entry(installation.bundle_path.clone())
+                .or_default()
+                .push(relative.to_string_lossy().to_string());
+        }
+
+        for (source_path, target_paths) in source_to_targets {
+            workspace_bundle.add_file(source_path, target_paths);
         }
 
         Ok(workspace_bundle)
@@ -183,7 +195,6 @@ impl<'a> Installer<'a> {
                             bundle_path: resource.bundle_path.to_string_lossy().to_string(),
                         });
                         found_rule = true;
-                        break; // Use first platform that has a rule
                     }
                 }
 
@@ -270,11 +281,6 @@ impl<'a> Installer<'a> {
             });
         }
 
-        let source_paths: Vec<String> = installations
-            .iter()
-            .map(|i| i.bundle_path.clone())
-            .collect();
-
         if installations.len() == 1 {
             let installation = &installations[0];
             self.apply_merge_and_copy(
@@ -292,7 +298,6 @@ impl<'a> Installer<'a> {
         let target_paths = vec![relative.to_string_lossy().to_string()];
 
         let installed = InstalledFile {
-            source_paths,
             target_paths: target_paths.clone(),
         };
 
@@ -300,7 +305,6 @@ impl<'a> Installer<'a> {
             self.installed_files.insert(
                 installation.bundle_path.clone(),
                 InstalledFile {
-                    source_paths: vec![installation.bundle_path.clone()],
                     target_paths: target_paths.clone(),
                 },
             );
