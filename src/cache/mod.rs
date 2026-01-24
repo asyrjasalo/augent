@@ -117,7 +117,10 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     })?;
 
     // Clone repository
-    let repo = git::clone(&source.url, temp_dir.path())?;
+    // If a specific ref is requested (tag or branch), we need a full clone to access tags
+    // Otherwise, we can use a shallow clone for speed
+    let shallow = source.git_ref.is_none();
+    let repo = git::clone(&source.url, temp_dir.path(), shallow)?;
 
     // Determine the resolved ref name BEFORE checkout
     // If user didn't specify a ref, we need to get the actual branch name from HEAD

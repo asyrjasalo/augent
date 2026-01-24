@@ -62,15 +62,22 @@ fn interpret_git_error(err: &git2::Error) -> String {
 ///
 /// Supports both HTTPS and SSH URLs. Authentication is delegated to git's
 /// native credential system (SSH keys, credential helpers, etc.).
-pub fn clone(url: &str, target: &Path) -> Result<Repository> {
+///
+/// # Arguments
+/// * `url` - The git URL to clone
+/// * `target` - The target directory path
+/// * `shallow` - Whether to do a shallow clone (depth=1). Default is true.
+///   Set to false when you need to resolve specific refs like tags.
+pub fn clone(url: &str, target: &Path, shallow: bool) -> Result<Repository> {
     let mut callbacks = RemoteCallbacks::new();
     setup_auth_callbacks(&mut callbacks);
 
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
 
-    // Shallow clone for remote URLs only (not supported for local file:// URLs)
-    if !url.starts_with("file://") {
+    // Shallow clone for remote URLs only if requested
+    // (not supported for local file:// URLs)
+    if shallow && !url.starts_with("file://") {
         fetch_options.depth(1);
     }
 
@@ -358,7 +365,11 @@ mod tests {
         // This test requires network access, so we mark it as ignored by default
         // Run with: cargo test -- --ignored
         let temp = TempDir::new().unwrap();
-        let result = clone("https://github.com/octocat/Hello-World.git", temp.path());
+        let result = clone(
+            "https://github.com/octocat/Hello-World.git",
+            temp.path(),
+            true,
+        );
 
         // This may fail in CI without network, so we don't assert success
         if let Ok(repo) = result {

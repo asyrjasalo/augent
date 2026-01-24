@@ -142,6 +142,9 @@ pub struct Resolver {
     /// Already resolved bundles (name -> resolved bundle)
     resolved: HashMap<String, ResolvedBundle>,
 
+    /// Resolution order (preserves order from augent.yaml for independent bundles)
+    resolution_order: Vec<String>,
+
     /// Resolution stack for cycle detection
     resolution_stack: Vec<String>,
 
@@ -156,6 +159,7 @@ impl Resolver {
         Self {
             workspace_root: workspace_root_path.clone(),
             resolved: HashMap::new(),
+            resolution_order: Vec::new(),
             resolution_stack: Vec::new(),
             current_context: workspace_root_path,
         }
@@ -166,6 +170,9 @@ impl Resolver {
     /// This is the main entry point for resolving a bundle and its dependencies.
     /// Returns resolved bundles in installation order (dependencies first).
     pub fn resolve(&mut self, source: &str) -> Result<Vec<ResolvedBundle>> {
+        // Clear resolution order for fresh resolve
+        self.resolution_order.clear();
+
         let bundle_source = BundleSource::parse(source)?;
         self.resolve_source(&bundle_source, None)?;
 
@@ -179,16 +186,18 @@ impl Resolver {
     ///
     /// This is similar to resolve() but accepts multiple source strings.
     /// Returns all resolved bundles in topological order.
+    /// Preserves the order from sources for independent bundles (important for overriding).
     pub fn resolve_multiple(&mut self, sources: &[String]) -> Result<Vec<ResolvedBundle>> {
-        let mut all_bundles = Vec::new();
+        // Clear resolution order and resolved bundles for fresh resolve
+        self.resolution_order.clear();
+        self.resolved.clear();
 
         for source in sources {
             let bundle_source = BundleSource::parse(source)?;
-            let bundle = self.resolve_source(&bundle_source, None)?;
-            all_bundles.push(bundle);
+            let _bundle = self.resolve_source(&bundle_source, None)?;
         }
 
-        // Get all resolved bundles in topological order
+        // Get all resolved bundles in topological order, respecting source order
         let order = self.topological_sort()?;
 
         Ok(order)
@@ -468,7 +477,7 @@ impl Resolver {
         // Check for circular dependency
         self.check_cycle(&name)?;
 
-        // If already resolved, return the cached result
+        // If already resolved, return cached result
         if let Some(resolved) = self.resolved.get(&name) {
             return Ok(resolved.clone());
         }
@@ -476,7 +485,12 @@ impl Resolver {
         // Push onto resolution stack for cycle detection
         self.resolution_stack.push(name.clone());
 
-        // Resolve dependencies first with the bundle's directory as context
+        // Track resolution order if this is a top-level source (no dependency)
+        if dependency.is_none() {
+            self.resolution_order.push(name.clone());
+        }
+
+        // Resolve dependencies first with with bundle's directory as context
         if let Some(cfg) = &config {
             for dep in &cfg.bundles {
                 self.resolve_dependency_with_context(dep, &source_path)?;
@@ -612,7 +626,12 @@ impl Resolver {
         // Push onto resolution stack for cycle detection
         self.resolution_stack.push(name.clone());
 
-        // Resolve dependencies first with the bundle's directory as context
+        // Track resolution order if this is a top-level source (no dependency)
+        if dependency.is_none() {
+            self.resolution_order.push(name.clone());
+        }
+
+        // Resolve dependencies first with bundle's directory as context
         if let Some(cfg) = &config {
             for dep in &cfg.bundles {
                 self.resolve_dependency_with_context(dep, &content_path)?;
@@ -809,8 +828,9 @@ impl Resolver {
             bundles: vec![], // Marketplace bundles have no dependencies
         };
 
-        let yaml_content =
-            serde_yaml::to_string(&config).map_err(|e| AugentError::ConfigReadFailed {
+        let yaml_content = config
+            .to_yaml()
+            .map_err(|e| AugentError::ConfigReadFailed {
                 path: target_dir.join("augent.yaml").display().to_string(),
                 reason: format!("Failed to serialize config: {}", e),
             })?;
@@ -918,6 +938,7 @@ impl Resolver {
     /// Perform topological sort to get installation order
     ///
     /// Returns bundles in dependency order (dependencies first, dependents last).
+    /// Preserves source order for independent bundles (important for overriding behavior).
     fn topological_sort(&self) -> Result<Vec<ResolvedBundle>> {
         let mut result = Vec::new();
         let mut visited = HashSet::new();
@@ -935,7 +956,15 @@ impl Resolver {
             deps.insert(name.clone(), bundle_deps);
         }
 
-        // DFS topological sort
+        // DFS topological sort using resolution_order as iteration order
+        // This ensures bundles are processed in the order they were specified in augent.yaml
+        for name in &self.resolution_order {
+            if !visited.contains(name) {
+                self.topo_dfs(name, &deps, &mut visited, &mut temp_visited, &mut result)?;
+            }
+        }
+
+        // Process any bundles not in resolution_order (e.g., transitive dependencies)
         for name in self.resolved.keys() {
             if !visited.contains(name) {
                 self.topo_dfs(name, &deps, &mut visited, &mut temp_visited, &mut result)?;

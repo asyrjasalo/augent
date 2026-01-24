@@ -53,13 +53,37 @@ impl WorkspaceConfig {
     pub fn to_yaml(&self) -> Result<String> {
         let yaml = serde_yaml::to_string(self)?;
         // Insert empty line after name field for readability
-        // Split on first newline and add an extra newline between
         let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
-        if parts.len() == 2 {
-            Ok(format!("{}\n\n{}", parts[0], parts[1]))
-        } else {
-            Ok(yaml)
+        if parts.len() != 2 {
+            return Ok(yaml);
         }
+
+        let result = format!("{}\n\n{}", parts[0], parts[1]);
+
+        // Add empty lines between bundle entries for readability
+        let lines: Vec<&str> = result.lines().collect();
+        let mut formatted = Vec::new();
+        let mut in_bundles_section = false;
+
+        for line in lines {
+            if line.trim_start().starts_with("bundles:") {
+                in_bundles_section = true;
+                formatted.push(line.to_string());
+            } else if in_bundles_section && line.trim_start().starts_with("- name:") {
+                // New bundle entry - add empty line before it (unless it's first one)
+                // Check if the last line was indented (meaning we had a previous bundle with content)
+                if let Some(last) = formatted.last() {
+                    if !last.is_empty() && last.starts_with(' ') {
+                        formatted.push(String::new());
+                    }
+                }
+                formatted.push(line.to_string());
+            } else {
+                formatted.push(line.to_string());
+            }
+        }
+
+        Ok(formatted.join("\n"))
     }
 
     /// Add a bundle to the workspace
@@ -230,6 +254,90 @@ bundles:
         assert_eq!(parsed.name, "@test/bundle");
         assert_eq!(parsed.bundles.len(), 1);
         assert_eq!(parsed.bundles[0].name, "dep1");
+    }
+
+    #[test]
+    fn test_workspace_config_to_yaml_multiple_bundles() {
+        let mut config = WorkspaceConfig::new("@test/workspace");
+
+        // Add first bundle
+        let mut bundle1 = WorkspaceBundle::new("@author/bundle1");
+        bundle1.add_file(
+            "commands/cmd1.md",
+            vec![".claude/commands/cmd1.md".to_string()],
+        );
+        bundle1.add_file(
+            "agents/agent1.md",
+            vec![".claude/agents/agent1.md".to_string()],
+        );
+        config.add_bundle(bundle1);
+
+        // Add second bundle
+        let mut bundle2 = WorkspaceBundle::new("@author/bundle2");
+        bundle2.add_file(
+            "commands/cmd2.md",
+            vec![".claude/commands/cmd2.md".to_string()],
+        );
+        bundle2.add_file(
+            "agents/agent2.md",
+            vec![".claude/agents/agent2.md".to_string()],
+        );
+        bundle2.add_file(
+            "agents/agent3.md",
+            vec![".claude/agents/agent3.md".to_string()],
+        );
+        config.add_bundle(bundle2);
+
+        // Add third bundle
+        let mut bundle3 = WorkspaceBundle::new("@author/bundle3");
+        bundle3.add_file(
+            "commands/cmd3.md",
+            vec![".claude/commands/cmd3.md".to_string()],
+        );
+        config.add_bundle(bundle3);
+
+        let yaml = config.to_yaml().unwrap();
+
+        // Verify structure
+        assert!(yaml.contains("name: '@test/workspace'"));
+        assert!(yaml.contains("bundles:"));
+
+        // Verify bundle entries exist
+        assert!(yaml.contains("- name: '@author/bundle1'"));
+        assert!(yaml.contains("- name: '@author/bundle2'"));
+        assert!(yaml.contains("- name: '@author/bundle3'"));
+
+        // Verify empty line between bundles
+        let bundles_section = yaml.split("bundles:").nth(1).unwrap();
+        let lines: Vec<&str> = bundles_section.lines().collect();
+
+        // Find indices of bundle entries
+        let mut bundle_start_indices = Vec::new();
+        for (i, line) in lines.iter().enumerate() {
+            if line.trim().starts_with("- name:") {
+                bundle_start_indices.push(i);
+            }
+        }
+
+        // Should have exactly 3 bundles
+        assert_eq!(bundle_start_indices.len(), 3);
+
+        // Verify there's an empty line between each pair of bundles
+        for window in bundle_start_indices.windows(2) {
+            let first_end = window[0];
+            let second_start = window[1];
+
+            let between: Vec<&str> = lines[first_end..second_start].to_vec();
+            assert!(
+                between.iter().any(|l| l.is_empty()),
+                "Expected empty line between bundles"
+            );
+        }
+
+        // Verify round-trip works
+        let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();
+        assert_eq!(parsed.name, "@test/workspace");
+        assert_eq!(parsed.bundles.len(), 3);
     }
 
     #[test]

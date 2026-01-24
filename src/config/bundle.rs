@@ -81,13 +81,37 @@ impl BundleConfig {
     pub fn to_yaml(&self) -> Result<String> {
         let yaml = serde_yaml::to_string(self)?;
         // Insert empty line after name field for readability
-        // Split on first newline and add an extra newline between
         let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
-        if parts.len() == 2 {
-            Ok(format!("{}\n\n{}", parts[0], parts[1]))
-        } else {
-            Ok(yaml)
+        if parts.len() != 2 {
+            return Ok(yaml);
         }
+
+        let result = format!("{}\n\n{}", parts[0], parts[1]);
+
+        // Add empty lines between bundle entries for readability
+        let lines: Vec<&str> = result.lines().collect();
+        let mut formatted = Vec::new();
+        let mut in_bundles_section = false;
+
+        for line in lines {
+            if line.trim_start().starts_with("bundles:") {
+                in_bundles_section = true;
+                formatted.push(line.to_string());
+            } else if in_bundles_section && line.trim_start().starts_with("- name:") {
+                // New bundle entry - add empty line before it (unless it's first one)
+                // Check if the last line was indented (meaning we had a previous bundle with content)
+                if let Some(last) = formatted.last() {
+                    if !last.is_empty() && last.starts_with(' ') {
+                        formatted.push(String::new());
+                    }
+                }
+                formatted.push(line.to_string());
+            } else {
+                formatted.push(line.to_string());
+            }
+        }
+
+        Ok(formatted.join("\n"))
     }
 
     /// Validate bundle configuration
@@ -244,6 +268,70 @@ bundles:
         assert_eq!(parsed.name, "@test/bundle");
         assert_eq!(parsed.bundles.len(), 1);
         assert_eq!(parsed.bundles[0].name, "dep1");
+    }
+
+    #[test]
+    fn test_bundle_config_to_yaml_multiple_bundles() {
+        let mut config = BundleConfig::new("@test/bundle");
+
+        // Add multiple bundles
+        let mut dep1 = BundleDependency::git(
+            "@author/bundle1",
+            "https://github.com/author/repo.git",
+            Some("v1.0".to_string()),
+        );
+        dep1.subdirectory = Some("path/to/bundle1".to_string());
+        config.add_dependency(dep1);
+
+        let mut dep2 = BundleDependency::git(
+            "@author/bundle2",
+            "https://github.com/author/repo.git",
+            Some("main".to_string()),
+        );
+        dep2.subdirectory = Some("path/to/bundle2".to_string());
+        config.add_dependency(dep2);
+
+        let yaml = config.to_yaml().unwrap();
+
+        // Verify structure
+        assert!(yaml.contains("name: '@test/bundle'"));
+        assert!(yaml.contains("bundles:"));
+
+        // Verify bundle entries exist
+        assert!(yaml.contains("- name: '@author/bundle1'"));
+        assert!(yaml.contains("- name: '@author/bundle2'"));
+
+        // Verify empty line between bundles (not after "bundles:" header)
+        // The pattern should be: bundles:\n  - name: first\n    ... content ...\n\n  - name: second
+        let bundles_section = yaml.split("bundles:").nth(1).unwrap();
+        let lines: Vec<&str> = bundles_section.lines().collect();
+
+        // Find indices of bundle entries
+        let mut bundle_start_indices = Vec::new();
+        for (i, line) in lines.iter().enumerate() {
+            if line.trim().starts_with("- name:") {
+                bundle_start_indices.push(i);
+            }
+        }
+
+        // Should have exactly 2 bundles
+        assert_eq!(bundle_start_indices.len(), 2);
+
+        // Verify there's an empty line between bundles
+        let first_bundle_end = bundle_start_indices[0];
+        let second_bundle_start = bundle_start_indices[1];
+
+        // Check that there's at least one empty line between them
+        let between: Vec<&str> = lines[first_bundle_end..second_bundle_start].to_vec();
+        assert!(
+            between.iter().any(|l| l.is_empty()),
+            "Expected empty line between bundles"
+        );
+
+        // Verify round-trip works
+        let parsed = BundleConfig::from_yaml(&yaml).unwrap();
+        assert_eq!(parsed.name, "@test/bundle");
+        assert_eq!(parsed.bundles.len(), 2);
     }
 
     #[test]

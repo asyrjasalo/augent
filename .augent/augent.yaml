@@ -4,10 +4,12 @@ bundles:
 - name: '@wshobson/agents'
   git: https://github.com/wshobson/agents.git
   subdirectory: plugins/agent-orchestration
+
 - name: '@davila7/claude-code-templates/ai-ml-toolkit'
   git: https://github.com/davila7/claude-code-templates.git
   subdirectory: $plugin/ai-ml-toolkit
   ref: v1.27.0
+
 - name: '@davila7/claude-code-templates/devops-automation'
   git: https://github.com/davila7/claude-code-templates.git
   subdirectory: $plugin/devops-automation

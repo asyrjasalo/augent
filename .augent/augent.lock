@@ -1,0 +1,57 @@
+{
+  "name": "",
+  "bundles": [
+    {
+      "name": "@wshobson/agents/plugins/agent-orchestration",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/wshobson/agents.git",
+        "path": "plugins/agent-orchestration",
+        "ref": "main",
+        "sha": "1135ac606247648d9e4724f027280d4114282858",
+        "hash": "blake3:34810f1a72197e49305aef3ccdfa461b4960d21c4635ac5d64d51fc312902cae"
+      },
+      "files": [
+        "commands/multi-agent-optimize.md",
+        "commands/improve-agent.md",
+        "agents/context-manager.md"
+      ]
+    },
+    {
+      "name": "@davila7/claude-code-templates/ai-ml-toolkit",
+      "description": "AI and Machine Learning development suite with data engineering and model deployment tools",
+      "version": "1.0.0",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/davila7/claude-code-templates.git",
+        "path": "$plugin/ai-ml-toolkit",
+        "ref": "v1.27.0",
+        "sha": "92e2d1184d3a5e10394c0c9fd2839e917607b896",
+        "hash": "blake3:939c22f381d9d7a63e2d56920298b1c0ba8ff37e9ddc50b72f93e018f17780d8"
+      },
+      "files": [
+        "agents/computer-vision-engineer.md",
+        "agents/ml-engineer.md",
+        "agents/mlops-engineer.md",
+        "agents/ai-engineer.md",
+        "agents/nlp-engineer.md"
+      ]
+    },
+    {
+      "name": "@davila7/claude-code-templates/devops-automation",
+      "description": "DevOps automation suite with CI/CD, infrastructure management, and deployment orchestration",
+      "version": "1.0.0",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/davila7/claude-code-templates.git",
+        "path": "$plugin/devops-automation",
+        "ref": "main",
+        "sha": "f41bf2382d271b2cac6d6caee8428fcfeca72387",
+        "hash": "blake3:623976907d39b71fa77cbc1e7534fb58582301b35b9b3942f5174d7ba921e290"
+      },
+      "files": [
+        "agents/cloud-architect.md"
+      ]
+    }
+  ]
+}

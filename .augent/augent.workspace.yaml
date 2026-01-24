@@ -1,0 +1,38 @@
+name: ''
+
+bundles:
+- name: '@wshobson/agents/plugins/agent-orchestration'
+  enabled:
+    commands/multi-agent-optimize.md:
+    - .claude/commands/multi-agent-optimize.md
+    - .opencode/commands/multi-agent-optimize.md
+    commands/improve-agent.md:
+    - .claude/commands/improve-agent.md
+    - .opencode/commands/improve-agent.md
+    agents/context-manager.md:
+    - .claude/agents/context-manager.md
+    - .opencode/agents/context-manager.md
+
+- name: '@davila7/claude-code-templates/ai-ml-toolkit'
+  enabled:
+    agents/ml-engineer.md:
+    - .claude/agents/ml-engineer.md
+    - .opencode/agents/ml-engineer.md
+    agents/ai-engineer.md:
+    - .claude/agents/ai-engineer.md
+    - .opencode/agents/ai-engineer.md
+    agents/mlops-engineer.md:
+    - .claude/agents/mlops-engineer.md
+    - .opencode/agents/mlops-engineer.md
+    agents/computer-vision-engineer.md:
+    - .claude/agents/computer-vision-engineer.md
+    - .opencode/agents/computer-vision-engineer.md
+    agents/nlp-engineer.md:
+    - .claude/agents/nlp-engineer.md
+    - .opencode/agents/nlp-engineer.md
+
+- name: '@davila7/claude-code-templates/devops-automation'
+  enabled:
+    agents/cloud-architect.md:
+    - .claude/agents/cloud-architect.md
+    - .opencode/agents/cloud-architect.md
