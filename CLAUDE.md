@@ -161,7 +161,7 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
 
 ## Core Principles
 
-- We are building a configuration manager, NOT a package manager
+- We are primarily building a resources manager, NOT a package manager
 - Simplicity and developer-friendliness are paramount
 - No cargo culting existing package managers
 - All Type 1 decisions in PRD are fundamental and non-reversible
