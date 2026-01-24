@@ -115,10 +115,13 @@ impl Resolver {
     pub fn discover_bundles(&self, source: &str) -> Result<Vec<DiscoveredBundle>> {
         let bundle_source = BundleSource::parse(source)?;
 
-        let discovered = match bundle_source {
+        let mut discovered = match bundle_source {
             BundleSource::Dir { path } => self.discover_local_bundles(&path)?,
             BundleSource::Git(git_source) => self.discover_git_bundles(&git_source)?,
         };
+
+        // Sort bundles alphabetically by name for consistent ordering
+        discovered.sort_by(|a, b| a.name.cmp(&b.name));
 
         Ok(discovered)
     }

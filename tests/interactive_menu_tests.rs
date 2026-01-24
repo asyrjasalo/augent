@@ -92,7 +92,6 @@ bundles: []
 }
 
 #[test]
-#[ignore] // TODO: Menu selection bug - all bundles get installed even when only subset selected
 fn test_interactive_menu_selects_subset() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -301,7 +300,6 @@ bundles: []
 }
 
 #[test]
-#[ignore] // TODO: Bundle discovery bug - installs "./repo" as @local/repo instead of discovering repo/bundle-a
 fn test_interactive_menu_single_bundle_no_menu() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -550,8 +548,7 @@ bundles: []
 
     std::thread::sleep(std::time::Duration::from_millis(200));
 
-    test.send_input("\x1b[B").expect("Failed to send down");
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    // Navigate down once to bundle-b (bundles are sorted alphabetically)
     test.send_input("\x1b[B").expect("Failed to send down");
     std::thread::sleep(std::time::Duration::from_millis(50));
 
