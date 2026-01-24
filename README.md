@@ -18,7 +18,7 @@ It does NOT:
 
 ```bash
 # Install a bundle from GitHub
-augent install github:author/debug-tools
+augent install github:wshobson/agents
 
 # List installed bundles
 augent list
