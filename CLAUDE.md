@@ -62,6 +62,11 @@ It does NOT:
 - Error messages should be clear and human-readable
 - Operations must be atomic - workspace should never be left in inconsistent state
 - **Keep plan.md and tasks.md aligned**: When updating task status in tasks.md, also update the corresponding Epic/Feature status in plan.md to ensure consistency
+- **CHANGELOG.md entries must be user-facing only**:
+  - Only mention features, changes, or fixes that affect end users
+  - Do NOT include technical implementation details (e.g., "Comprehensive test suite with 171+ tests")
+  - Do NOT include internal refactoring unless it changes user behavior
+  - Do NOT include test counts, coverage metrics, or other development metrics
 
 ### Task Entry Format in tasks.md
 
