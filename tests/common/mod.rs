@@ -2,6 +2,7 @@
 
 mod interactive;
 
+#[allow(unused_imports)]
 pub use interactive::InteractiveTest;
 
 use assert_cmd::Command;

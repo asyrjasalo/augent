@@ -704,3 +704,18 @@ bundles: []
 
     assert!(!workspace.file_exists(".claude/commands/test.md"));
 }
+
+#[test]
+fn test_completions_verbose() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+
+    // Note: The -v flag is accepted but doesn't affect completions output
+    // (completion scripts go to stdout and shouldn't be mixed with verbose messages)
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["completions", "--shell", "bash", "-v"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("_augent"));
+}

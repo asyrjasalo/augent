@@ -48,9 +48,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-c/commands/c.md", "# Bundle C\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -122,9 +122,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-c/commands/c.md", "# C\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -177,9 +177,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-b/commands/b.md", "# B\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -221,9 +221,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-b/commands/b.md", "# B\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -266,9 +266,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-b/commands/b.md", "# B\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -306,9 +306,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-a/commands/a.md", "# A\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -349,9 +349,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-with-desc/commands/other.md", "# Other\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -401,9 +401,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-b/commands/b.md", "# B\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -448,9 +448,9 @@ bundles: []
         );
     }
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -512,9 +512,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-c/commands/c.md", "# C\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )
@@ -566,9 +566,9 @@ bundles: []
     );
     workspace.write_file("repo/bundle-b/commands/b.md", "# B\n");
 
-    let bin_path = augent_bin_path();
+    let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
-        bin_path.to_str().unwrap(),
+        augent_path.to_str().unwrap(),
         &["install", "./repo", "--for", "claude"],
         &workspace.path,
     )

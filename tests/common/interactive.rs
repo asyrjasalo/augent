@@ -19,7 +19,10 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
+#[allow(dead_code)]
+#[allow(clippy::io_other_error)]
 const TEST_PTY_ROWS: u16 = 24;
+#[allow(dead_code)]
 const TEST_PTY_COLS: u16 = 80;
 
 pub struct InteractiveTest {
@@ -116,6 +119,7 @@ impl Drop for InteractiveTest {
     }
 }
 
+#[allow(dead_code)]
 pub fn run_interactive<P: AsRef<Path>>(
     program: &str,
     args: &[&str],

@@ -338,18 +338,22 @@ pub fn cache_stats() -> Result<CacheStats> {
             stats.repositories += 1;
 
             // Count SHA directories (versions)
-            for sha_entry in
-                fs::read_dir(entry.path()).map_err(|e| AugentError::CacheOperationFailed {
-                    message: format!("Failed to read SHA directory: {}", e),
-                })?
-            {
+            let sha_entries = match fs::read_dir(entry.path()) {
+                Ok(entries) => entries,
+                Err(_) => continue, // Skip if we can't read this directory
+            };
+
+            for sha_entry in sha_entries {
                 let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
                     message: format!("Failed to read SHA entry: {}", e),
                 })?;
 
                 if sha_entry.path().is_dir() {
                     stats.versions += 1;
-                    stats.total_size += dir_size(&sha_entry.path())?;
+                    match dir_size(&sha_entry.path()) {
+                        Ok(size) => stats.total_size += size,
+                        Err(_) => continue, // Skip if we can't read this directory's size
+                    }
                 }
             }
         }
