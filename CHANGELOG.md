@@ -17,3 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compatibility for installing Claude Code Marketplace plugins as bundles
 - Workspace bundle dependency management, dependency locking and resolution
 - Shell completion generation for bash, zsh, fish, powershell, and elvish
+
+### Fixed
+
+- Fixed marketplace bundle naming - multiple bundles from the same repository now get unique names based on their specific bundle name instead of collapsing into a single entry

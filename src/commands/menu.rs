@@ -42,7 +42,7 @@ impl<'a> Theme for CustomTheme<'a> {
                 text
             )?;
         } else {
-            write!(f, " {} [{}] {}", " ", marker, text)?;
+            write!(f, "   [{}] {}", marker, text)?;
         }
 
         if active {

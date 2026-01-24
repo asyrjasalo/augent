@@ -5,25 +5,49 @@ bundles:
   enabled: {}
 - name: '@wshobson/agents'
   enabled:
-    commands/accessibility-audit.md:
-    - .gemini/commands/accessibility-audit.md
     skills/wcag-audit-patterns/SKILL.md:
     - .gemini/skills/wcag-audit-patterns/SKILL.md
-    agents/ui-visual-validator.md:
-    - .gemini/agents/ui-visual-validator.md
     skills/screen-reader-testing/SKILL.md:
     - .gemini/skills/screen-reader-testing/SKILL.md
+    commands/accessibility-audit.md:
+    - .gemini/commands/accessibility-audit.md
+    agents/ui-visual-validator.md:
+    - .gemini/agents/ui-visual-validator.md
 - name: '@davila7/claude-code-templates'
   enabled:
-    commands/flow-status.md:
-    - .gemini/commands/flow-status.md
-    agents/git-flow-manager.md:
-    - .gemini/agents/git-flow-manager.md
-    commands/finish.md:
-    - .gemini/commands/finish.md
-    commands/feature.md:
-    - .gemini/commands/feature.md
-    commands/release.md:
-    - .gemini/commands/release.md
-    commands/hotfix.md:
-    - .gemini/commands/hotfix.md
+    agents/nlp-engineer.md:
+    - .gemini/agents/nlp-engineer.md
+    agents/mlops-engineer.md:
+    - .gemini/agents/mlops-engineer.md
+    agents/ai-engineer.md:
+    - .gemini/agents/ai-engineer.md
+    agents/computer-vision-engineer.md:
+    - .gemini/agents/computer-vision-engineer.md
+    agents/ml-engineer.md:
+    - .gemini/agents/ml-engineer.md
+- name: '@davila7/claude-code-templates/ai-ml-toolkit'
+  enabled:
+    agents/ai-engineer.md:
+    - .gemini/agents/ai-engineer.md
+    agents/nlp-engineer.md:
+    - .gemini/agents/nlp-engineer.md
+    agents/mlops-engineer.md:
+    - .gemini/agents/mlops-engineer.md
+    agents/computer-vision-engineer.md:
+    - .gemini/agents/computer-vision-engineer.md
+    agents/ml-engineer.md:
+    - .gemini/agents/ml-engineer.md
+- name: '@davila7/claude-code-templates/devops-automation'
+  enabled:
+    agents/cloud-architect.md:
+    - .gemini/agents/cloud-architect.md
+- name: '@wshobson/agents/application-performance'
+  enabled:
+    commands/performance-optimization.md:
+    - .gemini/commands/performance-optimization.md
+    agents/frontend-developer.md:
+    - .gemini/agents/frontend-developer.md
+    agents/performance-engineer.md:
+    - .gemini/agents/performance-engineer.md
+    agents/observability-engineer.md:
+    - .gemini/agents/observability-engineer.md

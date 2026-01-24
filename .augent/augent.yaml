@@ -9,3 +9,15 @@ bundles:
 - name: '@davila7/claude-code-templates'
   git: https://github.com/davila7/claude-code-templates.git
   ref: main
+- name: '@davila7/claude-code-templates/ai-ml-toolkit'
+  git: https://github.com/davila7/claude-code-templates.git
+  subdirectory: $virtual/ai-ml-toolkit
+  ref: main
+- name: '@davila7/claude-code-templates/devops-automation'
+  git: https://github.com/davila7/claude-code-templates.git
+  subdirectory: $virtual/devops-automation
+  ref: main
+- name: '@wshobson/agents/application-performance'
+  git: https://github.com/wshobson/agents.git
+  subdirectory: $virtual/application-performance
+  ref: main
