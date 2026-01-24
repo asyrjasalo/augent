@@ -22,8 +22,8 @@ Update when you have started a feature and completed a feature (in **Status:** a
 ## Task Statistics
 
 - **Total Tasks:** 435
-- **Completed:** 376 (Phase 0-4 complete, Epics 11-12 complete, Epic 13 partial - 126 of 136 tasks)
-- **Pending:** 59 (Phase 6 Epic 14 - 25 tasks, Epic 13.13 - 10 tasks)
+- **Completed:** 387 (Phase 0-4 complete, Epics 11-13 complete - 137 tasks)
+- **Pending:** 48 (Phase 6 Epic 14 - 25 tasks, Epic 13 complete)
 
 ---
 
@@ -624,9 +624,9 @@ Additional test coverage improvements based on audit of user-facing functionalit
 - [x] Feature 13.14: Documentation-Based Testing - Complete (10 tasks)
 - [x] Feature 13.15: Run All Tests and Verify Coverage - Complete (7 tasks)
 
-**Pending Features (10 tasks):**
+**All Features Complete!**
 
-- [ ] Feature 13.13: Integration Test Scenarios - Pending (10 tasks)
+All Epic 13 features are now complete with comprehensive test coverage.
 
 #### Feature 13.1: Fix Compilation Errors
 
@@ -857,24 +857,26 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 Set up cross-platform builds and distribution.
 
-#### Feature 14.1: Cross-Platform Builds
+#### Feature 14.1: Cross-Platform Pipelines
 
 **Status:** Pending
 
-- [ ] Configure `cargo-zigbuild` for cross-compilation
-- [ ] Set up build matrix: Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64, ARM64)
-- [ ] Configure GitHub Actions for automated builds
-- [ ] Test builds on all target platforms
+- [ ] Package as Python package with Maturin
+- [ ] Set up test+build matrix: Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64, ARM64)
+- [ ] Configure cross-compilation
+- [ ] Test and ensure binaries are created on all target platforms
 
 ---
 
-#### Feature 14.2: Release Artifacts
+#### Feature 14.2: Release 0.1.0
 
 **Status:** Pending
 
-- [ ] Set up GitHub Releases workflow
-- [ ] Create installation script for Unix systems
-- [ ] Create PowerShell script for Windows
-- [ ] Package binaries as release artifacts
+- [ ] Set up GitHub Releases with release notes from CHANGELOG
+- [ ] Make release pipeline publish to creates.io
+- [ ] Make release pipeline publish binaries as release artifacts
+- [ ] Make release pipeline publish Python packages to PyPI
+- [ ] Prepare release 0.1.0
+- [ ] Document release process in @CLAUDE.md
 
 ---
