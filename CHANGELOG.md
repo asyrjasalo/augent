@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-01-24
+
 ### Added
 
 - Initial release of Augent
-- Supports 15 AI coding platforms (incl. Claude Code, Cursor, OpenCode)
-- Packaging for commands, rules, skills, subgents and MCP servers
+- Supports 14 AI coding platforms (incl. Claude Code, Cursor, OpenCode)
+- Packaging for commands, rules, skills, subagents and MCP servers
 - Process for installing and sharing bundle(s) via Git repositories
 - Simple TUI with a few core commands: `install`, `uninstall`, `list`, `show`
 - Compatibility for installing Claude Code Marketplace plugins as bundles
