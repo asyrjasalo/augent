@@ -5,7 +5,7 @@
 //! - Git repositories: `https://github.com/user/repo.git`, `git@github.com:user/repo.git`
 //! - GitHub short-form: `github:author/repo`, `author/repo`
 //! - With subdirectory: `github:user/repo#plugins/bundle-name`
-//! - With ref: `github:user/repo#v1.0.0`
+//! - With ref: `github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`
 //!
 //! ## Module Organization
 //!
@@ -161,9 +161,17 @@ impl GitSource {
     pub fn parse(input: &str) -> Result<Self> {
         let input = input.trim();
 
-        // Extract fragment (subdirectory or ref) if present
         let (main_part, fragment) = if let Some(hash_pos) = input.find('#') {
             (&input[..hash_pos], Some(&input[hash_pos + 1..]))
+        } else if let Some(at_pos) = input.find('@') {
+            // Only treat @ as ref separator if:
+            // 1. Not part of SSH URL (git@host:path)
+            // 2. Not at start of input (e.g., @user/repo is a GitHub username)
+            if input.starts_with("git@") || input.starts_with("ssh://") || at_pos == 0 {
+                (input, None)
+            } else {
+                (&input[..at_pos], Some(&input[at_pos + 1..]))
+            }
         } else {
             (input, None)
         };
@@ -294,6 +302,31 @@ mod tests {
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
         assert!(git.subdirectory.is_none());
+    }
+
+    #[test]
+    fn test_parse_github_with_ref_at_syntax() {
+        let source = BundleSource::parse("github:author/repo@v1.0.0").unwrap();
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
+        assert!(git.subdirectory.is_none());
+    }
+
+    #[test]
+    fn test_parse_github_implicit_with_ref_at_syntax() {
+        let source = BundleSource::parse("author/repo@main").unwrap();
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_prefer_hash_over_at() {
+        let source = BundleSource::parse("github:author/repo#branch@version").unwrap();
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("branch@version".to_string()));
     }
 
     #[test]

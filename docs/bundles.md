@@ -330,9 +330,11 @@ augent install github:author/repo#plugins/my-bundle
 
 ```bash
 augent install github:author/bundle#v1.0.0
-augent install github:author/bundle#main
+augent install github:author/bundle@main
 augent install github:author/bundle#abc123def456
 ```
+
+Both `#` and `@` are supported as ref separators. Use either to specify a tag, branch, or commit.
 
 ---
 

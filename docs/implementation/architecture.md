@@ -69,7 +69,7 @@ Bundles are distributed via Git repositories:
 - Any Git host (GitHub, GitLab, self-hosted)
 - HTTPS or SSH authentication (delegated to git)
 - Subdirectories supported (`github:user/repo#plugins/name`)
-- Refs supported (`github:user/repo#v1.0.0`)
+- Refs supported (`github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`)
 
 ### Bundle Override Order
 

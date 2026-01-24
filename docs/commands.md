@@ -38,7 +38,7 @@ augent install [OPTIONS] <SOURCE>
 | GitHub short-form | `github:author/bundle` or `author/bundle` | Install from GitHub repository |
 | Git URL | `https://github.com/author/bundle.git` | Install from any Git repository |
 | Git+subdir | `github:author/repo#plugins/name` | Install from repository subdirectory |
-| Git+ref | `github:author/bundle#v1.0.0` | Install specific tag/branch/commit |
+| Git+ref | `github:author/bundle#v1.0.0` or `github:author/bundle@v1.0.0` | Install specific tag/branch/commit |
 
 ### Examples
 
@@ -58,8 +58,9 @@ augent install github:author/bundle --frozen
 # Install from subdirectory
 augent install github:author/repo#plugins/name
 
-# Install specific version
+# Install specific version (both # and @ supported)
 augent install github:author/bundle#v1.0.0
+augent install github:author/bundle@main
 ```
 
 ### What Happens During Install

@@ -174,7 +174,7 @@ Install bundles from various sources.
 | GitHub | `github:author/repo`, `author/repo` |
 | Git URL | `https://github.com/author/repo.git` |
 | Git+subdir | `github:author/repo#plugins/name` |
-| Git+ref | `github:author/repo#v1.0.0` |
+| Git+ref | `github:author/repo#v1.0.0` or `github:author/repo@v1.0.0` |
 
 ### Examples
 
