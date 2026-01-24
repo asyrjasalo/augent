@@ -31,17 +31,15 @@ A **Workspace** is a developer's working git repository with Augent configuratio
 - `.augent/augent.workspace.yaml` - Per-agent file mappings
 - `.augent/bundles/` - Local bundle directories
 
-### Aug
+### Resources
 
-An **Aug** is a resource file in platform-independent format. Examples:
+Resources can be in. Examples:
 
 - `commands/debug.md`
 - `rules/lint.md`
 - `mcp.jsonc`
 
-### Augmentation
-
-An **Augmentation** is a resource that has been installed for a specific AI coding platform in its native format. Examples:
+Or in platform-specific format after installation.
 
 - `.cursor/rules/debug.mdc` (Cursor-specific)
 - `.opencode/commands/debug.md` (OpenCode-specific)

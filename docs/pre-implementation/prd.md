@@ -46,13 +46,11 @@ To respond to fast evolving landscape of AI coding platforms and their features.
 
 **Workspace_root** - the root directory of the workspace (usually where `.git` directory is and where AI coding platform specific directories are stored)
 
-**Bundle** - a directory with platform independent augs (either in its root or in subdirectories) and optionally Augent bundle config files regarding the bundle (its dependencies, its name, optional metadata).
+**Bundle** - a directory with platform independent resources (either in its root or in subdirectories) and optionally Augent bundle config files regarding the bundle (its dependencies, its name, optional metadata).
 
 **Aug** - a file that is provided by a bundle in a platform-independent **format** (e.g. rule `<bundle_dir>/rules/debug.md` or mcp server `<bundle_dir>/mcp.jsonc`)
 
-- `*resource` - a file that is provided by a bundle in a platform independent format (e.g. `<bundle_dir>rules/debug.md`)
-
-- `augmentation` - a resource that has been installed by a bundle for a specific AI coding platform in its own format (e.g. `<workspace_root_dir>/.cursor/rules/debug.mdc`)
+- `*resource` - a file that is provided by a bundle in a platform independent format (e.g. `<bundle_dir>rules/debug.md`) or a resource that has been installed by a bundle for a specific AI coding platform in its own format (e.g. `<workspace_root_dir>/.cursor/rules/debug.mdc`)
 
 #### What we will have
 
@@ -91,7 +89,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - Bundle can define dependencies to other bundles via `augent.yaml` file, but presence of that file is optional.
 
-- Bundles are installed in order they are presented in `augent.yaml` so later bundles override the augs from earlier bundles where the aug file names overlap. For non-merged files (commands, rules, skills, root files), later bundles completely override earlier bundles if file names overlap. For merged files (AGENTS.md, mcp.jsonc, etc.), the merge behavior defined in the platform configuration applies instead of overriding. This override behavior is silent - no warnings are shown when later bundles override earlier bundles' files.
+- Bundles are installed in order they are presented in `augent.yaml` so later bundles override the resources from earlier bundles where the resource file names overlap. For non-merged files (commands, rules, skills, root files), later bundles completely override earlier bundles if file names overlap. For merged files (AGENTS.md, mcp.jsonc, etc.), the merge behavior defined in the platform configuration applies instead of overriding. This override behavior is silent - no warnings are shown when later bundles override earlier bundles' files.
 
 - Some resources are merged with the existing ones if they already exist for the agent, e.g. AGENTS.md and mcp.jsonc files. The merging strategy likely differs between these file types (AGENTS.md is markdown, mcp.jsonc is JSON). **TODO: Research OpenPackage's platforms.jsonc schema for the exact merging behavior for each file type.**
 
@@ -115,7 +113,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - Lockfile lists all the files that are provided by the bundle, NOT WHAT is necessarily installed by the bundle. This means, providing you install for all AI coding platforms, you should be able to track where the resources came from by starting from the end of the lockfile.
 
-- The last entry in the lockfile is the bundle itself. Thus the bundles own augs (in the bundle's dir) always override the resources from earlier dependencies if the file names overlap, except where resources are merged.
+- The last entry in the lockfile is the bundle itself. Thus the bundles own resources (in the bundle's dir) always override the resources from earlier dependencies if the file names overlap, except where resources are merged.
 
 - Each bundle in lockfile has a calculated `hash` per its contents (all files, including `augent.yaml`, but excluding its `augent.lock` and `augent.workspace.yaml` files). The hashing algorithm used is BLAKE3. Also the last entry, this bundle.
 
@@ -127,7 +125,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - Modified file detection: augent uses `augent.workspace.yaml` to trace which bundle and git-SHA each file came from, then calculates the BLAKE3 checksum of the original file from the cached bundle and compares it to the current workspace file. If they differ, the file is considered modified.
 
-- The mapping for bundle's aug files and ai coding platform's resources is stored in `augent.workspace.yaml`. The format is file for each file that particular bundle provides, and for each AI coding platform that it is installed for (user can use `install --for <platform>...` to install some bundles only for specific platforms).
+- The mapping for bundle resources and AI coding platform resources is stored in `augent.workspace.yaml`. The format is file for each file that particular bundle provides, and for each AI coding platform that it is installed for (user can use `install --for <platform>...` to install some bundles only for specific platforms).
 
 #### Sources
 

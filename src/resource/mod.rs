@@ -1,4 +1,4 @@
-//! Resource models for tracking bundle files and installed augmentations
+//! Resource models for tracking bundle files and installed resources
 //!
 //! A **Resource** (or "Aug") is a file in platform-independent format provided by a bundle.
 //! An **Augmentation** is a resource installed for a specific AI coding platform in its native format.

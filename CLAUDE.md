@@ -22,8 +22,7 @@ It does NOT:
 
 - **Bundle**: A directory containing platform-independent resources, distributed via Git repositories
 - **Workspace**: Your working git repository with augent configuration
-- **Aug**: A platform-independent resource file
-- **Augmentation**: A resource installed for a specific AI coding platform in its native format
+- **Resource**: An AI coding agent specific or platform-independent resource file
 
 ## Implementation Process
 
@@ -145,7 +144,7 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
   - `src/workspace/` - Workspace management and initialization
   - `src/cache/` - Bundle caching system
   - `src/git/` - Git repository operations
-  - `src/resource/` - Resource and augmentation models
+  - `src/resource/` - Resource models
   - `src/resolver/` - Dependency resolution
   - `src/installer/` - Installation and uninstallation logic
   - `src/transaction/` - Transaction management for atomic operations

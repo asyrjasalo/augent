@@ -55,7 +55,7 @@ See: [testing.md](testing.md)
 
 See: [architecture.md](architecture.md)
 
-- [x] Introduce key concepts (Bundle, Workspace, Aug, Augmentation)
+- [x] Introduce key concepts (Bundle, Workspace, Resource)
 - [x] Document fundamental design decisions from PRD (Type 1 decisions)
 - [x] Create Mermaid sequence diagram: Initial workspace setup
 - [x] Create Mermaid sequence diagram: Installing a bundle

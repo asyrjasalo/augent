@@ -52,7 +52,7 @@ Augent stores AI coding platform resources as **bundles** in Git repositories:
 
 - **Bundle**: A directory containing platform-independent resources with optional `augent.yaml` configuration
 - **Workspace**: Your working git repository with Augent configuration in `.augent/`
-- **Augmentations**: Resources transformed and installed for specific AI coding platforms
+- **Resources**: Resources transformed and installed for specific AI coding platforms
 
 When you install a bundle, Augent:
 
