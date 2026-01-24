@@ -83,7 +83,6 @@ fn test_list_with_corrupted_lockfile() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    // Write corrupted lockfile
     workspace.write_file(".augent/augent.lock", "invalid: yaml: content");
 
     augent_cmd()
@@ -250,4 +249,97 @@ bundles: []
         .success();
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
+}
+
+#[test]
+fn test_install_with_insufficient_permissions() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    #[cfg(unix)]
+    {
+        #[allow(unused_imports)]
+        use std::os::unix::fs::PermissionsExt;
+
+        let augent_dir = workspace.path.join(".augent");
+        let original_perms = std::fs::metadata(&augent_dir).unwrap().permissions();
+        let mut perms = original_perms.clone();
+        perms.set_readonly(true);
+        std::fs::set_permissions(&augent_dir, perms).unwrap();
+
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .assert()
+            .failure()
+            .stderr(
+                predicate::str::contains("permission")
+                    .or(predicate::str::contains("Permission denied"))
+                    .or(predicate::str::contains("read-only"))
+                    .or(predicate::str::contains("Failed to acquire workspace lock")),
+            );
+
+        std::fs::set_permissions(&augent_dir, original_perms).unwrap();
+    }
+
+    #[cfg(windows)]
+    {
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .assert()
+            .failure();
+    }
+}
+
+#[test]
+fn test_list_with_insufficient_permissions() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+
+    #[cfg(unix)]
+    {
+        #[allow(unused_imports)]
+        use std::os::unix::fs::PermissionsExt;
+        let lockfile_path = workspace.path.join(".augent/augent.lock");
+        if lockfile_path.exists() {
+            let original_perms = std::fs::metadata(&lockfile_path).unwrap().permissions();
+            let mut perms = original_perms.clone();
+            perms.set_readonly(true);
+            std::fs::set_permissions(&lockfile_path, perms).unwrap();
+
+            augent_cmd()
+                .current_dir(&workspace.path)
+                .args(["list"])
+                .assert()
+                .success();
+
+            std::fs::set_permissions(&lockfile_path, original_perms).unwrap();
+        } else {
+            augent_cmd()
+                .current_dir(&workspace.path)
+                .args(["list"])
+                .assert()
+                .success();
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        augent_cmd()
+            .current_dir(&workspace.path)
+            .args(["list"])
+            .assert()
+            .success();
+    }
 }
