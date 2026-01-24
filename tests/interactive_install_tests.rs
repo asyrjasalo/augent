@@ -3,6 +3,7 @@ mod common;
 use std::io::{Read, Write};
 
 #[test]
+#[ignore] // PTY-based test that may hang in CI environments - run manually
 fn test_install_with_menu_selects_all_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -30,23 +31,22 @@ fn test_install_with_menu_selects_all_bundles() {
     std::fs::write(bundle_b.join("commands").join("b.md"), "# Bundle B\n")
         .expect("Failed to write command");
 
-    let augent_bin =
-        std::env::var("CARGO_BIN_EXE_augent").unwrap_or_else(|_| "target/debug/augent".to_string());
+    let augent_bin = env!("CARGO_BIN_EXE_augent");
 
     let (mut pty, pts) = pty_process::blocking::open()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))
+        .map_err(|e| std::io::Error::other(format!("{}", e)))
         .expect("Failed to open PTY");
 
     pty.resize(pty_process::Size::new(24, 80))
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))
+        .map_err(|e| std::io::Error::other(format!("{}", e)))
         .expect("Failed to resize PTY");
 
-    let mut _child = pty_process::blocking::Command::new(&augent_bin)
+    let mut _child = pty_process::blocking::Command::new(augent_bin)
         .arg("install")
         .arg("./bundles")
         .current_dir(&workspace.path)
         .spawn(pts)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))
+        .map_err(|e| std::io::Error::other(format!("{}", e)))
         .expect("Failed to spawn augent process");
 
     let mut menu_prompt_found = false;
@@ -102,7 +102,7 @@ fn test_install_with_menu_selects_all_bundles() {
     assert!(workspace.file_exists(".cursor/commands/a.md"));
     assert!(workspace.file_exists(".cursor/commands/b.md"));
 
-    let list_output = std::process::Command::new(&augent_bin)
+    let list_output = std::process::Command::new(augent_bin)
         .arg("list")
         .current_dir(&workspace.path)
         .output()

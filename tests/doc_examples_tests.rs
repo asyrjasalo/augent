@@ -5,7 +5,7 @@
 mod common;
 
 use assert_cmd::Command;
-use predicates::prelude::*;
+// Remove unused import - predicates used via module path
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
@@ -17,7 +17,7 @@ fn test_readme_quick_start_install_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("debug-tools");
+    let _bundle = workspace.create_bundle("debug-tools");
     workspace.write_file(
         "bundles/debug-tools/augent.yaml",
         r#"
@@ -44,7 +44,7 @@ fn test_readme_quick_start_list_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("my-bundle");
+    let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
         "bundles/my-bundle/augent.yaml",
         r#"
@@ -73,7 +73,7 @@ fn test_readme_quick_start_show_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("my-bundle");
+    let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
         "bundles/my-bundle/augent.yaml",
         r#"
@@ -103,7 +103,7 @@ fn test_readme_quick_start_uninstall_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("my-bundle");
+    let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
         "bundles/my-bundle/augent.yaml",
         r#"
@@ -133,7 +133,7 @@ fn test_commands_doc_install_examples_work() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    let bundle = workspace.create_bundle("test-bundle");
+    let _bundle = workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"
@@ -156,7 +156,7 @@ fn test_commands_doc_list_examples_work() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("my-bundle");
+    let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
         "bundles/my-bundle/augent.yaml",
         r#"
@@ -185,7 +185,7 @@ dependencies: []
 fn test_bundles_doc_format_examples_are_valid() {
     let workspace = common::TestWorkspace::new();
 
-    let minimal_bundle = workspace.create_bundle("minimal-bundle");
+    let _minimal_bundle = workspace.create_bundle("minimal-bundle");
     workspace.write_file(
         "bundles/minimal-bundle/augent.yaml",
         r#"
@@ -207,7 +207,7 @@ fn test_workspace_doc_naming_examples_work() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("test-bundle");
+    let _bundle = workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"
@@ -229,7 +229,7 @@ fn test_completions_examples_work() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    let bundle = workspace.create_bundle("test-bundle");
+    let _bundle = workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"

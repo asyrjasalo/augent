@@ -30,20 +30,20 @@ pub struct InteractiveTest {
     child: std::process::Child,
 }
 
+#[allow(dead_code)] // Methods are part of testing infrastructure documented in INTERACTIVE_TESTING.md
 impl InteractiveTest {
     pub fn new<P: AsRef<Path>>(program: &str, args: &[&str], workdir: P) -> std::io::Result<Self> {
         let workdir = workdir.as_ref();
 
-        let (pty, pts) = blocking::open()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))?;
+        let (pty, pts) = blocking::open().map_err(|e| std::io::Error::other(format!("{}", e)))?;
         pty.resize(pty_process::Size::new(TEST_PTY_ROWS, TEST_PTY_COLS))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))?;
+            .map_err(|e| std::io::Error::other(format!("{}", e)))?;
 
         let child = blocking::Command::new(program)
             .args(args)
             .current_dir(workdir)
             .spawn(pts)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))?;
+            .map_err(|e| std::io::Error::other(format!("{}", e)))?;
 
         Ok(Self { pty, child })
     }

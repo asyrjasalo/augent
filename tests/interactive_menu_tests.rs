@@ -189,7 +189,7 @@ bundles: []
 
     test.send_input("\n").expect("Failed to send enter");
 
-    let output = test.wait_for_output().expect("Failed to wait for output");
+    let _output = test.wait_for_output().expect("Failed to wait for output");
 
     assert!(!workspace.file_exists(".claude/commands/a.md"));
     assert!(!workspace.file_exists(".claude/commands/b.md"));
@@ -233,7 +233,7 @@ bundles: []
 
     test.send_input("\x1b").expect("Failed to send escape");
 
-    let output = test.wait_for_output().expect("Failed to wait for output");
+    let _output = test.wait_for_output().expect("Failed to wait for output");
 
     assert!(!workspace.file_exists(".claude/commands/a.md"));
     assert!(!workspace.file_exists(".claude/commands/b.md"));
