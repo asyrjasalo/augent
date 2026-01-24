@@ -71,6 +71,7 @@ pub enum Commands {
 /// Arguments for the install command
 #[derive(Parser, Debug)]
 #[command(after_help = "EXAMPLES:\n  \
+                   Install from augent.yaml (no source):\n    augent install\n\n\
                    Install from GitHub:\n    augent install github:author/debug-tools\n\n\
                    Install from local directory:\n    augent install ./my-bundle\n\n\
                    Install from Git URL:\n    augent install https://github.com/author/bundle.git\n\n\
@@ -80,8 +81,8 @@ pub enum Commands {
                    Install specific version:\n    augent install github:author/bundle#v1.0.0\n\
                    Select all bundles without interactive menu:\n    augent install ./repo --select-all")]
 pub struct InstallArgs {
-    /// Bundle source (path, URL, or github:author/repo)
-    pub source: String,
+    /// Bundle source (path, URL, or github:author/repo). If not provided, reads from augent.yaml
+    pub source: Option<String>,
 
     /// Install only for specific platforms (e.g., --for cursor opencode)
     #[arg(long = "for", value_name = "PLATFORM", num_args = 1..)]
@@ -94,6 +95,10 @@ pub struct InstallArgs {
     /// Select all discovered bundles without interactive menu
     #[arg(long)]
     pub select_all: bool,
+
+    /// Update bundles to latest versions from refs (resolves new SHAs and updates lockfile)
+    #[arg(long)]
+    pub update: bool,
 }
 
 /// Arguments for the uninstall command
@@ -177,7 +182,20 @@ mod tests {
         let cli = Cli::try_parse_from(["augent", "install", "github:author/bundle"]).unwrap();
         match cli.command {
             Commands::Install(args) => {
-                assert_eq!(args.source, "github:author/bundle");
+                assert_eq!(args.source, Some("github:author/bundle".to_string()));
+                assert!(args.platforms.is_empty());
+                assert!(!args.frozen);
+            }
+            _ => panic!("Expected Install command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_install_no_source() {
+        let cli = Cli::try_parse_from(["augent", "install"]).unwrap();
+        match cli.command {
+            Commands::Install(args) => {
+                assert_eq!(args.source, None);
                 assert!(args.platforms.is_empty());
                 assert!(!args.frozen);
             }
@@ -200,7 +218,7 @@ mod tests {
         .unwrap();
         match cli.command {
             Commands::Install(args) => {
-                assert_eq!(args.source, "./local-bundle");
+                assert_eq!(args.source, Some("./local-bundle".to_string()));
                 assert_eq!(args.platforms, vec!["cursor", "opencode"]);
                 assert!(args.frozen);
             }

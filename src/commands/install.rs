@@ -16,6 +16,7 @@
 
 use std::path::Path;
 
+use crate::cache;
 use crate::cli::InstallArgs;
 use crate::commands::menu::select_bundles_interactively;
 use crate::config::{BundleDependency, LockedBundle, LockedSource};
@@ -37,43 +38,262 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
         })?,
     };
 
-    // Parse source and discover bundles BEFORE creating workspace
-    let source = BundleSource::parse(&args.source)?;
-    println!("Installing from: {}", source.display_url());
+    // If no source provided, load from augent.yaml in workspace
+    if args.source.is_none() {
+        // Find and open existing workspace
+        let workspace_root =
+            Workspace::find_from(&current_dir).ok_or(AugentError::WorkspaceNotFound {
+                path: current_dir.display().to_string(),
+            })?;
+        let augent_yaml_path = workspace_root.join(".augent/augent.yaml");
 
-    let resolver = Resolver::new(&current_dir);
-    let discovered = resolver.discover_bundles(&args.source)?;
+        // Calculate relative path for display
+        let display_path = augent_yaml_path
+            .strip_prefix(&current_dir)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| augent_yaml_path.to_string_lossy().to_string());
 
-    // Show interactive menu if multiple bundles, auto-select if one
-    let discovered_count = discovered.len();
-    let selected_bundles = if discovered_count > 1 {
-        select_bundles_interactively(&discovered)?
-    } else if discovered_count == 1 {
-        discovered
+        let mut workspace = Workspace::open(&workspace_root)?;
+        println!("Augent: Installing bundles from {}", display_path);
+
+        // Create transaction for atomic operations
+        let mut transaction = Transaction::new(&workspace);
+        transaction.backup_configs()?;
+
+        // Install all bundles from augent.yaml
+        match do_install_from_yaml(&args, &mut workspace, &mut transaction) {
+            Ok(()) => {
+                transaction.commit();
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
     } else {
-        vec![] // No bundles discovered - will be handled in do_install
+        // Source provided - discover and install
+        let source_str = args.source.as_ref().unwrap().as_str();
+
+        // Parse source and discover bundles BEFORE creating workspace
+        let source = BundleSource::parse(source_str)?;
+        println!("Installing from: {}", source.display_url());
+
+        let resolver = Resolver::new(&current_dir);
+        let discovered = resolver.discover_bundles(source_str)?;
+
+        // Show interactive menu if multiple bundles, auto-select if one
+        let discovered_count = discovered.len();
+        let selected_bundles = if discovered_count > 1 {
+            select_bundles_interactively(&discovered)?
+        } else if discovered_count == 1 {
+            discovered
+        } else {
+            vec![] // No bundles discovered - will be handled in do_install
+        };
+
+        // If user selected nothing from menu (and there were multiple), exit without creating workspace
+        if selected_bundles.is_empty() && discovered_count > 1 {
+            return Ok(());
+        }
+
+        // NOW initialize or open workspace (after user has selected bundles)
+        let mut workspace = Workspace::init_or_open(&current_dir)?;
+
+        // Create transaction for atomic operations
+        let mut transaction = Transaction::new(&workspace);
+        transaction.backup_configs()?;
+
+        // Perform installation
+        match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
+            Ok(()) => {
+                transaction.commit();
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+}
+
+/// Install bundles from augent.yaml
+fn do_install_from_yaml(
+    args: &InstallArgs,
+    workspace: &mut Workspace,
+    transaction: &mut Transaction,
+) -> Result<()> {
+    // Backup the original lockfile - we'll restore it if --update was not given
+    let original_lockfile = workspace.lockfile.clone();
+
+    // If --update is given, resolve new SHAs and update lockfile
+    // Otherwise, use lockfile (fast, reproducible, respects exact SHAs)
+    let (resolved_bundles, should_update_lockfile) = if args.update {
+        println!("Checking for updates...");
+
+        let mut resolver = Resolver::new(&workspace.root);
+
+        // Get all bundle sources from augent.yaml
+        let bundle_sources: Vec<String> = workspace
+            .bundle_config
+            .bundles
+            .iter()
+            .map(|dep| {
+                // Reconstruct source string from dependency
+                if let Some(ref git_url) = dep.git {
+                    let mut source = git_url.clone();
+                    if let Some(ref git_ref) = dep.git_ref {
+                        source.push('#');
+                        source.push_str(git_ref);
+                    }
+                    if let Some(ref subdir) = dep.subdirectory {
+                        source.push(':');
+                        source.push_str(subdir);
+                    }
+                    source
+                } else if let Some(ref subdir) = dep.subdirectory {
+                    // Local dependency
+                    subdir.clone()
+                } else {
+                    String::new()
+                }
+            })
+            .collect();
+
+        if bundle_sources.is_empty() {
+            return Err(AugentError::BundleNotFound {
+                name: "No bundles defined in augent.yaml".to_string(),
+            });
+        }
+
+        println!("Resolving {} bundle(s)...", bundle_sources.len());
+
+        // Resolve all bundles and their dependencies
+        let resolved = resolver.resolve_multiple(&bundle_sources)?;
+
+        if resolved.is_empty() {
+            return Err(AugentError::BundleNotFound {
+                name: "No bundles found in augent.yaml".to_string(),
+            });
+        }
+
+        println!("Resolved {} bundle(s)", resolved.len());
+        (resolved, true) // Mark that we should update lockfile
+    } else {
+        // Use lockfile - respects exact SHAs, no fetching unless needed from cache
+        println!("Using locked versions from augent.lock...");
+
+        let resolved = locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
+
+        if resolved.is_empty() {
+            return Err(AugentError::BundleNotFound {
+                name: "No bundles found in augent.lock".to_string(),
+            });
+        }
+
+        println!("Prepared {} bundle(s)", resolved.len());
+        (resolved, false) // Don't update lockfile
     };
 
-    // If user selected nothing from menu (and there were multiple), exit without creating workspace
-    if selected_bundles.is_empty() && discovered_count > 1 {
-        return Ok(());
+    // Detect target platforms
+    let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
+    if platforms.is_empty() {
+        return Err(AugentError::NoPlatformsDetected);
     }
 
-    // NOW initialize or open workspace (after user has selected bundles)
-    let mut workspace = Workspace::init_or_open(&current_dir)?;
+    println!(
+        "Installing for {} platform(s): {}",
+        platforms.len(),
+        platforms
+            .iter()
+            .map(|p| p.id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
-    // Create transaction for atomic operations
-    let mut transaction = Transaction::new(&workspace);
-    transaction.backup_configs()?;
-
-    // Perform installation
-    match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
-        Ok(()) => {
-            transaction.commit();
-            Ok(())
+    // Check --frozen flag
+    if args.frozen {
+        // Verify that lockfile wouldn't change
+        let new_lockfile = generate_lockfile(workspace, &resolved_bundles)?;
+        if !workspace.lockfile.equals(&new_lockfile) {
+            return Err(AugentError::LockfileOutdated);
         }
-        Err(e) => Err(e),
     }
+
+    // Install files
+    println!("Installing files...");
+    let workspace_root = workspace.root.clone();
+    let mut installer = Installer::new(&workspace_root, platforms.clone());
+    let workspace_bundles = installer.install_bundles(&resolved_bundles)?;
+
+    // Track created files in transaction
+    for installed in installer.installed_files().values() {
+        for target in &installed.target_paths {
+            let full_path = workspace_root.join(target);
+            transaction.track_file_created(full_path);
+        }
+    }
+
+    // Update configuration files
+    println!("Updating configuration files...");
+
+    // Filter out workspace bundles that have no files (nothing actually installed for them)
+    let workspace_bundles_with_files: Vec<_> = workspace_bundles
+        .into_iter()
+        .filter(|wb| !wb.enabled.is_empty())
+        .collect();
+
+    // Only update configurations if changes were made:
+    // - If --update flag was given (lockfile needs updating), OR
+    // - If files were actually installed (workspace_bundles has entries with files)
+    let configs_updated = should_update_lockfile || !workspace_bundles_with_files.is_empty();
+
+    if configs_updated {
+        update_configs_from_yaml(
+            workspace,
+            &resolved_bundles,
+            workspace_bundles_with_files,
+            should_update_lockfile,
+        )?;
+    }
+
+    // If --update was not given, restore the original lockfile (don't modify it)
+    if !should_update_lockfile {
+        workspace.lockfile = original_lockfile;
+    }
+
+    // Save workspace only if configurations were actually updated
+    if configs_updated {
+        println!("Saving workspace...");
+        workspace.save()?;
+    }
+
+    // Print summary
+    let total_files: usize = installer
+        .installed_files()
+        .values()
+        .map(|f| f.target_paths.len())
+        .sum();
+
+    println!(
+        "Installed {} bundle(s), {} file(s)",
+        resolved_bundles.len(),
+        total_files
+    );
+
+    for bundle in &resolved_bundles {
+        println!("  - {}", bundle.name);
+
+        // Show files installed for this bundle
+        for (bundle_path, installed) in installer.installed_files() {
+            // Group by resource type for cleaner display
+            if bundle_path.starts_with(&bundle.name)
+                || bundle_path.contains(&bundle.name.replace('@', ""))
+            {
+                println!(
+                    "    {} ({})",
+                    installed.bundle_path, installed.resource_type
+                );
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Perform the actual installation
@@ -87,7 +307,8 @@ fn do_install(
 
     let resolved_bundles = if selected_bundles.is_empty() {
         // No bundles discovered - resolve source directly (might be a bundle itself)
-        resolver.resolve(&args.source)?
+        let source_str = args.source.as_ref().unwrap().as_str();
+        resolver.resolve(source_str)?
     } else if selected_bundles.len() == 1 {
         // Single bundle found
         // Check if the discovered bundle has git source info
@@ -131,8 +352,13 @@ fn do_install(
     };
 
     if resolved_bundles.is_empty() {
+        let source_display = args
+            .source
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
         return Err(AugentError::BundleNotFound {
-            name: format!("No bundles found at source '{}'", args.source),
+            name: format!("No bundles found at source '{}'", source_display),
         });
     }
 
@@ -175,12 +401,8 @@ fn do_install(
     }
 
     // Update configuration files
-    update_configs(
-        workspace,
-        &args.source,
-        &resolved_bundles,
-        workspace_bundles,
-    )?;
+    let source_str = args.source.as_ref().map(|s| s.as_str()).unwrap_or("");
+    update_configs(workspace, source_str, &resolved_bundles, workspace_bundles)?;
 
     // Save workspace
     workspace.save()?;
@@ -390,6 +612,93 @@ fn update_configs(
     }
 
     Ok(())
+}
+
+/// Update workspace configuration files when installing from augent.yaml
+fn update_configs_from_yaml(
+    workspace: &mut Workspace,
+    resolved_bundles: &[crate::resolver::ResolvedBundle],
+    workspace_bundles: Vec<crate::config::WorkspaceBundle>,
+    should_update_lockfile: bool,
+) -> Result<()> {
+    // Update lockfile only if we resolved new versions (--update was given)
+    if should_update_lockfile {
+        for bundle in resolved_bundles {
+            let locked_bundle = create_locked_bundle(bundle)?;
+            // Remove existing entry if present (to update it)
+            workspace.lockfile.remove_bundle(&locked_bundle.name);
+            workspace.lockfile.add_bundle(locked_bundle);
+        }
+    }
+
+    // Always update workspace config (which files are installed where)
+    for bundle in workspace_bundles {
+        // Remove existing entry for this bundle if present
+        workspace.workspace_config.remove_bundle(&bundle.name);
+        // Add new entry
+        workspace.workspace_config.add_bundle(bundle);
+    }
+
+    Ok(())
+}
+
+/// Convert locked bundles from lockfile to resolved bundles for installation
+fn locked_bundles_to_resolved(
+    locked_bundles: &[LockedBundle],
+    workspace_root: &std::path::Path,
+) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+    use crate::source::GitSource;
+
+    let mut resolved = Vec::new();
+
+    for locked in locked_bundles {
+        let (source_path, git_source, resolved_sha, resolved_ref) = match &locked.source {
+            LockedSource::Dir { path, .. } => {
+                let full_path = workspace_root.join(path);
+                (full_path, None, None, None)
+            }
+            LockedSource::Git {
+                url,
+                sha,
+                git_ref,
+                path,
+                ..
+            } => {
+                // Bundle is in cache - construct path from URL hash and SHA
+                let bundles_cache = cache::bundles_cache_dir()?;
+                let url_slug = cache::url_to_slug(url);
+                let bundle_cache = bundles_cache.join(&url_slug).join(sha);
+
+                let git_src = GitSource {
+                    url: url.clone(),
+                    subdirectory: path.clone(),
+                    git_ref: git_ref.clone(),
+                    resolved_sha: Some(sha.clone()),
+                };
+
+                (
+                    bundle_cache,
+                    Some(git_src),
+                    Some(sha.clone()),
+                    git_ref.clone(),
+                )
+            }
+        };
+
+        let resolved_bundle = crate::resolver::ResolvedBundle {
+            name: locked.name.clone(),
+            dependency: None,
+            source_path,
+            resolved_sha,
+            resolved_ref,
+            git_source,
+            config: None,
+        };
+
+        resolved.push(resolved_bundle);
+    }
+
+    Ok(resolved)
 }
 
 #[cfg(test)]
