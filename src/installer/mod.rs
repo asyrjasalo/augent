@@ -300,9 +300,16 @@ impl<'a> Installer<'a> {
             self.merge_multiple_installations(target_path, installations)?;
         }
 
-        let relative = target_path
+        // For gemini command files, the actual file is written with .toml extension
+        let actual_target_path = if self.is_gemini_command_file(target_path) {
+            target_path.with_extension("toml")
+        } else {
+            target_path.to_path_buf()
+        };
+
+        let relative = actual_target_path
             .strip_prefix(self.workspace_root)
-            .unwrap_or(target_path);
+            .unwrap_or(&actual_target_path);
         let target_paths = vec![relative.to_string_lossy().to_string()];
 
         // Use resource_type from first installation (they all target the same path)
@@ -627,12 +634,14 @@ impl<'a> Installer<'a> {
 
         // Apply extension transformation after all wildcards are replaced
         if let Some(ref ext) = rule.extension {
-            let without_ext = if let Some(pos) = target.rfind('.') {
-                &target[..pos]
-            } else {
-                &target
-            };
-            target = format!("{}.{}", without_ext, ext);
+            // Replace extension only in the filename part, preserving directory structure
+            let target_path = PathBuf::from(&target);
+            if let Some(parent) = target_path.parent() {
+                if let Some(file_stem) = target_path.file_stem() {
+                    let new_target = parent.join(file_stem).with_extension(ext);
+                    target = new_target.to_string_lossy().to_string().to_string();
+                }
+            }
         }
 
         self.workspace_root.join(&target)
@@ -680,11 +689,148 @@ impl<'a> Installer<'a> {
 
     /// Copy a single file
     fn copy_file(&self, source: &Path, target: &Path) -> Result<()> {
+        // Check if this is a gemini commands file that needs markdown to TOML conversion
+        if self.is_gemini_command_file(target) {
+            return self.convert_markdown_to_toml(source, target);
+        }
+
         fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
             path: target.display().to_string(),
             reason: e.to_string(),
         })?;
         Ok(())
+    }
+
+    /// Check if target path is a gemini command file
+    fn is_gemini_command_file(&self, target: &Path) -> bool {
+        let path_str = target.to_string_lossy();
+        path_str.contains(".gemini/commands/") && path_str.ends_with(".md")
+    }
+
+    /// Convert markdown file to TOML format for Gemini CLI commands
+    fn convert_markdown_to_toml(&self, source: &Path, target: &Path) -> Result<()> {
+        // Read markdown content
+        let content = fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
+            path: source.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        // Extract description from frontmatter if present
+        let (description, prompt) = self.extract_description_and_prompt(&content);
+
+        // Build TOML content
+        let mut toml_content = String::new();
+
+        if let Some(desc) = description {
+            toml_content.push_str(&format!(
+                "description = {}\n",
+                self.escape_toml_string(&desc)
+            ));
+        }
+
+        // Use triple quotes for multi-line prompts
+        let is_multiline = prompt.contains('\n');
+        if is_multiline {
+            toml_content.push_str(&format!("prompt = \"\"\"\n{}\"\"\"\n", prompt));
+        } else {
+            toml_content.push_str(&format!("prompt = {}\n", self.escape_toml_string(&prompt)));
+        }
+
+        // Change target extension from .md to .toml
+        let toml_target = target.with_extension("toml");
+
+        // Ensure parent directory exists
+        if let Some(parent) = toml_target.parent() {
+            fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+
+        // Write TOML content
+        fs::write(&toml_target, toml_content).map_err(|e| AugentError::FileWriteFailed {
+            path: toml_target.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        Ok(())
+    }
+
+    /// Extract description from frontmatter and separate it from prompt
+    fn extract_description_and_prompt(&self, content: &str) -> (Option<String>, String) {
+        let lines: Vec<&str> = content.lines().collect();
+
+        // Check for frontmatter (between --- lines)
+        if lines.len() >= 3 && lines[0] == "---" {
+            // Find closing --- (skip first one at index 0)
+            if let Some(end_idx) = lines[1..].iter().position(|line| *line == "---") {
+                // Convert back to full index
+                let end_idx = end_idx + 1;
+
+                // Parse frontmatter for description
+                let frontmatter: String = lines[1..end_idx].join("\n");
+                let description = self.extract_description_from_frontmatter(&frontmatter);
+
+                // Get the prompt content (everything after the closing ---)
+                let prompt: String = lines[end_idx + 1..].join("\n");
+
+                return (description, prompt);
+            }
+        }
+
+        // No frontmatter found, use entire content as prompt
+        (None, content.to_string())
+    }
+
+    /// Extract description from YAML frontmatter
+    fn extract_description_from_frontmatter(&self, frontmatter: &str) -> Option<String> {
+        // Simple YAML parsing to extract description field
+        for line in frontmatter.lines() {
+            let line = line.trim();
+            if line.starts_with("description:") || line.starts_with("description =") {
+                // Extract the value after description: or description =
+                let value = if let Some(idx) = line.find(':') {
+                    line[idx + 1..].trim()
+                } else if let Some(idx) = line.find('=') {
+                    line[idx + 1..].trim()
+                } else {
+                    continue;
+                };
+
+                // Remove quotes if present
+                let value = value
+                    .trim_start_matches('"')
+                    .trim_start_matches('\'')
+                    .trim_end_matches('"')
+                    .trim_end_matches('\'');
+
+                return Some(value.to_string());
+            }
+        }
+
+        None
+    }
+
+    /// Escape a string for use in TOML basic strings
+    fn escape_toml_string(&self, s: &str) -> String {
+        let mut escaped = String::new();
+
+        for c in s.chars() {
+            match c {
+                '\\' => escaped.push_str("\\\\"),
+                '"' => escaped.push_str("\\\""),
+                '\n' => escaped.push_str("\\n"),
+                '\r' => escaped.push_str("\\r"),
+                '\t' => escaped.push_str("\\t"),
+                '\x00'..='\x08' | '\x0B' | '\x0C' | '\x0E'..='\x1F' => {
+                    // Control characters as \xHH
+                    escaped.push_str(&format!("\\x{:02X}", c as u8));
+                }
+                _ => escaped.push(c),
+            }
+        }
+
+        format!("\"{}\"", escaped)
     }
 
     /// Merge JSON files (for shallow/deep merge)

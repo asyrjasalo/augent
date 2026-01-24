@@ -484,6 +484,66 @@ fn test_mcp_merge_strategies() {
 }
 
 #[test]
+fn test_gemini_commands_transform() {
+    verify_transform_rule("gemini", "commands/**/*.md", ".gemini/commands/**/*.toml");
+}
+
+#[test]
+fn test_gemini_commands_extension() {
+    let platforms = default_platforms();
+    let platform = platforms.iter().find(|p| p.id == "gemini").unwrap();
+
+    let commands_rule = platform
+        .transforms
+        .iter()
+        .find(|t| t.from == "commands/**/*.md")
+        .unwrap();
+    assert_eq!(commands_rule.extension, Some("toml".to_string()));
+}
+
+#[test]
+fn test_gemini_agents_transform() {
+    verify_transform_rule("gemini", "agents/*.md", ".gemini/agents/*.md");
+}
+
+#[test]
+fn test_gemini_skills_transform() {
+    verify_transform_rule("gemini", "skills/**/*.md", ".gemini/skills/**/*.md");
+}
+
+#[test]
+fn test_gemini_mcp_transform() {
+    verify_transform_rule("gemini", "mcp.jsonc", ".gemini/settings.json");
+}
+
+#[test]
+fn test_gemini_root_files_transform() {
+    let platforms = default_platforms();
+    let platform = platforms.iter().find(|p| p.id == "gemini").unwrap();
+
+    let agents_rule = platform
+        .transforms
+        .iter()
+        .find(|t| t.from == "AGENTS.md")
+        .expect("Gemini platform should have AGENTS.md transform rule");
+
+    assert_eq!(agents_rule.to, "GEMINI.md");
+    assert_eq!(
+        agents_rule.merge,
+        augent::platform::MergeStrategy::Composite,
+        "Gemini AGENTS.md should use composite merge"
+    );
+
+    let mcp_rule = platform
+        .transforms
+        .iter()
+        .find(|t| t.from == "mcp.jsonc")
+        .expect("Gemini platform should have mcp.jsonc transform rule");
+
+    assert_eq!(mcp_rule.merge, augent::platform::MergeStrategy::Deep);
+}
+
+#[test]
 fn test_root_file_merge_strategies() {
     let platforms = default_platforms();
 

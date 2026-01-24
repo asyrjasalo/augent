@@ -123,6 +123,7 @@ fn do_install_from_yaml(
 
     // If --update is given, resolve new SHAs and update lockfile
     // Otherwise, use lockfile (fast, reproducible, respects exact SHAs)
+    // but automatically fetch missing bundles from cache
     let (resolved_bundles, should_update_lockfile) = if args.update {
         println!("Checking for updates...");
 
@@ -175,7 +176,7 @@ fn do_install_from_yaml(
         println!("Resolved {} bundle(s)", resolved.len());
         (resolved, true) // Mark that we should update lockfile
     } else {
-        // Use lockfile - respects exact SHAs, no fetching unless needed from cache
+        // Use lockfile - respects exact SHAs, but fetches missing bundles from cache
         // If lockfile is empty/doesn't exist, automatically create it
         let lockfile_is_empty = workspace.lockfile.bundles.is_empty();
 
@@ -232,7 +233,7 @@ fn do_install_from_yaml(
             println!("Resolved {} bundle(s)", resolved.len());
             resolved
         } else {
-            // Lockfile exists - use it
+            // Lockfile exists - use it, but fetch missing bundles from cache
             println!("Using locked versions from augent.lock...");
 
             let resolved =
@@ -305,6 +306,9 @@ fn do_install_from_yaml(
     // - If files were actually installed (workspace_bundles has entries with files)
     let configs_updated = should_update_lockfile || !workspace_bundles_with_files.is_empty();
 
+    // Check if lockfile name needs fixing (before potential move)
+    let original_name_needs_fixing = original_lockfile.name != workspace.bundle_config.name;
+
     if configs_updated {
         update_configs_from_yaml(
             workspace,
@@ -319,8 +323,12 @@ fn do_install_from_yaml(
         workspace.lockfile = original_lockfile;
     }
 
-    // Save workspace only if configurations were actually updated
-    if configs_updated {
+    // Always ensure lockfile name matches workspace bundle config (regardless of update flag)
+    workspace.lockfile.name = workspace.bundle_config.name.clone();
+
+    // Save workspace if configurations were updated or if lockfile name needed fixing
+    let needs_save = configs_updated || original_name_needs_fixing;
+    if needs_save {
         println!("Saving workspace...");
         workspace.save()?;
     }
@@ -661,6 +669,9 @@ fn update_configs(
         workspace.lockfile.add_bundle(locked_bundle);
     }
 
+    // Ensure lockfile name matches workspace bundle config
+    workspace.lockfile.name = workspace.bundle_config.name.clone();
+
     // Update workspace config
     for bundle in workspace_bundles {
         // Remove existing entry for this bundle if present
@@ -701,13 +712,26 @@ fn update_configs_from_yaml(
 }
 
 /// Convert locked bundles from lockfile to resolved bundles for installation
+///
+/// This function is used when installing without the --update flag. It respects
+/// exact SHAs from the lockfile for reproducibility, but automatically fetches
+/// any bundles that are not in the cache.
+///
+/// Key behavior:
+/// - Checks if each bundle is cached (including marketplace synthetic bundles)
+/// - If a bundle is not cached, it is fetched from git and cached
+/// - Never shows "File not found" errors for missing cache entries
+/// - Ensures installation succeeds even with empty cache
 fn locked_bundles_to_resolved(
     locked_bundles: &[LockedBundle],
     workspace_root: &std::path::Path,
 ) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+    use crate::resolver::Resolver;
+    use crate::source::BundleSource;
     use crate::source::GitSource;
 
     let mut resolved = Vec::new();
+    let mut resolver = Resolver::new(workspace_root);
 
     for locked in locked_bundles {
         let (source_path, git_source, resolved_sha, resolved_ref) = match &locked.source {
@@ -722,21 +746,74 @@ fn locked_bundles_to_resolved(
                 path,
                 ..
             } => {
-                // Bundle is in cache - construct path from URL hash and SHA
+                // Construct the cache path
                 let bundles_cache = cache::bundles_cache_dir()?;
                 let url_slug = cache::url_to_slug(url);
                 let bundle_cache = bundles_cache.join(&url_slug).join(sha);
 
-                let git_src = GitSource {
-                    url: url.clone(),
-                    subdirectory: path.clone(),
-                    git_ref: git_ref.clone(),
-                    resolved_sha: Some(sha.clone()),
+                // For marketplace plugins, check if synthetic bundle exists
+                let is_marketplace = path.as_ref().is_some_and(|p| p.starts_with("$plugin/"));
+                let is_cached = if is_marketplace {
+                    // For marketplace plugins, check the synthetic bundle location
+                    let marketplace_cache = bundles_cache.join("marketplace");
+                    if let Some(plugin_name) =
+                        path.as_ref().and_then(|p| p.strip_prefix("$plugin/"))
+                    {
+                        marketplace_cache.join(plugin_name).is_dir()
+                    } else {
+                        false
+                    }
+                } else {
+                    // For normal bundles, check the git cache
+                    bundle_cache.is_dir()
+                };
+
+                // If not cached, resolve the bundle to fetch it
+                let (final_cache_path, final_source) = if !is_cached {
+                    // Reconstruct the source string for resolution
+                    let mut source_string = url.clone();
+                    if let Some(git_ref) = git_ref {
+                        source_string.push('#');
+                        source_string.push_str(git_ref);
+                    }
+                    if let Some(subdir) = path {
+                        source_string.push(':');
+                        source_string.push_str(subdir);
+                    }
+
+                    // Parse the source string and resolve (this will fetch from git and cache it)
+                    let bundle_source = BundleSource::parse(&source_string)?;
+                    let resolved_bundle = resolver.resolve_source(&bundle_source, None)?;
+
+                    (resolved_bundle.source_path, resolved_bundle.git_source)
+                } else {
+                    // Use the cached bundle path
+                    let git_src = GitSource {
+                        url: url.clone(),
+                        subdirectory: path.clone(),
+                        git_ref: git_ref.clone(),
+                        resolved_sha: Some(sha.clone()),
+                    };
+
+                    // For marketplace plugins, use the synthetic bundle path
+                    let final_path = if is_marketplace {
+                        if let Some(plugin_name) =
+                            path.as_ref().and_then(|p| p.strip_prefix("$plugin/"))
+                        {
+                            bundles_cache.join("marketplace").join(plugin_name)
+                        } else {
+                            bundle_cache
+                        }
+                    } else {
+                        bundle_cache
+                    };
+
+                    (final_path, Some(git_src))
                 };
 
                 (
-                    bundle_cache,
-                    Some(git_src),
+                    final_cache_path,
+                    final_source,
                     Some(sha.clone()),
                     git_ref.clone(),
                 )

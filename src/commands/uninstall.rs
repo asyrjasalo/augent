@@ -14,6 +14,214 @@ use crate::cli::UninstallArgs;
 use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
+use dialoguer::console::Style;
+use dialoguer::console::Term;
+use dialoguer::{MultiSelect, theme::Theme};
+use std::fmt;
+
+#[derive(Default, Clone)]
+struct ResourceCounts {
+    commands: usize,
+    rules: usize,
+    agents: usize,
+    skills: usize,
+    subagents: usize,
+    prompts: usize,
+    other: usize,
+}
+
+impl ResourceCounts {
+    fn format(&self) -> Option<String> {
+        let parts = [
+            if self.commands > 0 {
+                Some(format!("{} commands", self.commands))
+            } else {
+                None
+            },
+            if self.rules > 0 {
+                Some(format!("{} rules", self.rules))
+            } else {
+                None
+            },
+            if self.agents > 0 {
+                Some(format!("{} agents", self.agents))
+            } else {
+                None
+            },
+            if self.skills > 0 {
+                Some(format!("{} skills", self.skills))
+            } else {
+                None
+            },
+            if self.subagents > 0 {
+                Some(format!("{} subagents", self.subagents))
+            } else {
+                None
+            },
+            if self.prompts > 0 {
+                Some(format!("{} prompts", self.prompts))
+            } else {
+                None
+            },
+            if self.other > 0 {
+                Some(format!("{} other", self.other))
+            } else {
+                None
+            },
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join(", "))
+        }
+    }
+}
+
+struct UninstallTheme<'a> {
+    items: Vec<&'a str>,
+    resource_counts: Vec<ResourceCounts>,
+}
+
+impl<'a> Theme for UninstallTheme<'a> {
+    fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
+        write!(f, "{}: ", prompt)
+    }
+
+    fn format_multi_select_prompt_item(
+        &self,
+        f: &mut dyn fmt::Write,
+        text: &str,
+        checked: bool,
+        active: bool,
+    ) -> fmt::Result {
+        let marker = if checked { "x" } else { " " };
+
+        let idx = self
+            .items
+            .iter()
+            .position(|item| *item == text)
+            .unwrap_or(0);
+
+        if active {
+            write!(
+                f,
+                "{} [{}] {}",
+                Style::new().green().apply_to(">"),
+                marker,
+                text
+            )?;
+        } else {
+            write!(f, "   [{}] {}", marker, text)?;
+        }
+
+        if active {
+            if let Some(counts) = self.resource_counts.get(idx) {
+                if let Some(formatted) = counts.format() {
+                    writeln!(f)?;
+                    write!(f, "    {}", Style::new().yellow().apply_to(&formatted))?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn format_multi_select_prompt_selection(
+        &self,
+        f: &mut dyn fmt::Write,
+        prompt: &str,
+        selections: &[&str],
+    ) -> fmt::Result {
+        if !selections.is_empty() {
+            write!(f, "{}: ", prompt)?;
+            for (idx, selection) in selections.iter().enumerate() {
+                if idx > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", selection)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Select bundles interactively from installed bundles
+fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
+    if workspace.lockfile.bundles.is_empty() {
+        println!("No bundles installed.");
+        std::process::exit(0);
+    }
+
+    let items: Vec<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    let item_refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
+
+    let resource_counts: Vec<ResourceCounts> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|bundle| {
+            let workspace_bundle = workspace.workspace_config.find_bundle(&bundle.name);
+
+            let mut counts = ResourceCounts::default();
+
+            if let Some(ws_bundle) = workspace_bundle {
+                for (bundle_file, installed_locations) in &ws_bundle.enabled {
+                    // Determine resource type from bundle file path
+                    if bundle_file.starts_with("commands/") {
+                        counts.commands += installed_locations.len();
+                    } else if bundle_file.starts_with("rules/") {
+                        counts.rules += installed_locations.len();
+                    } else if bundle_file.starts_with("agents/") {
+                        counts.agents += installed_locations.len();
+                    } else if bundle_file.starts_with("skills/") {
+                        counts.skills += installed_locations.len();
+                    } else if bundle_file.starts_with("subagents/") {
+                        counts.subagents += installed_locations.len();
+                    } else if bundle_file.starts_with("prompts/") {
+                        counts.prompts += installed_locations.len();
+                    } else {
+                        counts.other += installed_locations.len();
+                    }
+                }
+            }
+
+            counts
+        })
+        .collect();
+
+    println!("↑↓ to move, SPACE to select/deselect, ENTER to confirm, ESC/q to cancel\n");
+
+    let selection = match MultiSelect::with_theme(&UninstallTheme {
+        items: item_refs,
+        resource_counts,
+    })
+    .with_prompt("Select bundles to uninstall")
+    .items(&items)
+    .max_length(10)
+    .clear(false)
+    .interact_on_opt(&Term::stderr())?
+    {
+        Some(sel) => sel,
+        None => return Ok(vec![]),
+    };
+
+    let selected_bundles: Vec<String> = selection
+        .iter()
+        .filter_map(|&idx| workspace.lockfile.bundles.get(idx).map(|b| b.name.clone()))
+        .collect();
+
+    Ok(selected_bundles)
+}
 
 /// Run uninstall command
 pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
@@ -31,34 +239,58 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
 
     let mut workspace = crate::workspace::Workspace::open(&workspace_root)?;
 
-    let bundle_name = args.name.clone();
+    let bundle_names = match args.name {
+        Some(name) => vec![name],
+        None => select_bundles_interactively(&workspace)?,
+    };
 
-    let locked_bundle = workspace
-        .lockfile
-        .find_bundle(&bundle_name)
-        .ok_or_else(|| AugentError::BundleNotFound {
-            name: format!("Bundle '{}' not found in workspace", bundle_name),
-        })?
-        .clone();
-
-    let dependents = find_dependent_bundles(&workspace, &bundle_name)?;
-    if !dependents.is_empty() {
-        println!(
-            "Warning: The following bundles depend on '{}':",
-            bundle_name
-        );
-        for dep in &dependents {
-            println!("  - {}", dep);
-        }
-        println!();
-        println!("Removing '{}' will break these dependencies.", bundle_name);
+    if bundle_names.is_empty() {
+        println!("No bundles selected for uninstall.");
+        return Ok(());
     }
 
+    // Validate that all bundles exist first
+    for bundle_name in &bundle_names {
+        if workspace.lockfile.find_bundle(bundle_name).is_none() {
+            return Err(AugentError::BundleNotFound {
+                name: format!("Bundle '{}' not found in workspace", bundle_name),
+            });
+        }
+    }
+
+    // Check for dependencies before starting
+    for bundle_name in &bundle_names {
+        let dependents = find_dependent_bundles(&workspace, bundle_name)?;
+        if !dependents.is_empty() {
+            println!(
+                "Warning: The following bundles depend on '{}':",
+                bundle_name
+            );
+            for dep in &dependents {
+                println!("  - {}", dep);
+            }
+            println!();
+            println!("Removing '{}' will break these dependencies.", bundle_name);
+        }
+    }
+
+    // Confirm once for all bundles
     if !args.yes {
-        print!(
-            "Are you sure you want to uninstall bundle '{}'? [y/N]: ",
-            bundle_name
-        );
+        if bundle_names.len() == 1 {
+            print!(
+                "Are you sure you want to uninstall bundle '{}'? [y/N]: ",
+                bundle_names[0]
+            );
+        } else {
+            print!(
+                "Are you sure you want to uninstall {} bundles? [y/N]: ",
+                bundle_names.len()
+            );
+            println!();
+            for bundle_name in &bundle_names {
+                println!("  - {}", bundle_name);
+            }
+        }
         use std::io::Write;
         std::io::stdout().flush().unwrap();
 
@@ -79,18 +311,36 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     let mut transaction = Transaction::new(&workspace);
     transaction.backup_configs()?;
 
-    match do_uninstall(
-        &bundle_name,
-        &mut workspace,
-        &mut transaction,
-        &locked_bundle,
-    ) {
-        Ok(()) => {
-            transaction.commit();
-            Ok(())
+    let mut failed = false;
+
+    for bundle_name in &bundle_names {
+        let locked_bundle = workspace
+            .lockfile
+            .find_bundle(bundle_name)
+            .ok_or_else(|| AugentError::BundleNotFound {
+                name: format!("Bundle '{}' not found in workspace", bundle_name),
+            })?
+            .clone();
+
+        match do_uninstall(
+            bundle_name,
+            &mut workspace,
+            &mut transaction,
+            &locked_bundle,
+        ) {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("Failed to uninstall '{}': {}", bundle_name, e);
+                failed = true;
+            }
         }
-        Err(e) => Err(e),
     }
+
+    if !failed {
+        transaction.commit();
+    }
+
+    Ok(())
 }
 
 /// Perform actual uninstallation

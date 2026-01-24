@@ -101,10 +101,11 @@ pub struct InstallArgs {
 #[command(after_help = "EXAMPLES:\n  \
                   Uninstall a bundle:\n    augent uninstall my-bundle\n\n\
                   Uninstall without confirmation:\n    augent uninstall my-bundle -y\n\n\
-                  Uninstall a specific bundle name:\n    augent uninstall author/bundle")]
+                  Uninstall a specific bundle name:\n    augent uninstall author/bundle\n\n\
+                  Select bundle interactively:\n    augent uninstall")]
 pub struct UninstallArgs {
-    /// Bundle name to uninstall
-    pub name: String,
+    /// Bundle name to uninstall (if omitted, shows interactive menu)
+    pub name: Option<String>,
 
     /// Skip confirmation prompt
     #[arg(long, short = 'y')]
@@ -226,7 +227,19 @@ mod tests {
         let cli = Cli::try_parse_from(["augent", "uninstall", "my-bundle"]).unwrap();
         match cli.command {
             Commands::Uninstall(args) => {
-                assert_eq!(args.name, "my-bundle");
+                assert_eq!(args.name, Some("my-bundle".to_string()));
+                assert!(!args.yes);
+            }
+            _ => panic!("Expected Uninstall command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_uninstall_no_name() {
+        let cli = Cli::try_parse_from(["augent", "uninstall"]).unwrap();
+        match cli.command {
+            Commands::Uninstall(args) => {
+                assert_eq!(args.name, None);
                 assert!(!args.yes);
             }
             _ => panic!("Expected Uninstall command"),

@@ -298,9 +298,13 @@ impl Workspace {
 
     /// Save all configuration files
     pub fn save(&self) -> Result<()> {
+        // Sync workspace_config name with bundle_config name
+        let mut synced_workspace_config = self.workspace_config.clone();
+        synced_workspace_config.name = self.bundle_config.name.clone();
+
         Self::save_bundle_config(&self.augent_dir, &self.bundle_config)?;
         Self::save_lockfile(&self.augent_dir, &self.lockfile)?;
-        Self::save_workspace_config(&self.augent_dir, &self.workspace_config)?;
+        Self::save_workspace_config(&self.augent_dir, &synced_workspace_config)?;
         Ok(())
     }
 

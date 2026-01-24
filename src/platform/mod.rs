@@ -337,10 +337,14 @@ pub fn default_platforms() -> Vec<Platform> {
         Platform::new("gemini", "Gemini CLI", ".gemini")
             .with_detection(".gemini")
             .with_detection("GEMINI.md")
-            .with_transform(TransformRule::new("skills/**/*", ".gemini/skills/**/*"))
             .with_transform(TransformRule::new(
-                "commands/**/*.toml",
-                ".gemini/commands/**/*.toml",
+                "commands/**/*.md",
+                ".gemini/commands/**/*.md",
+            ))
+            .with_transform(TransformRule::new("agents/*.md", ".gemini/agents/*.md"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".gemini/skills/**/*.md",
             ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".gemini/settings.json")

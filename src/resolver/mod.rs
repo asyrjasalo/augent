@@ -390,7 +390,7 @@ impl Resolver {
     }
 
     /// Resolve a bundle source to a ResolvedBundle
-    fn resolve_source(
+    pub fn resolve_source(
         &mut self,
         source: &BundleSource,
         dependency: Option<&BundleDependency>,
