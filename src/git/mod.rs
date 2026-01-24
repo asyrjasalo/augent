@@ -13,9 +13,50 @@
 
 use std::path::Path;
 
-use git2::{Cred, CredentialType, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder};
+use git2::{
+    Cred, CredentialType, ErrorClass, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder,
+};
 
 use crate::error::{AugentError, Result};
+
+/// Interpret a git2 error and provide a more user-friendly message
+fn interpret_git_error(err: &git2::Error) -> String {
+    let class = err.class();
+    let message = err.message().to_lowercase();
+
+    // Check for specific error patterns in the message
+    // Order matters - more specific patterns first
+    if message.contains("not found") || message.contains("404") {
+        "Repository not found".to_string()
+    } else if message.contains("too many redirects") || message.contains("authentication replays") {
+        // This often means repository doesn't exist but auth is being attempted
+        "Repository not found".to_string()
+    } else if message.contains("authentication") || message.contains("credentials") {
+        "Authentication failed".to_string()
+    } else if message.contains("permission denied") || message.contains("access denied") {
+        "Permission denied".to_string()
+    } else if message.contains("connection")
+        || message.contains("network")
+        || message.contains("timeout")
+        || message.contains("timed out")
+    {
+        "Network error".to_string()
+    } else if class == ErrorClass::Http {
+        // Generic HTTP error - try to provide more context
+        if message.contains("certificate") {
+            "Certificate error".to_string()
+        } else if message.contains("ssl") {
+            "SSL error".to_string()
+        } else {
+            format!("HTTP error: {}", err.message())
+        }
+    } else if class == ErrorClass::Ssh {
+        format!("SSH error: {}", err.message())
+    } else {
+        // Fall back to original message
+        err.message().to_string()
+    }
+}
 
 /// Clone a git repository to a target directory
 ///
@@ -31,12 +72,13 @@ pub fn clone(url: &str, target: &Path) -> Result<Repository> {
     let mut builder = RepoBuilder::new();
     builder.fetch_options(fetch_options);
 
-    builder
-        .clone(url, target)
-        .map_err(|e| AugentError::GitCloneFailed {
+    builder.clone(url, target).map_err(|e| {
+        let reason = interpret_git_error(&e);
+        AugentError::GitCloneFailed {
             url: url.to_string(),
-            reason: e.message().to_string(),
-        })
+            reason,
+        }
+    })
 }
 
 /// Resolve a git ref (branch, tag, or partial SHA) to a full SHA
@@ -180,6 +222,11 @@ pub fn open(path: &Path) -> Result<Repository> {
 /// - Username/password from environment
 fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
     callbacks.credentials(|url, username_from_url, allowed_types| {
+        // Default credentials (for public repos) - try this first
+        if allowed_types.contains(CredentialType::DEFAULT) {
+            return Cred::default();
+        }
+
         // For SSH authentication
         if allowed_types.contains(CredentialType::SSH_KEY) {
             // Try SSH agent first
@@ -216,7 +263,7 @@ fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
 
         // For username/password authentication
         if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
-            // Try git credential helper
+            // Try git credential helper first
             if let Ok(cred) = Cred::credential_helper(
                 &git2::Config::open_default().unwrap_or_else(|_| git2::Config::new().unwrap()),
                 url,
@@ -225,20 +272,34 @@ fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
                 return Ok(cred);
             }
 
-            // Try default username with empty password
+            // For public HTTPS repos, try empty username/password
+            // This allows git2 to make request and get real error from server
+            if let Ok(cred) = Cred::userpass_plaintext("", "") {
+                return Ok(cred);
+            }
+
+            // If that fails, try a default username with empty password
             if let Some(username) = username_from_url {
+                if let Ok(cred) = Cred::userpass_plaintext(username, "") {
+                    return Ok(cred);
+                }
+            }
+
+            // Try common git usernames (git, anonymous)
+            for username in &["git", "anonymous"] {
                 if let Ok(cred) = Cred::userpass_plaintext(username, "") {
                     return Ok(cred);
                 }
             }
         }
 
-        // Default credentials (for public repos)
-        if allowed_types.contains(CredentialType::DEFAULT) {
-            return Cred::default();
-        }
-
-        Err(git2::Error::from_str("No valid credentials found"))
+        // If we get here, we couldn't provide any credentials
+        // Return a generic error to let git2 handle it
+        Err(git2::Error::new(
+            git2::ErrorCode::Auth,
+            git2::ErrorClass::Http,
+            "authentication failed",
+        ))
     });
 }
 

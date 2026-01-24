@@ -26,7 +26,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: ShowArgs) -> Result<()> 
             .lockfile
             .find_bundle(&args.name)
             .ok_or_else(|| AugentError::BundleNotFound {
-                name: args.name.clone(),
+                name: format!("Bundle '{}' not found", args.name),
             })?;
 
     let workspace_bundle = workspace.workspace_config.find_bundle(&args.name);

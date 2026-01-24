@@ -3,9 +3,13 @@ name: '@asyrjasalo/augent'
 bundles:
 - name: '@wshobson/agents'
   enabled:
-    commands/multi-agent-optimize.md:
-    - .claude/commands/multi-agent-optimize.md
-    agents/context-manager.md:
-    - .claude/agents/context-manager.md
-    commands/improve-agent.md:
-    - .claude/commands/improve-agent.md
+    commands/accessibility-audit.md:
+    - .claude/commands/accessibility-audit.md
+    skills/wcag-audit-patterns/SKILL.md:
+    - .claude/skills/wcag-audit-patterns/SKILL.md
+    agents/ui-visual-validator.md:
+    - .claude/agents/ui-visual-validator.md
+    skills/screen-reader-testing/SKILL.md:
+    - .claude/skills/screen-reader-testing/SKILL.md
+- name: '@octocat/Hello-World'
+  enabled: {}

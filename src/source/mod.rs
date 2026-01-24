@@ -263,7 +263,10 @@ impl GitSource {
         let (subdirectory, git_ref, url_part_for_parsing) = match ref_part {
             Some(ref_frag) => {
                 // Has fragment (# or @)
-                if let Some(colon_pos) = ref_frag.find(':') {
+                if ref_frag.is_empty() {
+                    // Empty fragment (# or @) means no user-specified ref
+                    (None, None, main_part)
+                } else if let Some(colon_pos) = ref_frag.find(':') {
                     // Fragment contains ':' - split into ref:subdir
                     (
                         Some(ref_frag[colon_pos + 1..].to_string()),
@@ -695,5 +698,45 @@ mod tests {
     fn test_display_url_ssh() {
         let source = BundleSource::parse("git@github.com:author/repo.git").unwrap();
         assert_eq!(source.display_url(), "git@github.com:author/repo.git");
+    }
+
+    #[test]
+    fn test_https_url_with_at_ref() {
+        let source = BundleSource::parse("https://github.com/author/repo.git@v1.0.0").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
+        assert!(git.subdirectory.is_none());
+    }
+
+    #[test]
+    fn test_https_url_with_at_ref_and_subdirectory() {
+        let source =
+            BundleSource::parse("https://github.com/author/repo.git@main:plugins/bundle").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("main".to_string()));
+        assert_eq!(git.subdirectory, Some("plugins/bundle".to_string()));
+    }
+
+    #[test]
+    fn test_ssh_url_preserves_at_sign() {
+        // SSH URLs with git@ should not treat the @ as a ref separator
+        let source = BundleSource::parse("git@github.com:author/repo.git").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "git@github.com:author/repo.git");
+        assert!(git.git_ref.is_none());
+        assert!(git.subdirectory.is_none());
+    }
+
+    #[test]
+    fn test_github_implicit_with_at_ref_sha() {
+        let source = BundleSource::parse("author/repo@abc123def456").unwrap();
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("abc123def456".to_string()));
     }
 }

@@ -37,7 +37,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         .lockfile
         .find_bundle(&bundle_name)
         .ok_or_else(|| AugentError::BundleNotFound {
-            name: bundle_name.clone(),
+            name: format!("Bundle '{}' not found in workspace", bundle_name),
         })?
         .clone();
 

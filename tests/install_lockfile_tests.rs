@@ -128,65 +128,20 @@ fn test_frozen_fails_when_lockfile_missing() {
 }
 
 // file:// URL support is fully implemented
-// Tests that file:// URLs with fragments are treated as git sources and include SHA in lockfile
+// Tests that lockfile stores actual branch name when no user ref specified
 #[test]
-fn test_lockfile_sha_resolution_for_git_source() {
+fn test_lockfile_ref_not_null_when_no_user_ref_specified() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    let repo_path = workspace.path.join("git-repo");
-    std::fs::create_dir_all(&repo_path).expect("Failed to create repo");
+    // Create a mock git repo
+    let repo_path = workspace.create_mock_git_repo("git-repo");
 
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(&repo_path)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .expect("Failed to init git");
-
-    std::process::Command::new("git")
-        .args(["config", "user.email", "test@example.com"])
-        .current_dir(&repo_path)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .expect("Failed to configure git");
-
-    std::process::Command::new("git")
-        .args(["config", "user.name", "Test User"])
-        .current_dir(&repo_path)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .expect("Failed to configure git");
-
-    std::fs::write(
-        repo_path.join("augent.yaml"),
-        "name: \"@test/bundle\"\nbundles: []\nversion: \"1.0.0\"\n",
-    )
-    .expect("Failed to write augent.yaml");
-
-    std::process::Command::new("git")
-        .args(["add", "."])
-        .current_dir(&repo_path)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .expect("Failed to add files");
-
-    std::process::Command::new("git")
-        .args(["commit", "-m", "Initial commit"])
-        .current_dir(&repo_path)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .expect("Failed to commit");
-
-    // Add fragment (#main) to force git source treatment (file:// without fragment is directory source)
+    // Use file:// URL with empty fragment to force git source treatment
+    // The empty fragment means "no user-specified ref", so it should resolve to actual branch name
     let git_url = format!(
-        "file://{}#main",
+        "file://{}#",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
@@ -197,9 +152,19 @@ fn test_lockfile_sha_resolution_for_git_source() {
         .success();
 
     let lockfile = workspace.read_file(".augent/augent.lock");
+
+    // The ref field should NOT be null - it should have the actual branch name (main or master)
     assert!(
-        lockfile.contains("resolved_sha") || lockfile.contains("sha"),
-        "Lockfile should contain resolved SHA"
+        !lockfile.contains(r#""ref": null"#),
+        "Lockfile ref field should not be null when no user ref specified, got: {}",
+        lockfile
+    );
+
+    // The ref field should contain a branch name (main or master depending on git version)
+    assert!(
+        lockfile.contains(r#""ref": "main""#) || lockfile.contains(r#""ref": "master""#),
+        "Lockfile ref field should contain actual branch name (main or master), got: {}",
+        lockfile
     );
 }
 

@@ -67,8 +67,8 @@ pub enum BundleSource {
 - `../shared/bundle` → `BundleSource::Dir`
 - `github:author/bundle` → `BundleSource::Git { url: "https://github.com/author/bundle.git", ref: None, ... }`
 - `author/bundle` → Same as above (implicit github:)
-- `github:author/bundle#v1.0.0` → `ref: Some("v1.0.0")`
-- `github:author/bundle@v1.0.0` → `ref: Some("v1.0.0")` (both `#` and `@` supported)
+- `github:author/bundle#v1.0.0` → `ref: Some("v1.0.0")` (preferred syntax)
+- `github:author/bundle@v1.0.0` → `ref: Some("v1.0.0")` (both `#` and `@` supported, `#` preferred)
 - `github:author/repo#plugins/name` → `subdirectory: Some("plugins/name")`
 - `https://github.com/author/bundle.git` → Direct Git URL
 - `git@github.com:author/bundle.git` → SSH Git URL

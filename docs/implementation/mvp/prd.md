@@ -135,8 +135,8 @@ For v1.0, augent supports these bundle source types:
 - **Git repositories**: Full HTTPS or SSH URLs (e.g., `https://github.com/user/repo.git` or `git@github.com:user/repo.git`)
 - **GitHub short-form**: `github:author/repo` or simply `author/repo` (defaults to GitHub)
 - **Git repositories with subdirectory**: Git URLs can specify a subdirectory using `:` (e.g., `github:user/repo:plugins/bundle-name`)
-- **Git repositories with ref**: Git URLs can specify a ref (branch, tag, or SHA) using `#` or `@` (e.g., `github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`)
-- **Git repositories with ref and subdirectory**: Combine both using `#ref:subdir` or `@ref:subdir` (e.g., `github:user/repo#main:plugins/bundle-name`)
+- **Git repositories with ref**: Git URLs can specify a ref (branch, tag, or SHA) using `#` or `@` (e.g., `github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`). The `#` syntax is preferred and follows URL standards.
+- **Git repositories with ref and subdirectory**: Combine both using `#ref:subdir` or `@ref:subdir` (e.g., `github:user/repo#main:plugins/bundle-name`). The `#` syntax is preferred.
 
 **Git Authentication**: For private git repositories, augent delegates entirely to git's native authentication system. This means it uses the user's existing SSH keys configured in `~/.ssh/` and git credential helpers. No separate authentication configuration is required for augent.
 

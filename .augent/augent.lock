@@ -6,16 +6,28 @@
       "source": {
         "type": "git",
         "url": "https://github.com/wshobson/agents.git",
-        "path": "plugins/agent-orchestration",
-        "ref": null,
+        "path": "plugins/accessibility-compliance",
+        "ref": "main",
         "sha": "1135ac606247648d9e4724f027280d4114282858",
-        "hash": "blake3:34810f1a72197e49305aef3ccdfa461b4960d21c4635ac5d64d51fc312902cae"
+        "hash": "blake3:f1440bf9b50c31fdaef93e57b6c991755e6e6fde230308db9cf022b057b59d29"
       },
       "files": [
-        "commands/multi-agent-optimize.md",
-        "commands/improve-agent.md",
-        "agents/context-manager.md"
+        "commands/accessibility-audit.md",
+        "agents/ui-visual-validator.md",
+        "skills/wcag-audit-patterns/SKILL.md",
+        "skills/screen-reader-testing/SKILL.md"
       ]
+    },
+    {
+      "name": "@octocat/Hello-World",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/octocat/Hello-World.git",
+        "ref": "master",
+        "sha": "7fd1a60b01f91b314f59955a4e4d4e80d8edf11d",
+        "hash": "blake3:73810482cd64886141b0d07873bad96c3ea3a56e42cb2e766636b0d4101e073d"
+      },
+      "files": []
     }
   ]
 }

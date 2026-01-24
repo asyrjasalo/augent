@@ -100,16 +100,15 @@ pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
 /// Returns the path to the cached bundle, the resolved SHA, and the resolved ref name.
 pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
     // If we already have a resolved SHA and it's cached, return early
+    // But only if git_ref is specified - otherwise we need to get the actual ref name
     if let Some(sha) = &source.resolved_sha {
-        if let Some(path) = get_cached(&source.url, sha)? {
-            // Get the actual ref name from the cached repository's HEAD
-            let resolved_ref = if source.git_ref.is_none() {
-                git::get_head_ref_name(&git::open(&path)?)?
-            } else {
-                source.git_ref.clone()
-            };
-            return Ok((path, sha.clone(), resolved_ref));
+        if source.git_ref.is_some() {
+            // User specified a ref, so we can use the cache
+            if let Some(path) = get_cached(&source.url, sha)? {
+                return Ok((path, sha.clone(), source.git_ref.clone()));
+            }
         }
+        // If git_ref is None, we need to clone to get the actual branch name
     }
 
     // Create a temporary directory for cloning
@@ -120,25 +119,9 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     // Clone repository
     let repo = git::clone(&source.url, temp_dir.path())?;
 
-    // Resolve the ref to a SHA
-    let sha = git::resolve_ref(&repo, source.git_ref.as_deref())?;
-
-    // Check if we already have this SHA cached
-    if let Some(path) = get_cached(&source.url, &sha)? {
-        // Get the actual ref name from the cached repository's HEAD
-        let resolved_ref = if source.git_ref.is_none() {
-            git::get_head_ref_name(&git::open(&path)?)?
-        } else {
-            source.git_ref.clone()
-        };
-        return Ok((path, sha, resolved_ref));
-    }
-
-    // Checkout specific commit
-    git::checkout_commit(&repo, &sha)?;
-
-    // Determine the resolved ref name
+    // Determine the resolved ref name BEFORE checkout
     // If user didn't specify a ref, we need to get the actual branch name from HEAD
+    // This MUST be done before checkout, as checkout will make HEAD detached
     let resolved_ref = if source.git_ref.is_none() {
         // Get the branch name from HEAD before we checkout (which makes it detached)
         git::get_head_ref_name(&repo)?
@@ -146,6 +129,17 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         // User specified a ref, use that
         source.git_ref.clone()
     };
+
+    // Resolve the ref to a SHA
+    let sha = git::resolve_ref(&repo, source.git_ref.as_deref())?;
+
+    // Check if we already have this SHA cached
+    if let Some(path) = get_cached(&source.url, &sha)? {
+        return Ok((path, sha, resolved_ref));
+    }
+
+    // Checkout specific commit
+    git::checkout_commit(&repo, &sha)?;
 
     // Determine the final cache path
     let cache_path = bundle_cache_path(&source.url, &sha)?;

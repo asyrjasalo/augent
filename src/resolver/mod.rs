@@ -300,7 +300,7 @@ impl Resolver {
         // Check if directory exists
         if !full_path.is_dir() {
             return Err(AugentError::BundleNotFound {
-                name: path.display().to_string(),
+                name: format!("Bundle not found at path '{}'", path.display()),
             });
         }
 
@@ -370,11 +370,16 @@ impl Resolver {
 
         // Check if the content path exists
         if !content_path.is_dir() {
+            let ref_suffix = source
+                .git_ref
+                .as_deref()
+                .map(|r| format!("@{}", r))
+                .unwrap_or_default();
+            let bundle_name = source.subdirectory.as_deref().unwrap_or("");
             return Err(AugentError::BundleNotFound {
                 name: format!(
-                    "{}#{}",
-                    source.url,
-                    source.subdirectory.as_deref().unwrap_or("")
+                    "Bundle '{}' not found in {}{}",
+                    bundle_name, source.url, ref_suffix
                 ),
             });
         }

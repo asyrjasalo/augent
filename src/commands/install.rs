@@ -132,7 +132,7 @@ fn do_install(
 
     if resolved_bundles.is_empty() {
         return Err(AugentError::BundleNotFound {
-            name: args.source.clone(),
+            name: format!("No bundles found at source '{}'", args.source),
         });
     }
 
@@ -263,8 +263,6 @@ fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<Lock
 
     // Calculate hash
     let bundle_hash = hash::hash_directory(&bundle.source_path)?;
-
-    eprintln!("DEBUG: bundle.resolved_ref = {:?}", bundle.resolved_ref);
 
     let source = if let Some(git_source) = &bundle.git_source {
         LockedSource::Git {

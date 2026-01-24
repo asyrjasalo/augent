@@ -68,7 +68,9 @@ bundles: []
         .args(["uninstall", "my-bundle"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Bundle not found"));
+        .stderr(predicate::str::contains(
+            "Bundle 'my-bundle' not found in workspace",
+        ));
 }
 
 #[test]
@@ -405,7 +407,9 @@ bundles: []
         .args(["show", "nonexistent-bundle"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Bundle not found"));
+        .stderr(predicate::str::contains(
+            "Bundle 'nonexistent-bundle' not found",
+        ));
 }
 
 #[test]
