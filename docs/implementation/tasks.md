@@ -22,14 +22,14 @@ Update when you have started a feature and completed a feature (in **Status:** a
 ## Task Statistics
 
 - **Total Tasks:** 435
-- **Completed:** 376 (Phase 0-4 complete, Epic 11-13 complete - 168 of 168 tasks)
-- **In Progress:** 0
-- **Pending:** 59 (Phase 6 Epic 14 optional - 25 tasks)
-- **Optional:** 25 (Phase 6 Epic 14 - optional, release-focused)
+- **Completed:** 376 (Phase 0-4 complete, Epics 11-12 complete, Epic 13 partial - 126 of 136 tasks)
+- **Pending:** 59 (Phase 6 Epic 14 - 25 tasks, Epic 13.13 - 10 tasks)
 
 ---
 
 ## Phase 0: Pre-Implementation Planning
+
+**Status:** Complete
 
 ### Feature 0.1: Create tasks.md
 
@@ -101,7 +101,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Phase 1: Foundation (Epics 1-3)
 
+**Status:** Complete
+
 ### Epic 1: Foundation & Project Setup
+
+**Status:** Complete
 
 #### Feature 1.1: Project Structure & Build Configuration
 
@@ -142,6 +146,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 2: Core Data Models
 
+**Status:** Complete
+
 #### Feature 2.1: Bundle Models
 
 - [x] Define `Bundle` struct (name, source, dependencies, metadata)
@@ -171,6 +177,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Write tests for resource model operations
 
 ### Epic 3: Platform System
+
+**Status:** Complete
 
 #### Feature 3.1: Platform Configuration Schema
 
@@ -214,7 +222,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Phase 2: Core Functionality (Epics 4-5)
 
+**Status:** Complete
+
 ### Epic 4: Git Operations & Bundle Sources
+
+**Status:** Complete
 
 #### Feature 4.1: Source URL Parsing
 
@@ -253,6 +265,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 5: Workspace Management
 
+**Status:** Complete
+
 #### Feature 5.1: Workspace Initialization
 
 - [x] Implement workspace detection (`.augent/` directory)
@@ -284,7 +298,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Phase 3: Install Command (Epic 6)
 
+**Status:** Complete
+
 ### Epic 6: Install Command
+
+**Status:** Complete
 
 #### Feature 6.1: Dependency Resolution
 
@@ -337,7 +355,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Phase 4: Additional Commands (Epics 7-10)
 
+**Status:** Complete
+
 ### Epic 7: Uninstall Command
+
+**Status:** Complete
 
 **Goal:** Implement the `uninstall` command with safe removal.
 
@@ -376,6 +398,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 8: List Command
 
+**Status:** Complete
+
 **Goal:** Implement the `list` command to show installed bundles.
 
 #### Feature 8.1: List Implementation
@@ -391,6 +415,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 9: Show Command
 
+**Status:** Complete
+
 **Goal:** Implement the `show` command to display bundle information.
 
 #### Feature 9.1: Show Implementation
@@ -405,6 +431,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Write tests for show command
 
 ### Epic 10: Help & Version Commands
+
+**Status:** Complete
 
 **Goal:** Implement help and version commands.
 
@@ -432,7 +460,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ## Phase 5: Quality Assurance (Epics 11-13)
 
-**Status:** Complete (Epics 11-13 complete)
+**Status:** Partially Complete (Epics 11-12 complete, Epic 13 partial - 14 of 15 features complete)
 
 ### Epic 11: Testing Infrastructure
 
@@ -571,7 +599,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 13: Test Coverage Gaps
 
-**Status:** Complete (15 of 15 features complete, 168 of 168 tasks complete)
+**Status:** Partially Complete (14 of 15 features complete)
 
 ### Overview
 
@@ -579,7 +607,7 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 ### Summary
 
-**Completed Features (90 tasks):**
+**Completed Features (126 tasks):**
 
 - [x] Feature 13.1: Fix Compilation Errors - Complete (6 tasks)
 - [x] Feature 13.2: Completions Command Test Coverage - Complete (9 tasks)
@@ -593,9 +621,12 @@ Additional test coverage improvements based on audit of user-facing functionalit
 - [x] Feature 13.10: Platform-Specific Test Coverage - Complete (11 tasks)
 - [x] Feature 13.11: Edge Cases and Boundary Conditions - Complete (12 tasks)
 - [x] Feature 13.12: Global Options Test Coverage - Complete (9 tasks)
-- [x] Feature 13.13: Integration Test Scenarios - Complete (10 tasks)
 - [x] Feature 13.14: Documentation-Based Testing - Complete (10 tasks)
 - [x] Feature 13.15: Run All Tests and Verify Coverage - Complete (7 tasks)
+
+**Pending Features (10 tasks):**
+
+- [ ] Feature 13.13: Integration Test Scenarios - Pending (10 tasks)
 
 #### Feature 13.1: Fix Compilation Errors
 
@@ -816,9 +847,11 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 ## Phase 6: Release (Epic 14)
 
+**Status:** Pending
+
 ### Epic 14: Release & Distribution
 
-**Status:** Pending (optional, release-focused)
+**Status:** Pending
 
 ### Goal
 

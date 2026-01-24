@@ -49,7 +49,7 @@ It does NOT:
 12. **Update documentation** - Update relevant @docs/
 13. **Run pre-commit** - Check documentation and other files:
     - `pre-commit run --all-files`
-14. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation
+14. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation, then update corresponding Epic/Feature status in plan.md
 15. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
 ## Development Guidelines
@@ -61,6 +61,7 @@ It does NOT:
 - Do not push to remote repositories unless explicitly asked
 - Error messages should be clear and human-readable
 - Operations must be atomic - workspace should never be left in inconsistent state
+- **Keep plan.md and tasks.md aligned**: When updating task status in tasks.md, also update the corresponding Epic/Feature status in plan.md to ensure consistency
 
 ### Task Entry Format in tasks.md
 
