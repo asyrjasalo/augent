@@ -1,6 +1,7 @@
 .rumdl_cache/
-
+coverage
 target/
+
 *.bak
 
 build_rs_cov.profraw
