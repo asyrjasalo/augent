@@ -306,3 +306,126 @@ fn test_discover_nested_bundle_with_subdirectory_path() {
     assert!(workspace.file_exists(".claude/commands/a.md"));
     assert!(!workspace.file_exists(".claude/rules/b.md"));
 }
+
+#[test]
+fn test_discover_multiple_bundles_from_git_repository() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    let repo_path = workspace.path.join("multi-bundle-repo");
+    std::fs::create_dir_all(&repo_path).expect("Failed to create repo");
+
+    std::process::Command::new("git")
+        .arg("init")
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to init git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to configure git");
+
+    let bundle1 = repo_path.join("bundles").join("bundle-a");
+    std::fs::create_dir_all(&bundle1).expect("Failed to create bundle");
+    std::fs::write(
+        bundle1.join("augent.yaml"),
+        "name: \"@test/bundle-a\"\nbundles: []\n",
+    )
+    .expect("Failed to write augent.yaml");
+    std::fs::create_dir_all(bundle1.join("commands")).unwrap();
+    std::fs::write(bundle1.join("commands/command-a.md"), "# Command A\n")
+        .expect("Failed to write file");
+
+    let bundle2 = repo_path.join("bundles").join("bundle-b");
+    std::fs::create_dir_all(&bundle2).expect("Failed to create bundle");
+    std::fs::write(
+        bundle2.join("augent.yaml"),
+        "name: \"@test/bundle-b\"\nbundles: []\n",
+    )
+    .expect("Failed to write augent.yaml");
+    std::fs::create_dir_all(bundle2.join("rules")).unwrap();
+    std::fs::write(bundle2.join("rules/rule-b.md"), "# Rule B\n").expect("Failed to write file");
+
+    let bundle3 = repo_path.join("bundles").join("bundle-c");
+    std::fs::create_dir_all(&bundle3).expect("Failed to create bundle");
+    std::fs::write(
+        bundle3.join("augent.yaml"),
+        "name: \"@test/bundle-c\"\nbundles: []\n",
+    )
+    .expect("Failed to write augent.yaml");
+    std::fs::create_dir_all(bundle3.join("skills")).unwrap();
+    std::fs::write(bundle3.join("skills/skill-c.md"), "# Skill C\n").expect("Failed to write file");
+
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Initial"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    let git_url = format!(
+        "file://{}:bundles/bundle-a",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url, "--for", "claude"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Installed 1 bundle"));
+
+    assert!(workspace.file_exists(".claude/commands/command-a.md"));
+
+    let git_url_b = format!(
+        "file://{}:bundles/bundle-b",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url_b, "--for", "claude"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Installed 1 bundle"));
+
+    assert!(workspace.file_exists(".claude/rules/rule-b.md"));
+
+    let git_url_c = format!(
+        "file://{}:bundles/bundle-c",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", &git_url_c, "--for", "claude"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Installed 1 bundle"));
+
+    assert!(workspace.file_exists(".claude/skills/skill-c.md"));
+}
