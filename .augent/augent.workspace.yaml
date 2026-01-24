@@ -1,17 +1,29 @@
 name: '@asyrjasalo/augent'
 
 bundles:
-- name: '@wshobson/agents'
-  enabled:
-    agents/ui-visual-validator.md:
-    - .claude/agents/ui-visual-validator.md
-    commands/accessibility-audit.md:
-    - .claude/commands/accessibility-audit.md
-    skills/wcag-audit-patterns/SKILL.md:
-    - .claude/skills/wcag-audit-patterns/SKILL.md
-    skills/screen-reader-testing/SKILL.md:
-    - .claude/skills/screen-reader-testing/SKILL.md
 - name: '@octocat/Hello-World'
   enabled: {}
+- name: '@wshobson/agents'
+  enabled:
+    commands/accessibility-audit.md:
+    - .gemini/commands/accessibility-audit.md
+    skills/wcag-audit-patterns/SKILL.md:
+    - .gemini/skills/wcag-audit-patterns/SKILL.md
+    agents/ui-visual-validator.md:
+    - .gemini/agents/ui-visual-validator.md
+    skills/screen-reader-testing/SKILL.md:
+    - .gemini/skills/screen-reader-testing/SKILL.md
 - name: '@davila7/claude-code-templates'
-  enabled: {}
+  enabled:
+    commands/flow-status.md:
+    - .gemini/commands/flow-status.md
+    agents/git-flow-manager.md:
+    - .gemini/agents/git-flow-manager.md
+    commands/finish.md:
+    - .gemini/commands/finish.md
+    commands/feature.md:
+    - .gemini/commands/feature.md
+    commands/release.md:
+    - .gemini/commands/release.md
+    commands/hotfix.md:
+    - .gemini/commands/hotfix.md

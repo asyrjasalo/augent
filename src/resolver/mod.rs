@@ -311,18 +311,31 @@ impl Resolver {
 
         let mut discovered = self.discover_local_bundles(&content_path)?;
 
+        // Check if this repo has a marketplace.json (virtual bundles)
+        let has_marketplace = content_path
+            .join(".claude-plugin/marketplace.json")
+            .is_file();
+
         // Add git source info to each discovered bundle
         // Each bundle gets its own subdirectory path relative to content_path
         for bundle in &mut discovered {
             // Calculate subdirectory path relative to content_path
             let subdirectory = if bundle.path.starts_with(&content_path) {
-                bundle
+                let stripped = bundle
                     .path
                     .strip_prefix(&content_path)
                     .ok()
                     .and_then(|p| p.to_str())
                     .map(|s| s.trim_start_matches('/').to_string())
-                    .filter(|s| !s.is_empty())
+                    .filter(|s| !s.is_empty());
+
+                // If path == content_path (empty subdirectory) and we have marketplace.json,
+                // this is a virtual bundle - use bundle name as subdirectory marker
+                if stripped.is_none() && has_marketplace {
+                    Some(format!("@virtual/{}", bundle.name))
+                } else {
+                    stripped
+                }
             } else {
                 None
             };
@@ -430,8 +443,8 @@ impl Resolver {
                     .to_string(),
             };
 
-            // Create synthetic directory for this bundle
-            self.create_synthetic_bundle(&full_path, &bundle_name, &marketplace_json)?
+            // Create synthetic directory for this bundle (local, no git URL)
+            self.create_synthetic_bundle(&full_path, &bundle_name, &marketplace_json, None)?
         } else {
             full_path.clone()
         };
@@ -497,8 +510,33 @@ impl Resolver {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
         let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
 
-        // Get the actual bundle content path (accounting for subdirectory)
-        let content_path = cache::get_bundle_content_path(source, &cache_path);
+        // Check if this is a virtual marketplace bundle (subdirectory starts with @virtual/)
+        let content_path = if let Some(ref subdir) = source.subdirectory {
+            if let Some(bundle_name) = subdir.strip_prefix("@virtual/") {
+                // This is a virtual marketplace bundle - create synthetic directory
+                let marketplace_json = cache_path.join(".claude-plugin/marketplace.json");
+                if !marketplace_json.is_file() {
+                    return Err(AugentError::BundleNotFound {
+                        name: format!(
+                            "Marketplace bundle '{}' not found - missing marketplace.json",
+                            bundle_name
+                        ),
+                    });
+                }
+                self.create_synthetic_bundle(
+                    &cache_path,
+                    bundle_name,
+                    &marketplace_json,
+                    Some(&source.url),
+                )?
+            } else {
+                // Normal subdirectory
+                cache::get_bundle_content_path(source, &cache_path)
+            }
+        } else {
+            // No subdirectory
+            cache::get_bundle_content_path(source, &cache_path)
+        };
 
         // Check if the content path exists
         if !content_path.is_dir() {
@@ -583,6 +621,24 @@ impl Resolver {
         Ok(resolved)
     }
 
+    /// Copy a directory recursively
+    fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
+        std::fs::create_dir_all(dst)?;
+        for entry in std::fs::read_dir(src)? {
+            let entry = entry?;
+            let path = entry.path();
+            let file_name = entry.file_name();
+            let dest_path = dst.join(&file_name);
+
+            if path.is_dir() {
+                Self::copy_dir_all(&path, &dest_path)?;
+            } else {
+                std::fs::copy(&path, &dest_path)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Create a synthetic bundle directory from marketplace.json definition
     ///
     /// For virtual bundles defined in marketplace.json, creates a cache directory
@@ -592,6 +648,7 @@ impl Resolver {
         repo_root: &Path,
         bundle_name: &str,
         marketplace_json: &Path,
+        git_url: Option<&str>,
     ) -> Result<std::path::PathBuf> {
         // Parse marketplace.json to get resource paths
         let marketplace_config = MarketplaceConfig::from_file(marketplace_json)?;
@@ -605,12 +662,8 @@ impl Resolver {
                 name: format!("Bundle '{}' not found in marketplace.json", bundle_name),
             })?;
 
-        // Create cache directory structure: .augent/cache/marketplace/{bundle_name}/
-        let cache_root = self
-            .workspace_root
-            .join(".augent")
-            .join("cache")
-            .join("marketplace");
+        // Use global cache directory: ~/.cache/augent/bundles/marketplace/{bundle_name}/
+        let cache_root = crate::cache::bundles_cache_dir()?.join("marketplace");
         std::fs::create_dir_all(&cache_root)?;
 
         let synthetic_dir = cache_root.join(bundle_name);
@@ -622,7 +675,8 @@ impl Resolver {
         self.copy_resources(repo_root, &synthetic_dir, bundle_def)?;
 
         // Generate augent.yaml for synthetic bundle
-        self.generate_synthetic_config(&synthetic_dir, bundle_def)?;
+        // Derive @author/repo name from git URL
+        self.generate_synthetic_config(&synthetic_dir, bundle_def, git_url)?;
 
         Ok(synthetic_dir)
     }
@@ -636,6 +690,14 @@ impl Resolver {
     ) -> Result<()> {
         use std::fs;
 
+        // Determine the source directory for bundle resources
+        // If bundle has a source field, use it; otherwise use repo root
+        let source_dir = if let Some(ref source_path) = bundle_def.source {
+            repo_root.join(source_path.trim_start_matches("./"))
+        } else {
+            repo_root.to_path_buf()
+        };
+
         // Helper function to copy a list of resource paths
         let copy_list = |resource_list: &[String], target_subdir: &str| -> Result<()> {
             let target_path = target_dir.join(target_subdir);
@@ -644,26 +706,38 @@ impl Resolver {
             }
 
             for resource_path in resource_list {
-                let source = repo_root.join(resource_path.trim_start_matches("./"));
+                let source = source_dir.join(resource_path.trim_start_matches("./"));
                 if !source.exists() {
                     continue; // Skip non-existent resources
                 }
 
-                let file_name = source
-                    .file_name()
-                    .ok_or_else(|| AugentError::FileNotFound {
-                        path: source.display().to_string(),
-                    })?;
-                let dest = target_path.join(file_name);
+                // For skill directories that might contain SKILL.md, copy the entire directory
+                if source.is_dir() {
+                    let dir_name = source
+                        .file_name()
+                        .ok_or_else(|| AugentError::FileNotFound {
+                            path: source.display().to_string(),
+                        })?;
+                    let dest = target_path.join(dir_name);
+                    Resolver::copy_dir_all(&source, &dest)?;
+                } else {
+                    let file_name =
+                        source
+                            .file_name()
+                            .ok_or_else(|| AugentError::FileNotFound {
+                                path: source.display().to_string(),
+                            })?;
+                    let dest = target_path.join(file_name);
 
-                fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
-                    message: format!(
-                        "Failed to copy {} to {}: {}",
-                        source.display(),
-                        dest.display(),
-                        e
-                    ),
-                })?;
+                    fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
+                        message: format!(
+                            "Failed to copy {} to {}: {}",
+                            source.display(),
+                            dest.display(),
+                            e
+                        ),
+                    })?;
+                }
             }
 
             Ok(())
@@ -685,9 +759,29 @@ impl Resolver {
         &self,
         target_dir: &Path,
         bundle_def: &crate::config::MarketplaceBundle,
+        git_url: Option<&str>,
     ) -> Result<()> {
+        // Derive bundle name from git URL if available
+        let bundle_name = if let Some(url) = git_url {
+            // URL format: https://github.com/author/repo.git
+            let url_clean = url.trim_end_matches(".git");
+            let url_parts: Vec<&str> = url_clean.split('/').collect();
+
+            if url_parts.len() >= 2 {
+                let author = url_parts[url_parts.len() - 2];
+                let repo = url_parts[url_parts.len() - 1];
+                format!("@{}/{}", author, repo)
+            } else {
+                // Fallback: use bundle_def.name as-is
+                bundle_def.name.clone()
+            }
+        } else {
+            // Local bundle - use bundle_def.name as-is
+            bundle_def.name.clone()
+        };
+
         let config = BundleConfig {
-            name: bundle_def.name.clone(),
+            name: bundle_name,
             version: bundle_def.version.clone(),
             description: Some(bundle_def.description.clone()),
             author: None,

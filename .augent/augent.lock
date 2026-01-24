@@ -2,23 +2,6 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
-      "name": "@wshobson/agents",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/wshobson/agents.git",
-        "path": "plugins/accessibility-compliance",
-        "ref": "main",
-        "sha": "1135ac606247648d9e4724f027280d4114282858",
-        "hash": "blake3:f1440bf9b50c31fdaef93e57b6c991755e6e6fde230308db9cf022b057b59d29"
-      },
-      "files": [
-        "commands/accessibility-audit.md",
-        "agents/ui-visual-validator.md",
-        "skills/wcag-audit-patterns/SKILL.md",
-        "skills/screen-reader-testing/SKILL.md"
-      ]
-    },
-    {
       "name": "@octocat/Hello-World",
       "source": {
         "type": "git",
@@ -30,15 +13,44 @@
       "files": []
     },
     {
+      "name": "@wshobson/agents",
+      "description": "WCAG accessibility auditing, compliance validation, UI testing for screen readers, keyboard navigation, and inclusive design",
+      "version": "1.2.1",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/wshobson/agents.git",
+        "path": "@virtual/accessibility-compliance",
+        "ref": "main",
+        "sha": "1135ac606247648d9e4724f027280d4114282858",
+        "hash": "blake3:ec52e7646342a24e63342a759fb703bfa9326e5ecb3f0af030cf49cb62ef55c5"
+      },
+      "files": [
+        "commands/accessibility-audit.md",
+        "agents/ui-visual-validator.md",
+        "skills/wcag-audit-patterns/SKILL.md",
+        "skills/screen-reader-testing/SKILL.md"
+      ]
+    },
+    {
       "name": "@davila7/claude-code-templates",
+      "description": "Git workflow automation: feature, release, and hotfix commands with git specialists",
+      "version": "1.0.0",
       "source": {
         "type": "git",
         "url": "https://github.com/davila7/claude-code-templates.git",
+        "path": "@virtual/git-workflow",
         "ref": "main",
         "sha": "f41bf2382d271b2cac6d6caee8428fcfeca72387",
-        "hash": "blake3:af3ee6d4eab16269bbb614d990050706b178bace1c8f23bd42b1df31d536fa66"
+        "hash": "blake3:67b7211f8b425240d3befe8990d35cf168367287167320e3a41d295a48758d17"
       },
-      "files": []
+      "files": [
+        "commands/flow-status.md",
+        "commands/finish.md",
+        "commands/hotfix.md",
+        "commands/release.md",
+        "commands/feature.md",
+        "agents/git-flow-manager.md"
+      ]
     }
   ]
 }
