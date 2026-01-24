@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the architecture of Augent, an AI package manager for managing AI coding agent resources across multiple platforms.
+This document describes the architecture of Augent, an AI package manager for managing AI coding platform resources across multiple platforms.
 
 ---
 
@@ -10,7 +10,7 @@ This document describes the architecture of Augent, an AI package manager for ma
 
 ### Bundle
 
-A **Bundle** is a directory containing AI agent-independent resources. Bundles are distributed via Git repositories and can contain:
+A **Bundle** is a directory containing platform-independent resources. Bundles are distributed via Git repositories and can contain:
 
 - `augent.yaml` - Bundle configuration and dependencies (optional)
 - `augent.lock` - Resolved dependency versions (auto-generated)
@@ -33,7 +33,7 @@ A **Workspace** is a developer's working git repository with Augent configuratio
 
 ### Aug
 
-An **Aug** is a resource file in AI agent-independent format. Examples:
+An **Aug** is a resource file in platform-independent format. Examples:
 
 - `commands/debug.md`
 - `rules/lint.md`
@@ -41,7 +41,7 @@ An **Aug** is a resource file in AI agent-independent format. Examples:
 
 ### Augmentation
 
-An **Augmentation** is a resource that has been installed for a specific AI agent in its native format. Examples:
+An **Augmentation** is a resource that has been installed for a specific AI coding platform in its native format. Examples:
 
 - `.cursor/rules/debug.mdc` (Cursor-specific)
 - `.opencode/commands/debug.md` (OpenCode-specific)
@@ -55,7 +55,7 @@ These are Type 1 decisions from the PRD that cannot be reversed.
 
 ### Package Manager
 
-Augent is a **package manager**. It manages AI agent resources, not software dependencies. This means:
+Augent is a **package manager**. It manages AI coding platform resources, not software dependencies. This means:
 
 - No semantic versioning or version ranges
 - No development vs. production dependencies
@@ -89,7 +89,7 @@ All operations are atomic:
 
 ### Platform Extensibility
 
-Support for new AI agents via `platforms.jsonc`:
+Support for new AI coding platforms via `platforms.jsonc`:
 
 - No code changes required
 - Detection patterns
@@ -120,7 +120,7 @@ sequenceDiagram
         Augent->>FS: Create augent.lock (empty)
         Augent->>FS: Create augent.workspace.yaml
     end
-    Augent->>FS: Detect AI agent directories
+    Augent->>FS: Detect AI coding platform directories
     FS-->>Augent: [.cursor/, .opencode/, etc.]
     Augent-->>User: Workspace initialized
 ```

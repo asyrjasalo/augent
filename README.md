@@ -1,12 +1,12 @@
 # Augent
 
-Augments AI coding agents (such as OpenCode, Claude Code, Cursor) via packages (of skills, subagents, commands, rules, MCP servers, etc.) in a reproducible, platform independent, and intuitive manner.
+Augments AI coding platforms (such as OpenCode, Claude Code, Cursor) via packages (of skills, subagents, commands, rules, MCP servers, etc.) in a reproducible, platform independent, and intuitive manner.
 
 What it does:
 
 - Stores bundles of capabilities as Git repositories and directories.
 - Implements locking to ensure 100% reproducibility across your team.
-- Frees you from burden of converting between AI agent specific formats.
+- Frees you from burden of converting between AI coding platform specific formats.
 
 It does NOT:
 
@@ -48,16 +48,16 @@ cargo install --git https://github.com/asyrjasalo/augent
 
 ## How It Works
 
-Augent stores AI agent resources as **bundles** in Git repositories:
+Augent stores AI coding platform resources as **bundles** in Git repositories:
 
-- **Bundle**: A directory containing AI agent-independent resources with optional `augent.yaml` configuration
+- **Bundle**: A directory containing platform-independent resources with optional `augent.yaml` configuration
 - **Workspace**: Your working git repository with Augent configuration in `.augent/`
-- **Augmentations**: Resources transformed and installed for specific AI agents
+- **Augmentations**: Resources transformed and installed for specific AI coding platforms
 
 When you install a bundle, Augent:
 
 1. Fetches and caches the bundle from Git
-2. Transforms resources to match your AI agent's format
+2. Transforms resources to match your AI coding platform's format
 3. Installs them into your workspace
 4. Locks exact versions for reproducibility
 
@@ -69,7 +69,7 @@ augent install github:author/bundle              # GitHub
 augent install https://github.com/author/bundle   # Git URL
 augent install ./local-bundle                    # Local directory
 
-# Install for specific agents
+# Install for specific platforms
 augent install ./bundle --for cursor opencode
 
 # Manage bundles
@@ -83,15 +83,15 @@ augent clean-cache --all                          # Remove all cached bundles
 
 ## Bundle Format
 
-A bundle contains resources in AI agent-independent format:
+A bundle contains resources in platform-independent format:
 
 ```text
 my-bundle/
 ├── augent.yaml           # Bundle metadata and dependencies
 ├── rules/
-│   └── debug.md         # Rules for AI agents
+│   └── debug.md         # Rules for AI coding platforms
 ├── skills/
-│   └── analyze.md       # Skills for AI agents
+│   └── analyze.md       # Skills for AI coding platforms
 └── mcp.jsonc            # MCP server configuration
 ```
 

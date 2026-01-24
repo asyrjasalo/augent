@@ -99,7 +99,7 @@ Core infrastructure and data models, platform system for extensibility - essenti
 - Platform-independent AI configuration management
 - Lean, intuitive, developer-friendly CLI
 - Easy extensibility without code changes
-- Support for multiple AI agents (Claude, Cursor, OpenCode, etc.)
+- Support for multiple AI coding platforms (Claude, Cursor, OpenCode, etc.)
 
 ---
 

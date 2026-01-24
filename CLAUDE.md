@@ -1,16 +1,16 @@
-# Instructions for AI Coding Agents
+# Instructions for AI Coding Platforms
 
-This document serves as CLAUDE.md/AGENTS.md rules file for AI coding agents working on the Augent codebase.
+This document serves as CLAUDE.md/AGENTS.md rules file for AI coding platforms working on the Augent codebase.
 
 ## Project Overview
 
-Augent is a AI coding agent (such as OpenCode, Claude Code, Cursor) package manager which manages capabilities (such as skills, subagents, commands, rules, MCP servers, etc.) for various AI agents in a reproducible, platform independent, and intuitive manner.
+Augent is an AI coding platform (such as OpenCode, Claude Code, Cursor) package manager which manages capabilities (such as skills, subagents, commands, rules, MCP servers, etc.) for various AI coding platforms in a reproducible, platform independent, and intuitive manner.
 
 What it does:
 
 - Stores bundles of capabilities as Git repositories and directories.
 - Implements locking to ensure 100% reproducibility across your team.
-- Frees you from burden of converting between AI agent specific formats.
+- Frees you from burden of converting between AI coding platform specific formats.
 
 It does NOT:
 
@@ -20,10 +20,10 @@ It does NOT:
 
 ## Key Concepts
 
-- **Bundle**: A directory containing AI agent-independent resources, distributed via Git repositories
+- **Bundle**: A directory containing platform-independent resources, distributed via Git repositories
 - **Workspace**: Your working git repository with augent configuration
-- **Aug**: An AI agent-independent resource file
-- **Augmentation**: A resource installed for a specific AI agent in its native format
+- **Aug**: A platform-independent resource file
+- **Augmentation**: A resource installed for a specific AI coding platform in its native format
 
 ## Implementation Process
 
@@ -105,7 +105,7 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
 1. They can destroy user's (or another agent's) work
 2. They can undo changes the user intentionally made
 3. They can break the git history in unrecoverable ways
-4. They are DANGEROUS and should never be run by an AI agent
+4. They are DANGEROUS and should never be run by an AI coding platform
 
 **If you make mistakes:**
 

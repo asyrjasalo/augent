@@ -1,6 +1,6 @@
 //! Augent - AI configuration manager
 //!
-//! A platform-independent command line tool for managing AI coding agent resources
+//! A platform-independent command line tool for managing AI coding platform resources
 //! across multiple platforms (Claude, Cursor, OpenCode, etc.) in a reproducible manner.
 
 use clap::Parser;

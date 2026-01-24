@@ -1,7 +1,7 @@
 //! Workspace configuration (augent.workspace.yaml) data structures
 //!
 //! This file tracks which files are installed from which bundles
-//! to which AI agents.
+//! to which AI coding platforms.
 
 #![allow(dead_code)]
 

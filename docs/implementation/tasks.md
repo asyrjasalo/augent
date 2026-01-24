@@ -811,7 +811,7 @@ Comprehensive test coverage for all user-facing functionality including integrat
 - [x] Test reinstalling same bundle and verifying no changes
 - [x] Test updating bundle by changing ref and reinstalling
 - [x] Test installing from local, then installing updated version from git
-- [x] Test workspace with multiple AI agents and bundles
+- [x] Test workspace with multiple AI coding platforms and bundles
 - [x] Test atomic rollback on install failure
 - [x] Test atomic rollback on uninstall failure
 - [x] Test concurrent install operations

@@ -5,7 +5,7 @@
 
 ## Context
 
-Need a format for distributing AI agent resources that is simple, git-friendly, and platform-independent.
+Need a format for distributing AI coding platform resources that is simple, git-friendly, and platform-independent.
 
 ## Decision
 

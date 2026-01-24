@@ -71,7 +71,7 @@ augent install github:author/bundle@main
 
 1. **Cache**: Bundle is downloaded and cached in `~/.cache/augent/bundles/`
 2. **Resolve**: Git refs are resolved to exact SHAs
-3. **Transform**: Resources are transformed to match your AI agent's format
+3. **Transform**: Resources are transformed to match your AI coding platform's format
 4. **Install**: Files are installed in appropriate locations
 5. **Lock**: Lockfile is updated with resolved SHAs for reproducibility
 

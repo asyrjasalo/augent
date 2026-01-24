@@ -6,7 +6,7 @@ Tasks (use <--- WE ARE HERE marker to track progress)
 - write @docs/implementation/plan.md
   - ensure all pending research is done
     - you don't need code yet
-    - you can research [OpenPackage](https://github.com/enulus/OpenPackage) to understand how to implement AI agent (platform) independent resources
+    - you can research [OpenPackage](https://github.com/enulus/OpenPackage) to understand how to implement platform-independent resources
   - split implementation to epics
     - split epics to features
       - split features to tasks

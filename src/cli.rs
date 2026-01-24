@@ -5,14 +5,14 @@ use std::path::PathBuf;
 
 /// Augent - AI configuration manager
 ///
-/// Manage AI coding agent resources across multiple platforms in a reproducible manner.
+/// Manage AI coding platform resources across multiple platforms in a reproducible manner.
 #[derive(Parser, Debug)]
 #[command(
     name = "augent",
     author,
     version,
-    about = "AI configuration manager for AI coding agents",
-    long_about = "Augent manages AI coding agent resources (commands, rules, skills, MCP servers) \
+    about = "AI configuration manager for AI coding platforms",
+    long_about = "Augent manages AI coding platform resources (commands, rules, skills, MCP servers) \
                   across multiple platforms (Claude, Cursor, OpenCode) in a platform-independent, \
                   reproducible manner.",
     after_help = "EXAMPLES:\n    \

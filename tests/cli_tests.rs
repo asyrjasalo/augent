@@ -18,7 +18,7 @@ fn test_help_output() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("AI coding agent resources"))
+        .stdout(predicate::str::contains("AI coding platform resources"))
         .stdout(predicate::str::contains("install"))
         .stdout(predicate::str::contains("uninstall"))
         .stdout(predicate::str::contains("list"))

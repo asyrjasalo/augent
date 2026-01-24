@@ -1,10 +1,10 @@
 # Platforms Configuration Schema
 
-This document describes the `platforms.jsonc` schema for defining AI coding agent platforms in Augent.
+This document describes the `platforms.jsonc` schema for defining AI coding platforms in Augent.
 
 ## Overview
 
-The `platforms.jsonc` file defines how Augent detects and transforms resources for different AI coding agent platforms. This enables Augent to support new AI agents without code changes.
+The `platforms.jsonc` file defines how Augent detects and transforms resources for different AI coding platforms. This enables Augent to support new AI coding platforms without code changes.
 
 ## Structure
 

@@ -4,9 +4,9 @@
 
 ### What are we solving
 
-As of today (2026-01-22), there are many AI agents for developers to choose from, and more is expected to come. Some popular ones include OpenCode, Claude Code, Cursor, Codex CLI and GitHub Copilot. Many developers increasingly use more than one AI agent in the project scope.
+As of today (2026-01-22), there are many AI coding platforms for developers to choose from, and more is expected to come. Some popular ones include OpenCode, Claude Code, Cursor, Codex CLI and GitHub Copilot. Many developers increasingly use more than one AI coding platform in the project scope.
 
-There is no well-established process to manage these AI coding agents' resources across different agents or projects.
+There is no well-established process to manage these AI coding platforms' resources across different platforms or projects.
 
 The resources are key assets for AI driven development process such as commands, rules, subagents, skills and MCP servers. Many of developers rely on maintaining their own set of resources and copy them across projects.
 
@@ -14,9 +14,9 @@ The resources are key assets for AI driven development process such as commands,
 
 As of 2026-01-22, the most promising solution to resolve these issues in an agent-independent manner is [OpenPackage](https://github.com/enulus/OpenPackage). The project is not fully matured yet (it has a central registry but does not share code for that registry) and lacks accelerating adoption even though the problem itself has been widely acknowledged and is pending solution.
 
-OpenPackage also has a few design flaws due to it stemming from being designed on how other package managers (like npm) work, and not acknowledging that managing AI agent resources is whole lot of different from managing software packages.
+OpenPackage also has a few design flaws due to it stemming from being designed on how other package managers (like npm) work, and not acknowledging that managing AI coding platform resources is whole lot of different from managing software packages.
 
-Some examples of early design flaws include implementing development dependencies without careful thought when they are installed. Overall, development dependencies has little recognized use cases yet in managing resources for AI agents, and it mostly confuses what gets installed and when.
+Some examples of early design flaws include implementing development dependencies without careful thought when they are installed. Overall, development dependencies has little recognized use cases yet in managing resources for AI coding platforms, and it mostly confuses what gets installed and when.
 
 On the other hand, it lacks useful features from real package managers like dependency locking. This is mandatory requirement when using version ranges in dependencies to ensure reproducibility in the first place across team members.
 
@@ -24,7 +24,7 @@ From the adoption point of view, likely its biggest issue is that is not designe
 
 ### How we will resolve it
 
-We will now implement an AI package manager supporting various AI agents and relying on OpenPackage's quite ok support for various AI agents (talking on them as "platforms")
+We will now implement an AI package manager supporting various AI coding platforms and relying on OpenPackage's quite ok support for various AI coding platforms (talking on them as "platforms")
 
 We will do this in a development-friendly manner. This means that it is not only easy, BUT OBVIOUS, to use for anyone who has used any package manager before in any programming language, and not only that but it is actually far simpler than that.
 
@@ -32,11 +32,11 @@ This means **we will not cargo cult any existing packager manager and we will no
 
 Our goal is:
 
-1) Implement AI coding agent and platform independent resource management,
+1) Implement AI coding platform and platform independent resource management,
 2) in a lean, intuitive, developer friendly, non-documentation relying way,
 3) with easy extensibility without code changes
 
-To respond to fast evolving landscape of AI coding agents and their features.
+To respond to fast evolving landscape of AI coding platforms and their features.
 
 ### What will 1.0 look like
 
@@ -44,20 +44,15 @@ To respond to fast evolving landscape of AI coding agents and their features.
 
 **Workspace** - working copy of git repository at hand on developer's machine
 
-**Workspace_root** - the root directory of the workspace (usually where `.git` directory is and where AI coding agent specific directories are stored)
+**Workspace_root** - the root directory of the workspace (usually where `.git` directory is and where AI coding platform specific directories are stored)
 
-**Bundle** - a directory with AI coding agent independent augs (either in its root or in subdirectories) and optionally Augent bundle config files regarding the bundle (its dependencies, its name, optional metadata).
+**Bundle** - a directory with platform independent augs (either in its root or in subdirectories) and optionally Augent bundle config files regarding the bundle (its dependencies, its name, optional metadata).
 
-**Bundle config files** - `augent.yaml`, `augent.lock` and `augent.workspace.yaml` files.
+**Aug** - a file that is provided by a bundle in a platform-independent **format** (e.g. rule `<bundle_dir>/rules/debug.md` or mcp server `<bundle_dir>/mcp.jsonc`)
 
-**Aug** - a file that is provided by a bundle in an AI coding agent **independent** format (e.g. rule `<bundle_dir>/rules/debug.md` or mcp server `<bundle_dir>/mcp.jsonc`)
+- `*resource` - a file that is provided by a bundle in a platform independent format (e.g. `<bundle_dir>rules/debug.md`)
 
-***Bundle root file/dir*** - a file or directory that is provided by a bundle (`<bundle_dir>/root/file.md` or `<bundle_dir>/root/dir`). These files are copied **as is** to the workspace root directory when the bundle is installed. Later bundles' root files will override earlier bundles' root files if they have the same name.
-
-**Resource** -
-
-- `*resource` - a file that is provided by a bundle in an AI coding agent independent format (e.g. `<bundle_dir>rules/debug.md`)
-- `augmentation` - a resource that has been installed by a bundle for a specific AI coding agent in its own format (e.g. `<workspace_root_dir>/.cursor/rules/debug.mdc`)
+- `augmentation` - a resource that has been installed by a bundle for a specific AI coding platform in its own format (e.g. `<workspace_root_dir>/.cursor/rules/debug.mdc`)
 
 #### What we will have
 
@@ -67,7 +62,7 @@ To respond to fast evolving landscape of AI coding agents and their features.
 
 - It implements as few commands (`install`, `uninstall`, `list`, `show`) as possible.
 
-- The app knows all the AI agent formats that OpenPackage currently does and can convert from AI agent independent resources to agent specific resources and back.
+- The app knows all the AI coding platform formats that OpenPackage currently does and can convert from platform independent resources to AI coding platform specific resources and back.
 
 - All matured CLI tool practices and Rust development best practices are followed.
 
@@ -100,7 +95,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - Some resources are merged with the existing ones if they already exist for the agent, e.g. AGENTS.md and mcp.jsonc files. The merging strategy likely differs between these file types (AGENTS.md is markdown, mcp.jsonc is JSON). **TODO: Research OpenPackage's platforms.jsonc schema for the exact merging behavior for each file type.**
 
-- Augent will know how to install the directory's content for AI coding agents regardless of whether `augent.yaml`, `augent.lock`, `augent.workspace.yaml` is present in the directory. This ensures we maintain compatibility with Claude Code plugins, skills only repos, etc.
+- Augent will know how to install the directory's content for AI coding platforms regardless of whether `augent.yaml`, `augent.lock`, `augent.workspace.yaml` is present in the directory. This ensures we maintain compatibility with Claude Code plugins, skills only repos, etc.
 
 - If a dependency is installed in the workspace, then `augent.lock` if the same directory as `augent.yaml` has an entry for it. It does not necessary mean that that dependency's provided files are installed for all or even any of the agents. What is installed per agent (and "where did the resources come from" is tracked in `augent.workspace.yaml`)
 
@@ -118,7 +113,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - In lockfile, all sources have been resolved TO BE EXACT, that is anything from github uses exact URL and SHA for a git repository. It may have org/user and ref info present but that is not used for resolving.
 
-- Lockfile lists all the files that are provided by the bundle, NOT WHAT is necessarily installed by the bundle. This means, providing you install for all AI agents, you should be able to track where the resources came from by starting from the end of the lockfile.
+- Lockfile lists all the files that are provided by the bundle, NOT WHAT is necessarily installed by the bundle. This means, providing you install for all AI coding platforms, you should be able to track where the resources came from by starting from the end of the lockfile.
 
 - The last entry in the lockfile is the bundle itself. Thus the bundles own augs (in the bundle's dir) always override the resources from earlier dependencies if the file names overlap, except where resources are merged.
 
@@ -128,11 +123,11 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - On first install, augent creates `augent.yaml`, `augent.lock`, and `augent.workspace.yaml` with a workspace bundle named `@author/workspace-dir-name`. The name is inferred from the git repository remote URL (org/user), with a fallback to `USERNAME/WORKSPACE_ROOT_DIR_NAME` if no git remote is configured.
 
-- The user can change AI agents' files directly in repo (e.g. `.opencode/commands/debug.md`). When `install` is run, it detects files that differ from the bundle's version and copies them to the workspace bundle's directory as AI agent independent resources. This includes modifications to files from bundle dependencies - the modified file is added to the workspace bundle and overrides the dependency's version for that specific file. This ensures `install` never overwrites local user changes.
+- The user can change AI coding platforms' files directly in repo (e.g. `.opencode/commands/debug.md`). When `install` is run, it detects files that differ from the bundle's version and copies them to the workspace bundle's directory as platform independent resources. This includes modifications to files from bundle dependencies - the modified file is added to the workspace bundle and overrides the dependency's version for that specific file. This ensures `install` never overwrites local user changes.
 
 - Modified file detection: augent uses `augent.workspace.yaml` to trace which bundle and git-SHA each file came from, then calculates the BLAKE3 checksum of the original file from the cached bundle and compares it to the current workspace file. If they differ, the file is considered modified.
 
-- The mapping for bundle's aug files and ai agent's resources is stored in `augent.workspace.yaml`. The format is file for each file that particular bundle provides, and for each AI agent that it is installed for (user can use `install --for <agent>...` to install some bundles only for specific agents).
+- The mapping for bundle's aug files and ai coding platform's resources is stored in `augent.workspace.yaml`. The format is file for each file that particular bundle provides, and for each AI coding platform that it is installed for (user can use `install --for <platform>...` to install some bundles only for specific platforms).
 
 #### Sources
 
@@ -161,9 +156,9 @@ For 1.0.0, we should be able to install resources from:
 
 Basically, the user can give any path or repo url or github:author/reponame to `install` and it will know how to handle it (as long as it has resources in its path or in its subdirectories). If there are multiple set of resources in the repo (e.g. aforementioned bundles, or multiple Claude Code plugins), it will show an interactive menu listing all discovered bundles/subdirectories and allow the user to select multiple ones to install. **Note**: If a subdirectory is explicitly specified in the source path, the menu is not shown and only that bundle is installed.
 
-#### Other AI agents
+#### Other AI coding platforms
 
-We adopt a `platforms.jsonc` configuration file approach to support ever increasing number of AI agents and their features. It must be possible for the developer to add support to new AI agents without changing the core code.
+We adopt a `platforms.jsonc` configuration file approach to support ever increasing number of AI coding platforms and their features. It must be possible for the developer to add support to new AI coding platforms without changing the core code.
 
 **TODO: Research OpenPackage's platforms.jsonc schema and implementation** including:
 
@@ -188,8 +183,8 @@ Even though we don't have centralized registry, we might later implement a centr
 augent install [--for <agent>...] [--frozen] <source>
 
 - adds bundle to augent.yaml and augent.lock
-- updates augent.workspace.yaml (per --for <agent>, otherwise detects all used AI agents by checking for agent-specific directories like `.opencode/`, `.cursor/`, `.claude/`, etc. and targets those)
-- installs bundles resources per AI agent in format that agent expects
+- updates augent.workspace.yaml (per --for <platform>, otherwise detects all used AI coding platforms by checking for platform-specific directories like `.opencode/`, `.cursor/`, `.claude/`, etc. and targets those)
+- installs bundles resources per AI coding platform in format that platform expects
 
 augent uninstall <bundle-name>
 
@@ -242,7 +237,7 @@ augent version - show version number, build info, and Rust version
     |_ <url-path-slug>/
         |_ <git-sha>/
 
-## AI agent directories (each agent expects its own directory structure)
+## AI coding platform directories (each platform expects its own directory structure)
 
 .opencode/
 --- commands/
@@ -328,7 +323,7 @@ This is the lockfile which has resolved sources (like git repository URL and SHA
 
 ### augent.workspace.yaml
 
-This file tracks what files are installed from which bundles to which AI agents. This file answers the question, where did e.g. `.cursor/rules/debug.mdc` came from? Do note that one agent specific resource can be only be installed from one bundle at the time, so in the end that file comes from AI agent independent format from this bundle, or its last dependency where that file is available. When a file is modified even if it came from dependency, that file is copied to the bundle's directory in agent independent format on `install`. This way, `install` does not override local changes either.
+This file tracks what files are installed from which bundles to which AI coding platforms. This file answers the question, where did e.g. `.cursor/rules/debug.mdc` came from? Do note that one platform specific resource can be only be installed from one bundle at the time, so in the end that file comes from platform independent format from this bundle, or its last dependency where that file is available. When a file is modified even if it came from dependency, that file is copied to the bundle's directory in platform independent format on `install`. This way, `install` does not override local changes either.
 
 There may be option to disable some agents temporarily in the future so that is why `enabled` is used.
 

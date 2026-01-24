@@ -5,7 +5,7 @@
 
 ## Context
 
-Need to support many AI agents (Claude, Cursor, OpenCode, etc.) with different file formats and directory structures.
+Need to support many AI coding platforms (Claude, Cursor, OpenCode, etc.) with different file formats and directory structures.
 
 ## Decision
 

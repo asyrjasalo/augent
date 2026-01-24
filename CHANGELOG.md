@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release of Augent
-- Core commands: `install`, `uninstall`, `list`, `show`, `help`, `version`, `completions`, `clean-cache`
-- Support for multiple AI coding agent platforms (Claude Code, Cursor, OpenCode, and 11 others)
-- Support for Claude Code Marketplace plugins, e.g.`augent install github:wshobson/agents/`
-- Support for bundling commands, rules, skills, subgents and MCP servers
-- Dependency resolution and lockfile generation
+- Supports 15 AI coding platforms (incl. Claude Code, Cursor, OpenCode)
+- Packaging for commands, rules, skills, subgents and MCP servers
+- Process for installing and sharing bundle(s) via Git repositories
+- Simple TUI with a few core commands: `install`, `uninstall`, `list`, `show`
+- Compatibility for installing Claude Code Marketplace plugins as bundles
+- Workspace bundle dependency management, dependency locking and resolution
 - Shell completion generation for bash, zsh, fish, powershell, and elvish

@@ -92,7 +92,7 @@ The README provides essential introduction and quick start, linking to detailed 
 ```markdown
 # Augent
 
-AI package manager for managing AI coding agent resources.
+AI package manager for managing AI coding platform resources.
 
 ## Quick Start
 

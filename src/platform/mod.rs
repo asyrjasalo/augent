@@ -18,7 +18,7 @@ pub mod loader;
 pub mod merge;
 pub mod transform;
 
-/// A supported AI coding agent platform
+/// A supported AI coding platform
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Platform {
     /// Platform identifier (e.g., "claude", "cursor", "opencode")

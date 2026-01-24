@@ -1,6 +1,6 @@
 # Platform Support
 
-Augent supports 14 AI coding agent platforms through a flexible platform system.
+Augent supports 14 AI coding platforms through a flexible platform system.
 
 ## Supported Platforms
 
@@ -181,7 +181,7 @@ augent install github:author/bundle --for claude cursor
 
 ## Adding New Platforms
 
-You can add support for new AI coding agents by creating a `platforms.jsonc` configuration file in your workspace's `.augent/` directory.
+You can add support for new AI coding platforms by creating a `platforms.jsonc` configuration file in your workspace's `.augent/` directory.
 
 **Note:** This requires understanding the target platform's resource file format and directory structure.
 

@@ -6,14 +6,14 @@
 
 ## Overview
 
-The platform system enables Augent to support multiple AI coding agent platforms through declarative configuration. It defines transformation rules, detection patterns, and merge strategies for converting universal bundle resources to platform-specific formats.
+The platform system enables Augent to support multiple AI coding platforms through declarative configuration. It defines transformation rules, detection patterns, and merge strategies for converting universal bundle resources to platform-specific formats.
 
 ## Requirements
 
 From PRD:
 
-- Support multiple AI agents (Claude Code, Cursor, OpenCode) with platform-specific formats
-- Auto-detect which AI agents are present in workspace
+- Support multiple AI coding platforms (Claude Code, Cursor, OpenCode) with platform-specific formats
+- Auto-detect which AI coding platforms are present in workspace
 - Transform universal resources to platform-specific paths
 - Apply merge strategies when multiple bundles provide same resource
 - Enable adding new platforms through configuration files (no code changes)

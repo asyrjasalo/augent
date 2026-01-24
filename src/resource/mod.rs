@@ -1,7 +1,7 @@
 //! Resource models for tracking bundle files and installed augmentations
 //!
-//! A **Resource** (or "Aug") is a file in AI agent-independent format provided by a bundle.
-//! An **Augmentation** is a resource installed for a specific AI agent in its native format.
+//! A **Resource** (or "Aug") is a file in platform-independent format provided by a bundle.
+//! An **Augmentation** is a resource installed for a specific AI coding platform in its native format.
 
 // Infrastructure code - types and methods defined but not yet used in Phase 1
 #![allow(dead_code)]
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-/// A resource file provided by a bundle in AI agent-independent format
+/// A resource file provided by a bundle in platform-independent format
 ///
 /// Examples:
 /// - `commands/debug.md`
@@ -28,7 +28,7 @@ pub struct Resource {
     pub content_hash: String,
 }
 
-/// An installed augmentation for a specific AI agent
+/// An installed augmentation for a specific AI coding platform
 ///
 /// Examples:
 /// - `.cursor/rules/debug.mdc` (Cursor-specific)

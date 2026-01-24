@@ -9,7 +9,7 @@ Augent workspaces are your working Git repositories where bundles are installed 
 A **workspace** is a Git repository containing:
 
 - Augent configuration in `.augent/` directory
-- Installed resources in AI agent directories
+- Installed resources in AI coding platform directories
 - Metadata tracking which bundles provide which resources
 
 Augent automatically initializes workspaces when needed.
@@ -132,9 +132,9 @@ Augent infers workspace name from git remote:
 ### How Resources Flow
 
 1. **Download**: Bundle fetched to cache (`~/.cache/augent/bundles/`)
-2. **Transform**: Resources transformed to agent-specific format
+2. **Transform**: Resources transformed to AI coding platform-specific format
 3. **Merge**: Merged into existing resources (if applicable)
-4. **Install**: Copied to agent directories
+4. **Install**: Copied to AI coding platform directories
 5. **Track**: Metadata added to `augent.workspace.yaml`
 
 ### Installation Locations
@@ -232,7 +232,7 @@ bundles:
 
 ## Platform Detection
 
-Augent automatically detects installed AI agents:
+Augent automatically detects installed AI coding platforms:
 
 ### Detection Methods
 

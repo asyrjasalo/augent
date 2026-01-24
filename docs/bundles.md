@@ -8,7 +8,7 @@ Bundles are the fundamental unit of distribution in Augent. This document explai
 
 A **bundle** is a directory containing:
 
-- AI agent-independent resources (rules, skills, commands, MCP servers)
+- Platform-independent resources (rules, skills, commands, MCP servers)
 - Optional configuration files (`augent.yaml`)
 - Optional root files/directories copied to workspace root
 
@@ -36,13 +36,13 @@ my-bundle/
 my-bundle/
 ├── augent.yaml              # Bundle metadata (optional)
 ├── augent.lock              # Locked dependencies (auto-generated)
-├── rules/                  # AI agent rules
+├── rules/                  # AI coding platform rules
 │   ├── debug.md
 │   └── testing.md
-├── skills/                 # AI agent skills
+├── skills/                 # AI coding platform skills
 │   ├── analyze.md
 │   └── review.md
-├── commands/                # AI agent commands
+├── commands/                # AI coding platform commands
 │   └── deploy.md
 ├── mcp.jsonc               # MCP server configuration
 ├── agents.md               # Special: Merged into workspace AGENTS.md
@@ -96,7 +96,7 @@ metadata:
 | `metadata.author` | string | No | Bundle author contact |
 | `metadata.license` | string | No | Bundle license |
 | `metadata.homepage` | string | No | Homepage URL |
-| `metadata.platforms` | array | No | Supported AI agents |
+| `metadata.platforms` | array | No | Supported AI coding platforms |
 
 ### Dependencies
 
@@ -121,7 +121,7 @@ dependencies:
 
 ### Rules (`rules/`)
 
-AI agent rules provide behavior guidelines:
+AI coding platform rules provide behavior guidelines:
 
 ```text
 rules/
@@ -137,7 +137,7 @@ rules/
 
 ### Skills (`skills/`)
 
-AI agent skills define capabilities:
+AI coding platform skills define capabilities:
 
 ```text
 skills/
@@ -153,7 +153,7 @@ skills/
 
 ### Commands (`commands/`)
 
-AI agent commands define executable operations:
+AI coding platform commands define executable operations:
 
 ```text
 commands/
