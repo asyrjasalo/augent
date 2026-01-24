@@ -1,13 +1,2 @@
 name: '@asyrjasalo/augent'
-bundles:
-- name: '@local/agent-orchestration'
-  enabled:
-    commands/improve-agent.md:
-    - .claude/commands/improve-agent.md
-    - .opencode/commands/improve-agent.md
-    agents/context-manager.md:
-    - .claude/agents/context-manager.md
-    - .opencode/agents/context-manager.md
-    commands/multi-agent-optimize.md:
-    - .claude/commands/multi-agent-optimize.md
-    - .opencode/commands/multi-agent-optimize.md
+bundles: []

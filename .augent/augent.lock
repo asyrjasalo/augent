@@ -1,18 +1,4 @@
 {
   "name": "@asyrjasalo/augent",
-  "bundles": [
-    {
-      "name": "@local/agent-orchestration",
-      "source": {
-        "type": "dir",
-        "path": "/Users/asyrjasalo/Library/Caches/augent/bundles/github.com-wshobson-agents/1135ac606247648d9e4724f027280d4114282858/plugins/agent-orchestration",
-        "hash": "blake3:34810f1a72197e49305aef3ccdfa461b4960d21c4635ac5d64d51fc312902cae"
-      },
-      "files": [
-        "commands/multi-agent-optimize.md",
-        "commands/improve-agent.md",
-        "agents/context-manager.md"
-      ]
-    }
-  ]
+  "bundles": []
 }
