@@ -22,8 +22,8 @@ Update when you have started a feature and completed a feature (in **Status:** a
 ## Task Statistics
 
 - **Total Tasks:** 438
-- **Completed:** 428 (Phase 0-5 complete - 428 tasks)
-- **Pending:** 10 (Phase 6 Epic 14 - 10 tasks)
+- **Completed:** 432 (Phase 0-5 complete, Phase 6 Feature 14.1 complete - 432 tasks)
+- **Pending:** 6 (Phase 6 Feature 14.2 - 6 tasks)
 
 ---
 
@@ -860,12 +860,12 @@ Set up cross-platform builds and distribution.
 
 #### Feature 14.1: Cross-Platform Builds
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Package as Python package with Maturin
-- [ ] Set up test+build matrix: Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64, ARM64)
-- [ ] Configure cross-compilation
-- [ ] Test and ensure binaries are created on all target platforms
+- [x] Package as Python package with Maturin
+- [x] Set up test+build matrix: Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64, ARM64)
+- [x] Configure cross-compilation
+- [x] Test and ensure binaries are created on all target platforms
 
 ---
 

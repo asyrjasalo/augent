@@ -329,7 +329,7 @@ fn handle_modified_files(workspace: &mut Workspace, modified: Vec<ModifiedFile>)
 
 ## References
 
-- PRD: [Workspace](../../pre-implementation/prd.md#workspace)
+- PRD: [Workspace](../mvp/prd.md#workspace)
 - ARCHITECTURE: [Key Concepts](../architecture.md#key-concepts)
 - ARCHITECTURE: [Modified File Detection](../architecture.md#modified-file-detection-and-handling)
 - ARCHITECTURE: [ADR-004: Atomic Operations](../adrs/004-atomic-operations.md)

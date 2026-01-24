@@ -1,0 +1,60 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "augent"
+version = "0.1.0"
+description = "Lean package manager for various AI coding platforms"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "AGPL-3.0" }
+keywords = ["ai", "agent", "package", "manager", "cli"]
+authors = [
+    { name = "Anssi Syrjäsalo", email = "anssi.syrjasalo@gmail.com" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/asyrjasalo/augent"
+Repository = "https://github.com/asyrjasalo/augent"
+Documentation = "https://github.com/asyrjasalo/augent/tree/main/docs"
+"Bug Tracker" = "https://github.com/asyrjasalo/augent/issues"
+
+[tool.maturin]
+# Use "bin" mode to package the Rust binary
+# Include the compiled binary in the wheel
+bindings = "bin"
+# Manifest path to Cargo.toml
+manifest-path = "Cargo.toml"
+# Strip symbols in release mode
+strip = true
+
+[tool.maturin.target.x86_64-unknown-linux-gnu]
+# Linux x86_64
+manylinux = "auto"
+
+[tool.maturin.target.aarch64-unknown-linux-gnu]
+# Linux ARM64
+manylinux = "auto"
+
+[tool.maturin.target.x86_64-apple-darwin]
+# macOS x86_64
+
+[tool.maturin.target.aarch64-apple-darwin]
+# macOS ARM64 (Apple Silicon)
+
+[tool.maturin.target.x86_64-pc-windows-msvc]
+# Windows x86_64
+
+[tool.maturin.target.aarch64-pc-windows-msvc]
+# Windows ARM64

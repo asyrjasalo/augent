@@ -2,7 +2,7 @@
 
 Tasks (use <--- WE ARE HERE marker to track progress)
 
-- write @docs/pre-implementation/prd.md
+- write @docs/implementation/mvp/prd.md
 - write @docs/implementation/plan.md
   - ensure all pending research is done
     - you don't need code yet

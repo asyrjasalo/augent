@@ -32,6 +32,12 @@ augent uninstall debug-tools
 
 ## Installation
 
+### Via pip (Recommended)
+
+```bash
+pip install augent
+```
+
 ### Pre-built Binaries
 
 Download the latest release from [GitHub Releases](https://github.com/asyrjasalo/augent/releases).

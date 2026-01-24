@@ -255,7 +255,7 @@ Brief description of what this feature does.
 
 ## References
 
-- [PRD section](../pre-implementation/prd.md#section)
+- [PRD section](mvp/prd.md#section)
 - [Architecture ADR](./adrs/XXX-name.md)
 ```
 
@@ -465,7 +465,7 @@ From PRD:
 
 ## References
 
-- PRD: [Section](../pre-implementation/prd.md#section)
+- PRD: [Section](mvp/prd.md#section)
 - ARCHITECTURE: [ADR-XXX](./adrs/XXX-name.md)
 ```
 

@@ -6,9 +6,19 @@ rust-version = "1.85"
 authors = ["Anssi Syrjäsalo"]
 description = "Lean package manager for various AI coding platforms"
 repository = "https://github.com/asyrjasalo/augent"
+homepage = "https://github.com/asyrjasalo/augent"
+documentation = "https://github.com/asyrjasalo/augent/tree/main/docs"
+readme = "README.md"
 license = "AGPL-3.0"
 keywords = ["ai", "agent", "package", "manager"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = [
+    ".github/",
+    "docs/implementation/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "pyproject.toml"
+]
 
 [dependencies]
 # CLI framework

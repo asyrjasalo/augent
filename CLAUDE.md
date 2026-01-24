@@ -55,7 +55,7 @@ It does NOT:
 
 - Do not reference code by specific line numbers in documentation
 - Do not count lines or use vanity metrics in documentation
-- Do not update @docs/pre-implementation/ - these are historical documents
+- Do not update @docs/implementation/mvp/ - these are historical documents
 - Do not create git commits unless explicitly asked
 - Do not push to remote repositories unless explicitly asked
 - Error messages should be clear and human-readable
@@ -119,8 +119,8 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
 
 | Document | Purpose |
 |----------|---------|
-| @docs/pre-implementation/prd.md | Product requirements and Type 1/2 decisions |
-| @docs/pre-implementation/ | Historical planning documents (do not modify) |
+| @docs/implementation/mvp/prd.md | Product requirements and Type 1/2 decisions |
+| @docs/implementation/mvp/ | Historical planning documents (do not modify) |
 | @docs/implementation/plan.md | Implementation plan with epics/features |
 | @docs/implementation/tasks.md | Task tracking checklist |
 | @docs/implementation/testing.md | Testing strategy and requirements |
