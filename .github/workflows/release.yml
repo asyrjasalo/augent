@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -18,7 +22,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}
           fetch-depth: 0
+
+      - name: Verify version matches Cargo.toml and pyproject.toml
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          CARGO_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml)
+          PYPROJECT_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject.toml)
+
+          if [ -z "$CARGO_VERSION" ]; then
+            echo "Error: Could not read version from Cargo.toml"
+            exit 1
+          fi
+          if [ -z "$PYPROJECT_VERSION" ]; then
+            echo "Error: Could not read version from pyproject.toml"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PYPROJECT_VERSION)"
+            exit 1
+          fi
+
+          echo "✓ Version $TAG_VERSION matches Cargo.toml and pyproject.toml"
 
       - name: Verify tag is on main branch
         run: |
@@ -42,6 +72,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Wait for CI workflow to complete
         uses: lewagon/wait-on-check-action@v1.3.4
@@ -116,6 +148,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -124,7 +158,7 @@ jobs:
 
       - name: Install cross (for cross-compilation)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross
 
       - name: Build binary
         shell: bash
@@ -201,6 +235,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -228,6 +264,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -245,6 +283,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
 
       - name: Download all binaries
         uses: actions/download-artifact@v4
@@ -263,6 +303,11 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "Error: CHANGELOG.md has no '## [$VERSION]' section"
+            exit 1
+          fi
 
           # Escape dots in version for regex (e.g. 0.5.0 -> 0\.5\.0)
           VERSION_ERE=$(printf '%s' "$VERSION" | sed 's/\./\\./g')

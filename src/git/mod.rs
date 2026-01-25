@@ -20,23 +20,39 @@ use git2::{
 use crate::error::{AugentError, Result};
 
 /// Normalize file:// URLs so libgit2 can resolve them on all platforms.
-/// On Windows, `file://C:\path` fails with "The filename, directory name, or volume
-/// label syntax is incorrect"; libgit2 expects `file:///C:/path` (three slashes,
-/// forward slashes). Unix `file:///path` is left unchanged.
+///
+/// On Windows, libgit2 mis-parses both `file://C:\path` and `file:///C:/path`
+/// (e.g. "failed to resolve path 'C'"). Passing a bare path (e.g. `C:/Users/...`)
+/// works, since git clone accepts local paths. On Unix, `file:///path` is fine.
 fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     if !url.starts_with("file://") {
         return std::borrow::Cow::Borrowed(url);
     }
     let after = &url[7..]; // after "file://"
-    if after.contains('\\') {
-        let path = after.replace('\\', "/");
-        return std::borrow::Cow::Owned(format!("file:///{}", path));
+    #[cfg(windows)]
+    {
+        // On Windows, pass a bare path with backslashes so it's unambiguously
+        // a filesystem path (C:\path has no ':' after the first char that could
+        // be parsed as a URL scheme). file://C:\path -> C:\path;
+        // file:///C:/path -> C:\path
+        let path = if after.starts_with('/') {
+            after[1..].replace('/', "\\")
+        } else {
+            after.to_string()
+        };
+        std::borrow::Cow::Owned(path)
     }
-    if !after.is_empty() && !after.starts_with('/') {
-        // file://C:/path or file://C: (no third slash) — add it
-        return std::borrow::Cow::Owned(format!("file:///{}", after));
+    #[cfg(not(windows))]
+    {
+        if after.contains('\\') {
+            let path = after.replace('\\', "/");
+            return std::borrow::Cow::Owned(format!("file:///{}", path));
+        }
+        if !after.is_empty() && !after.starts_with('/') {
+            return std::borrow::Cow::Owned(format!("file:///{}", after));
+        }
+        std::borrow::Cow::Borrowed(url)
     }
-    std::borrow::Cow::Borrowed(url)
 }
 
 /// Interpret a git2 error and provide a more user-friendly message

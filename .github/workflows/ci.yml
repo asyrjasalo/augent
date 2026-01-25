@@ -107,15 +107,13 @@ jobs:
         if: matrix.build_only != true
         shell: bash
         run: |
-          # Use /tmp for cross (Docker): runner.temp is not mounted in the container.
           if [ "${{ matrix.use_cross }}" = "true" ]; then
+            # Use /tmp for cross (Docker): runner.temp is not mounted in the container.
+            # Cross.toml [build.env] passthrough forwards AUGENT_CACHE_DIR into the container.
             export AUGENT_CACHE_DIR=/tmp/augent-cache
-          else
-            export AUGENT_CACHE_DIR="${{ runner.temp }}/augent-cache"
-          fi
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross test --release --target ${{ matrix.target }}
           else
+            export AUGENT_CACHE_DIR="${{ runner.temp }}/augent-cache"
             cargo test --release --target ${{ matrix.target }}
           fi
 
