@@ -252,10 +252,10 @@ name: "@author/my-bundle"
 
 bundles:
   - name: my-debug-bundle
-    subdirectory: bundles/my-debug-bundle
+    path: bundles/my-debug-bundle
 
   - name: code-documentation
-    subdirectory: plugins/code-documentation
+    path: plugins/code-documentation
     git: https://github.com/wshobson/agents.git
     ref: main
 ```

@@ -47,9 +47,9 @@ pub struct BundleDependency {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub git: Option<String>,
 
-    /// Local subdirectory path (for bundles in same repo)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subdirectory: Option<String>,
+    /// Local path (for bundles in same repo)
+    #[serde(alias = "subdirectory", skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
 
     /// Git ref (branch, tag, or SHA)
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
@@ -83,7 +83,7 @@ impl BundleConfig {
         // Insert empty line after name field for readability
         let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
         if parts.len() != 2 {
-            return Ok(yaml);
+            return Ok(format!("{}\n", yaml));
         }
 
         let result = format!("{}\n\n{}", parts[0], parts[1]);
@@ -111,7 +111,7 @@ impl BundleConfig {
             }
         }
 
-        Ok(formatted.join("\n"))
+        Ok(format!("{}\n", formatted.join("\n")))
     }
 
     /// Validate bundle configuration
@@ -218,9 +218,9 @@ impl BundleConfig {
             }
 
             // Check if this is a full bundle name (e.g., "author/repo/subdir")
-            // and match against name + subdirectory combination
-            if let Some(subdir) = &dep.subdirectory {
-                let full_name = format!("{}/{}", dep.name, subdir);
+            // and match against name + path combination
+            if let Some(path) = &dep.path {
+                let full_name = format!("{}/{}", dep.name, path);
                 return full_name == name;
             }
 
@@ -235,10 +235,10 @@ impl BundleConfig {
 
 impl BundleDependency {
     /// Create a new local dependency
-    pub fn local(name: impl Into<String>, subdirectory: impl Into<String>) -> Self {
+    pub fn local(name: impl Into<String>, path: impl Into<String>) -> Self {
         Self {
             name: name.into(),
-            subdirectory: Some(subdirectory.into()),
+            path: Some(path.into()),
             git: None,
             git_ref: None,
         }
@@ -248,7 +248,7 @@ impl BundleDependency {
     pub fn git(name: impl Into<String>, url: impl Into<String>, git_ref: Option<String>) -> Self {
         Self {
             name: name.into(),
-            subdirectory: None,
+            path: None,
             git: Some(url.into()),
             git_ref,
         }
@@ -262,11 +262,11 @@ impl BundleDependency {
             });
         }
 
-        // Must have either subdirectory or git URL
-        if self.subdirectory.is_none() && self.git.is_none() {
+        // Must have either path or git URL
+        if self.path.is_none() && self.git.is_none() {
             return Err(AugentError::BundleValidationFailed {
                 message: format!(
-                    "Dependency '{}' must have either 'subdirectory' or 'git' specified",
+                    "Dependency '{}' must have either 'path' or 'git' specified",
                     self.name
                 ),
             });
@@ -277,7 +277,7 @@ impl BundleDependency {
 
     /// Check if this is a local dependency
     pub fn is_local(&self) -> bool {
-        self.subdirectory.is_some() && self.git.is_none()
+        self.path.is_some() && self.git.is_none()
     }
 
     /// Check if this is a git dependency
@@ -303,7 +303,7 @@ mod tests {
 name: "@author/my-bundle"
 bundles:
   - name: my-debug-bundle
-    subdirectory: bundles/my-debug-bundle
+    path: bundles/my-debug-bundle
   - name: code-documentation
     git: https://github.com/wshobson/agents.git
     ref: main
@@ -324,6 +324,8 @@ bundles:
         assert!(yaml.contains("dep1"));
         // Verify empty line after name field
         assert!(yaml.contains("name: '@test/bundle'\n\n"));
+        // Verify ends with newline
+        assert!(yaml.ends_with('\n'));
 
         // Verify round-trip works
         let parsed = BundleConfig::from_yaml(&yaml).unwrap();
@@ -342,7 +344,7 @@ bundles:
             "https://github.com/author/repo.git",
             Some("v1.0".to_string()),
         );
-        dep1.subdirectory = Some("path/to/bundle1".to_string());
+        dep1.path = Some("path/to/bundle1".to_string());
         config.add_dependency(dep1);
 
         let mut dep2 = BundleDependency::git(
@@ -350,7 +352,7 @@ bundles:
             "https://github.com/author/repo.git",
             Some("main".to_string()),
         );
-        dep2.subdirectory = Some("path/to/bundle2".to_string());
+        dep2.path = Some("path/to/bundle2".to_string());
         config.add_dependency(dep2);
 
         let yaml = config.to_yaml().unwrap();
@@ -428,7 +430,7 @@ bundles:
         let dep = BundleDependency::local("test", "path/to/test");
         assert!(dep.is_local());
         assert!(!dep.is_git());
-        assert_eq!(dep.subdirectory, Some("path/to/test".to_string()));
+        assert_eq!(dep.path, Some("path/to/test".to_string()));
     }
 
     #[test]
@@ -456,7 +458,7 @@ bundles:
         // Invalid: no source specified
         let dep = BundleDependency {
             name: "test".to_string(),
-            subdirectory: None,
+            path: None,
             git: None,
             git_ref: None,
         };

@@ -104,7 +104,7 @@ fn test_install_with_circular_dependencies() {
         r#"name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
     workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");
@@ -115,7 +115,7 @@ bundles:
         r#"name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-a"
-    subdirectory: ../bundle-a
+    path: ../bundle-a
 "#,
     );
     workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
@@ -144,7 +144,7 @@ fn test_install_with_missing_dependency_bundle() {
         r#"name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
     workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");

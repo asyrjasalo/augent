@@ -353,11 +353,11 @@ impl Resolver {
                 None
             };
 
-            // Create GitSource with this bundle's specific subdirectory
+            // Create GitSource with this bundle's specific path
             // Preserve resolved_sha and resolved_ref from cache so it's available when resolving
             bundle.git_source = Some(GitSource {
                 url: source.url.clone(),
-                subdirectory: subdirectory.or_else(|| source.subdirectory.clone()),
+                path: subdirectory.or_else(|| source.path.clone()),
                 git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
                 resolved_sha: Some(sha.clone()),
             });
@@ -470,11 +470,18 @@ impl Resolver {
             Some(cfg) => cfg.name.clone(),
             None => match dependency {
                 Some(dep) => dep.name.clone(),
-                None => path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|s| format!("@local/{}", s))
-                    .unwrap_or_else(|| "@local/bundle".to_string()),
+                None => {
+                    let dir_name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("bundle");
+
+                    let username = std::env::var("USER")
+                        .or_else(|_| std::env::var("USERNAME"))
+                        .unwrap_or_else(|_| "user".to_string());
+
+                    format!("@{}/{}", username, dir_name)
+                }
             },
         };
 
@@ -528,9 +535,9 @@ impl Resolver {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
         let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
 
-        // Check if this is a marketplace plugin (subdirectory starts with $plugin/)
-        let content_path = if let Some(ref subdir) = source.subdirectory {
-            if let Some(bundle_name) = subdir.strip_prefix("$plugin/") {
+        // Check if this is a marketplace plugin (path starts with $plugin/)
+        let content_path = if let Some(ref path_val) = source.path {
+            if let Some(bundle_name) = path_val.strip_prefix("$plugin/") {
                 // This is a marketplace plugin - create synthetic directory
                 let marketplace_json = cache_path.join(".claude-plugin/marketplace.json");
                 if !marketplace_json.is_file() {
@@ -548,7 +555,7 @@ impl Resolver {
                     Some(&source.url),
                 )?
             } else {
-                // Normal subdirectory
+                // Normal path
                 cache::get_bundle_content_path(source, &cache_path)
             }
         } else {
@@ -563,7 +570,7 @@ impl Resolver {
                 .as_deref()
                 .map(|r| format!("@{}", r))
                 .unwrap_or_default();
-            let bundle_name = source.subdirectory.as_deref().unwrap_or("");
+            let bundle_name = source.path.as_deref().unwrap_or("");
             return Err(AugentError::BundleNotFound {
                 name: format!(
                     "Bundle '{}' not found in {}{}",
@@ -597,17 +604,17 @@ impl Resolver {
                     let base_name = format!("@{}/{}", author, repo);
 
                     // Check if this is a marketplace plugin
-                    if let Some(ref subdir) = source.subdirectory {
-                        if let Some(bundle_name) = subdir.strip_prefix("$plugin/") {
+                    if let Some(ref path_val) = source.path {
+                        if let Some(bundle_name) = path_val.strip_prefix("$plugin/") {
                             // Include the specific bundle name from marketplace in full path
                             // Format: @author/repo/bundle-name
                             format!("{}/{}", base_name, bundle_name)
-                        } else if let Some(remaining_path) = subdir.strip_prefix("$plugin/") {
+                        } else if let Some(remaining_path) = path_val.strip_prefix("$plugin/") {
                             // Handle old format for backwards compatibility
                             format!("{}/{}", base_name, remaining_path)
                         } else {
-                            // Regular subdirectory - include in name
-                            format!("{}/{}", base_name, subdir)
+                            // Regular path - include in name
+                            format!("{}/{}", base_name, path_val)
                         }
                     } else {
                         // No subdirectory
@@ -856,15 +863,15 @@ impl Resolver {
             // Git dependency
             let git_source = GitSource {
                 url: git_url.clone(),
-                subdirectory: dep.subdirectory.clone(),
+                path: dep.path.clone(),
                 git_ref: dep.git_ref.clone(),
                 resolved_sha: None,
             };
             BundleSource::Git(git_source)
-        } else if let Some(ref subdir) = dep.subdirectory {
+        } else if let Some(ref path_val) = dep.path {
             // Local dependency
             BundleSource::Dir {
-                path: std::path::PathBuf::from(subdir),
+                path: std::path::PathBuf::from(path_val),
             }
         } else {
             return Err(AugentError::BundleValidationFailed {
@@ -888,20 +895,20 @@ impl Resolver {
             // Git dependency
             let git_source = GitSource {
                 url: git_url.clone(),
-                subdirectory: dep.subdirectory.clone(),
+                path: dep.path.clone(),
                 git_ref: dep.git_ref.clone(),
                 resolved_sha: None,
             };
             BundleSource::Git(git_source)
-        } else if let Some(ref subdir) = dep.subdirectory {
+        } else if let Some(ref path_val) = dep.path {
             // Local dependency
             BundleSource::Dir {
-                path: std::path::PathBuf::from(subdir),
+                path: std::path::PathBuf::from(path_val),
             }
         } else {
             return Err(AugentError::BundleValidationFailed {
                 message: format!(
-                    "Dependency '{}' has neither 'git' nor 'subdirectory' specified",
+                    "Dependency '{}' has neither 'git' nor 'path' specified",
                     dep.name
                 ),
             });
@@ -1088,7 +1095,7 @@ mod tests {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: bundle-b
+    path: bundle-b
 "#,
         )
         .unwrap();
@@ -1102,7 +1109,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-a"
-    subdirectory: bundle-a
+    path: bundle-a
 "#,
         )
         .unwrap();
@@ -1135,7 +1142,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
         )
         .unwrap();
@@ -1149,7 +1156,7 @@ bundles:
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
         )
         .unwrap();
@@ -1206,7 +1213,7 @@ bundles:
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
         )
         .unwrap();
@@ -1220,7 +1227,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-a"
-    subdirectory: ../bundle-a
+    path: ../bundle-a
 "#,
         )
         .unwrap();
@@ -1247,7 +1254,7 @@ bundles:
 name: "@test/bundle"
 bundles:
   - name: "@nonexistent/bundle"
-    subdirectory: nonexistent
+    path: nonexistent
 "#,
         )
         .unwrap();
@@ -1316,14 +1323,14 @@ bundles:
         let source1 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
-            subdirectory: Some("$plugin/bundle-one".to_string()),
+            path: Some("$plugin/bundle-one".to_string()),
             resolved_sha: None,
         };
 
         let source2 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
-            subdirectory: Some("$plugin/bundle-two".to_string()),
+            path: Some("$plugin/bundle-two".to_string()),
             resolved_sha: None,
         };
 
@@ -1333,29 +1340,17 @@ bundles:
 
         // The fix ensures that when subdirectory starts with "$plugin/",
         // the bundle name is derived from that subdirectory, not from the URL
-        assert!(
-            source1
-                .subdirectory
-                .as_ref()
-                .unwrap()
-                .starts_with("$plugin/")
-        );
-        assert!(
-            source2
-                .subdirectory
-                .as_ref()
-                .unwrap()
-                .starts_with("$plugin/")
-        );
+        assert!(source1.path.as_ref().unwrap().starts_with("$plugin/"));
+        assert!(source2.path.as_ref().unwrap().starts_with("$plugin/"));
 
         let name1 = source1
-            .subdirectory
+            .path
             .as_ref()
             .unwrap()
             .strip_prefix("$plugin/")
             .unwrap();
         let name2 = source2
-            .subdirectory
+            .path
             .as_ref()
             .unwrap()
             .strip_prefix("$plugin/")

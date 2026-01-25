@@ -215,13 +215,13 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     Ok((cache_path, sha, resolved_ref))
 }
 
-/// Get the bundle content path, accounting for subdirectory
+/// Get the bundle content path, accounting for path
 ///
-/// If the source specifies a subdirectory, returns the path to that subdirectory
+/// If the source specifies a path, returns the path to that path
 /// within the cached bundle. Otherwise returns the root of the cached bundle.
 pub fn get_bundle_content_path(source: &GitSource, cache_path: &Path) -> PathBuf {
-    match &source.subdirectory {
-        Some(subdir) => cache_path.join(subdir),
+    match &source.path {
+        Some(path_val) => cache_path.join(path_val),
         None => cache_path.to_path_buf(),
     }
 }
@@ -579,7 +579,7 @@ mod tests {
     fn test_get_bundle_content_path() {
         let source = GitSource {
             url: "https://github.com/author/repo.git".to_string(),
-            subdirectory: Some("plugins/bundle".to_string()),
+            path: Some("plugins/bundle".to_string()),
             git_ref: None,
             resolved_sha: None,
         };
@@ -592,7 +592,7 @@ mod tests {
 
         let source_no_subdir = GitSource {
             url: "https://github.com/author/repo.git".to_string(),
-            subdirectory: None,
+            path: None,
             git_ref: None,
             resolved_sha: None,
         };
@@ -711,7 +711,7 @@ mod tests {
         // First call: No resolved_sha, should clone and cache
         let source1 = GitSource {
             url: file_url.clone(),
-            subdirectory: None,
+            path: None,
             git_ref: None,
             resolved_sha: None,
         };
@@ -723,7 +723,7 @@ mod tests {
         // Second call: With resolved_sha, should use cache (not clone again)
         let source2 = GitSource {
             url: file_url,
-            subdirectory: None,
+            path: None,
             git_ref: None,
             resolved_sha: Some(expected_sha.clone()),
         };

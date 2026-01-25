@@ -815,7 +815,7 @@ mod tests {
 name: "@test/workspace"
 bundles:
   - name: "bundle1"
-    subdirectory: bundles/bundle1
+    path: bundles/bundle1
 "#,
         )
         .unwrap();

@@ -580,7 +580,7 @@ bundles: []
 
 bundles:
   - name: "@root/test-bundle"
-    subdirectory: bundles/test-bundle
+    path: bundles/test-bundle
 "#,
     );
 
@@ -636,7 +636,7 @@ bundles: []
 
 bundles:
   - name: test-bundle
-    subdirectory: bundles/test-bundle
+    path: bundles/test-bundle
 "#,
     );
 
@@ -690,7 +690,7 @@ bundles: []
 
 bundles:
   - name: test-bundle
-    subdirectory: bundles/test-bundle
+    path: bundles/test-bundle
 "#,
     );
 

@@ -672,7 +672,7 @@ fn create_locked_bundle(
             url: git_source.url.clone(),
             git_ref: bundle.resolved_ref.clone(), // Use resolved_ref (actual branch name, not user-specified)
             sha: bundle.resolved_sha.clone().unwrap_or_default(),
-            path: git_source.subdirectory.clone(), // Use subdirectory from git_source
+            path: git_source.path.clone(), // Use path from git_source
             hash: bundle_hash,
         }
     } else {
@@ -751,8 +751,8 @@ fn update_configs(
                         &git_source.url,
                         git_source.git_ref.clone(),
                     );
-                    // Preserve subdirectory from git_source
-                    dep.subdirectory = git_source.subdirectory.clone();
+                    // Preserve path from git_source
+                    dep.path = git_source.path.clone();
                     dep
                 } else {
                     // Local directory - parse original source string
@@ -970,7 +970,7 @@ fn locked_bundles_to_resolved(
                     // Use the cached bundle path
                     let git_src = GitSource {
                         url: url.clone(),
-                        subdirectory: path.clone(),
+                        path: path.clone(),
                         git_ref: git_ref.clone(),
                         resolved_sha: Some(sha.clone()),
                     };
@@ -1092,7 +1092,7 @@ mod tests {
 
         let git_source = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
-            subdirectory: None,
+            path: None,
             git_ref: Some("main".to_string()),
             resolved_sha: Some("abc123".to_string()),
         };
@@ -1128,7 +1128,7 @@ mod tests {
 
         let git_source = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
-            subdirectory: Some("plugins/accessibility-compliance".to_string()),
+            path: Some("plugins/accessibility-compliance".to_string()),
             git_ref: None, // User didn't specify a ref
             resolved_sha: Some("abc123".to_string()),
         };

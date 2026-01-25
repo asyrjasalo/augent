@@ -134,7 +134,7 @@ fn test_install_transaction_rollback() {
 name: "@test/test-bundle"
 bundles:
   - name: "@test/nonexistent"
-    subdirectory: ../nonexistent
+    path: ../nonexistent
 "#,
     );
 

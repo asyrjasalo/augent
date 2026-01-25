@@ -75,7 +75,7 @@ impl WorkspaceConfig {
         // Insert empty line after name field for readability
         let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
         if parts.len() != 2 {
-            return Ok(yaml);
+            return Ok(format!("{}\n", yaml));
         }
 
         let result = format!("{}\n\n{}", parts[0], parts[1]);
@@ -103,7 +103,7 @@ impl WorkspaceConfig {
             }
         }
 
-        Ok(formatted.join("\n"))
+        Ok(format!("{}\n", formatted.join("\n")))
     }
 
     /// Reorganize all bundles to match lockfile order
@@ -301,6 +301,8 @@ bundles:
         assert!(yaml.contains("commands/test.md"));
         // Verify empty line after name field
         assert!(yaml.contains("name: '@test/bundle'\n\n"));
+        // Verify ends with newline
+        assert!(yaml.ends_with('\n'));
 
         // Verify round-trip works
         let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();

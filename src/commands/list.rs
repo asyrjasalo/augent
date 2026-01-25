@@ -280,7 +280,7 @@ fn display_source_detailed_with_indent(source: &LockedSource, indent: &str) {
                 println!(
                     "{}{} {}",
                     indent,
-                    Style::new().bold().apply_to("Subdirectory:"),
+                    Style::new().bold().apply_to("path:"),
                     subdir
                 );
             }

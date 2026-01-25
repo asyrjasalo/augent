@@ -1,4 +1,4 @@
 name: "@test/workspace"
 bundles:
   - name: "@test/simple-bundle"
-    subdirectory: .augent/bundles/simple-bundle
+    path: .augent/bundles/simple-bundle

@@ -141,10 +141,12 @@ impl Lockfile {
 
     /// Serialize lockfile to JSON string (pretty-printed)
     pub fn to_json(&self) -> Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| AugentError::ConfigParseFailed {
-            path: "augent.lock".to_string(),
-            reason: e.to_string(),
-        })
+        let json =
+            serde_json::to_string_pretty(self).map_err(|e| AugentError::ConfigParseFailed {
+                path: "augent.lock".to_string(),
+                reason: e.to_string(),
+            })?;
+        Ok(json)
     }
 
     /// Reorganize all bundles in the lockfile

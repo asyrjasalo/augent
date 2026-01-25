@@ -28,7 +28,7 @@ fn test_circular_dependency_detection_shows_clear_error() {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
 
@@ -42,7 +42,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-a"
-    subdirectory: ../bundle-a
+    path: ../bundle-a
 "#,
     );
 
@@ -74,9 +74,9 @@ fn test_complex_dependency_graph_three_levels_deep() {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
 
@@ -89,7 +89,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
 
@@ -134,7 +134,7 @@ fn test_transitive_dependencies() {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
 
@@ -148,7 +148,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
 
@@ -207,9 +207,9 @@ fn test_duplicate_dependency_resolution() {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
 
@@ -268,9 +268,9 @@ fn test_dependency_order_in_lockfile() {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
 
@@ -283,7 +283,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
 
@@ -340,7 +340,7 @@ fn test_bundle_with_missing_dependency_fails() {
 name: "@test/bundle-a"
 bundles:
   - name: "@test/nonexistent-bundle"
-    subdirectory: ../nonexistent-bundle
+    path: ../nonexistent-bundle
 "#,
     );
 
@@ -377,7 +377,7 @@ fn test_deeply_nested_dependencies_five_levels() {
 name: "@test/bundle-e"
 bundles:
   - name: "@test/bundle-d"
-    subdirectory: ../bundle-d
+    path: ../bundle-d
 "#,
     );
 
@@ -391,7 +391,7 @@ bundles:
 name: "@test/bundle-d"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
 
@@ -405,7 +405,7 @@ bundles:
 name: "@test/bundle-c"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
 
@@ -419,7 +419,7 @@ bundles:
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-a"
-    subdirectory: ../bundle-a
+    path: ../bundle-a
 "#,
     );
 

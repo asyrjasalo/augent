@@ -6,8 +6,8 @@
 //! - GitHub short-form: `github:author/repo`, `author/repo`
 //! - GitHub web UI URLs: `https://github.com/user/repo/tree/ref/path`
 //! - With ref: `github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`
-//! - With subdirectory: `github:user/repo:plugins/bundle-name`
-//! - With ref and subdirectory: `github:user/repo:plugins/bundle-name#main`
+//! - With path: `github:user/repo:plugins/bundle-name`
+//! - With ref and path: `github:user/repo:plugins/bundle-name#main`
 //!
 //! ## Module Organization
 //!
@@ -43,9 +43,9 @@ pub struct GitSource {
     /// Repository URL (HTTPS or SSH)
     pub url: String,
 
-    /// Subdirectory within repository
+    /// Path within repository
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub subdirectory: Option<String>,
+    pub path: Option<String>,
 
     /// Git ref (branch, tag, or SHA)
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
@@ -69,7 +69,7 @@ impl BundleSource {
     /// - `https://github.com/user/repo/tree/ref/path` - GitHub web UI URL
     /// - `git@github.com:user/repo.git` - Git SSH URL
     /// - `file://` URLs with fragments (`#ref` or `#subdir`) are treated as git sources
-    /// - Any of the above with `#subdir` for subdirectory
+    /// - Any of the above with `#subdir` for path
     /// - Any of the above with `#ref` for git ref
     pub fn parse(input: &str) -> Result<Self> {
         let input = input.trim();
@@ -80,21 +80,21 @@ impl BundleSource {
             });
         }
 
-        // Check for file:// URL with ref (#) or subdirectory (:)
+        // Check for file:// URL with ref (#) or path (:)
         // These imply git operations (checkout/clone), so treat as Git source
         // Note: We check for ':' after stripping protocol to avoid matching Windows paths like file:///C:/
         if let Some(after_protocol) = input.strip_prefix("file://") {
-            // Check for # (ref) or @ (ref) or : (subdirectory, but not Windows drive letter)
+            // Check for # (ref) or @ (ref) or : (path, but not Windows drive letter)
             // For : check, skip first character to avoid matching C: on Windows
-            let has_ref_or_subdir = after_protocol.contains('#')
+            let has_ref_or_path = after_protocol.contains('#')
                 || after_protocol.contains('@')
                 || after_protocol[1.min(after_protocol.len())..].contains(':');
 
-            if has_ref_or_subdir {
+            if has_ref_or_path {
                 let git_source = GitSource::parse(input)?;
                 return Ok(BundleSource::Git(git_source));
             } else {
-                // Plain file:// URL without ref/subdir - treat as local directory
+                // Plain file:// URL without ref/path - treat as local directory
                 return Ok(BundleSource::Dir {
                     path: PathBuf::from(after_protocol),
                 });
@@ -151,7 +151,7 @@ impl BundleSource {
     /// # Returns
     ///
     /// - For local directories: the path as-is
-    /// - For git sources: the full URL with ref and subdirectory appended if present
+    /// - For git sources: the full URL with ref and path appended if present
     ///
     /// # Examples
     ///
@@ -170,7 +170,7 @@ impl BundleSource {
     /// let source = BundleSource::parse("author/repo#v1.0.0").unwrap();
     /// assert_eq!(source.display_url(), "https://github.com/author/repo.git#v1.0.0");
     ///
-    /// // With subdirectory
+    /// // With path
     /// let source = BundleSource::parse("author/repo:plugins/bundle").unwrap();
     /// assert_eq!(source.display_url(), "https://github.com/author/repo.git:plugins/bundle");
     ///
@@ -190,10 +190,10 @@ impl BundleSource {
                     url.push_str(git_ref);
                 }
 
-                // Append subdirectory if present
-                if let Some(ref subdir) = git.subdirectory {
+                // Append path if present
+                if let Some(ref path_val) = git.path {
                     url.push(':');
-                    url.push_str(subdir);
+                    url.push_str(path_val);
                 }
 
                 url
@@ -207,7 +207,7 @@ impl GitSource {
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
-            subdirectory: None,
+            path: None,
             git_ref: None,
             resolved_sha: None,
         }
@@ -219,9 +219,9 @@ impl GitSource {
         self
     }
 
-    /// Set the subdirectory
-    pub fn with_subdirectory(mut self, subdir: impl Into<String>) -> Self {
-        self.subdirectory = Some(subdir.into());
+    /// Set the path
+    pub fn with_path(mut self, path: impl Into<String>) -> Self {
+        self.path = Some(path.into());
         self
     }
 
@@ -231,11 +231,11 @@ impl GitSource {
 
         // Check for GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
         if let Some(github_parts) = Self::parse_github_web_ui_url(input) {
-            let (owner, repo, git_ref, subdirectory) = github_parts;
+            let (owner, repo, git_ref, path_val) = github_parts;
             return Ok(Self {
                 url: format!("https://github.com/{}/{}.git", owner, repo),
                 git_ref: Some(git_ref),
-                subdirectory,
+                path: path_val,
                 resolved_sha: None,
             });
         }
@@ -255,19 +255,19 @@ impl GitSource {
             (input, None)
         };
 
-        // Parse ref and subdirectory:
-        // - If fragment exists (# or @): it can be ref, or ref:subdir
-        //   - If it contains ':', split into ref:subdir
+        // Parse ref and path:
+        // - If fragment exists (# or @): it can be ref, or ref:path
+        //   - If it contains ':', split into ref:path
         //   - Otherwise, treat as ref
-        // - If no fragment: subdirectory is separated by : from main (e.g., github:author/repo:plugins/name)
-        let (subdirectory, git_ref, url_part_for_parsing) = match ref_part {
+        // - If no fragment: path is separated by : from main (e.g., github:author/repo:plugins/name)
+        let (path_val, git_ref, url_part_for_parsing) = match ref_part {
             Some(ref_frag) => {
                 // Has fragment (# or @)
                 if ref_frag.is_empty() {
                     // Empty fragment (# or @) means no user-specified ref
                     (None, None, main_part)
                 } else if let Some(colon_pos) = ref_frag.find(':') {
-                    // Fragment contains ':' - split into ref:subdir
+                    // Fragment contains ':' - split into ref:path
                     (
                         Some(ref_frag[colon_pos + 1..].to_string()),
                         Some(ref_frag[..colon_pos].to_string()),
@@ -279,14 +279,14 @@ impl GitSource {
                 }
             }
             None => {
-                // No ref, check if main part has subdirectory separated by :
-                // BUT: Don't treat SSH URLs (git@host:path) as having subdirectory
+                // No ref, check if main part has path separated by :
+                // BUT: Don't treat SSH URLs (git@host:path) as having path
                 if main_part.starts_with("git@") || main_part.starts_with("ssh://") {
-                    // SSH URL - the colon is part of the URL format, not a subdirectory separator
+                    // SSH URL - the colon is part of the URL format, not a path separator
                     (None, None, main_part)
                 } else {
-                    // For github:author/repo:subdir, we want to find the SECOND colon
-                    // Skip protocol prefixes when looking for subdirectory separator
+                    // For github:author/repo:path, we want to find the SECOND colon
+                    // Skip protocol prefixes when looking for path separator
                     let search_start = if main_part.starts_with("github:") {
                         "github:".len()
                     } else if main_part.starts_with("https://") {
@@ -303,20 +303,20 @@ impl GitSource {
                         let colon_pos = search_start + relative_pos;
                         let (before_colon, after_colon) =
                             (&main_part[..colon_pos], &main_part[colon_pos + 1..]);
-                        // Only treat as subdirectory if before_colon is a valid repo URL/shorthand
+                        // Only treat as path if before_colon is a valid repo URL/shorthand
                         if Self::parse_url(before_colon).is_ok() {
                             (Some(after_colon.to_string()), None, before_colon)
                         } else {
-                            // Not a repo:subdir pattern - this could be:
-                            // 1. github:author/repo:subdir (repo + subdirectory)
-                            // 2. Invalid repo like github:wshobson/agents (no subdirectory after repo)
-                            // In case 2, treat :subdir as a ref (not subdirectory)
+                            // Not a repo:path pattern - this could be:
+                            // 1. github:author/repo:path (repo + path)
+                            // 2. Invalid repo like github:wshobson/agents (no path after repo)
+                            // In case 2, treat :path as a ref (not path)
                             // This handles patterns like github:wshobson/agents:plugins/foo
-                            let is_repo_subdir_pattern = Self::parse_url(before_colon).is_err();
-                            if is_repo_subdir_pattern {
+                            let is_repo_path_pattern = Self::parse_url(before_colon).is_err();
+                            if is_repo_path_pattern {
                                 (None, Some(after_colon.to_string()), before_colon)
                             } else {
-                                // Not a repo:subdir pattern, use full main_part
+                                // Not a repo:path pattern, use full main_part
                                 (None, None, main_part)
                             }
                         }
@@ -333,13 +333,13 @@ impl GitSource {
         Ok(Self {
             url,
             git_ref,
-            subdirectory,
+            path: path_val,
             resolved_sha: None,
         })
     }
 
     /// Parse GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
-    /// Returns: (owner, repo, ref, optional_subdirectory)
+    /// Returns: (owner, repo, ref, optional_path)
     fn parse_github_web_ui_url(input: &str) -> Option<(String, String, String, Option<String>)> {
         // Must start with https://github.com/
         let without_prefix = input.strip_prefix("https://github.com/")?;
@@ -362,13 +362,13 @@ impl GitSource {
         let git_ref = parts[3].to_string();
 
         // Path is everything after the ref (parts[4..])
-        let subdirectory = if parts.len() > 4 {
+        let path_val = if parts.len() > 4 {
             Some(parts[4..].join("/"))
         } else {
             None
         };
 
-        Some((owner, repo, git_ref, subdirectory))
+        Some((owner, repo, git_ref, path_val))
     }
 
     /// Parse the URL portion (without fragment)
@@ -460,7 +460,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert!(git.git_ref.is_none());
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]
@@ -477,7 +477,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]
@@ -486,7 +486,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]
@@ -511,7 +511,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert!(git.git_ref.is_none());
-        assert_eq!(git.subdirectory, Some("plugins/my-plugin".to_string()));
+        assert_eq!(git.path, Some("plugins/my-plugin".to_string()));
     }
 
     #[test]
@@ -520,7 +520,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("main".to_string()));
-        assert_eq!(git.subdirectory, Some("plugins/my-plugin".to_string()));
+        assert_eq!(git.path, Some("plugins/my-plugin".to_string()));
     }
 
     #[test]
@@ -529,7 +529,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
-        assert_eq!(git.subdirectory, Some("plugins/my-plugin".to_string()));
+        assert_eq!(git.path, Some("plugins/my-plugin".to_string()));
     }
 
     #[test]
@@ -557,11 +557,11 @@ mod tests {
     fn test_git_source_builder() {
         let git = GitSource::new("https://github.com/test/repo.git")
             .with_ref("main")
-            .with_subdirectory("plugins/test");
+            .with_path("plugins/test");
 
         assert_eq!(git.url, "https://github.com/test/repo.git");
         assert_eq!(git.git_ref, Some("main".to_string()));
-        assert_eq!(git.subdirectory, Some("plugins/test".to_string()));
+        assert_eq!(git.path, Some("plugins/test".to_string()));
     }
 
     #[test]
@@ -584,7 +584,7 @@ mod tests {
         assert_eq!(git.url, "https://github.com/wshobson/agents.git");
         assert_eq!(git.git_ref, Some("main".to_string()));
         assert_eq!(
-            git.subdirectory,
+            git.path,
             Some("plugins/api-testing-observability".to_string())
         );
     }
@@ -596,7 +596,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]
@@ -609,10 +609,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/user/repo.git");
         assert_eq!(git.git_ref, Some("main".to_string()));
-        assert_eq!(
-            git.subdirectory,
-            Some("deeply/nested/path/to/bundle".to_string())
-        );
+        assert_eq!(git.path, Some("deeply/nested/path/to/bundle".to_string()));
     }
 
     #[test]
@@ -624,13 +621,10 @@ mod tests {
         assert!(source.is_git());
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/user/repo.git");
-        // Note: This parses the branch as "feature" and includes "new-feature/plugins/bundle" as subdirectory
+        // Note: This parses the branch as "feature" and includes "new-feature/plugins/bundle" as path
         // This is a known limitation - branches with slashes in web UI URLs are ambiguous
         assert_eq!(git.git_ref, Some("feature".to_string()));
-        assert_eq!(
-            git.subdirectory,
-            Some("new-feature/plugins/bundle".to_string())
-        );
+        assert_eq!(git.path, Some("new-feature/plugins/bundle".to_string()));
     }
 
     #[test]
@@ -646,7 +640,7 @@ mod tests {
             "https://github.com/author/repo/blob/main/README.md"
         );
         assert!(git.git_ref.is_none());
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]
@@ -707,7 +701,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("v1.0.0".to_string()));
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]
@@ -718,7 +712,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("main".to_string()));
-        assert_eq!(git.subdirectory, Some("plugins/bundle".to_string()));
+        assert_eq!(git.path, Some("plugins/bundle".to_string()));
     }
 
     #[test]
@@ -729,7 +723,7 @@ mod tests {
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "git@github.com:author/repo.git");
         assert!(git.git_ref.is_none());
-        assert!(git.subdirectory.is_none());
+        assert!(git.path.is_none());
     }
 
     #[test]

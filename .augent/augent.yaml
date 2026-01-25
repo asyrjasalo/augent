@@ -1,7 +1,3 @@
 name: '@asyrjasalo/augent'
 
-bundles:
-- name: '@davila7/claude-code-templates/documentation-generator'
-  git: https://github.com/davila7/claude-code-templates.git
-  subdirectory: $plugin/documentation-generator
-  ref: main
+bundles: []

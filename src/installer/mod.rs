@@ -326,21 +326,27 @@ impl<'a> Installer<'a> {
         let bundle_path = installations[0].bundle_path.clone();
 
         let installed = InstalledFile {
-            bundle_path,
-            resource_type,
+            bundle_path: bundle_path.clone(),
+            resource_type: resource_type.clone(),
             target_paths: target_paths.clone(),
         };
 
-        for installation in installations {
-            self.installed_files.insert(
-                installation.bundle_path.clone(),
-                InstalledFile {
-                    bundle_path: installation.bundle_path.clone(),
-                    resource_type: installation.resource_type.clone(),
-                    target_paths: target_paths.clone(),
-                },
-            );
-        }
+        // Accumulate target paths for the same bundle_path (important when installing to multiple platforms)
+        self.installed_files
+            .entry(bundle_path.clone())
+            .and_modify(|existing| {
+                // Merge target paths, avoiding duplicates
+                for target in &target_paths {
+                    if !existing.target_paths.contains(target) {
+                        existing.target_paths.push(target.clone());
+                    }
+                }
+            })
+            .or_insert_with(|| InstalledFile {
+                bundle_path: bundle_path.clone(),
+                resource_type,
+                target_paths: target_paths.clone(),
+            });
 
         Ok(installed)
     }

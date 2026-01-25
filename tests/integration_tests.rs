@@ -218,7 +218,7 @@ name: "@test/bundle-b"
 description: "Intermediate bundle B"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
     workspace.write_file("bundles/bundle-b/commands/b.md", "# Command B\n");
@@ -231,9 +231,9 @@ name: "@test/bundle-a"
 description: "Main bundle A"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
     workspace.write_file("bundles/bundle-a/commands/a.md", "# Command A\n");

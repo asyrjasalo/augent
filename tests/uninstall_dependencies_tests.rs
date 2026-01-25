@@ -43,7 +43,7 @@ bundles: []
 name: "@test/bundle-b"
 bundles:
   - name: "@test/bundle-c"
-    subdirectory: ../bundle-c
+    path: ../bundle-c
 "#,
     );
     workspace.write_file("bundles/bundle-b/commands/cmd-b.md", "# Command B");
@@ -56,7 +56,7 @@ bundles:
 name: "@test/bundle-a"
 bundles:
   - name: "@test/bundle-b"
-    subdirectory: ../bundle-b
+    path: ../bundle-b
 "#,
     );
     workspace.write_file("bundles/bundle-a/commands/cmd-a.md", "# Command A");
@@ -134,7 +134,7 @@ bundles: []
 name: "@test/bundle-a-shared"
 bundles:
   - name: "@test/shared-dep"
-    subdirectory: ../shared-dep
+    path: ../shared-dep
 "#,
     );
     workspace.write_file("bundles/bundle-a-shared/commands/cmd-a.md", "# Command A");
@@ -147,7 +147,7 @@ bundles:
 name: "@test/bundle-b-shared"
 bundles:
   - name: "@test/shared-dep"
-    subdirectory: ../shared-dep
+    path: ../shared-dep
 "#,
     );
     workspace.write_file("bundles/bundle-b-shared/commands/cmd-b.md", "# Command B");
@@ -224,7 +224,7 @@ bundles: []
 name: "@test/bundle-a-multi"
 bundles:
   - name: "@test/bundle-c-multi"
-    subdirectory: ../bundle-c-multi
+    path: ../bundle-c-multi
 "#,
     );
     workspace.write_file("bundles/bundle-a-multi/commands/cmd-a.md", "# Command A");
@@ -328,7 +328,7 @@ bundles: []
 name: "@test/bundle-a-dep"
 bundles:
   - name: "@test/bundle-b-dep"
-    subdirectory: ../bundle-b-dep
+    path: ../bundle-b-dep
 "#,
     );
     workspace.write_file("bundles/bundle-a-dep/commands/cmd-a.md", "# Command A");

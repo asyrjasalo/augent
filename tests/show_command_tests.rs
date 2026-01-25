@@ -42,7 +42,7 @@ name: "@test/dependent-bundle"
 description: "Bundle with dependency"
 bundles:
   - name: "@test/base-bundle"
-    subdirectory: ../base-bundle
+    path: ../base-bundle
 "#,
     );
 
@@ -97,11 +97,11 @@ name: "@test/multi-dep-bundle"
 description: "Bundle with multiple dependencies"
 bundles:
   - name: "@test/dep-1"
-    subdirectory: ../dep-1
+    path: ../dep-1
   - name: "@test/dep-2"
-    subdirectory: ../dep-2
+    path: ../dep-2
   - name: "@test/dep-3"
-    subdirectory: ../dep-3
+    path: ../dep-3
 "#,
     );
 

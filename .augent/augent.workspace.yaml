@@ -1,16 +1,8 @@
 name: '@asyrjasalo/augent'
 
 bundles:
-- name: '@davila7/claude-code-templates/documentation-generator'
-  enabled:
-    agents/docusaurus-expert.md:
-    - .gemini/agents/docusaurus-expert.md
-    agents/technical-writer.md:
-    - .gemini/agents/technical-writer.md
-    commands/update-docs.md:
-    - .gemini/commands/update-docs.toml
-
-- name: '@asyrjasalo/augent'
+- name: '@asyrjasalo/.augent'
   enabled:
     agents/ai-engineer.md:
+    - .claude/agents/ai-engineer.md
     - .gemini/agents/ai-engineer.md

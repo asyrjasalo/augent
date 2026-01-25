@@ -2,29 +2,11 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
-      "name": "@davila7/claude-code-templates/documentation-generator",
-      "description": "Automated documentation generation with API docs, technical writing, and content management",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/documentation-generator",
-        "ref": "main",
-        "sha": "d2c3401c5975627ee0bf9bd52c60ba01f36a13d1",
-        "hash": "blake3:6a2a9dca09a4da70859c81afe96513bee210df47f11180e21f9d42f0dd474b8a"
-      },
-      "files": [
-        "agents/docusaurus-expert.md",
-        "agents/technical-writer.md",
-        "commands/update-docs.md"
-      ]
-    },
-    {
-      "name": "@asyrjasalo/augent",
+      "name": "@asyrjasalo/.augent",
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:df8dd65c96aa9cccc7fa9e9d8fe07d23a6ae064f4d87f939d5b269667132f906"
+        "hash": "blake3:6c5d0d1f8bd4f4378ea04cbec57fcc6043abb9cd9d3edabef1f0ec3e326c3d00"
       },
       "files": [
         "agents/ai-engineer.md"

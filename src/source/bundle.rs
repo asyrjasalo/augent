@@ -40,9 +40,9 @@ pub struct BundleDependency {
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
     pub git_ref: Option<String>,
 
-    /// Local subdirectory path (for bundles in same repo)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subdirectory: Option<String>,
+    /// Local path (for bundles in same repo)
+    #[serde(alias = "subdirectory", skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
 }
 
 impl Bundle {
@@ -87,10 +87,10 @@ impl BundleDependency {
             });
         }
 
-        if self.subdirectory.is_none() && self.git.is_none() {
+        if self.path.is_none() && self.git.is_none() {
             return Err(AugentError::BundleValidationFailed {
                 message: format!(
-                    "Dependency '{}' must have either 'subdirectory' or 'git' specified",
+                    "Dependency '{}' must have either 'path' or 'git' specified",
                     self.name
                 ),
             });
@@ -128,7 +128,7 @@ mod tests {
             name: "dep1".to_string(),
             git: None,
             git_ref: None,
-            subdirectory: Some("path/to/dep1".to_string()),
+            path: Some("path/to/dep1".to_string()),
         });
         assert_eq!(bundle.dependencies.len(), 1);
     }
@@ -172,7 +172,7 @@ mod tests {
             name: "dep1".to_string(),
             git: None,
             git_ref: None,
-            subdirectory: Some("path".to_string()),
+            path: Some("path".to_string()),
         };
         assert!(dep.validate().is_ok());
 
@@ -180,7 +180,7 @@ mod tests {
             name: "".to_string(),
             git: None,
             git_ref: None,
-            subdirectory: None,
+            path: None,
         };
         assert!(dep2.validate().is_err());
 
@@ -188,7 +188,7 @@ mod tests {
             name: "dep3".to_string(),
             git: None,
             git_ref: None,
-            subdirectory: None,
+            path: None,
         };
         assert!(dep3.validate().is_err());
     }

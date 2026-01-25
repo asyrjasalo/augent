@@ -221,11 +221,7 @@ fn display_bundle_info(
             }
             println!("      {} {}", Style::new().bold().apply_to("SHA:"), sha);
             if let Some(subdir) = path {
-                println!(
-                    "      {} {}",
-                    Style::new().bold().apply_to("Subdirectory:"),
-                    subdir
-                );
+                println!("      {} {}", Style::new().bold().apply_to("path:"), subdir);
             }
         }
     }
@@ -237,8 +233,8 @@ fn display_bundle_info(
             println!("      - {}", Style::new().cyan().apply_to(&dep.name));
             if dep.is_local() {
                 println!("        Type: {}", Style::new().green().apply_to("Local"));
-                if let Some(subdir) = &dep.subdirectory {
-                    println!("        Path: {}", subdir);
+                if let Some(path_val) = &dep.path {
+                    println!("        Path: {}", path_val);
                 }
             } else if dep.is_git() {
                 println!("        Type: {}", Style::new().green().apply_to("Git"));

@@ -55,7 +55,7 @@ pub enum BundleSource {
     Git {
         url: String,
         ref: Option<String>,
-        subdirectory: Option<String>,
+        path: Option<String>,
         resolved_sha: Option<String>,
     },
 }
@@ -69,7 +69,7 @@ pub enum BundleSource {
 - `author/bundle` → Same as above (implicit github:)
 - `github:author/bundle#v1.0.0` → `ref: Some("v1.0.0")` (preferred syntax)
 - `github:author/bundle@v1.0.0` → `ref: Some("v1.0.0")` (both `#` and `@` supported, `#` preferred)
-- `github:author/repo#plugins/name` → `subdirectory: Some("plugins/name")`
+- `github:author/repo#plugins/name` → `path: Some("plugins/name")`
 - `https://github.com/author/bundle.git` → Direct Git URL
 - `git@github.com:author/bundle.git` → SSH Git URL
 

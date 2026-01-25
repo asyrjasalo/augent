@@ -237,7 +237,7 @@ name: "@test/main-bundle"
 description: "Main bundle with dependency"
 bundles:
   - name: "@test/dependency-bundle"
-    subdirectory: ../dependency-bundle
+    path: ../dependency-bundle
 "#,
     );
 
@@ -295,11 +295,11 @@ name: "@test/multi-dep-bundle"
 description: "Bundle with multiple dependencies"
 bundles:
   - name: "@test/dep-1"
-    subdirectory: ../dep-1
+    path: ../dep-1
   - name: "@test/dep-2"
-    subdirectory: ../dep-2
+    path: ../dep-2
   - name: "@test/dep-3"
-    subdirectory: ../dep-3
+    path: ../dep-3
 "#,
     );
 

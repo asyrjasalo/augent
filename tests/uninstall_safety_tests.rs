@@ -36,7 +36,7 @@ bundles: []
         r#"name: "@test/main-bundle"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: ../dep-bundle
+    path: ../dep-bundle
 "#,
     );
     workspace.write_file(
@@ -90,7 +90,7 @@ bundles: []
         r#"name: "@test/main-bundle"
 bundles:
   - name: "@test/dep-1"
-    subdirectory: ../dep-1
+    path: ../dep-1
 "#,
     );
     workspace.write_file(
@@ -202,7 +202,7 @@ bundles: []
         r#"name: "@test/main-bundle"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: ../dep-bundle
+    path: ../dep-bundle
 "#,
     );
     workspace.write_file(
@@ -293,7 +293,7 @@ bundles: []
         r#"name: "@test/main-bundle-a"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: ../dep-bundle
+    path: ../dep-bundle
 "#,
     );
     workspace.write_file(
@@ -308,7 +308,7 @@ bundles:
         r#"name: "@test/main-bundle-b"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: ../dep-bundle
+    path: ../dep-bundle
 "#,
     );
     workspace.write_file(
@@ -327,7 +327,7 @@ bundles:
         r#"name: "@test/main-bundle-a"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: ../dep-bundle
+    path: ../dep-bundle
 "#,
     );
     workspace.write_file("bundles/main-bundle-a/commands/a.md", "# Main A command\n");
@@ -339,7 +339,7 @@ bundles:
         r#"name: "@test/main-bundle-b"
 bundles:
   - name: "@test/dep-bundle"
-    subdirectory: ../dep-bundle
+    path: ../dep-bundle
 "#,
     );
     workspace.write_file("bundles/main-bundle-b/commands/b.md", "# Main B command\n");

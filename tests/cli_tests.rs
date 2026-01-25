@@ -266,7 +266,7 @@ bundles: []
 name: "@user/workspace"
 bundles:
   - name: "@user/test-bundle"
-    subdirectory: local-bundles/test-bundle
+    path: local-bundles/test-bundle
 "#,
     );
 
@@ -334,7 +334,7 @@ bundles: []
 name: "@user/workspace"
 bundles:
   - name: "@user/test-bundle"
-    subdirectory: local-bundles/test-bundle
+    path: local-bundles/test-bundle
 "#,
     );
 
