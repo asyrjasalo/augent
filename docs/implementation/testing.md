@@ -136,7 +136,6 @@ tests/
 Integration tests use these crates:
 
 - **`assert_cmd`** - CLI integration testing
-- **`assert_fs`** - File system assertions
 - **`tempfile`** - Temporary directories
 - **`predicates`** - Output assertions
 
@@ -146,7 +145,6 @@ Integration tests use these crates:
 // tests/install_tests.rs
 
 use assert_cmd::Command;
-use assert_fs::prelude::*;
 use predicates::prelude::*;
 
 #[test]
@@ -156,8 +154,9 @@ fn test_install_from_local_directory() {
 
     // Create test bundle
     let bundle_path = workspace_dir.join("test-bundle");
-    bundle_path.create_dir_all().unwrap();
-    bundle_path.join("augent.yaml").write_str(
+    std::fs::create_dir_all(&bundle_path).unwrap();
+    std::fs::write(
+        bundle_path.join("augent.yaml"),
         r#"
         name: "@test/my-bundle"
         bundles: []

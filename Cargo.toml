@@ -40,7 +40,6 @@ serde_json = "1"
 
 # Git operations
 git2 = { version = "0.19", default-features = false, features = ["ssh", "https", "vendored-openssl"] }
-gix = { version = "0.78", features = ["blocking-network-client"] }
 
 # File system operations
 walkdir = "2"
@@ -49,12 +48,6 @@ dirs = "5"
 
 # Hashing
 blake3 = "1"
-
-# Glob patterns
-glob = "0.3"
-
-# URL parsing
-url = "2"
 
 # Regex for pattern matching
 regex = "1"
@@ -66,7 +59,6 @@ inquire = "0.9"
 [dev-dependencies]
 # Integration testing
 assert_cmd = "2"
-assert_fs = "1"
 predicates = "3"
 
 # Cross-platform PTY for interactive testing
