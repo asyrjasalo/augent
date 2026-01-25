@@ -138,17 +138,26 @@ impl<'a> Installer<'a> {
             let _installed = self.execute_installations(target_path, installations)?;
         }
 
+        // Build source-to-targets mapping from newly installed files.
+        // The execute_installations method populates self.installed_files with the actual
+        // installed paths (including platform transformations like .md -> .toml for Gemini).
+        // We need to extract only the files for the current bundle.
         let mut source_to_targets: std::collections::HashMap<String, Vec<String>> =
             std::collections::HashMap::new();
+
+        // Collect unique bundle paths from the pending installations to identify which
+        // files were meant to be installed for this bundle
+        let mut bundle_source_paths: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
         for installation in &pending_installations {
-            let relative = installation
-                .target_path
-                .strip_prefix(self.workspace_root)
-                .unwrap_or(&installation.target_path);
-            source_to_targets
-                .entry(installation.bundle_path.clone())
-                .or_default()
-                .push(relative.to_string_lossy().to_string());
+            bundle_source_paths.insert(installation.bundle_path.clone());
+        }
+
+        // Now find the actual installed files for these bundle sources
+        for source_path in bundle_source_paths {
+            if let Some(installed_file) = self.installed_files.get(&source_path) {
+                source_to_targets.insert(source_path, installed_file.target_paths.clone());
+            }
         }
 
         for (source_path, target_paths) in source_to_targets {

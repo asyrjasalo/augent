@@ -2,42 +2,6 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
-      "name": "@davila7/claude-code-templates/ai-ml-toolkit",
-      "description": "AI and Machine Learning development suite with data engineering and model deployment tools",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/ai-ml-toolkit",
-        "ref": "main",
-        "sha": "d2c3401c5975627ee0bf9bd52c60ba01f36a13d1",
-        "hash": "blake3:939c22f381d9d7a63e2d56920298b1c0ba8ff37e9ddc50b72f93e018f17780d8"
-      },
-      "files": [
-        "agents/ai-engineer.md",
-        "agents/computer-vision-engineer.md",
-        "agents/ml-engineer.md",
-        "agents/mlops-engineer.md",
-        "agents/nlp-engineer.md"
-      ]
-    },
-    {
-      "name": "@davila7/claude-code-templates/devops-automation",
-      "description": "DevOps automation suite with CI/CD, infrastructure management, and deployment orchestration",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/devops-automation",
-        "ref": "main",
-        "sha": "d2c3401c5975627ee0bf9bd52c60ba01f36a13d1",
-        "hash": "blake3:623976907d39b71fa77cbc1e7534fb58582301b35b9b3942f5174d7ba921e290"
-      },
-      "files": [
-        "agents/cloud-architect.md"
-      ]
-    },
-    {
       "name": "@davila7/claude-code-templates/documentation-generator",
       "description": "Automated documentation generation with API docs, technical writing, and content management",
       "version": "1.0.0",
@@ -56,22 +20,11 @@
       ]
     },
     {
-      "name": "my-local-bundle",
-      "source": {
-        "type": "dir",
-        "path": ".augent/my-local-bundle",
-        "hash": "blake3:b18049f81cbef8360e2191e839052db98f8bb91f6d6c4518e2a6683fc5feae32"
-      },
-      "files": [
-        "commands/my-command.md"
-      ]
-    },
-    {
       "name": "@asyrjasalo/augent",
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:3286a4420a22ed0adc7cb7d163e3358aa25e254defa9263ee51bf6945f13581c"
+        "hash": "blake3:df8dd65c96aa9cccc7fa9e9d8fe07d23a6ae064f4d87f939d5b269667132f906"
       },
       "files": [
         "agents/ai-engineer.md"
