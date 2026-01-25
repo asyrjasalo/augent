@@ -747,10 +747,6 @@ impl Resolver {
             for resource_path in resource_list {
                 let source = source_dir.join(resource_path.trim_start_matches("./"));
                 if !source.exists() {
-                    eprintln!(
-                        "Warning: Resource '{}' referenced in marketplace.json does not exist in bundle '{}'",
-                        resource_path, bundle_def.name
-                    );
                     continue; // Skip non-existent resources
                 }
 

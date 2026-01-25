@@ -447,17 +447,14 @@ pub mod modified {
     /// their changes by copying the modified file to the workspace bundle.
     /// This ensures `install` never overwrites local changes.
     pub fn preserve_modified_files(
-        workspace: &Workspace,
+        workspace: &mut Workspace,
         modified_files: &[ModifiedFile],
     ) -> Result<HashMap<String, PathBuf>> {
-        let workspace_bundle_dir = workspace.bundles_dir().join("workspace");
-        fs::create_dir_all(&workspace_bundle_dir)?;
-
         let mut preserved = HashMap::new();
 
         for modified in modified_files {
-            // Determine the destination path in the workspace bundle
-            let dest_path = workspace_bundle_dir.join(&modified.source_path);
+            // Determine the destination path in the workspace bundle (stored in .augent/)
+            let dest_path = workspace.augent_dir.join(&modified.source_path);
 
             // Create parent directories if needed
             if let Some(parent) = dest_path.parent() {
@@ -471,6 +468,19 @@ pub mod modified {
                     reason: e.to_string(),
                 }
             })?;
+
+            // Remove the file from the original bundle's enabled files in workspace_config
+            // since it's now provided by the workspace bundle instead
+            if let Some(bundle) = workspace
+                .workspace_config
+                .find_bundle_mut(&modified.source_bundle)
+            {
+                if let Some(locations) = bundle.enabled.get_mut(&modified.source_path) {
+                    locations.clear();
+                }
+                // Remove the entry entirely if it has no locations
+                bundle.enabled.remove(&modified.source_path);
+            }
 
             preserved.insert(modified.source_path.clone(), dest_path);
         }
@@ -654,7 +664,7 @@ mod modified_tests {
     #[test]
     fn test_preserve_modified_files() {
         let temp = TempDir::new().unwrap();
-        let workspace = Workspace::init(temp.path()).unwrap();
+        let mut workspace = Workspace::init(temp.path()).unwrap();
 
         // Create a mock modified file
         let src_file = temp.path().join("test.md");
@@ -668,7 +678,7 @@ mod modified_tests {
             current_hash: "blake3:modified".to_string(),
         }];
 
-        let preserved = preserve_modified_files(&workspace, &modified).unwrap();
+        let preserved = preserve_modified_files(&mut workspace, &modified).unwrap();
         assert_eq!(preserved.len(), 1);
 
         // Check file was copied

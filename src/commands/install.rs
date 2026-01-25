@@ -28,6 +28,7 @@ use crate::resolver::Resolver;
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
+use crate::workspace::modified;
 
 /// Run the install command
 pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<()> {
@@ -118,6 +119,20 @@ fn do_install_from_yaml(
     workspace: &mut Workspace,
     transaction: &mut Transaction,
 ) -> Result<()> {
+    // Detect and preserve any modified files before reinstalling bundles
+    let cache_dir = cache::bundles_cache_dir()?;
+    let modified_files = modified::detect_modified_files(workspace, &cache_dir)?;
+    let mut has_modified_files = false;
+
+    if !modified_files.is_empty() {
+        has_modified_files = true;
+        println!(
+            "Detected {} modified file(s). Preserving changes...",
+            modified_files.len()
+        );
+        modified::preserve_modified_files(workspace, &modified_files)?;
+    }
+
     // Backup the original lockfile - we'll restore it if --update was not given
     let original_lockfile = workspace.lockfile.clone();
 
@@ -234,8 +249,7 @@ fn do_install_from_yaml(
             resolved
         } else {
             // Lockfile exists - use it, but fetch missing bundles from cache
-            println!("Using locked versions from augent.lock...");
-
+            println!("Using locked versions from augent.lock.");
             let resolved =
                 locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
 
@@ -252,6 +266,23 @@ fn do_install_from_yaml(
         // Update lockfile if --update was given OR if lockfile was empty
         (resolved, args.update || lockfile_is_empty)
     };
+
+    // If we detected modified files, ensure workspace bundle is in the resolved list
+    // (append LAST so it overrides other bundles)
+    let mut final_resolved_bundles = resolved_bundles;
+    if has_modified_files && !final_resolved_bundles.iter().any(|b| b.name == "workspace") {
+        let workspace_bundle = crate::resolver::ResolvedBundle {
+            name: "workspace".to_string(),
+            dependency: None,
+            source_path: workspace.augent_dir.clone(),
+            resolved_sha: None,
+            resolved_ref: None,
+            git_source: None,
+            config: None,
+        };
+        final_resolved_bundles.push(workspace_bundle);
+    }
+    let resolved_bundles = final_resolved_bundles;
 
     // Detect target platforms
     let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
@@ -373,9 +404,23 @@ fn do_install(
     workspace: &mut Workspace,
     transaction: &mut Transaction,
 ) -> Result<()> {
+    // Detect and preserve any modified files before reinstalling bundles
+    let cache_dir = cache::bundles_cache_dir()?;
+    let modified_files = modified::detect_modified_files(workspace, &cache_dir)?;
+    let mut has_modified_files = false;
+
+    if !modified_files.is_empty() {
+        has_modified_files = true;
+        println!(
+            "Detected {} modified file(s). Preserving changes...",
+            modified_files.len()
+        );
+        modified::preserve_modified_files(workspace, &modified_files)?;
+    }
+
     let mut resolver = Resolver::new(&workspace.root);
 
-    let resolved_bundles = if selected_bundles.is_empty() {
+    let mut resolved_bundles = if selected_bundles.is_empty() {
         // No bundles discovered - resolve source directly (might be a bundle itself)
         let source_str = args.source.as_ref().unwrap().as_str();
         resolver.resolve(source_str)?
@@ -421,6 +466,20 @@ fn do_install(
             resolver.resolve_multiple(&selected_paths)?
         }
     };
+
+    // If we detected modified files, ensure workspace bundle is in the resolved list
+    if has_modified_files && !resolved_bundles.iter().any(|b| b.name == "workspace") {
+        let workspace_bundle = crate::resolver::ResolvedBundle {
+            name: "workspace".to_string(),
+            dependency: None,
+            source_path: workspace.augent_dir.clone(),
+            resolved_sha: None,
+            resolved_ref: None,
+            git_source: None,
+            config: None,
+        };
+        resolved_bundles.push(workspace_bundle);
+    }
 
     if resolved_bundles.is_empty() {
         let source_display = args.source.as_deref().unwrap_or("unknown");
@@ -688,6 +747,44 @@ fn update_configs_from_yaml(
         workspace.workspace_config.remove_bundle(&bundle.name);
         // Add new entry
         workspace.workspace_config.add_bundle(bundle);
+    }
+
+    // Clean up files from earlier bundles that are overridden by later bundles
+    cleanup_overridden_files(workspace)?;
+
+    Ok(())
+}
+
+/// Remove file entries from earlier bundles when they're overridden by later bundles
+fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
+    // Build a map of which files are provided by which bundle (in order)
+    let mut file_bundle_map: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+
+    for bundle in &workspace.workspace_config.bundles {
+        for file_path in bundle.enabled.keys() {
+            file_bundle_map.insert(file_path.clone(), bundle.name.clone());
+        }
+    }
+
+    // Remove files from earlier bundles if they're also in later bundles
+    for i in 0..workspace.workspace_config.bundles.len() {
+        for file_path in workspace.workspace_config.bundles[i]
+            .enabled
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            // Check if a later bundle also provides this file
+            if let Some(latest_bundle) = file_bundle_map.get(&file_path) {
+                if latest_bundle != &workspace.workspace_config.bundles[i].name {
+                    // This file is overridden by a later bundle, remove from this bundle
+                    workspace.workspace_config.bundles[i]
+                        .enabled
+                        .remove(&file_path);
+                }
+            }
+        }
     }
 
     Ok(())
