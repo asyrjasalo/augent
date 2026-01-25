@@ -24,7 +24,7 @@ classifiers = [
 [project.urls]
 Homepage = "https://crates.io/crates/augent"
 Repository = "https://github.com/asyrjasalo/augent"
-Documentation = "https://github.com/asyrjasalo/augent/tree/main/docs"
+Documentation = "https://docs.rs/augent"
 
 [tool.maturin]
 bindings = "bin"
