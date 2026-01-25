@@ -679,7 +679,15 @@ fn create_locked_bundle(
         // Local directory - convert to relative path from workspace root if possible
         let relative_path = if let Some(root) = workspace_root {
             match bundle.source_path.strip_prefix(root) {
-                Ok(rel_path) => rel_path.to_string_lossy().replace('\\', "/"),
+                Ok(rel_path) => {
+                    let path_str = rel_path.to_string_lossy().replace('\\', "/");
+                    // If path is empty (bundle is at root), use "."
+                    if path_str.is_empty() {
+                        ".".to_string()
+                    } else {
+                        path_str
+                    }
+                }
                 Err(_) => bundle.source_path.to_string_lossy().to_string(),
             }
         } else {
