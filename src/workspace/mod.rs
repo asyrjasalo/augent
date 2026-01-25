@@ -89,9 +89,16 @@ impl Workspace {
         }
 
         // Load configuration files
-        let bundle_config = Self::load_bundle_config(&augent_dir)?;
+        let mut bundle_config = Self::load_bundle_config(&augent_dir)?;
         let lockfile = Self::load_lockfile(&augent_dir)?;
-        let workspace_config = Self::load_workspace_config(&augent_dir)?;
+        let mut workspace_config = Self::load_workspace_config(&augent_dir)?;
+
+        // If bundle config name is empty, infer it
+        if bundle_config.name.is_empty() {
+            let name = Self::infer_workspace_name(root);
+            bundle_config.name = name.clone();
+            workspace_config.name = name;
+        }
 
         Ok(Self {
             root: root.to_path_buf(),
@@ -212,13 +219,16 @@ impl Workspace {
     }
 
     /// Load bundle configuration from the augent directory
+    ///
+    /// Returns an empty config if augent.yaml does not exist, as the config file is optional.
+    /// When loading an empty config, the name field will be empty and needs to be set by the caller.
     fn load_bundle_config(augent_dir: &Path) -> Result<BundleConfig> {
         let path = augent_dir.join(BUNDLE_CONFIG_FILE);
 
         if !path.exists() {
-            return Err(AugentError::ConfigNotFound {
-                path: path.display().to_string(),
-            });
+            // augent.yaml is optional - return empty config
+            // The name will need to be inferred by the caller
+            return Ok(BundleConfig::default());
         }
 
         let content = fs::read_to_string(&path).map_err(|e| AugentError::ConfigReadFailed {

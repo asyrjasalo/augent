@@ -172,9 +172,8 @@ fn do_install_from_yaml(
             .collect();
 
         if bundle_sources.is_empty() {
-            return Err(AugentError::BundleNotFound {
-                name: "No bundles defined in augent.yaml".to_string(),
-            });
+            // No bundles defined - use empty workspace path
+            return do_install_empty_workspace(workspace, transaction, args, &[]);
         }
 
         println!("Resolving {} bundle(s)...", bundle_sources.len());
@@ -229,9 +228,8 @@ fn do_install_from_yaml(
                 .collect();
 
             if bundle_sources.is_empty() {
-                return Err(AugentError::BundleNotFound {
-                    name: "No bundles defined in augent.yaml".to_string(),
-                });
+                // No bundles defined - use empty workspace path
+                return do_install_empty_workspace(workspace, transaction, args, &[]);
             }
 
             println!("Resolving {} bundle(s)...", bundle_sources.len());
@@ -416,6 +414,83 @@ fn do_install_from_yaml(
             }
         }
     }
+
+    Ok(())
+}
+
+/// Handle installation when no bundles are defined in augent.yaml
+/// Creates an empty workspace bundle with no dependencies, but installs its resources
+fn do_install_empty_workspace(
+    workspace: &mut Workspace,
+    transaction: &mut Transaction,
+    args: &InstallArgs,
+    _modified_files: &[crate::workspace::modified::ModifiedFile],
+) -> Result<()> {
+    println!("No bundles defined. Creating empty workspace bundle...");
+
+    // Detect target platforms
+    let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
+    if platforms.is_empty() {
+        return Err(AugentError::NoPlatformsDetected);
+    }
+
+    println!(
+        "Installing for {} platform(s): {}",
+        platforms.len(),
+        platforms
+            .iter()
+            .map(|p| p.id.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    // Create a resolved bundle for the workspace bundle itself
+    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    let workspace_resolved = crate::resolver::ResolvedBundle {
+        name: workspace_bundle_name.clone(),
+        dependency: None,
+        source_path: workspace.augent_dir.clone(),
+        resolved_sha: None,
+        resolved_ref: None,
+        git_source: None,
+        config: None,
+    };
+
+    // Install files from the workspace bundle
+    println!("Installing files...");
+    let workspace_root = workspace.root.clone();
+    let mut installer = Installer::new(&workspace_root, platforms.clone());
+    let workspace_bundles = installer.install_bundles(&[workspace_resolved.clone()])?;
+
+    // Track created files in transaction
+    for installed in installer.installed_files().values() {
+        for target in &installed.target_paths {
+            let full_path = workspace_root.join(target);
+            transaction.track_file_created(full_path);
+        }
+    }
+
+    // Update configuration files
+    println!("Updating configuration files...");
+
+    // Generate lockfile with just the workspace bundle
+    workspace.lockfile = crate::config::Lockfile::new(&workspace.bundle_config.name);
+    let locked_bundle = create_locked_bundle(&workspace_resolved, Some(&workspace.root))?;
+    workspace.lockfile.add_bundle(locked_bundle);
+
+    // Update workspace config with the files that were installed
+    for bundle in workspace_bundles {
+        // Only add if it actually has installed files
+        if !bundle.enabled.is_empty() {
+            workspace.workspace_config.remove_bundle(&bundle.name);
+            workspace.workspace_config.add_bundle(bundle);
+        }
+    }
+
+    // Save all configuration files
+    workspace.save()?;
+
+    println!("Workspace initialized.");
 
     Ok(())
 }

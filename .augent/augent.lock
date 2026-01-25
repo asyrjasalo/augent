@@ -2,92 +2,11 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
-      "name": "@davila7/claude-code-templates/devops-automation",
-      "description": "DevOps automation suite with CI/CD, infrastructure management, and deployment orchestration",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/devops-automation",
-        "ref": "main",
-        "sha": "1c194fd27b9cb37a5ef68b213578c586b1072ce3",
-        "hash": "blake3:623976907d39b71fa77cbc1e7534fb58582301b35b9b3942f5174d7ba921e290"
-      },
-      "files": [
-        "agents/cloud-architect.md"
-      ]
-    },
-    {
-      "name": "@davila7/claude-code-templates/ai-ml-toolkit",
-      "description": "AI and Machine Learning development suite with data engineering and model deployment tools",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/ai-ml-toolkit",
-        "ref": "main",
-        "sha": "1c194fd27b9cb37a5ef68b213578c586b1072ce3",
-        "hash": "blake3:939c22f381d9d7a63e2d56920298b1c0ba8ff37e9ddc50b72f93e018f17780d8"
-      },
-      "files": [
-        "agents/ai-engineer.md",
-        "agents/computer-vision-engineer.md",
-        "agents/ml-engineer.md",
-        "agents/mlops-engineer.md",
-        "agents/nlp-engineer.md"
-      ]
-    },
-    {
-      "name": "@davila7/claude-code-templates/nextjs-vercel-pro",
-      "description": "Complete Next.js and Vercel development toolkit with deployment automation and performance optimization",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/nextjs-vercel-pro",
-        "ref": "main",
-        "sha": "1c194fd27b9cb37a5ef68b213578c586b1072ce3",
-        "hash": "blake3:6325967bbbbf4687f9a1d8be06a13eac653f232b8be70c9b713560ce3042d014"
-      },
-      "files": [
-        "agents/frontend-developer.md",
-        "agents/fullstack-developer.md",
-        "commands/nextjs-api-tester.md",
-        "commands/nextjs-component-generator.md",
-        "commands/nextjs-performance-audit.md",
-        "commands/nextjs-scaffold.md",
-        "commands/vercel-deploy-optimize.md",
-        "commands/vercel-edge-function.md",
-        "commands/vercel-env-sync.md"
-      ]
-    },
-    {
-      "name": "@davila7/claude-code-templates/git-workflow",
-      "description": "Git workflow automation: feature, release, and hotfix commands with git specialists",
-      "version": "1.0.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/davila7/claude-code-templates.git",
-        "path": "$plugin/git-workflow",
-        "ref": "main",
-        "sha": "1c194fd27b9cb37a5ef68b213578c586b1072ce3",
-        "hash": "blake3:4271eb9ed9366aed614f89bef45c1a8f35cb2cff683b7bbbcd7c31e856a423e2"
-      },
-      "files": [
-        "agents/git-flow-manager.md",
-        "commands/feature.md",
-        "commands/finish.md",
-        "commands/flow-status.md",
-        "commands/hotfix.md",
-        "commands/release.md"
-      ]
-    },
-    {
       "name": "@asyrjasalo/augent",
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:c0f5b2786abb3d4b65f1c5f536f1d9c2db208e2d1d3e2870fc23b98091c7b2bf"
+        "hash": "blake3:430213be550b7257bb4bc377b7ccc4e2eee7a3b5ac1255c22b135c1ae3bec338"
       },
       "files": [
         "agents/ai-engineer.md"
