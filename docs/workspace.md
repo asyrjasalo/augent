@@ -132,12 +132,12 @@ augent uninstall my-bundle
 
 When rebuilding `augent.workspace.yaml`, Augent:
 
-1. **Detects all platforms**: Dynamically checks for any of the 14+ supported platform directories (`.claude/`, `.cursor/`, `.opencode/`, `.gemini/`, `.agent/`, `.augment/`, `.claude-plugin/`, `.codex/`, `.factory/`, `.kilocode/`, `.kiro/`, `.qwen/`, `.roo/`, `.windsurf/`, and more)
+1. **Detects all platforms**: Dynamically checks for any of the 15+ supported platforms defined in the system (including `.claude/`, `.cursor/`, `.opencode/`, `.windsurf/`, `.gemini/`, `.agent/`, `.augment/`, `.claude-plugin/`, `.codex/`, `.factory/`, `.kilocode/`, `.kiro/`, `.qwen/`, `.roo/`, `.warp/`, and more)
 2. **Scans for files**: For each bundle in the lockfile, searches for its files across all detected platform directories
 3. **Handles transformations**: Uses platform-specific transformation rules to find files (e.g., `.md` → `.mdc` for Cursor rules, `.md` → `{name}/SKILL.md` for OpenCode skills)
 4. **Reconstructs mapping**: Records which files are installed where
 
-**Platform Independence**: The detection system is fully platform-agnostic—it automatically detects any platform defined in the system without hardcoding specific platforms.
+**Platform Independence**: The detection system is fully platform-agnostic—it automatically detects any platform defined in the system configuration without hardcoding specific platforms. New platforms can be added via `platforms.jsonc` configuration files.
 
 ---
 

@@ -20,7 +20,7 @@ use std::path::PathBuf;
         .placeholder(AnsiColor::Cyan.on_default()),
     about = "AI configuration manager for AI coding platforms",
     long_about = "Augent manages AI coding platform resources (commands, rules, skills, MCP servers) \
-                  across multiple platforms (Claude, Cursor, OpenCode) in a platform-independent, \
+                  across multiple platforms (Claude, Cursor, OpenCode, ...) in a platform-independent, \
                   reproducible manner.",
     after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n    \
                   augent install github:author/bundle\n    \

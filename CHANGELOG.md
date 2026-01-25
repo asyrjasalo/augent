@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release of Augent and its packaging concept (bundles)
-- Supports 14 AI coding platforms (incl. Claude Code, Cursor, OpenCode)
+- Supports 15 AI coding platforms out of the box (Claude, Cursor, OpenCode, Windsurf, and more)
+- Extensible platform system - add new platforms via `platforms.jsonc` without code changes
 - Supported resources are commands, rules, skills, subagents and MCP servers
 - Can install any set of resources from a Git repository over the wire
 - Compatibility for installing Claude Code Marketplace plugins as bundles
