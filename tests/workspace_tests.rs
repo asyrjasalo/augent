@@ -513,10 +513,6 @@ bundles: []
     let augent_dir = workspace.path.join(".augent");
     assert!(augent_dir.is_dir());
 
-    // Bundles directory is created lazily when needed
-    let bundles_dir = augent_dir.join("bundles");
-    assert!(!bundles_dir.exists());
-
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
@@ -552,4 +548,175 @@ bundles: []
         .assert()
         .success()
         .stdout(predicate::str::contains("@test/test-bundle"));
+}
+
+#[test]
+fn test_workspace_root_augent_yaml_takes_precedence() {
+    let workspace = common::TestWorkspace::new();
+
+    // Create bundles
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    // Install first (creates .augent/augent.yaml)
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    assert!(workspace.file_exists(".augent/augent.yaml"));
+
+    // Now create augent.yaml in the root
+    workspace.write_file(
+        "augent.yaml",
+        r#"name: "@root/workspace"
+
+bundles:
+  - name: "@root/test-bundle"
+    subdirectory: bundles/test-bundle
+"#,
+    );
+
+    // Install from root augent.yaml should use that instead of .augent/augent.yaml
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // List should show both bundles (one from .augent and one from root)
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@test/test-bundle"));
+
+    // Check that lockfile has workspace name from root augent.yaml
+    // When root augent.yaml exists, augent.lock is stored in root
+    let lockfile = workspace.read_file("augent.lock");
+    assert!(lockfile.contains("@root/workspace"));
+}
+
+#[test]
+fn test_workspace_root_augent_yaml_with_root_files() {
+    let workspace = common::TestWorkspace::new();
+
+    // Create bundle with a root file
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+    workspace.write_file("bundles/test-bundle/root/config.yaml", "# Config\n");
+
+    workspace.create_agent_dir("cursor");
+
+    // First install to initialize .augent directory
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Now create augent.yaml in the root with this bundle
+    workspace.write_file(
+        "augent.yaml",
+        r#"name: "@root/workspace"
+
+bundles:
+  - name: test-bundle
+    subdirectory: bundles/test-bundle
+"#,
+    );
+
+    // Install again using root augent.yaml
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Check that root files were installed
+    assert!(workspace.file_exists("config.yaml"));
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+
+    // Check lockfile workspace name is from root augent.yaml
+    // When root augent.yaml exists, augent.lock is stored in root
+    let lockfile = workspace.read_file("augent.lock");
+    assert!(lockfile.contains("\"name\": \"@root/workspace\"")); // Workspace name should be from root augent.yaml
+
+    // Check that the bundle is recorded with its subdirectory path
+    assert!(lockfile.contains("\"path\": \"bundles/test-bundle\"")); // Bundle path should be its subdirectory
+}
+
+#[test]
+fn test_workspace_detection_with_root_augent_yaml() {
+    let workspace = common::TestWorkspace::new();
+
+    // Create bundle
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    workspace.create_agent_dir("cursor");
+
+    // First install to initialize .augent directory
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Now create root augent.yaml
+    workspace.write_file(
+        "augent.yaml",
+        r#"name: "@root/workspace"
+
+bundles:
+  - name: test-bundle
+    subdirectory: bundles/test-bundle
+"#,
+    );
+
+    // Run install again to migrate lockfile to root
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Create a nested directory
+    let nested = workspace.path.join("src/deeply/nested");
+    std::fs::create_dir_all(&nested).expect("Failed to create nested directory");
+
+    // List from nested directory should work (finds workspace in parent)
+    augent_cmd()
+        .current_dir(&nested)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@test/test-bundle"));
+
+    // Show bundle from nested directory should work
+    augent_cmd()
+        .current_dir(&nested)
+        .args(["show", "@test/test-bundle"])
+        .assert()
+        .success();
 }

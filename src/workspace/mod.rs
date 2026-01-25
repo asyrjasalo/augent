@@ -10,8 +10,7 @@
 //! .augent/
 //! ├── augent.yaml           # Workspace bundle config
 //! ├── augent.lock           # Resolved dependencies
-//! ├── augent.workspace.yaml # Per-agent file mappings
-//! └── bundles/              # Local bundle directories
+//! └── augent.workspace.yaml # Per-agent file mappings
 //! ```
 //!
 #![allow(dead_code)]
@@ -35,17 +34,18 @@ pub const LOCKFILE_NAME: &str = "augent.lock";
 /// Workspace config filename
 pub const WORKSPACE_CONFIG_FILE: &str = "augent.workspace.yaml";
 
-/// Bundles subdirectory
-pub const BUNDLES_DIR: &str = "bundles";
-
 /// Represents an Augent workspace
 #[derive(Debug)]
 pub struct Workspace {
     /// Root directory of the workspace (where .augent is located)
     pub root: PathBuf,
 
-    /// Path to the .augent directory
+    /// Path to the .augent directory (legacy location, always present)
     pub augent_dir: PathBuf,
+
+    /// Path to the configuration directory (where augent.yaml/augent.lock/augent.workspace.yaml are)
+    /// This is either root (if augent.yaml is in root) or .augent (if augent.yaml is in .augent)
+    pub config_dir: PathBuf,
 
     /// Bundle configuration (augent.yaml)
     pub bundle_config: BundleConfig,
@@ -59,8 +59,12 @@ pub struct Workspace {
 
 impl Workspace {
     /// Detect if a workspace exists at the given path
+    ///
+    /// A workspace exists if either:
+    /// 1. A .augent directory exists (traditional workspace)
+    /// 2. An augent.yaml file exists in the root (root-level workspace config)
     pub fn exists(root: &Path) -> bool {
-        root.join(WORKSPACE_DIR).is_dir()
+        root.join(WORKSPACE_DIR).is_dir() || root.join(BUNDLE_CONFIG_FILE).exists()
     }
 
     /// Find a workspace by searching upward from the given path
@@ -79,19 +83,37 @@ impl Workspace {
     }
 
     /// Open an existing workspace
+    ///
+    /// Loads workspace configuration with the following precedence:
+    /// 1. If augent.yaml exists in the root, use that (takes precedence)
+    /// 2. Otherwise, use .augent/augent.yaml
+    ///
+    /// Configuration files (augent.lock, augent.workspace.yaml) are loaded from the same
+    /// directory as augent.yaml.
     pub fn open(root: &Path) -> Result<Self> {
         let augent_dir = root.join(WORKSPACE_DIR);
 
-        if !augent_dir.is_dir() {
+        // Check if workspace exists (either .augent or root augent.yaml)
+        let has_augent_dir = augent_dir.is_dir();
+        let has_root_config = root.join(BUNDLE_CONFIG_FILE).exists();
+
+        if !has_augent_dir && !has_root_config {
             return Err(AugentError::WorkspaceNotFound {
                 path: root.display().to_string(),
             });
         }
 
-        // Load configuration files
-        let mut bundle_config = Self::load_bundle_config(&augent_dir)?;
-        let lockfile = Self::load_lockfile(&augent_dir)?;
-        let mut workspace_config = Self::load_workspace_config(&augent_dir)?;
+        // Determine config directory based on where augent.yaml exists
+        let config_dir = if has_root_config {
+            root.to_path_buf()
+        } else {
+            augent_dir.clone()
+        };
+
+        // Load configuration files from the config directory
+        let mut bundle_config = Self::load_bundle_config(&config_dir)?;
+        let lockfile = Self::load_lockfile(&config_dir)?;
+        let mut workspace_config = Self::load_workspace_config(&config_dir)?;
 
         // If bundle config name is empty, infer it
         if bundle_config.name.is_empty() {
@@ -103,6 +125,7 @@ impl Workspace {
         Ok(Self {
             root: root.to_path_buf(),
             augent_dir,
+            config_dir,
             bundle_config,
             lockfile,
             workspace_config,
@@ -128,14 +151,15 @@ impl Workspace {
         let lockfile = Lockfile::new(&name);
         let workspace_config = WorkspaceConfig::new(&name);
 
-        // Save configuration files
+        // Save configuration files to .augent
         Self::save_bundle_config(&augent_dir, &bundle_config)?;
         Self::save_lockfile(&augent_dir, &lockfile)?;
         Self::save_workspace_config(&augent_dir, &workspace_config)?;
 
         Ok(Self {
             root: root.to_path_buf(),
-            augent_dir,
+            augent_dir: augent_dir.clone(),
+            config_dir: augent_dir,
             bundle_config,
             lockfile,
             workspace_config,
@@ -218,12 +242,12 @@ impl Workspace {
         format!("@{}/{}", username, dir_name)
     }
 
-    /// Load bundle configuration from the augent directory
+    /// Load bundle configuration from a directory
     ///
     /// Returns an empty config if augent.yaml does not exist, as the config file is optional.
     /// When loading an empty config, the name field will be empty and needs to be set by the caller.
-    fn load_bundle_config(augent_dir: &Path) -> Result<BundleConfig> {
-        let path = augent_dir.join(BUNDLE_CONFIG_FILE);
+    fn load_bundle_config(config_dir: &Path) -> Result<BundleConfig> {
+        let path = config_dir.join(BUNDLE_CONFIG_FILE);
 
         if !path.exists() {
             // augent.yaml is optional - return empty config
@@ -239,9 +263,9 @@ impl Workspace {
         BundleConfig::from_yaml(&content)
     }
 
-    /// Load lockfile from the augent directory
-    fn load_lockfile(augent_dir: &Path) -> Result<Lockfile> {
-        let path = augent_dir.join(LOCKFILE_NAME);
+    /// Load lockfile from a directory
+    fn load_lockfile(config_dir: &Path) -> Result<Lockfile> {
+        let path = config_dir.join(LOCKFILE_NAME);
 
         if !path.exists() {
             // Return empty lockfile if not present
@@ -256,9 +280,9 @@ impl Workspace {
         Lockfile::from_json(&content)
     }
 
-    /// Load workspace configuration from the augent directory
-    fn load_workspace_config(augent_dir: &Path) -> Result<WorkspaceConfig> {
-        let path = augent_dir.join(WORKSPACE_CONFIG_FILE);
+    /// Load workspace configuration from a directory
+    fn load_workspace_config(config_dir: &Path) -> Result<WorkspaceConfig> {
+        let path = config_dir.join(WORKSPACE_CONFIG_FILE);
 
         if !path.exists() {
             // Return empty workspace config if not present
@@ -273,9 +297,9 @@ impl Workspace {
         WorkspaceConfig::from_yaml(&content)
     }
 
-    /// Save bundle configuration to the augent directory
-    fn save_bundle_config(augent_dir: &Path, config: &BundleConfig) -> Result<()> {
-        let path = augent_dir.join(BUNDLE_CONFIG_FILE);
+    /// Save bundle configuration to a directory
+    fn save_bundle_config(config_dir: &Path, config: &BundleConfig) -> Result<()> {
+        let path = config_dir.join(BUNDLE_CONFIG_FILE);
         let content = config.to_yaml()?;
 
         fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
@@ -284,9 +308,9 @@ impl Workspace {
         })
     }
 
-    /// Save lockfile to the augent directory
-    fn save_lockfile(augent_dir: &Path, lockfile: &Lockfile) -> Result<()> {
-        let path = augent_dir.join(LOCKFILE_NAME);
+    /// Save lockfile to a directory
+    fn save_lockfile(config_dir: &Path, lockfile: &Lockfile) -> Result<()> {
+        let path = config_dir.join(LOCKFILE_NAME);
         let content = lockfile.to_json()?;
 
         fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
@@ -295,9 +319,9 @@ impl Workspace {
         })
     }
 
-    /// Save workspace configuration to the augent directory
-    fn save_workspace_config(augent_dir: &Path, config: &WorkspaceConfig) -> Result<()> {
-        let path = augent_dir.join(WORKSPACE_CONFIG_FILE);
+    /// Save workspace configuration to a directory
+    fn save_workspace_config(config_dir: &Path, config: &WorkspaceConfig) -> Result<()> {
+        let path = config_dir.join(WORKSPACE_CONFIG_FILE);
         let content = config.to_yaml()?;
 
         fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
@@ -306,21 +330,42 @@ impl Workspace {
         })
     }
 
-    /// Save all configuration files
+    /// Get the source path for the workspace bundle configuration
+    ///
+    /// Returns the path to use for resolving the workspace bundle:
+    /// - If root augent.yaml exists, returns "." (current directory)
+    /// - Otherwise, returns "./.augent" (legacy .augent directory)
+    pub fn get_config_source_path(&self) -> String {
+        if self.root.join(BUNDLE_CONFIG_FILE).exists() {
+            ".".to_string()
+        } else {
+            "./.augent".to_string()
+        }
+    }
+
+    /// Get the actual filesystem path for the workspace bundle
+    ///
+    /// Returns the filesystem path where augent.yaml is loaded from:
+    /// - If root augent.yaml exists, returns the root directory
+    /// - Otherwise, returns the .augent directory
+    pub fn get_bundle_source_path(&self) -> PathBuf {
+        if self.root.join(BUNDLE_CONFIG_FILE).exists() {
+            self.root.clone()
+        } else {
+            self.augent_dir.clone()
+        }
+    }
+
+    /// Save all configuration files to the config directory
     pub fn save(&self) -> Result<()> {
         // Sync workspace_config name with bundle_config name
         let mut synced_workspace_config = self.workspace_config.clone();
         synced_workspace_config.name = self.bundle_config.name.clone();
 
-        Self::save_bundle_config(&self.augent_dir, &self.bundle_config)?;
-        Self::save_lockfile(&self.augent_dir, &self.lockfile)?;
-        Self::save_workspace_config(&self.augent_dir, &synced_workspace_config)?;
+        Self::save_bundle_config(&self.config_dir, &self.bundle_config)?;
+        Self::save_lockfile(&self.config_dir, &self.lockfile)?;
+        Self::save_workspace_config(&self.config_dir, &synced_workspace_config)?;
         Ok(())
-    }
-
-    /// Get the path to the bundles directory
-    pub fn bundles_dir(&self) -> PathBuf {
-        self.augent_dir.join(BUNDLES_DIR)
     }
 }
 
@@ -477,24 +522,8 @@ pub mod modified {
         let mut preserved = HashMap::new();
 
         for modified in modified_files {
-            // Determine the destination path in the workspace bundle (stored in .augent/)
-            let dest_path = workspace.augent_dir.join(&modified.source_path);
-
-            // Create parent directories if needed
-            if let Some(parent) = dest_path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-
-            // Copy the modified file
-            fs::copy(&modified.installed_path, &dest_path).map_err(|e| {
-                AugentError::FileWriteFailed {
-                    path: dest_path.display().to_string(),
-                    reason: e.to_string(),
-                }
-            })?;
-
             // Remove the file from the original bundle's enabled files in workspace_config
-            // since it's now provided by the workspace bundle instead
+            // since it's now managed locally
             if let Some(bundle) = workspace
                 .workspace_config
                 .find_bundle_mut(&modified.source_bundle)
@@ -506,7 +535,10 @@ pub mod modified {
                 bundle.enabled.remove(&modified.source_path);
             }
 
-            preserved.insert(modified.source_path.clone(), dest_path);
+            preserved.insert(
+                modified.source_path.clone(),
+                modified.installed_path.clone(),
+            );
         }
 
         Ok(preserved)
@@ -566,8 +598,6 @@ mod tests {
 
         // Check directory structure
         assert!(temp.path().join(WORKSPACE_DIR).is_dir());
-        // Bundles directory is created lazily when needed, not during init
-        assert!(!temp.path().join(WORKSPACE_DIR).join(BUNDLES_DIR).exists());
 
         // Check config files
         assert!(
@@ -653,20 +683,6 @@ mod tests {
         assert!(name.starts_with('@'));
         assert!(name.contains('/'));
     }
-
-    #[test]
-    fn test_bundles_dir() {
-        let temp = TempDir::new().unwrap();
-        let workspace = Workspace::init(temp.path()).unwrap();
-
-        let bundles_dir = workspace.bundles_dir();
-        assert_eq!(
-            bundles_dir,
-            temp.path().join(WORKSPACE_DIR).join(BUNDLES_DIR)
-        );
-        // Directory is created lazily when needed, not during init
-        assert!(!bundles_dir.exists());
-    }
 }
 
 #[cfg(test)]
@@ -705,9 +721,8 @@ mod modified_tests {
         let preserved = preserve_modified_files(&mut workspace, &modified).unwrap();
         assert_eq!(preserved.len(), 1);
 
-        // Check file was copied
+        // Check file is tracked (path matches installed path)
         let dest = &preserved["commands/test.md"];
-        assert!(dest.exists());
-        assert_eq!(fs::read_to_string(dest).unwrap(), "modified content");
+        assert_eq!(dest, &src_file);
     }
 }

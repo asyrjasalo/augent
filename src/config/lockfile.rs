@@ -346,7 +346,7 @@ mod tests {
       "name": "my-debug-bundle",
       "source": {
         "type": "dir",
-        "path": ".augent/bundles/my-debug-bundle",
+        "path": "local-bundles/my-debug-bundle",
         "hash": "blake3:abc123"
       },
       "files": ["commands/debug.md"]
@@ -382,7 +382,7 @@ mod tests {
         let mut lockfile = Lockfile::new("@test/bundle");
         lockfile.add_bundle(LockedBundle::dir(
             "dep1",
-            ".augent/bundles/dep1",
+            "local-bundles/dep1",
             "blake3:abc123",
             vec!["file1.md".to_string()],
         ));

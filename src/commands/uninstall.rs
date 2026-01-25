@@ -572,7 +572,7 @@ mod tests {
             license: None,
             homepage: None,
             source: LockedSource::Dir {
-                path: ".augent/bundles/bundle1".to_string(),
+                path: "local-bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
             },
             files: vec!["shared.txt".to_string(), "bundle1.txt".to_string()],
@@ -586,7 +586,7 @@ mod tests {
             license: None,
             homepage: None,
             source: LockedSource::Dir {
-                path: ".augent/bundles/bundle2".to_string(),
+                path: "local-bundles/bundle2".to_string(),
                 hash: "hash2".to_string(),
             },
             files: vec!["shared.txt".to_string(), "bundle2.txt".to_string()],
@@ -727,7 +727,7 @@ bundles:
       "name": "bundle1",
       "source": {
         "type": "dir",
-        "path": ".augent/bundles/bundle1",
+        "path": "local-bundles/bundle1",
         "hash": "hash1"
       },
       "files": []
@@ -804,7 +804,7 @@ bundles:
             license: None,
             homepage: None,
             source: crate::config::LockedSource::Dir {
-                path: ".augent/bundles/bundle1".to_string(),
+                path: "local-bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
             },
             files: vec!["file1.txt".to_string()],
@@ -837,7 +837,7 @@ bundles:
             license: None,
             homepage: None,
             source: crate::config::LockedSource::Dir {
-                path: ".augent/bundles/bundle1".to_string(),
+                path: "local-bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
             },
             files: vec!["shared.txt".to_string()],
@@ -851,7 +851,7 @@ bundles:
             license: None,
             homepage: None,
             source: crate::config::LockedSource::Dir {
-                path: ".augent/bundles/bundle2".to_string(),
+                path: "local-bundles/bundle2".to_string(),
                 hash: "hash2".to_string(),
             },
             files: vec!["shared.txt".to_string()],
@@ -903,7 +903,7 @@ bundles:
             license: None,
             homepage: None,
             source: crate::config::LockedSource::Dir {
-                path: ".augent/bundles/bundle1".to_string(),
+                path: "local-bundles/bundle1".to_string(),
                 hash: "hash1".to_string(),
             },
             files: vec!["file1.txt".to_string()],
@@ -917,7 +917,7 @@ bundles:
             license: None,
             homepage: None,
             source: crate::config::LockedSource::Dir {
-                path: ".augent/bundles/bundle2".to_string(),
+                path: "local-bundles/bundle2".to_string(),
                 hash: "hash2".to_string(),
             },
             files: vec!["file1.txt".to_string()],
@@ -952,6 +952,7 @@ bundles:
         let workspace = crate::workspace::Workspace {
             root: TempDir::new().unwrap().path().to_path_buf(),
             augent_dir: std::path::PathBuf::from(".augent"),
+            config_dir: std::path::PathBuf::from(".augent"),
             bundle_config: crate::config::BundleConfig::new("@test/workspace"),
             workspace_config,
             lockfile,

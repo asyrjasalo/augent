@@ -251,7 +251,7 @@ impl ResourceSet {
 /// Workspace's own bundle resources
 ///
 /// Represents the workspace itself as a bundle, containing its own
-/// resource files in `.augent/bundles/<workspace-name>/`.
+/// resource files.
 pub type WorkspaceBundle = ResourceSet;
 
 #[cfg(test)]

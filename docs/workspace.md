@@ -23,9 +23,7 @@ my-project/
 ├── .augent/                           # Augent workspace directory
 │   ├── augent.yaml                    # Workspace bundle definition
 │   ├── augent.lock                    # Locked bundle versions
-│   ├── augent.workspace.yaml          # Resource tracking
-│   └── bundles/                       # Workspace's own bundle
-│       └── <files>
+│   └── augent.workspace.yaml          # Resource tracking
 ├── .claude/                           # Claude Code configuration
 ├── .cursor/                           # Cursor configuration
 ├── .opencode/                         # OpenCode configuration
@@ -177,7 +175,7 @@ Augent tracks modifications to prevent data loss:
 ```bash
 augent uninstall my-bundle
 # Warning: Some files modified
-# Modified files saved to .augent/bundles/my-bundle/
+# Modified files backed up locally
 ```
 
 **Before install:**
@@ -185,7 +183,7 @@ augent uninstall my-bundle
 ```bash
 augent install new-bundle
 # Warning: New bundle would overwrite modified files
-# Modified files preserved in .augent/bundles/
+# Modified files preserved locally
 ```
 
 ### Checking Modifications
@@ -196,36 +194,6 @@ augent install github:author/new-bundle
 
 # View workspace configuration to see tracking
 cat .augent/augent.workspace.yaml
-```
-
----
-
-## Workspace Bundle
-
-Every workspace has its own bundle in `.augent/bundles/`:
-
-```text
-.augent/bundles/
-├── rules/
-│   └── project-specific.md
-└── README.md
-```
-
-This bundle:
-
-- Contains project-specific resources
-- Installed last (after all other bundles)
-- Can override resources from other bundles
-- Version-controlled with your project
-
-**Example:**
-
-```yaml
-# .augent/augent.yaml
-name: my-project
-bundles:
-  - github:author/debug-tools
-  - .                              # Workspace bundle (last)
 ```
 
 ---
@@ -356,7 +324,6 @@ git commit -m "Lock dependency versions"
 
 **Don't commit:**
 
-- `.augent/bundles/` (use `.gitignore`)
 - Agent directories with secrets
 
 ### Bundle Ordering
@@ -367,7 +334,7 @@ git commit -m "Lock dependency versions"
 bundles:
   - github:author/base-config      # Base configuration
   - github:author/team-standards   # Team standards
-  - .                              # Project-specific (overrides all)
+  - ./local-bundle                 # Project-specific (overrides all)
 ```
 
 ### Team Collaboration
@@ -413,7 +380,7 @@ Warning: Some files were modified
 
 **Action:**
 
-- Modified files saved to `.augent/bundles/`
+- Modified files backed up locally
 - Review before uninstalling
 - Manually merge if needed
 

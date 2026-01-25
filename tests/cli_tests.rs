@@ -125,8 +125,6 @@ bundles: []
 fn test_list_with_bundles() {
     let temp = common::TestWorkspace::new();
     let augent_dir = temp.create_augent_dir();
-    let bundles_dir = augent_dir.join("bundles");
-    fs::create_dir_all(&bundles_dir).expect("Failed to create bundles dir");
 
     let bundle_config_content = r#"name: "@test/workspace"
 bundles: []
@@ -141,7 +139,7 @@ bundles: []
       "name": "test-bundle-1",
       "source": {
         "type": "dir",
-        "path": ".augent/bundles/test-bundle-1",
+        "path": "local-bundles/test-bundle-1",
         "hash": "blake3:abc123"
       },
       "files": ["commands/test.md", "agents/helper.md"]
@@ -200,8 +198,6 @@ bundles:
 fn test_list_detailed() {
     let temp = common::TestWorkspace::new();
     let augent_dir = temp.create_augent_dir();
-    let bundles_dir = augent_dir.join("bundles");
-    fs::create_dir_all(&bundles_dir).expect("Failed to create bundles dir");
 
     let bundle_config_content = r#"name: "@test/workspace"
 bundles: []
@@ -216,7 +212,7 @@ bundles: []
       "name": "test-bundle",
       "source": {
         "type": "dir",
-        "path": ".augent/bundles/test-bundle",
+        "path": "local-bundles/test-bundle",
         "hash": "blake3:abc123"
       },
       "files": ["commands/test.md"]
@@ -245,9 +241,7 @@ bundles:
         .success()
         .stdout(predicate::str::contains("test-bundle"))
         .stdout(predicate::str::contains("Type: Directory"))
-        .stdout(predicate::str::contains(
-            "Path: .augent/bundles/test-bundle",
-        ))
+        .stdout(predicate::str::contains("Path: local-bundles/test-bundle"))
         .stdout(predicate::str::contains("commands/test.md →"))
         .stdout(predicate::str::contains(".opencode/commands/test.md"));
 }
@@ -257,10 +251,9 @@ fn test_show_installed_bundle() {
     let workspace = common::TestWorkspace::new();
 
     workspace.create_augent_dir();
-    workspace.create_bundle("test-bundle");
 
     workspace.write_file(
-        ".augent/bundles/test-bundle/augent.yaml",
+        "local-bundles/test-bundle/augent.yaml",
         r#"
 name: "@user/test-bundle"
 bundles: []
@@ -273,7 +266,7 @@ bundles: []
 name: "@user/workspace"
 bundles:
   - name: "@user/test-bundle"
-    subdirectory: .augent/bundles/test-bundle
+    subdirectory: local-bundles/test-bundle
 "#,
     );
 
@@ -286,7 +279,7 @@ bundles:
       "name": "@user/test-bundle",
       "source": {
         "type": "dir",
-        "path": ".augent/bundles/test-bundle",
+        "path": "local-bundles/test-bundle",
         "hash": "blake3:abc123"
       },
       "files": ["commands/test.md"]
@@ -326,10 +319,9 @@ fn test_show_not_installed_bundle() {
     let workspace = common::TestWorkspace::new();
 
     workspace.create_augent_dir();
-    workspace.create_bundle("test-bundle");
 
     workspace.write_file(
-        ".augent/bundles/test-bundle/augent.yaml",
+        "local-bundles/test-bundle/augent.yaml",
         r#"
 name: "@user/test-bundle"
 bundles: []
@@ -342,7 +334,7 @@ bundles: []
 name: "@user/workspace"
 bundles:
   - name: "@user/test-bundle"
-    subdirectory: .augent/bundles/test-bundle
+    subdirectory: local-bundles/test-bundle
 "#,
     );
 
@@ -355,7 +347,7 @@ bundles:
       "name": "@user/test-bundle",
       "source": {
         "type": "dir",
-        "path": ".augent/bundles/test-bundle",
+        "path": "local-bundles/test-bundle",
         "hash": "blake3:abc123"
       },
       "files": ["commands/test.md"]

@@ -46,7 +46,15 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
             Workspace::find_from(&current_dir).ok_or(AugentError::WorkspaceNotFound {
                 path: current_dir.display().to_string(),
             })?;
-        let augent_yaml_path = workspace_root.join(".augent/augent.yaml");
+
+        let mut workspace = Workspace::open(&workspace_root)?;
+
+        // Determine which augent.yaml file we're using
+        let augent_yaml_path = if workspace_root.join("augent.yaml").exists() {
+            workspace_root.join("augent.yaml")
+        } else {
+            workspace_root.join(".augent/augent.yaml")
+        };
 
         // Calculate relative path for display
         let display_path = augent_yaml_path
@@ -54,7 +62,6 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|_| augent_yaml_path.to_string_lossy().to_string());
 
-        let mut workspace = Workspace::open(&workspace_root)?;
         println!("Augent: Installing bundles from {}", display_path);
 
         // Create transaction for atomic operations
@@ -146,7 +153,8 @@ fn do_install_from_yaml(
 
         // Resolve workspace bundle which will automatically resolve its declared dependencies
         // from augent.yaml. All bundles are treated uniformly by the resolver.
-        let bundle_sources = vec!["./.augent".to_string()];
+        // Use root augent.yaml if it exists, otherwise fall back to .augent
+        let bundle_sources = vec![workspace.get_config_source_path()];
 
         println!("Resolving workspace bundle and its dependencies...");
 
@@ -174,7 +182,8 @@ fn do_install_from_yaml(
 
             // Resolve workspace bundle which will automatically resolve its declared dependencies
             // from augent.yaml. All bundles are treated uniformly by the resolver.
-            let bundle_sources = vec!["./.augent".to_string()];
+            // Use root augent.yaml if it exists, otherwise fall back to .augent
+            let bundle_sources = vec![workspace.get_config_source_path()];
 
             println!("Resolving workspace bundle and its dependencies...");
 
@@ -221,7 +230,7 @@ fn do_install_from_yaml(
         let workspace_bundle = crate::resolver::ResolvedBundle {
             name: workspace_bundle_name,
             dependency: None,
-            source_path: workspace.augent_dir.clone(),
+            source_path: workspace.get_bundle_source_path(),
             resolved_sha: None,
             resolved_ref: None,
             git_source: None,
@@ -394,7 +403,7 @@ fn do_install_empty_workspace(
     let workspace_resolved = crate::resolver::ResolvedBundle {
         name: workspace_bundle_name.clone(),
         dependency: None,
-        source_path: workspace.augent_dir.clone(),
+        source_path: workspace.get_bundle_source_path(),
         resolved_sha: None,
         resolved_ref: None,
         git_source: None,
@@ -515,7 +524,7 @@ fn do_install(
         let workspace_bundle = crate::resolver::ResolvedBundle {
             name: "workspace".to_string(),
             dependency: None,
-            source_path: workspace.augent_dir.clone(),
+            source_path: workspace.get_bundle_source_path(),
             resolved_sha: None,
             resolved_ref: None,
             git_source: None,
@@ -1140,6 +1149,7 @@ mod tests {
         let workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
+            config_dir: temp.path().join(".augent"),
             bundle_config: crate::config::BundleConfig::new("@test/workspace"),
             workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
             lockfile: crate::config::Lockfile::new("@test/workspace"),
@@ -1161,6 +1171,7 @@ mod tests {
         let workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
+            config_dir: temp.path().join(".augent"),
             bundle_config: crate::config::BundleConfig::new("@test/workspace"),
             workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
             lockfile: crate::config::Lockfile::new("@test/workspace"),
@@ -1190,6 +1201,7 @@ mod tests {
         let mut workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
+            config_dir: temp.path().join(".augent"),
             bundle_config: crate::config::BundleConfig::new("@test/workspace"),
             workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
             lockfile: crate::config::Lockfile::new("@test/workspace"),
@@ -1238,6 +1250,7 @@ mod tests {
         let mut workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
+            config_dir: temp.path().join(".augent"),
             bundle_config: crate::config::BundleConfig::new("@test/workspace"),
             workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
             lockfile: crate::config::Lockfile::new("@test/workspace"),

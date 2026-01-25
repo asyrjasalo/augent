@@ -427,7 +427,6 @@ mod tests {
         let workspace_root = temp.path().to_path_buf();
         let augent_dir = workspace_root.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
-        fs::create_dir_all(augent_dir.join("bundles")).unwrap();
         fs::write(augent_dir.join("augent.yaml"), "name: \"@test/test\"").unwrap();
         fs::write(
             augent_dir.join("augent.lock"),
@@ -463,7 +462,6 @@ mod tests {
         let workspace_root = temp.path().to_path_buf();
         let augent_dir = workspace_root.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
-        fs::create_dir_all(augent_dir.join("bundles")).unwrap();
         fs::write(augent_dir.join("augent.yaml"), "name: \"@test/test\"").unwrap();
         fs::write(
             augent_dir.join("augent.lock"),
