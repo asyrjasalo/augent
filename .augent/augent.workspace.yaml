@@ -1,12 +1,30 @@
 name: '@asyrjasalo/augent'
 
 bundles:
-- name: '@asyrjasalo/augent/my-local-bundle'
+- name: '@wshobson/agents/accessibility-compliance'
   enabled:
-    commands/my-command.md:
-    - .opencode/commands/my-command.md
-    - .claude/commands/my-command.md
-    - .gemini/commands/my-command.toml
+    agents/ui-visual-validator.md:
+    - .gemini/agents/ui-visual-validator.md
+    - .claude/agents/ui-visual-validator.md
+    - .opencode/agents/ui-visual-validator.md
+    commands/accessibility-audit.md:
+    - .claude/commands/accessibility-audit.md
+    - .gemini/commands/accessibility-audit.toml
+    - .opencode/commands/accessibility-audit.md
+    skills/screen-reader-testing/SKILL.md:
+    - .gemini/skills/screen-reader-testing/SKILL.md
+    - .claude/skills/screen-reader-testing/SKILL.md
+    skills/wcag-audit-patterns/SKILL.md:
+    - .claude/skills/wcag-audit-patterns/SKILL.md
+    - .opencode/skills/SKILL/SKILL.md
+    - .gemini/skills/wcag-audit-patterns/SKILL.md
+
+- name: workspace
+  enabled:
+    agents/ai-engineer.md:
+    - .claude/agents/ai-engineer.md
+    - .gemini/agents/ai-engineer.md
+    - .opencode/agents/ai-engineer.md
 
 - name: '@asyrjasalo/augent'
   enabled:

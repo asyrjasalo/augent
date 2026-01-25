@@ -16,16 +16,16 @@ Your AI coding platforms are auto-detected in the workspace (git repository).
 To install a set of resources (bundles) for your AI coding platforms:
 
     # Install from a public GitHub repository (select bundles if many):
-    augent install shobson/agents
+    augent install wshobson/agents
 
     # List all installed bundles
     augent list
 
     # Show a bundle's details
-    augent show @wshobson/agents
+    augent show @wshobson/agents/accessibility-compliance
 
     # Uninstall a bundle
-    augent uninstall @wshobson/agents
+    augent uninstall @wshobson/agents/accessibility-compliance
 
 ## Usage
 

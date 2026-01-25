@@ -136,8 +136,8 @@ The project uses GitHub Actions for automated builds:
 4. Create and push a tag:
 
 ```bash
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0
+git tag -a v0.5.0 -m "Release v0.5.0"
+git push origin v0.5.0
 ```
 
 5. GitHub Actions will automatically:

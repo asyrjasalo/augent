@@ -1,5 +1,9 @@
 name: '@asyrjasalo/augent'
 
 bundles:
+- name: '@wshobson/agents/accessibility-compliance'
+  git: https://github.com/wshobson/agents.git
+  path: $plugin/accessibility-compliance
+
 - name: '@asyrjasalo/augent/my-local-bundle'
   path: ./my-local-bundle

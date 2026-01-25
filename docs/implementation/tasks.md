@@ -868,7 +868,7 @@ Set up cross-platform builds and distribution.
 - [ ] Make release pipeline publish to creates.io
 - [ ] Make release pipeline publish binaries as release artifacts
 - [ ] Make release pipeline publish Python packages to PyPI
-- [ ] Prepare release 0.1.0
+- [ ] Prepare release 0.5.0
 - [ ] Document release process in @CLAUDE.md
 
 ---
