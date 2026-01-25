@@ -198,6 +198,7 @@ impl InteractiveTest {
         }
         #[cfg(windows)]
         {
+            use std::os::windows::process::ExitStatusExt;
             Ok(std::process::ExitStatus::from_raw(0))
         }
     }

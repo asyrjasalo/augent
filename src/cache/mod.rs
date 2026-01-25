@@ -492,6 +492,7 @@ impl CacheStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_url_to_slug() {
@@ -510,6 +511,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cache_dir() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let expected_path = temp_dir.path().to_path_buf();
@@ -623,10 +625,12 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_clear_cache() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let cache_base = temp_dir.path();
 
+        let original = std::env::var("AUGENT_CACHE_DIR").ok();
         unsafe {
             std::env::set_var("AUGENT_CACHE_DIR", cache_base);
         }
@@ -638,13 +642,23 @@ mod tests {
 
         let result = clear_cache();
         assert!(result.is_ok());
+
+        unsafe {
+            if let Some(o) = original {
+                std::env::set_var("AUGENT_CACHE_DIR", o);
+            } else {
+                std::env::remove_var("AUGENT_CACHE_DIR");
+            }
+        }
     }
 
     #[test]
+    #[serial]
     fn test_cache_stats() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let cache_base = temp_dir.path();
 
+        let original = std::env::var("AUGENT_CACHE_DIR").ok();
         unsafe {
             std::env::set_var("AUGENT_CACHE_DIR", cache_base);
         }
@@ -653,6 +667,14 @@ mod tests {
         assert_eq!(stats.repositories, 0);
         assert_eq!(stats.versions, 0);
         assert_eq!(stats.total_size, 0);
+
+        unsafe {
+            if let Some(o) = original {
+                std::env::set_var("AUGENT_CACHE_DIR", o);
+            } else {
+                std::env::remove_var("AUGENT_CACHE_DIR");
+            }
+        }
     }
 
     #[test]
@@ -679,10 +701,12 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cache_bundle_no_double_clone() {
         // This test verifies that cache_bundle doesn't clone twice
         // when called with the same source (even when git_ref is None)
         let temp_cache = tempfile::TempDir::new().unwrap();
+        let original = std::env::var("AUGENT_CACHE_DIR").ok();
         unsafe {
             std::env::set_var("AUGENT_CACHE_DIR", temp_cache.path());
         }
@@ -733,5 +757,13 @@ mod tests {
         assert_eq!(sha2, expected_sha);
         assert_eq!(cache_path2, cache_path1);
         // The important part is that we didn't clone again (same cache_path)
+
+        unsafe {
+            if let Some(o) = original {
+                std::env::set_var("AUGENT_CACHE_DIR", o);
+            } else {
+                std::env::remove_var("AUGENT_CACHE_DIR");
+            }
+        }
     }
 }

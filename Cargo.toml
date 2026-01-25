@@ -64,6 +64,9 @@ predicates = "3"
 # Cross-platform PTY for interactive testing
 expectrl = "0.8"
 
+# Serialize tests that share process-wide state (e.g. AUGENT_CACHE_DIR)
+serial_test = "3"
+
 [features]
 default = []
 
