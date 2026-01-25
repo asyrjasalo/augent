@@ -11,6 +11,8 @@
 //! - Git credential helpers
 //! - Environment variables (GIT_SSH_COMMAND, etc.)
 
+#[cfg(windows)]
+use std::fs;
 use std::path::Path;
 
 use git2::{
@@ -19,38 +21,15 @@ use git2::{
 
 use crate::error::{AugentError, Result};
 
-/// Normalize file:// URLs so libgit2 can resolve them on all platforms.
+/// Normalize file:// URLs so libgit2 can resolve them on Unix.
 ///
-/// On Windows, `file://C:\path` and `file:///C:/path` are mis-parsed by libgit2
-/// ("failed to resolve path 'C'", "unsupported URL protocol" for bare paths).
-/// RFC 8089 allows `file:///C|/path` (pipe for the drive colon); some
-/// implementations accept this. We use it on Windows as a fallback. Unix
-/// `file:///path` is unchanged.
+/// On Windows, file:// is not used: clone() uses a local copy instead because
+/// libgit2 mis-parses file://C:\path, file:///C:/path, and file:///C|/path.
 fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     if !url.starts_with("file://") {
         return std::borrow::Cow::Borrowed(url);
     }
     let after = &url[7..]; // after "file://"
-    #[cfg(windows)]
-    {
-        // Normalize to forward slashes: /C:/path or C:\path -> C:/path
-        let path = if after.starts_with('/') {
-            after[1..].to_string()
-        } else {
-            after.replace('\\', "/")
-        };
-        // RFC 8089 E.2: use pipe for drive colon so "C:" becomes "C|", e.g.
-        // file:///C|/Users/... . This avoids "C" being parsed as host/scheme.
-        let path = if path.len() >= 2
-            && path.chars().next().map(|c| c.is_ascii_alphabetic()) == Some(true)
-            && path.chars().nth(1) == Some(':')
-        {
-            format!("{}|{}", &path[..1], &path[2..])
-        } else {
-            path
-        };
-        std::borrow::Cow::Owned(format!("file:///{}", path))
-    }
     #[cfg(not(windows))]
     {
         if after.contains('\\') {
@@ -60,8 +39,68 @@ fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
         if !after.is_empty() && !after.starts_with('/') {
             return std::borrow::Cow::Owned(format!("file:///{}", after));
         }
-        std::borrow::Cow::Borrowed(url)
     }
+    std::borrow::Cow::Borrowed(url)
+}
+
+/// On Windows, libgit2 fails to parse file:// URLs (drive letters, path
+/// resolution). Clone by copying the source directory and opening it.
+#[cfg(windows)]
+fn clone_local_file(url: &str, target: &Path) -> Result<Repository> {
+    let path_str = url
+        .strip_prefix("file:///")
+        .or_else(|| url.strip_prefix("file://"))
+        .unwrap_or(url)
+        .replace('|', ":");
+    let source = Path::new(&path_str);
+    if !source.is_dir() {
+        return Err(AugentError::GitCloneFailed {
+            url: url.to_string(),
+            reason: "local path is not a directory".to_string(),
+        });
+    }
+    fs::create_dir_all(target).map_err(|e| AugentError::GitCloneFailed {
+        url: url.to_string(),
+        reason: format!("Failed to create target directory: {}", e),
+    })?;
+    copy_dir_recursive_for_clone(source, target, url)?;
+    Repository::open(target).map_err(|e| AugentError::GitCloneFailed {
+        url: url.to_string(),
+        reason: e.message().to_string(),
+    })
+}
+
+#[cfg(windows)]
+fn copy_dir_recursive_for_clone(src: &Path, dst: &Path, url: &str) -> Result<()> {
+    for entry in fs::read_dir(src).map_err(|e| AugentError::GitCloneFailed {
+        url: url.to_string(),
+        reason: format!("Failed to read source directory: {}", e),
+    })? {
+        let entry = entry.map_err(|e| AugentError::GitCloneFailed {
+            url: url.to_string(),
+            reason: format!("Failed to read directory entry: {}", e),
+        })?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            fs::create_dir_all(&dst_path).map_err(|e| AugentError::GitCloneFailed {
+                url: url.to_string(),
+                reason: format!("Failed to create directory: {}", e),
+            })?;
+            copy_dir_recursive_for_clone(&src_path, &dst_path, url)?;
+        } else {
+            fs::copy(&src_path, &dst_path).map_err(|e| AugentError::GitCloneFailed {
+                url: url.to_string(),
+                reason: format!(
+                    "Failed to copy {} to {}: {}",
+                    src_path.display(),
+                    dst_path.display(),
+                    e
+                ),
+            })?;
+        }
+    }
+    Ok(())
 }
 
 /// Interpret a git2 error and provide a more user-friendly message
@@ -114,6 +153,13 @@ fn interpret_git_error(err: &git2::Error) -> String {
 /// * `shallow` - Whether to do a shallow clone (depth=1). Default is true.
 ///   Set to false when you need to resolve specific refs like tags.
 pub fn clone(url: &str, target: &Path, shallow: bool) -> Result<Repository> {
+    // On Windows, libgit2 fails on file:// URLs (drive letters, path resolution).
+    // Clone by copying the source directory instead.
+    #[cfg(windows)]
+    if url.starts_with("file://") {
+        return clone_local_file(url, target);
+    }
+
     let mut callbacks = RemoteCallbacks::new();
     setup_auth_callbacks(&mut callbacks);
 

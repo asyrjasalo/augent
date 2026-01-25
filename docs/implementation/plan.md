@@ -343,6 +343,10 @@ Testing infrastructure, documentation, and comprehensive test coverage.
 
 **Status:** Complete
 
+#### Feature 11.4: Documentation-Based Feature Testing
+
+**Status:** Complete
+
 ### Epic 12: Documentation
 
 **Status:** Complete
@@ -365,6 +369,18 @@ Testing infrastructure, documentation, and comprehensive test coverage.
 
 **Status:** Complete
 
+#### Feature 12.5: Platform Documentation
+
+**Status:** Complete
+
+#### Feature 12.6: Feature Specifications
+
+**Status:** Complete
+
+#### Feature 12.7: Documentation Verification
+
+**Status:** Complete
+
 ### Epic 13: Test Coverage Gaps
 
 **Status:** Complete
@@ -383,11 +399,11 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 **Goal:** Set up cross-platform builds and distribution.
 
-### Feature 14.1: Cross-Platform Builds
+#### Feature 14.1: Cross-Platform Builds
 
 **Status:** Complete
 
-### Feature 14.2: Release Artifacts
+#### Feature 14.2: Release Artifacts
 
 **Status:** Pending
 
