@@ -89,13 +89,9 @@ impl InteractiveTest {
                 ));
             }
 
-            // Check if process has exited first
-            if self.session.check(Eof).is_ok() {
-                self.drain_remaining_output(&mut output, &mut buffer);
-                break;
-            }
-
-            // Try to read
+            // Read first, before checking Eof — on Linux, check(Eof) can be true as soon as
+            // the child closes the PTY; if we check first we may break and drain before
+            // read() has consumed buffered output. Same pattern as wait_for_text.
             match self.session.read(&mut buffer) {
                 Ok(n) if n > 0 => {
                     output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
@@ -108,11 +104,19 @@ impl InteractiveTest {
                         self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
+                    if self.session.check(Eof).is_ok() {
+                        self.drain_remaining_output(&mut output, &mut buffer);
+                        break;
+                    }
                     thread::sleep(Duration::from_millis(50));
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     no_data_count += 1;
                     if no_data_count > MAX_NO_DATA {
+                        self.drain_remaining_output(&mut output, &mut buffer);
+                        break;
+                    }
+                    if self.session.check(Eof).is_ok() {
                         self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
