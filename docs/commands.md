@@ -75,6 +75,33 @@ augent install github:author/bundle@main
 4. **Install**: Files are installed in appropriate locations
 5. **Lock**: Lockfile is updated with resolved SHAs for reproducibility
 
+### Installing from augent.yaml
+
+When running `augent install` without a source, Augent installs all bundles declared in `augent.yaml`:
+
+```yaml
+# .augent/augent.yaml
+name: my-workspace
+bundles:
+  - name: my-bundle
+    path: ./my-bundle
+  - github:author/debug-tools
+```
+
+**Behavior:**
+
+- Only bundles in `augent.yaml` are resolved
+- New bundles are added to `augent.lock` and `augent.workspace.yaml`
+- Bundles removed from `augent.yaml` are **NOT** removed from lockfile/workspace
+- Allows temporary disabling of bundles by editing `augent.yaml`
+
+**To completely remove a bundle**, explicitly uninstall it:
+
+```bash
+augent uninstall my-bundle
+# Now removed from all configuration files
+```
+
 ---
 
 ## uninstall

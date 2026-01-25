@@ -512,19 +512,20 @@ mod tests {
     #[test]
     fn test_cache_dir() {
         let temp_dir = tempfile::TempDir::new().unwrap();
+        let expected_path = temp_dir.path().to_path_buf();
 
         // Save original env var if set
         let original_cache_dir = std::env::var("AUGENT_CACHE_DIR").ok();
 
         unsafe {
-            std::env::set_var("AUGENT_CACHE_DIR", temp_dir.path());
+            std::env::set_var("AUGENT_CACHE_DIR", &expected_path);
         }
 
         let dir = cache_dir();
         assert!(dir.is_ok());
         let path = dir.unwrap();
 
-        assert_eq!(path, std::path::PathBuf::from(temp_dir.path()));
+        assert_eq!(path, expected_path);
 
         // Restore original env var if it was set
         unsafe {

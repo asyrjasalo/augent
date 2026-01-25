@@ -11,6 +11,28 @@
       "files": [
         "agents/ai-engineer.md"
       ]
+    },
+    {
+      "name": "@asyrjasalo/augent/my-local-bundle",
+      "source": {
+        "type": "dir",
+        "path": ".augent/./my-local-bundle",
+        "hash": "blake3:b18049f81cbef8360e2191e839052db98f8bb91f6d6c4518e2a6683fc5feae32"
+      },
+      "files": [
+        "commands/my-command.md"
+      ]
+    },
+    {
+      "name": "@asyrjasalo/augent",
+      "source": {
+        "type": "dir",
+        "path": ".augent",
+        "hash": "blake3:3b6447369b66e7ed297fee349ea952a65ff7eede0442e0e1ae0b273b40fd3261"
+      },
+      "files": [
+        "agents/ai-engineer.md"
+      ]
     }
   ]
 }

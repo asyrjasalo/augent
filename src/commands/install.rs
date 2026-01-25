@@ -172,11 +172,17 @@ fn do_install_from_yaml(
     } else {
         // Use lockfile - respects exact SHAs, but fetches missing bundles from cache
         // If lockfile is empty/doesn't exist, automatically create it
+        // Also automatically detect if augent.yaml has changed
         let lockfile_is_empty = workspace.lockfile.bundles.is_empty();
+        let augent_yaml_changed = !lockfile_is_empty && has_augent_yaml_changed(&workspace)?;
 
-        let resolved = if lockfile_is_empty {
-            // Lockfile doesn't exist or is empty - resolve dependencies and create it
-            println!("Lockfile not found or empty. Resolving dependencies...");
+        let resolved = if lockfile_is_empty || augent_yaml_changed {
+            // Lockfile doesn't exist, is empty, or augent.yaml has changed - resolve dependencies
+            if lockfile_is_empty {
+                println!("Lockfile not found or empty. Resolving dependencies...");
+            } else {
+                println!("augent.yaml has changed. Re-resolving dependencies...");
+            }
 
             let mut resolver = Resolver::new(&workspace.root);
 
@@ -199,7 +205,7 @@ fn do_install_from_yaml(
             println!("Resolved {} bundle(s)", resolved.len());
             resolved
         } else {
-            // Lockfile exists - use it, but fetch missing bundles from cache
+            // Lockfile exists and matches augent.yaml - use it, but fetch missing bundles from cache
             println!("Using locked versions from augent.lock.");
             let resolved =
                 locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
@@ -214,8 +220,11 @@ fn do_install_from_yaml(
             resolved
         };
 
-        // Update lockfile if --update was given OR if lockfile was empty
-        (resolved, args.update || lockfile_is_empty)
+        // Update lockfile if --update was given OR if lockfile was empty/changed
+        (
+            resolved,
+            args.update || lockfile_is_empty || augent_yaml_changed,
+        )
     };
 
     // If we detected modified files, ensure workspace bundle is in the resolved list
@@ -1014,6 +1023,31 @@ fn locked_bundles_to_resolved(
     }
 
     Ok(resolved)
+}
+
+/// Check if augent.yaml has changed compared to augent.lock
+///
+/// Returns true if the set of bundles in augent.yaml differs from
+/// what's locked in augent.lock (by name and source).
+fn has_augent_yaml_changed(workspace: &Workspace) -> Result<bool> {
+    // Get the current bundle dependencies from augent.yaml
+    let current_bundles: std::collections::HashSet<String> = workspace
+        .bundle_config
+        .bundles
+        .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    // Get the locked bundle names
+    let locked_bundles: std::collections::HashSet<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    // If the sets differ, augent.yaml has changed
+    Ok(current_bundles != locked_bundles)
 }
 
 #[cfg(test)]
