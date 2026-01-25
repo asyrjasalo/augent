@@ -4,7 +4,7 @@ This guide explains how to write stable, reliable automated tests for CLI comman
 
 ## Overview
 
-Augent uses `dialoguer` for interactive UI elements, which reads directly from the terminal (not stdin). This means we cannot use standard stdin redirection in tests. Instead, we use **PTY (pseudo-terminal)** to simulate real user interaction.
+Augent uses `inquire` for interactive UI elements, which reads directly from the terminal (not stdin). This means we cannot use standard stdin redirection in tests. Instead, we use **PTY (pseudo-terminal)** to simulate real user interaction.
 
 ## Stability Improvements (2026-01-24)
 

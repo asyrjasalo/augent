@@ -3,7 +3,7 @@
 //! This command lists all installed bundles with their sources,
 //! enabled platforms, and file counts.
 
-use dialoguer::console::Style;
+use console::Style;
 
 use std::path::PathBuf;
 

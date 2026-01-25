@@ -1,7 +1,7 @@
 //! Interactive menu tests for install command using PTY
 //!
 //! These tests verify that interactive bundle selection menu works correctly.
-//! Since dialoguer::MultiSelect reads from terminal (not stdin),
+//! Since inquire's MultiSelect reads from terminal (not stdin),
 //! we use PTY (pseudo-terminal) to simulate real user interaction.
 
 mod common;
@@ -284,7 +284,8 @@ bundles: []
     )
     .expect("Failed to create interactive test");
 
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    test.wait_for_text("Select bundles", std::time::Duration::from_secs(5))
+        .expect("Menu should appear");
 
     test.send_space().expect("Failed to send space");
     std::thread::sleep(std::time::Duration::from_millis(50));
@@ -547,7 +548,8 @@ bundles: []
     )
     .expect("Failed to create interactive test");
 
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    test.wait_for_text("Select bundles", std::time::Duration::from_secs(5))
+        .expect("Menu should appear");
 
     // Navigate down once to bundle-b (bundles are sorted alphabetically)
     test.send_input("\x1b[B").expect("Failed to send down");
@@ -600,7 +602,8 @@ bundles: []
     )
     .expect("Failed to create interactive test");
 
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    test.wait_for_text("Select bundles", std::time::Duration::from_secs(5))
+        .expect("Menu should appear");
 
     test.send_space().expect("Failed to send space");
     std::thread::sleep(std::time::Duration::from_millis(50));

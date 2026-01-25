@@ -14,102 +14,23 @@ use crate::cli::UninstallArgs;
 use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
-use dialoguer::console::Style;
-use dialoguer::console::Term;
-use dialoguer::{MultiSelect, theme::Theme};
-use std::fmt;
+use inquire::MultiSelect;
 
-struct UninstallTheme {
-    max_name_width: usize,
-}
-
-impl UninstallTheme {
-    fn new(max_name_width: usize) -> Self {
-        Self { max_name_width }
+/// Scorer that matches only the bundle name (before " ("), so filtering by typing
+/// does not match words in platform lists.
+fn score_by_name(input: &str, _opt: &String, string_value: &str, _idx: usize) -> Option<i64> {
+    let name = string_value
+        .split(" (")
+        .next()
+        .unwrap_or(string_value)
+        .trim();
+    if input.is_empty() {
+        return Some(0);
     }
-}
-
-impl Theme for UninstallTheme {
-    fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
-        writeln!(f)?;
-        writeln!(
-            f,
-            "{}",
-            Style::new()
-                .dim()
-                .apply_to("  ↑↓ navigate  space select  enter confirm  q/esc cancel")
-        )?;
-        write!(f, "{}: ", prompt)
-    }
-
-    fn format_multi_select_prompt_item(
-        &self,
-        f: &mut dyn fmt::Write,
-        text: &str,
-        checked: bool,
-        active: bool,
-    ) -> fmt::Result {
-        let marker = if checked { "x" } else { " " };
-
-        // Split text by separator to get name, description, and platforms info
-        let parts: Vec<&str> = text.split("\n---\n").collect();
-        let name = parts[0];
-        let desc = parts.get(1).copied();
-        let platforms = parts.get(2).copied();
-
-        if active {
-            write!(
-                f,
-                "{} [{}] {}",
-                Style::new().green().apply_to(">"),
-                marker,
-                name
-            )?;
-        } else {
-            write!(f, "   [{}] {}", marker, name)?;
-        }
-
-        // Add platforms on the same line with proper alignment
-        if let Some(platforms) = platforms {
-            // Calculate padding to align platforms
-            let padding = self.max_name_width.saturating_sub(name.len());
-            write!(
-                f,
-                "{}{}",
-                " ".repeat(padding + 2),
-                Style::new().cyan().apply_to(platforms)
-            )?;
-        }
-
-        // Write description in grey if present and non-empty (on next line)
-        if let Some(desc) = desc {
-            if !desc.is_empty() {
-                writeln!(f)?;
-                write!(f, "{}", Style::new().dim().apply_to(desc))?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn format_multi_select_prompt_selection(
-        &self,
-        f: &mut dyn fmt::Write,
-        prompt: &str,
-        selections: &[&str],
-    ) -> fmt::Result {
-        if !selections.is_empty() {
-            write!(f, "{}: ", prompt)?;
-            for (idx, selection) in selections.iter().enumerate() {
-                if idx > 0 {
-                    write!(f, ", ")?;
-                }
-                // Only show bundle name, not description or platforms
-                let name = selection.split("\n---\n").next().unwrap_or(selection);
-                write!(f, "{}", name)?;
-            }
-        }
-        Ok(())
+    if name.to_lowercase().contains(&input.to_lowercase()) {
+        Some(0)
+    } else {
+        None
     }
 }
 
@@ -119,15 +40,6 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         println!("No bundles installed.");
         std::process::exit(0);
     }
-
-    // Calculate max name width for alignment
-    let max_name_width = workspace
-        .lockfile
-        .bundles
-        .iter()
-        .map(|b| b.name.len())
-        .max()
-        .unwrap_or(0);
 
     // Extract bundle names to workspace bundle mapping
     let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
@@ -152,50 +64,43 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         })
         .collect();
 
+    // Single-line items: "name" or "name (cursor, opencode)". Multi-line content
+    // breaks inquire's list layout and causes the filter to match descriptions.
     let items: Vec<String> = workspace
         .lockfile
         .bundles
         .iter()
         .map(|b| {
-            let mut item = b.name.clone();
-
-            // Add description if present (even if empty, to keep separator consistent)
-            if let Some(desc) = &b.description {
-                item.push_str("\n---\n    ");
-                item.push_str(desc);
-            } else {
-                // Add empty description separator to keep platforms at position 2
-                item.push_str("\n---\n");
-            }
-
-            // Add platforms if present
             if let Some(platforms) = workspace_bundle_map.get(&b.name) {
-                if !platforms.is_empty() {
-                    let platforms_str = platforms.join(", ");
-                    item.push_str("\n---\n    ");
-                    item.push_str(&platforms_str);
+                if platforms.is_empty() {
+                    b.name.clone()
+                } else {
+                    format!("{} ({})", b.name, platforms.join(", "))
                 }
+            } else {
+                b.name.clone()
             }
-
-            item
         })
         .collect();
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme::new(max_name_width))
-        .with_prompt("Select bundles to uninstall")
-        .items(&items)
-        .max_length(5)
-        .interact_on_opt(&Term::stderr())?
+    let selection = match MultiSelect::new("Select bundles to uninstall", items)
+        .with_page_size(10)
+        .with_help_message(
+            "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
+        )
+        .with_scorer(&score_by_name)
+        .prompt_skippable()?
     {
         Some(sel) => sel,
         None => return Ok(vec![]),
     };
 
+    // Map display strings back to bundle names (name is the part before " (")
     let selected_bundles: Vec<String> = selection
         .iter()
-        .filter_map(|&idx| workspace.lockfile.bundles.get(idx).map(|b| b.name.clone()))
+        .map(|s| s.split(" (").next().unwrap_or(s).trim().to_string())
         .collect();
 
     Ok(selected_bundles)
@@ -215,9 +120,6 @@ fn select_bundles_from_list(
         return Ok(bundle_names);
     }
 
-    // Calculate max name width for alignment
-    let max_name_width = bundle_names.iter().map(|n| n.len()).max().unwrap_or(0);
-
     // Extract bundle names to workspace bundle mapping
     let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
         .workspace_config
@@ -241,54 +143,40 @@ fn select_bundles_from_list(
         })
         .collect();
 
+    // Single-line items: "name" or "name (cursor, opencode)".
     let items: Vec<String> = bundle_names
         .iter()
         .map(|name| {
-            let mut item = name.clone();
-
-            // Get bundle details from lockfile
-            if let Some(bundle) = workspace.lockfile.find_bundle(name) {
-                // Add description if present (even if empty, to keep separator consistent)
-                if let Some(desc) = &bundle.description {
-                    item.push_str("\n---\n    ");
-                    item.push_str(desc);
+            if let Some(platforms) = workspace_bundle_map.get(name) {
+                if platforms.is_empty() {
+                    name.clone()
                 } else {
-                    // Add empty description separator to keep platforms at position 2
-                    item.push_str("\n---\n");
+                    format!("{} ({})", name, platforms.join(", "))
                 }
             } else {
-                // Add empty description separator to keep platforms at position 2
-                item.push_str("\n---\n");
+                name.clone()
             }
-
-            // Add platforms if present
-            if let Some(platforms) = workspace_bundle_map.get(name) {
-                if !platforms.is_empty() {
-                    let platforms_str = platforms.join(", ");
-                    item.push_str("\n---\n    ");
-                    item.push_str(&platforms_str);
-                }
-            }
-
-            item
         })
         .collect();
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme::new(max_name_width))
-        .with_prompt("Select bundles to uninstall")
-        .items(&items)
-        .max_length(5)
-        .interact_on_opt(&Term::stderr())?
+    let selection = match MultiSelect::new("Select bundles to uninstall", items)
+        .with_page_size(10)
+        .with_help_message(
+            "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
+        )
+        .with_scorer(&score_by_name)
+        .prompt_skippable()?
     {
         Some(sel) => sel,
         None => return Ok(vec![]),
     };
 
+    // Map display strings back to bundle names (name is the part before " (")
     let selected_bundles: Vec<String> = selection
         .iter()
-        .filter_map(|&idx| bundle_names.get(idx).cloned())
+        .map(|s| s.split(" (").next().unwrap_or(s).trim().to_string())
         .collect();
 
     Ok(selected_bundles)

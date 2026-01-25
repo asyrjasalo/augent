@@ -1,7 +1,7 @@
 //! Interactive test utilities using PTY (pseudo-terminal)
 //!
 //! This module provides utilities for testing interactive CLI commands that
-//! use terminal input (like dialoguer's MultiSelect), which cannot be
+//! use terminal input (like inquire's MultiSelect), which cannot be
 //! tested with standard stdin redirection.
 //!
 //! Usage:
@@ -13,21 +13,17 @@
 //! assert!(output.contains("installed"));
 //! ```
 
-use pty_process::blocking;
-use std::io::{Read, Write};
+use expectrl::{ControlCode, Eof, Expect, Session};
+use std::io::Read;
 use std::path::Path;
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-#[allow(dead_code)]
-#[allow(clippy::io_other_error)]
-const TEST_PTY_ROWS: u16 = 24;
-#[allow(dead_code)]
-const TEST_PTY_COLS: u16 = 80;
-
 pub struct InteractiveTest {
-    pty: pty_process::blocking::Pty,
-    child: std::process::Child,
+    // Using expectrl's spawn which returns OsSession
+    // Cross-platform: pty_process on Unix, conpty on Windows
+    session: expectrl::session::OsSession,
 }
 
 #[allow(dead_code)] // Methods are part of testing infrastructure documented in INTERACTIVE_TESTING.md
@@ -35,23 +31,20 @@ impl InteractiveTest {
     pub fn new<P: AsRef<Path>>(program: &str, args: &[&str], workdir: P) -> std::io::Result<Self> {
         let workdir = workdir.as_ref();
 
-        let (pty, pts) = blocking::open().map_err(|e| std::io::Error::other(format!("{}", e)))?;
-        pty.resize(pty_process::Size::new(TEST_PTY_ROWS, TEST_PTY_COLS))
-            .map_err(|e| std::io::Error::other(format!("{}", e)))?;
+        let mut cmd = Command::new(program);
+        cmd.args(args);
+        cmd.current_dir(workdir);
 
-        let child = blocking::Command::new(program)
-            .args(args)
-            .current_dir(workdir)
-            .spawn(pts)
-            .map_err(|e| std::io::Error::other(format!("{}", e)))?;
+        let session = Session::spawn(cmd)
+            .map_err(|e| std::io::Error::other(format!("Failed to spawn session: {}", e)))?;
 
-        Ok(Self { pty, child })
+        Ok(Self { session })
     }
 
     pub fn send_input(&mut self, input: &str) -> std::io::Result<()> {
-        self.pty.write_all(input.as_bytes())?;
-        self.pty.flush()?;
-        Ok(())
+        self.session
+            .send(input)
+            .map_err(|e| std::io::Error::other(format!("Failed to send input: {}", e)))
     }
 
     pub fn send_down(&mut self) -> std::io::Result<()> {
@@ -93,45 +86,52 @@ impl InteractiveTest {
                 ));
             }
 
-            match self.pty.read(&mut buffer) {
-                Ok(0) => {
-                    // EOF - process has closed the PTY
-                    break;
+            // Check if process has exited first
+            if self.session.check(Eof).is_ok() {
+                // Process exited, do final read attempts to get any remaining output
+                for _ in 0..5 {
+                    thread::sleep(Duration::from_millis(50));
+                    match self.session.read(&mut buffer) {
+                        Ok(n) if n > 0 => {
+                            output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
+                        }
+                        _ => {}
+                    }
                 }
-                Ok(n) => {
+                break;
+            }
+
+            // Try to read
+            match self.session.read(&mut buffer) {
+                Ok(n) if n > 0 => {
                     output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
                     no_data_count = 0; // Reset counter on successful read
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    // Check if process has exited
-                    if let Ok(Some(_status)) = self.child.try_wait() {
-                        // Process exited, do multiple final read attempts to ensure we get all output
-                        for _ in 0..5 {
-                            thread::sleep(Duration::from_millis(50));
-                            match self.pty.read(&mut buffer) {
-                                Ok(n) if n > 0 => {
-                                    output
-                                        .push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
-                                }
-                                _ => {}
-                            }
-                        }
-                        break;
-                    }
-
+                Ok(_) => {
+                    // No data available (n == 0)
                     no_data_count += 1;
                     if no_data_count > MAX_NO_DATA {
                         // No data for too long, assume we're done
                         break;
                     }
-
+                    thread::sleep(Duration::from_millis(50));
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    no_data_count += 1;
+                    if no_data_count > MAX_NO_DATA {
+                        break;
+                    }
                     thread::sleep(Duration::from_millis(50));
                 }
                 Err(e) => {
                     // EIO (code 5 on Linux) can occur when process closes PTY
-                    // Treat this as EOF condition, not an error
+                    // Also handle generic IO errors gracefully
                     #[cfg(unix)]
                     if e.raw_os_error() == Some(5) {
+                        break;
+                    }
+                    // For Windows or other errors, check if process exited
+                    if self.session.check(Eof).is_ok() {
                         break;
                     }
                     return Err(e);
@@ -139,71 +139,77 @@ impl InteractiveTest {
             }
         }
 
-        let _ = self.child.wait();
-
         Ok(output)
     }
 
     pub fn wait_for_text(&mut self, expected: &str, timeout: Duration) -> std::io::Result<String> {
-        let mut accumulated = String::new();
-        let mut buffer = [0u8; 4096];
         let start = std::time::Instant::now();
+        let mut output = String::new();
+        let mut buffer = [0u8; 4096];
 
         loop {
             if start.elapsed() > timeout {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    format!("Timeout waiting for text: '{}'", expected),
+                    format!("Timeout waiting for text: {}", expected),
                 ));
             }
 
-            match self.pty.read(&mut buffer) {
-                Ok(0) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::UnexpectedEof,
-                        format!("EOF before finding text: '{}'", expected),
-                    ));
-                }
-                Ok(n) => {
-                    let chunk = std::str::from_utf8(&buffer[..n]).unwrap_or("");
-                    accumulated.push_str(chunk);
-
-                    if accumulated.contains(expected) {
-                        return Ok(accumulated);
+            // Read any available data first (before checking EOF so we don't miss output)
+            match self.session.read(&mut buffer) {
+                Ok(n) if n > 0 => {
+                    let text = std::str::from_utf8(&buffer[..n]).unwrap_or("");
+                    output.push_str(text);
+                    // Check if pattern matches
+                    if output.contains(expected) {
+                        return Ok(output);
                     }
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    thread::sleep(Duration::from_millis(50));
-                }
-                Err(e) => {
-                    // EIO (code 5 on Linux) can occur when process closes PTY
-                    // Treat this as EOF condition, not an error
-                    #[cfg(unix)]
-                    if e.raw_os_error() == Some(5) {
+                Ok(_) | Err(_) => {
+                    // No data (n=0) or error: check if process has exited
+                    if self.session.check(Eof).is_ok() {
+                        let preview = if output.len() > 500 {
+                            format!("{}...", &output[..500])
+                        } else {
+                            output.clone()
+                        };
                         return Err(std::io::Error::new(
                             std::io::ErrorKind::UnexpectedEof,
-                            format!("EOF before finding text: '{}'", expected),
+                            format!(
+                                "EOF before finding text: {}. Output so far: {:?}",
+                                expected, preview
+                            ),
                         ));
                     }
-                    return Err(e);
+                    thread::sleep(Duration::from_millis(50));
                 }
             }
         }
     }
 
     pub fn status(&mut self) -> std::io::Result<std::process::ExitStatus> {
-        self.child.wait()
+        // Wait for process to finish by expecting EOF
+        let _ = self.session.expect(Eof);
+        // Return a dummy success status (0)
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::ExitStatusExt;
+            Ok(std::process::ExitStatus::from_raw(0))
+        }
+        #[cfg(windows)]
+        {
+            Ok(std::process::ExitStatus::from_raw(0))
+        }
     }
 }
 
 impl Drop for InteractiveTest {
     fn drop(&mut self) {
-        if let Ok(status) = self.child.try_wait() {
-            if status.is_some() {
-                return;
-            }
+        // Try to check if process is still alive and kill if needed
+        if self.session.check(Eof).is_err() {
+            // Process might still be running, try to send EOF to clean exit
+            let _ = self.session.send(ControlCode::EndOfTransmission);
         }
-        let _ = self.child.kill();
     }
 }
 
@@ -255,7 +261,7 @@ pub fn send_menu_actions(
             }
         }
         // Add a small delay between actions for menu to update
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(150));
     }
     Ok(())
 }

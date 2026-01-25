@@ -4,10 +4,8 @@ use crate::cli::ShowArgs;
 use crate::config::{BundleConfig, LockedBundle, LockedSource, WorkspaceBundle};
 use crate::error::{AugentError, Result};
 use crate::workspace;
-use dialoguer::Select;
-use dialoguer::console::Style;
-use dialoguer::console::Term;
-use std::fmt;
+use console::Style;
+use inquire::Select;
 
 pub fn run(workspace: Option<std::path::PathBuf>, args: ShowArgs) -> Result<()> {
     let current_dir = match workspace {
@@ -89,46 +87,6 @@ fn show_bundle(
     Ok(())
 }
 
-struct ShowTheme<'a> {
-    _phantom: std::marker::PhantomData<&'a ()>,
-}
-
-impl<'a> fmt::Display for ShowTheme<'a> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Ok(())
-    }
-}
-
-impl<'a> dialoguer::theme::Theme for ShowTheme<'a> {
-    fn format_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
-        write!(f, "{}: ", prompt)
-    }
-
-    fn format_select_prompt_item(
-        &self,
-        f: &mut dyn fmt::Write,
-        text: &str,
-        active: bool,
-    ) -> fmt::Result {
-        if active {
-            write!(f, "{} {}", Style::new().green().apply_to(">"), text)?;
-        } else {
-            write!(f, "  {}", text)?;
-        }
-
-        Ok(())
-    }
-
-    fn format_select_prompt_selection(
-        &self,
-        f: &mut dyn fmt::Write,
-        prompt: &str,
-        selection: &str,
-    ) -> fmt::Result {
-        write!(f, "{}: {}", prompt, selection)
-    }
-}
-
 /// Check if a name is a scope pattern
 fn is_scope_pattern(name: &str) -> bool {
     name.starts_with('@') || name.ends_with('/')
@@ -173,23 +131,18 @@ fn select_bundles_from_list(bundle_names: Vec<String>) -> Result<String> {
         return Ok(bundle_names[0].clone());
     }
 
-    println!("↑↓ to move, ENTER to select, ESC/q to cancel\n");
-
-    let selection = match Select::with_theme(&ShowTheme {
-        _phantom: std::marker::PhantomData,
-    })
-    .with_prompt("Select bundle to show")
-    .items(&bundle_names)
-    .default(0)
-    .max_length(10)
-    .clear(false)
-    .interact_on_opt(&Term::stderr())?
+    let selection = match Select::new("Select bundle to show", bundle_names)
+        .with_starting_cursor(0)
+        .with_page_size(10)
+        .without_filtering()
+        .with_help_message("↑↓ to move, ENTER to select, ESC/q to cancel")
+        .prompt_skippable()?
     {
-        Some(idx) => idx,
+        Some(name) => name,
         None => return Ok(String::new()),
     };
 
-    Ok(bundle_names.get(selection).cloned().unwrap_or_default())
+    Ok(selection)
 }
 
 /// Select bundle interactively from installed bundles
@@ -206,30 +159,18 @@ fn select_bundle_interactively(workspace: &workspace::Workspace) -> Result<Strin
         .map(|b| b.name.clone())
         .collect();
 
-    println!("↑↓ to move, ENTER to select, ESC/q to cancel\n");
-
-    let selection = match Select::with_theme(&ShowTheme {
-        _phantom: std::marker::PhantomData,
-    })
-    .with_prompt("Select bundle to show")
-    .items(&items)
-    .default(0)
-    .max_length(10)
-    .clear(false)
-    .interact_on_opt(&Term::stderr())?
+    let selection = match Select::new("Select bundle to show", items)
+        .with_starting_cursor(0)
+        .with_page_size(10)
+        .without_filtering()
+        .with_help_message("↑↓ to move, ENTER to select, ESC/q to cancel")
+        .prompt_skippable()?
     {
-        Some(idx) => idx,
+        Some(name) => name,
         None => return Ok(String::new()),
     };
 
-    let selected_bundle = workspace
-        .lockfile
-        .bundles
-        .get(selection)
-        .map(|b| b.name.clone())
-        .unwrap_or_default();
-
-    Ok(selected_bundle)
+    Ok(selection)
 }
 
 fn load_bundle_config(

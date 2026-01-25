@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - YYYY-MM-DD
 
+### Fixed
+
+- Interactive bundle selection menu: avoid broken layout and erratic filtering when many bundles or long descriptions. Menu now uses single-line items and filters only by bundle name.
+
 ### Added
 
 - Initial release of Augent and its packaging concept (bundles)

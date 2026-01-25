@@ -60,8 +60,8 @@ url = "2"
 regex = "1"
 
 # Terminal UI
-crossterm = "0.28"
-dialoguer = "0.11"
+console = "0.15"
+inquire = "0.9"
 
 [dev-dependencies]
 # Integration testing
@@ -69,12 +69,11 @@ assert_cmd = "2"
 assert_fs = "1"
 predicates = "3"
 
-[target.'cfg(unix)'.dev-dependencies]
-pty-process = "0.5"
+# Cross-platform PTY for interactive testing
+expectrl = "0.8"
 
 [features]
 default = []
-async = ["pty-process/async"]
 
 [profile.release]
 lto = true

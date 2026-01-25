@@ -229,8 +229,8 @@ impl From<git2::Error> for AugentError {
     }
 }
 
-impl From<dialoguer::Error> for AugentError {
-    fn from(err: dialoguer::Error) -> Self {
+impl From<inquire::InquireError> for AugentError {
+    fn from(err: inquire::InquireError) -> Self {
         AugentError::IoError {
             message: err.to_string(),
         }
