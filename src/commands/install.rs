@@ -89,8 +89,10 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
 
         // Show interactive menu if multiple bundles, auto-select if one
         let discovered_count = discovered.len();
-        let selected_bundles = if discovered_count > 1 {
+        let selected_bundles = if discovered_count > 1 && !args.select_all {
             select_bundles_interactively(&discovered)?
+        } else if discovered_count >= 1 && args.select_all {
+            discovered
         } else if discovered_count == 1 {
             discovered
         } else {

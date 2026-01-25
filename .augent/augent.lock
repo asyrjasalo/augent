@@ -1,27 +1,4 @@
 {
   "name": "@asyrjasalo/augent",
-  "bundles": [
-    {
-      "name": "@asyrjasalo/augent/my-local-bundle",
-      "source": {
-        "type": "dir",
-        "path": ".augent/my-local-bundle",
-        "hash": "blake3:c7874f2dd177dca4af1fcbfef8dbe14ab4fc6040b6209b582f94cbdd2526dceb"
-      },
-      "files": [
-        "commands/my-command.md"
-      ]
-    },
-    {
-      "name": "@asyrjasalo/augent",
-      "source": {
-        "type": "dir",
-        "path": ".augent",
-        "hash": "blake3:0a1da80c233a3e6f30dee4e08149d4c9cfa70a6311adac653a45753c116658ab"
-      },
-      "files": [
-        "agents/ai-engineer.md"
-      ]
-    }
-  ]
+  "bundles": []
 }

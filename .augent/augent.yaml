@@ -1,5 +1,3 @@
 name: '@asyrjasalo/augent'
 
-bundles:
-- name: '@asyrjasalo/augent/my-local-bundle'
-  path: ./my-local-bundle
+bundles: []

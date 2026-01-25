@@ -824,9 +824,17 @@ impl Resolver {
         // Derive bundle name from git URL if available
         // For marketplace bundles, include the specific bundle name: @author/repo/bundle-name
         let bundle_name = if let Some(url) = git_url {
-            // URL format: https://github.com/author/repo.git
+            // URL format: https://github.com/author/repo.git or git@github.com:author/repo.git
             let url_clean = url.trim_end_matches(".git");
-            let url_parts: Vec<&str> = url_clean.split('/').collect();
+
+            // For SSH URLs like git@github.com:owner/repo.git, extract the path after the colon
+            let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+                &url_clean[colon_idx + 1..]
+            } else {
+                url_clean
+            };
+
+            let url_parts: Vec<&str> = repo_path.split('/').collect();
 
             if url_parts.len() >= 2 {
                 let author = url_parts[url_parts.len() - 2];
