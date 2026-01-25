@@ -19,6 +19,26 @@ use git2::{
 
 use crate::error::{AugentError, Result};
 
+/// Normalize file:// URLs so libgit2 can resolve them on all platforms.
+/// On Windows, `file://C:\path` fails with "The filename, directory name, or volume
+/// label syntax is incorrect"; libgit2 expects `file:///C:/path` (three slashes,
+/// forward slashes). Unix `file:///path` is left unchanged.
+fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
+    if !url.starts_with("file://") {
+        return std::borrow::Cow::Borrowed(url);
+    }
+    let after = &url[7..]; // after "file://"
+    if after.contains('\\') {
+        let path = after.replace('\\', "/");
+        return std::borrow::Cow::Owned(format!("file:///{}", path));
+    }
+    if !after.is_empty() && !after.starts_with('/') {
+        // file://C:/path or file://C: (no third slash) — add it
+        return std::borrow::Cow::Owned(format!("file:///{}", after));
+    }
+    std::borrow::Cow::Borrowed(url)
+}
+
 /// Interpret a git2 error and provide a more user-friendly message
 fn interpret_git_error(err: &git2::Error) -> String {
     let class = err.class();
@@ -87,7 +107,8 @@ pub fn clone(url: &str, target: &Path, shallow: bool) -> Result<Repository> {
     let mut builder = RepoBuilder::new();
     builder.fetch_options(fetch_options);
 
-    builder.clone(url, target).map_err(|e| {
+    let url_to_clone = normalize_file_url_for_clone(url);
+    builder.clone(url_to_clone.as_ref(), target).map_err(|e| {
         let reason = interpret_git_error(&e);
         AugentError::GitCloneFailed {
             url: url.to_string(),

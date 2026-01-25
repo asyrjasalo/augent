@@ -10,7 +10,11 @@ use std::fs;
 // Temporary fix for deprecated cargo_bin - will be updated when build-dir issues are resolved
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
-    Command::cargo_bin("augent").unwrap()
+    // Use workspace-relative cache so it's writable in cross/Docker (env may not be passed through).
+    // Callers that need cache set current_dir(workspace.path), so .augent-cache resolves there.
+    let mut cmd = Command::cargo_bin("augent").unwrap();
+    cmd.env("AUGENT_CACHE_DIR", ".augent-cache");
+    cmd
 }
 
 #[test]
