@@ -968,6 +968,18 @@ fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()
 
         let dependency = match &locked.source {
             LockedSource::Dir { path, .. } => {
+                // Validate that the path is not absolute (to prevent non-portable lockfiles)
+                let path_obj = std::path::Path::new(path);
+                if path_obj.is_absolute() {
+                    return Err(AugentError::BundleValidationFailed {
+                        message: format!(
+                            "Cannot reconstruct augent.yaml: locked bundle '{}' has absolute path '{}'. \
+                             Absolute paths in augent.lock break portability. Please fix the lockfile by using relative paths.",
+                            locked.name, path
+                        ),
+                    });
+                }
+
                 // Normalize path to be relative to augent.yaml location
                 // If path is ".augent/./my-local-bundle", convert to "./my-local-bundle"
                 // If path is ".augent/my-local-bundle", convert to "./my-local-bundle"
