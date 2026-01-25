@@ -41,7 +41,7 @@ jobs:
     needs: [lint]
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           # Linux
