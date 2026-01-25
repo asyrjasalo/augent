@@ -1,31 +1,30 @@
 # Augent
 
-Augments AI coding platforms (such as OpenCode, Claude Code, Cursor) via packages (of skills, subagents, commands, rules, MCP servers, etc.) in a reproducible, platform independent, and intuitive manner.
+Augments AI coding platforms (such as Claude Code, OpenCode,Cursor) via packages (of skills, commands, rules, MCP servers...) in a reproducible,
+platform independent, and intuitive manner.
 
 ## Quick Start
 
-Your AI coding platforms are auto-detected in the workspace (git repository).
-
-It is available in [PyPI](https://pypi.org/project/augent/):
+Install it from [PyPI](https://pypi.org/project/augent/):
 
     pip install augent
 
-Or download pre-built binaries from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
+Alternatively, download binaries from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
 
 Your AI coding platforms are auto-detected in the workspace (git repository).
 
-To install resources, such as skills, for the detected AI coding platforms:
+To install a set of resources (bundles) for your AI coding platforms:
 
-    # Install bundles from public GitHub repository (select if many):
+    # Install from a public GitHub repository (select bundles if many):
     augent install shobson/agents
 
     # List all installed bundles
     augent list
 
-    # Show bundle details
+    # Show a bundle's details
     augent show @wshobson/agents
 
-    # Uninstall the bundle
+    # Uninstall a bundle
     augent uninstall @wshobson/agents
 
 ## Usage
@@ -90,9 +89,13 @@ Show details of a bundle (and where its resources are enabled):
 
     augent show my-bundle
 
-Uninstall a bundle and remove its resources (unless they were changed by you):
+Uninstall a bundle and remove its resources:
 
     augent uninstall my-bundle
+
+It removes the resources that came from the bundle, unless you modified them.
+
+It uninstall the bundles dependencies unless they are used by other bundles.
 
 ## Bundle Format
 
