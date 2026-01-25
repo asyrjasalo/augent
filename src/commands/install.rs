@@ -270,9 +270,14 @@ fn do_install_from_yaml(
     // If we detected modified files, ensure workspace bundle is in the resolved list
     // (append LAST so it overrides other bundles)
     let mut final_resolved_bundles = resolved_bundles;
-    if has_modified_files && !final_resolved_bundles.iter().any(|b| b.name == "workspace") {
+    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    if has_modified_files
+        && !final_resolved_bundles
+            .iter()
+            .any(|b| b.name == workspace_bundle_name)
+    {
         let workspace_bundle = crate::resolver::ResolvedBundle {
-            name: "workspace".to_string(),
+            name: workspace_bundle_name,
             dependency: None,
             source_path: workspace.augent_dir.clone(),
             resolved_sha: None,
@@ -334,8 +339,10 @@ fn do_install_from_yaml(
 
     // Only update configurations if changes were made:
     // - If --update flag was given (lockfile needs updating), OR
-    // - If files were actually installed (workspace_bundles has entries with files)
-    let configs_updated = should_update_lockfile || !workspace_bundles_with_files.is_empty();
+    // - If files were actually installed (workspace_bundles has entries with files), OR
+    // - If modified files were detected and preserved
+    let configs_updated =
+        should_update_lockfile || !workspace_bundles_with_files.is_empty() || has_modified_files;
 
     // Check if lockfile name needs fixing (before potential move)
     let original_name_needs_fixing = original_lockfile.name != workspace.bundle_config.name;
@@ -350,8 +357,24 @@ fn do_install_from_yaml(
     }
 
     // If --update was not given, restore the original lockfile (don't modify it)
+    // UNLESS modified files were detected, in which case keep the workspace bundle entry
     if !should_update_lockfile {
-        workspace.lockfile = original_lockfile;
+        if has_modified_files {
+            // Keep the workspace bundle entry, but restore everything else
+            let workspace_bundle_name = workspace.bundle_config.name.clone();
+            if let Some(workspace_bundle_entry) = workspace
+                .lockfile
+                .find_bundle(&workspace_bundle_name)
+                .cloned()
+            {
+                workspace.lockfile = original_lockfile;
+                workspace.lockfile.add_bundle(workspace_bundle_entry);
+            } else {
+                workspace.lockfile = original_lockfile;
+            }
+        } else {
+            workspace.lockfile = original_lockfile;
+        }
     }
 
     // Always ensure lockfile name matches workspace bundle config (regardless of update flag)
@@ -592,7 +615,7 @@ fn generate_lockfile(
     let mut lockfile = crate::config::Lockfile::new(&workspace.bundle_config.name);
 
     for bundle in resolved_bundles {
-        let locked_bundle = create_locked_bundle(bundle)?;
+        let locked_bundle = create_locked_bundle(bundle, Some(&workspace.root))?;
         lockfile.add_bundle(locked_bundle);
     }
 
@@ -600,7 +623,10 @@ fn generate_lockfile(
 }
 
 /// Create a LockedBundle from a ResolvedBundle
-fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<LockedBundle> {
+fn create_locked_bundle(
+    bundle: &crate::resolver::ResolvedBundle,
+    workspace_root: Option<&Path>,
+) -> Result<LockedBundle> {
     // Discover files in the bundle
     let resources = Installer::discover_resources(&bundle.source_path)?;
     // Normalize paths to always use forward slashes (Unix-style) for cross-platform consistency
@@ -621,8 +647,16 @@ fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<Lock
             hash: bundle_hash,
         }
     } else {
-        // Local directory
-        let relative_path = bundle.source_path.to_string_lossy().to_string();
+        // Local directory - convert to relative path from workspace root if possible
+        let relative_path = if let Some(root) = workspace_root {
+            match bundle.source_path.strip_prefix(root) {
+                Ok(rel_path) => rel_path.to_string_lossy().replace('\\', "/"),
+                Err(_) => bundle.source_path.to_string_lossy().to_string(),
+            }
+        } else {
+            bundle.source_path.to_string_lossy().to_string()
+        };
+
         LockedSource::Dir {
             path: relative_path,
             hash: bundle_hash,
@@ -665,6 +699,10 @@ fn update_configs(
     // Add all resolved bundles to bundle config
     for bundle in resolved_bundles.iter() {
         if bundle.dependency.is_none() {
+            // Skip the workspace bundle - it's not a normal dependency
+            if bundle.name == workspace.bundle_config.name {
+                continue;
+            }
             // Root bundle (what user specified): add with original source specification
             if !workspace.bundle_config.has_dependency(&bundle.name) {
                 // Use bundle.git_source directly to preserve subdirectory information
@@ -704,7 +742,7 @@ fn update_configs(
 
     // Update lockfile - merge new bundles with existing ones (in topological order)
     for bundle in resolved_bundles {
-        let locked_bundle = create_locked_bundle(bundle)?;
+        let locked_bundle = create_locked_bundle(bundle, Some(&workspace.root))?;
         // Remove existing entry if present (to update it)
         workspace.lockfile.remove_bundle(&locked_bundle.name);
         workspace.lockfile.add_bundle(locked_bundle);
@@ -731,13 +769,22 @@ fn update_configs_from_yaml(
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
     should_update_lockfile: bool,
 ) -> Result<()> {
-    // Update lockfile only if we resolved new versions (--update was given)
-    if should_update_lockfile {
+    // Update lockfile if we resolved new versions (--update was given)
+    // OR if there's a workspace bundle (which should always be added/updated)
+    let has_workspace_bundle = workspace_bundles
+        .iter()
+        .any(|b| b.name == workspace.bundle_config.name);
+
+    if should_update_lockfile || has_workspace_bundle {
         for bundle in resolved_bundles {
-            let locked_bundle = create_locked_bundle(bundle)?;
-            // Remove existing entry if present (to update it)
-            workspace.lockfile.remove_bundle(&locked_bundle.name);
-            workspace.lockfile.add_bundle(locked_bundle);
+            // Always update workspace bundle in lockfile
+            // Only update other bundles if should_update_lockfile is true
+            if should_update_lockfile || bundle.name == workspace.bundle_config.name {
+                let locked_bundle = create_locked_bundle(bundle, Some(&workspace.root))?;
+                // Remove existing entry if present (to update it)
+                workspace.lockfile.remove_bundle(&locked_bundle.name);
+                workspace.lockfile.add_bundle(locked_bundle);
+            }
         }
     }
 
@@ -975,7 +1022,7 @@ mod tests {
             config: None,
         };
 
-        let locked = create_locked_bundle(&bundle).unwrap();
+        let locked = create_locked_bundle(&bundle, None).unwrap();
         assert_eq!(locked.name, "@test/bundle");
         assert!(locked.files.contains(&"commands/test.md".to_string()));
         assert!(matches!(locked.source, LockedSource::Dir { .. }));
@@ -1006,7 +1053,7 @@ mod tests {
             config: None,
         };
 
-        let locked = create_locked_bundle(&bundle).unwrap();
+        let locked = create_locked_bundle(&bundle, None).unwrap();
         assert_eq!(locked.name, "@test/bundle");
         assert!(locked.files.contains(&"commands/test.md".to_string()));
         assert!(matches!(locked.source, LockedSource::Git { .. }));
@@ -1042,7 +1089,7 @@ mod tests {
             config: None,
         };
 
-        let locked = create_locked_bundle(&bundle).unwrap();
+        let locked = create_locked_bundle(&bundle, None).unwrap();
 
         // Verify bundle name doesn't include subdirectory
         assert_eq!(locked.name, "@test/repo");

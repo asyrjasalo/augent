@@ -8,8 +8,6 @@ bundles:
 
 - name: '@davila7/claude-code-templates/ai-ml-toolkit'
   enabled:
-    agents/ai-engineer.md:
-    - .gemini/agents/ai-engineer.md
     agents/computer-vision-engineer.md:
     - .gemini/agents/computer-vision-engineer.md
     agents/ml-engineer.md:
@@ -54,3 +52,8 @@ bundles:
     - .gemini/commands/hotfix.md
     commands/release.md:
     - .gemini/commands/release.md
+
+- name: '@asyrjasalo/augent'
+  enabled:
+    agents/ai-engineer.md:
+    - .gemini/agents/ai-engineer.md

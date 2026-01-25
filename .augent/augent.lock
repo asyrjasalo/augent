@@ -81,6 +81,17 @@
         "commands/hotfix.md",
         "commands/release.md"
       ]
+    },
+    {
+      "name": "@asyrjasalo/augent",
+      "source": {
+        "type": "dir",
+        "path": ".augent",
+        "hash": "blake3:c0f5b2786abb3d4b65f1c5f536f1d9c2db208e2d1d3e2870fc23b98091c7b2bf"
+      },
+      "files": [
+        "agents/ai-engineer.md"
+      ]
     }
   ]
 }
