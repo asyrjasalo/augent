@@ -9,16 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Interactive bundle selection menu for `show` command when no bundle name is provided
-- Initial release of Augent
+- Initial release of Augent and its packaging concept (bundles)
 - Supports 14 AI coding platforms (incl. Claude Code, Cursor, OpenCode)
-- Packaging for commands, rules, skills, subagents and MCP servers
-- Process for installing and sharing bundle(s) via Git repositories
-- Simple TUI with a few core commands: `install`, `uninstall`, `list`, `show`
+- Supported resources are commands, rules, skills, subagents and MCP servers
+- Can install any set of resources from a Git repository over the wire
 - Compatibility for installing Claude Code Marketplace plugins as bundles
-- Workspace bundle dependency management, dependency locking and resolution
-- Shell completion generation for bash, zsh, fish, powershell, and elvish
-
-### Fixed
-
-- Fixed marketplace bundle naming - multiple bundles from the same repository now get unique names based on their specific bundle name instead of collapsing into a single entry
+- Simple TUI with a few core commands: `install`, `uninstall`, `list`, `show`
+- Most commands have interactive mode with a menu for selecting bundles
