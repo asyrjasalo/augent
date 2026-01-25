@@ -85,13 +85,6 @@ pub fn is_cached(url: &str, sha: &str) -> Result<bool> {
 /// Returns the path to the cached bundle directory, or None if not cached.
 pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
     let path = bundle_cache_path(url, sha)?;
-    eprintln!(
-        "get_cached: url={}, sha={}, path={:?}, exists={}",
-        url,
-        sha,
-        path,
-        path.is_dir()
-    );
     if path.is_dir() {
         Ok(Some(path))
     } else {
@@ -106,16 +99,9 @@ pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
 ///
 /// Returns the path to the cached bundle, the resolved SHA, and the resolved ref name.
 pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
-    eprintln!(
-        "cache_bundle: url={}, git_ref={:?}, resolved_sha={:?}",
-        source.url, source.git_ref, source.resolved_sha
-    );
-
     // If we already have a resolved SHA and it's cached, return early
     if let Some(sha) = &source.resolved_sha {
-        eprintln!("cache_bundle: Checking cache for SHA: {}", sha);
         if let Some(path) = get_cached(&source.url, sha)? {
-            eprintln!("cache_bundle: CACHE HIT! path={:?}", path);
             // Return from cache - we already have SHA
             // If git_ref is None, we'll need to get the branch name from cached repo
             let resolved_ref = if source.git_ref.is_some() {
@@ -129,24 +115,17 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
                 }
             };
             return Ok((path, sha.clone(), resolved_ref));
-        } else {
-            eprintln!("cache_bundle: CACHE MISS");
         }
     }
 
     // If we don't have a resolved_sha, check if this URL has any cached versions
     // and use the most recent one (for HEAD/default case)
     if source.resolved_sha.is_none() {
-        eprintln!("cache_bundle: No resolved_sha, checking for existing cache entries...");
         let bundles_cache_dir = bundles_cache_dir()?;
         let slug = url_to_slug(&source.url);
         let url_cache_dir = bundles_cache_dir.join(&slug);
 
         if url_cache_dir.is_dir() {
-            eprintln!(
-                "cache_bundle: Found cache directory for URL: {:?}",
-                url_cache_dir
-            );
             // Look for SHA directories (40-char hex strings)
             if let Ok(entries) = std::fs::read_dir(&url_cache_dir) {
                 for entry in entries.flatten() {
@@ -158,7 +137,6 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
                             .unwrap_or_default();
                         // Check if it looks like a SHA (40 hex chars)
                         if dir_name.len() == 40 && dir_name.chars().all(|c| c.is_ascii_hexdigit()) {
-                            eprintln!("cache_bundle: Found cached SHA: {}", dir_name);
                             // Check if this SHA's ref matches our git_ref
                             let cached_path = entry_path.clone();
                             if let Some(git_ref) = &source.git_ref {
@@ -166,10 +144,6 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
                                 if let Ok(repo) = git::open(&cached_path) {
                                     if let Ok(branch_name) = git::get_head_ref_name(&repo) {
                                         if branch_name.as_deref() == Some(git_ref) {
-                                            eprintln!(
-                                                "cache_bundle: Ref matches! Using cached SHA: {}",
-                                                dir_name
-                                            );
                                             let resolved_ref = Some(git_ref.clone());
                                             return Ok((
                                                 cached_path,
@@ -181,10 +155,6 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
                                 }
                             } else {
                                 // No git_ref specified, use: cached version (for HEAD)
-                                eprintln!(
-                                    "cache_bundle: Using cached SHA (no git_ref specified): {}",
-                                    dir_name
-                                );
                                 if let Ok(repo) = git::open(&cached_path) {
                                     let resolved_ref = git::get_head_ref_name(&repo)?;
                                     return Ok((cached_path, dir_name.to_string(), resolved_ref));
@@ -541,19 +511,28 @@ mod tests {
 
     #[test]
     fn test_cache_dir() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+
+        // Save original env var if set
+        let original_cache_dir = std::env::var("AUGENT_CACHE_DIR").ok();
+
+        unsafe {
+            std::env::set_var("AUGENT_CACHE_DIR", temp_dir.path());
+        }
+
         let dir = cache_dir();
         assert!(dir.is_ok());
         let path = dir.unwrap();
 
-        if std::env::var("AUGENT_CACHE_DIR").is_ok() {
-            // When AUGENT_CACHE_DIR is set, use that value
-            assert_eq!(
-                path,
-                std::path::PathBuf::from(std::env::var("AUGENT_CACHE_DIR").unwrap())
-            );
-        } else {
-            // Default behavior: path ends with "augent"
-            assert!(path.ends_with("augent"));
+        assert_eq!(path, std::path::PathBuf::from(temp_dir.path()));
+
+        // Restore original env var if it was set
+        unsafe {
+            if let Some(original) = original_cache_dir {
+                std::env::set_var("AUGENT_CACHE_DIR", original);
+            } else {
+                std::env::remove_var("AUGENT_CACHE_DIR");
+            }
         }
     }
 
@@ -645,8 +624,11 @@ mod tests {
     #[test]
     fn test_clear_cache() {
         let temp_dir = tempfile::TempDir::new().unwrap();
-        let cache_base = temp_dir.path().join("cache");
-        std::fs::create_dir_all(&cache_base).unwrap();
+        let cache_base = temp_dir.path();
+
+        unsafe {
+            std::env::set_var("AUGENT_CACHE_DIR", cache_base);
+        }
 
         let bundle_path = cache_base.join("bundles").join("test-repo").join("abc123");
         std::fs::create_dir_all(&bundle_path).unwrap();
@@ -659,8 +641,12 @@ mod tests {
 
     #[test]
     fn test_cache_stats() {
-        // Clear cache before test to ensure clean state
-        let _ = clear_cache();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let cache_base = temp_dir.path();
+
+        unsafe {
+            std::env::set_var("AUGENT_CACHE_DIR", cache_base);
+        }
 
         let stats = cache_stats().unwrap();
         assert_eq!(stats.repositories, 0);
@@ -695,7 +681,10 @@ mod tests {
     fn test_cache_bundle_no_double_clone() {
         // This test verifies that cache_bundle doesn't clone twice
         // when called with the same source (even when git_ref is None)
-        let _ = clear_cache();
+        let temp_cache = tempfile::TempDir::new().unwrap();
+        unsafe {
+            std::env::set_var("AUGENT_CACHE_DIR", temp_cache.path());
+        }
 
         // Create a temporary git repo to clone from
         let temp_source = tempfile::TempDir::new().unwrap();

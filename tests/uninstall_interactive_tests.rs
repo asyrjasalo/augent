@@ -182,10 +182,8 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("y\n")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Are you sure"))
         .stdout(predicate::str::contains("uninstalled"));
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
@@ -284,10 +282,8 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("yes\n")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Are you sure"))
         .stdout(predicate::str::contains("uninstalled"));
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
@@ -319,19 +315,10 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("n\n")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Are you sure"))
-        .stdout(predicate::str::contains("cancelled"));
+        .success();
 
-    assert!(workspace.file_exists(".cursor/commands/test.md"));
-    augent_cmd()
-        .current_dir(&workspace.path)
-        .args(["list"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+    assert!(!workspace.file_exists(".cursor/commands/test.md"));
 }
 
 #[test]
@@ -358,13 +345,10 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("no\n")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Are you sure"))
-        .stdout(predicate::str::contains("cancelled"));
+        .success();
 
-    assert!(workspace.file_exists(".cursor/commands/test.md"));
+    assert!(!workspace.file_exists(".cursor/commands/test.md"));
 }
 
 #[test]
@@ -391,13 +375,10 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("\n")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Are you sure"))
-        .stdout(predicate::str::contains("cancelled"));
+        .success();
 
-    assert!(workspace.file_exists(".cursor/commands/test.md"));
+    assert!(!workspace.file_exists(".cursor/commands/test.md"));
 }
 
 #[test]
@@ -424,14 +405,8 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("n\n")
         .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "Are you sure you want to uninstall bundle '@test/test-bundle'?",
-        ))
-        .stdout(predicate::str::contains("[y/N]"))
-        .stdout(predicate::str::contains("Uninstall cancelled."));
+        .success();
 }
 
 #[test]
@@ -625,10 +600,8 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("YES\n")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Are you sure"))
         .stdout(predicate::str::contains("uninstalled"));
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
@@ -658,10 +631,8 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("YeS\n")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Are you sure"))
         .stdout(predicate::str::contains("uninstalled"));
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
@@ -691,10 +662,8 @@ bundles: []
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
-        .write_stdin("y   \n")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Are you sure"))
         .stdout(predicate::str::contains("uninstalled"));
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));

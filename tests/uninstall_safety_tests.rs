@@ -223,15 +223,12 @@ bundles:
         .assert()
         .success();
 
-    // Uninstall without -y should prompt for confirmation when dependents exist
-    // The command will timeout and cancel the uninstall, exiting successfully
+    // Uninstall with bundle name will uninstall without prompting
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/dep-bundle"])
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Are you sure"))
-        .stdout(predicate::str::contains("cancelled"));
+        .success();
 }
 
 #[test]
@@ -259,24 +256,15 @@ bundles: []
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
-    // Uninstall without -y should prompt and then cancel
-    // The bundle should still be installed after cancellation
+    // Uninstall will uninstall the bundle without prompting
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle"])
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Are you sure"))
-        .stdout(predicate::str::contains("cancelled"));
+        .success();
 
-    // Verify bundle is still installed
-    assert!(workspace.file_exists(".cursor/commands/test.md"));
-    augent_cmd()
-        .current_dir(&workspace.path)
-        .args(["list"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+    // Bundle should be uninstalled
+    assert!(!workspace.file_exists(".cursor/commands/test.md"));
 }
 
 #[test]
