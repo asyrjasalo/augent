@@ -1,27 +1,6 @@
 name: '@asyrjasalo/augent'
 
 bundles:
-- name: '@wshobson/agents/accessibility-compliance'
-  enabled:
-    skills/screen-reader-testing/SKILL.md:
-    - .gemini/skills/screen-reader-testing/SKILL.md
-    - .claude/skills/screen-reader-testing/SKILL.md
-
-- name: '@wshobson/agents/agent-orchestration'
-  enabled:
-    agents/context-manager.md:
-    - .opencode/agents/context-manager.md
-    - .gemini/agents/context-manager.md
-    - .claude/agents/context-manager.md
-    commands/improve-agent.md:
-    - .claude/commands/improve-agent.md
-    - .opencode/commands/improve-agent.md
-    - .gemini/commands/improve-agent.toml
-    commands/multi-agent-optimize.md:
-    - .gemini/commands/multi-agent-optimize.toml
-    - .opencode/commands/multi-agent-optimize.md
-    - .claude/commands/multi-agent-optimize.md
-
 - name: '@asyrjasalo/augent'
   enabled:
     agents/ai-engineer.md:

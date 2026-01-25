@@ -166,14 +166,15 @@ fn test_uninstall_with_bundle_not_found() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
+    // When trying to uninstall a scope that doesn't match any bundles,
+    // the command now returns success with a friendly message instead of failing.
+    // This is better UX - the user gets clear feedback that no bundles matched.
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/nonexistent"])
         .assert()
-        .failure()
-        .stderr(
-            predicate::str::contains("not found").or(predicate::str::contains("Bundle not found")),
-        );
+        .success()
+        .stdout(predicate::str::contains("No bundles found matching scope"));
 }
 
 #[test]

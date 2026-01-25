@@ -12,7 +12,6 @@ use std::path::Path;
 
 use crate::cli::UninstallArgs;
 use crate::error::{AugentError, Result};
-use crate::platform;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use dialoguer::console::Style;
@@ -20,31 +19,10 @@ use dialoguer::console::Term;
 use dialoguer::{MultiSelect, theme::Theme};
 use std::fmt;
 
-/// Convert platform ID to display name using platform definitions (like show.rs does)
-fn platform_id_to_display_name(platform_id: &str) -> String {
-    // Get the platform name from the platform definitions
-    for p in platform::default_platforms() {
-        if p.id == platform_id {
-            return p.name;
-        }
-    }
-    // Fallback: capitalize the ID if not found
-    let mut chars = platform_id.chars();
-    match chars.next() {
-        None => "Other".to_string(),
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-    }
-}
+struct UninstallTheme;
 
-struct UninstallTheme<'a> {
-    items: Vec<&'a str>,
-    descriptions: Vec<Option<&'a str>>,
-    platforms: Vec<Vec<String>>,
-}
-
-impl<'a> Theme for UninstallTheme<'a> {
+impl Theme for UninstallTheme {
     fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
-        // Add keyboard hints above the menu
         writeln!(f)?;
         writeln!(
             f,
@@ -65,50 +43,29 @@ impl<'a> Theme for UninstallTheme<'a> {
     ) -> fmt::Result {
         let marker = if checked { "x" } else { " " };
 
-        // Find index by looking up text in items
-        let idx = self
-            .items
-            .iter()
-            .position(|item| *item == text)
-            .unwrap_or(0);
+        // Split text into bundle name and description
+        let (name, desc) = if let Some(pos) = text.find('\n') {
+            (&text[..pos], Some(&text[pos + 1..]))
+        } else {
+            (text, None)
+        };
 
-        // Style for active marker with green
         if active {
             write!(
                 f,
                 "{} [{}] {}",
                 Style::new().green().apply_to(">"),
                 marker,
-                text
+                name
             )?;
         } else {
-            write!(f, "   [{}] {}", marker, text)?;
+            write!(f, "   [{}] {}", marker, name)?;
         }
 
-        if active {
-            // Show description in dim gray (4-space indent)
-            if let Some(desc) = self.descriptions.get(idx).and_then(|d| *d) {
-                if !desc.is_empty() {
-                    writeln!(f)?;
-                    write!(f, "    {}", Style::new().dim().apply_to(desc))?;
-                }
-            }
-
-            // Show platforms where bundle is installed (4-space indent)
-            if let Some(platforms) = self.platforms.get(idx) {
-                if !platforms.is_empty() {
-                    writeln!(f)?;
-                    let platform_names = platforms
-                        .iter()
-                        .map(|p| platform_id_to_display_name(p))
-                        .collect::<std::collections::HashSet<_>>()
-                        .into_iter()
-                        .collect::<Vec<_>>();
-
-                    let platforms_str = platform_names.join(", ");
-                    write!(f, "    {}", Style::new().cyan().apply_to(platforms_str))?;
-                }
-            }
+        // Write description in grey if present
+        if let Some(desc) = desc {
+            writeln!(f)?;
+            write!(f, "{}", Style::new().dim().apply_to(desc))?;
         }
 
         Ok(())
@@ -126,7 +83,13 @@ impl<'a> Theme for UninstallTheme<'a> {
                 if idx > 0 {
                     write!(f, ", ")?;
                 }
-                write!(f, "{}", selection)?;
+                // Only show bundle name, not description in selection
+                let bundle_name = if let Some(pos) = selection.find('\n') {
+                    &selection[..pos]
+                } else {
+                    selection
+                };
+                write!(f, "{}", bundle_name)?;
             }
         }
         Ok(())
@@ -144,62 +107,21 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         .lockfile
         .bundles
         .iter()
-        .map(|b| b.name.clone())
-        .collect();
-
-    let item_refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
-
-    let descriptions: Vec<Option<&str>> = workspace
-        .lockfile
-        .bundles
-        .iter()
-        .map(|b| b.description.as_deref())
-        .collect();
-
-    // Build platforms list
-    let platforms: Vec<Vec<String>> = workspace
-        .lockfile
-        .bundles
-        .iter()
-        .map(|bundle| {
-            // Collect all unique platform prefixes where this bundle is installed
-            if let Some(workspace_bundle) = workspace.workspace_config.find_bundle(&bundle.name) {
-                workspace_bundle
-                    .enabled
-                    .values()
-                    .flatten()
-                    .map(|location| {
-                        // Extract platform ID from location like ".opencode/..." or ".cursor/..."
-                        // First get the directory prefix
-                        let platform_dir = if let Some(idx) = location.find('/') {
-                            &location[..idx]
-                        } else {
-                            location
-                        };
-                        // Then strip the leading dot to get the platform ID
-                        platform_dir.trim_start_matches('.').to_string()
-                    })
-                    .collect::<std::collections::HashSet<_>>()
-                    .into_iter()
-                    .collect()
-            } else {
-                vec![]
+        .map(|b| {
+            // Format with description
+            match &b.description {
+                Some(desc) => format!("{}\n    {}", b.name, desc),
+                None => b.name.clone(),
             }
         })
         .collect();
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme {
-        items: item_refs,
-        descriptions,
-        platforms,
-    })
-    .with_prompt("Select bundles to uninstall")
-    .items(&items)
-    .max_length(10)
-    .clear(false)
-    .interact_on_opt(&Term::stderr())?
+    let selection = match MultiSelect::with_theme(&UninstallTheme)
+        .with_prompt("Select bundles to uninstall")
+        .items(&items)
+        .interact_on_opt(&Term::stderr())?
     {
         Some(sel) => sel,
         None => return Ok(vec![]),
@@ -211,6 +133,86 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         .collect();
 
     Ok(selected_bundles)
+}
+
+/// Select bundles from a predefined list
+fn select_bundles_from_list(
+    workspace: &Workspace,
+    bundle_names: Vec<String>,
+) -> Result<Vec<String>> {
+    if bundle_names.is_empty() {
+        println!("No bundles to select from.");
+        return Ok(vec![]);
+    }
+
+    if bundle_names.len() == 1 {
+        return Ok(bundle_names);
+    }
+
+    let items: Vec<String> = bundle_names
+        .iter()
+        .map(|name| {
+            // Format with description
+            match workspace.lockfile.find_bundle(name) {
+                Some(bundle) => match &bundle.description {
+                    Some(desc) => format!("{}\n    {}", name, desc),
+                    None => name.clone(),
+                },
+                None => name.clone(),
+            }
+        })
+        .collect();
+
+    println!();
+
+    let selection = match MultiSelect::with_theme(&UninstallTheme)
+        .with_prompt("Select bundles to uninstall")
+        .items(&items)
+        .interact_on_opt(&Term::stderr())?
+    {
+        Some(sel) => sel,
+        None => return Ok(vec![]),
+    };
+
+    let selected_bundles: Vec<String> = selection
+        .iter()
+        .filter_map(|&idx| bundle_names.get(idx).cloned())
+        .collect();
+
+    Ok(selected_bundles)
+}
+
+/// Check if a name is a scope pattern (starts with @ or ends with /)
+fn is_scope_pattern(name: &str) -> bool {
+    name.starts_with('@') || name.ends_with('/')
+}
+
+/// Filter bundles by scope pattern
+/// Supports patterns like:
+/// - @author/scope - all bundles starting with @author/scope
+/// - author/scope - all bundles containing /scope pattern
+fn filter_bundles_by_scope(workspace: &Workspace, scope: &str) -> Vec<String> {
+    let scope_lower = scope.to_lowercase();
+
+    workspace
+        .lockfile
+        .bundles
+        .iter()
+        .filter(|b| {
+            let bundle_name_lower = b.name.to_lowercase();
+
+            // Check if bundle name starts with or matches the scope pattern
+            if bundle_name_lower.starts_with(&scope_lower) {
+                // Ensure it's a complete match (not partial name match)
+                // e.g., @wshobson/agents matches @wshobson/agents/accessibility but not @wshobson/agent
+                let after_match = &bundle_name_lower[scope_lower.len()..];
+                after_match.is_empty() || after_match.starts_with('/')
+            } else {
+                false
+            }
+        })
+        .map(|b| b.name.clone())
+        .collect()
 }
 
 /// Run uninstall command
@@ -238,7 +240,31 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     }
 
     let bundle_names = match args.name {
-        Some(name) => vec![name],
+        Some(name) => {
+            // Check if this is a scope pattern
+            if is_scope_pattern(&name) {
+                let matching_bundles = filter_bundles_by_scope(&workspace, &name);
+
+                if matching_bundles.is_empty() {
+                    println!("No bundles found matching scope: {}", name);
+                    return Ok(());
+                }
+
+                // If --select-all is given, use all matching bundles
+                if args.select_all {
+                    matching_bundles
+                } else if matching_bundles.len() == 1 {
+                    // If only one bundle matches, use it directly
+                    matching_bundles
+                } else {
+                    // Otherwise, prompt user to select which bundles to uninstall
+                    select_bundles_from_list(&workspace, matching_bundles)?
+                }
+            } else {
+                // Single bundle specified
+                vec![name]
+            }
+        }
         None => select_bundles_interactively(&workspace)?,
     };
 
@@ -1073,5 +1099,143 @@ bundles:
 
         assert_eq!(dependents.len(), 1);
         assert!(dependents.contains(&"bundle2".to_string()));
+    }
+
+    #[test]
+    fn test_is_scope_pattern() {
+        assert!(is_scope_pattern("@wshobson/agents"));
+        assert!(is_scope_pattern("@author/scope"));
+        assert!(is_scope_pattern("author/scope/"));
+        assert!(!is_scope_pattern("bundle-name"));
+        assert!(!is_scope_pattern("my-bundle"));
+    }
+
+    #[test]
+    fn test_filter_bundles_by_scope() {
+        let mut lockfile = Lockfile::new("@test/workspace");
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "@wshobson/agents/accessibility".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
+            source: crate::config::LockedSource::Dir {
+                path: "bundles/accessibility".to_string(),
+                hash: "hash1".to_string(),
+            },
+            files: vec![],
+        });
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "@wshobson/agents/performance".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
+            source: crate::config::LockedSource::Dir {
+                path: "bundles/performance".to_string(),
+                hash: "hash2".to_string(),
+            },
+            files: vec![],
+        });
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "@other/bundle".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
+            source: crate::config::LockedSource::Dir {
+                path: "bundles/other".to_string(),
+                hash: "hash3".to_string(),
+            },
+            files: vec![],
+        });
+
+        let workspace_root = TempDir::new().unwrap();
+        let workspace_path = workspace_root.path();
+        let augent_dir = workspace_path.join(".augent");
+        fs::create_dir_all(&augent_dir).unwrap();
+
+        let bundle_config_path = augent_dir.join("augent.yaml");
+        fs::write(&bundle_config_path, "name: \"@test/workspace\"").unwrap();
+
+        let lockfile_path = augent_dir.join("augent.lock");
+        fs::write(
+            &lockfile_path,
+            "{\"name\":\"@test/workspace\",\"bundles\":[]}",
+        )
+        .unwrap();
+
+        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        fs::write(
+            &workspace_config_path,
+            "name: \"@test/workspace\"\nbundles: []",
+        )
+        .unwrap();
+
+        let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
+        workspace.lockfile = lockfile;
+        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+
+        let matched = filter_bundles_by_scope(&workspace, "@wshobson/agents");
+
+        assert_eq!(matched.len(), 2);
+        assert!(matched.contains(&"@wshobson/agents/accessibility".to_string()));
+        assert!(matched.contains(&"@wshobson/agents/performance".to_string()));
+    }
+
+    #[test]
+    fn test_filter_bundles_by_scope_case_insensitive() {
+        let mut lockfile = Lockfile::new("@test/workspace");
+
+        lockfile.add_bundle(crate::config::LockedBundle {
+            name: "@WSHobson/Agents/Accessibility".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
+            source: crate::config::LockedSource::Dir {
+                path: "bundles/accessibility".to_string(),
+                hash: "hash1".to_string(),
+            },
+            files: vec![],
+        });
+
+        let workspace_root = TempDir::new().unwrap();
+        let workspace_path = workspace_root.path();
+        let augent_dir = workspace_path.join(".augent");
+        fs::create_dir_all(&augent_dir).unwrap();
+
+        let bundle_config_path = augent_dir.join("augent.yaml");
+        fs::write(&bundle_config_path, "name: \"@test/workspace\"").unwrap();
+
+        let lockfile_path = augent_dir.join("augent.lock");
+        fs::write(
+            &lockfile_path,
+            "{\"name\":\"@test/workspace\",\"bundles\":[]}",
+        )
+        .unwrap();
+
+        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        fs::write(
+            &workspace_config_path,
+            "name: \"@test/workspace\"\nbundles: []",
+        )
+        .unwrap();
+
+        let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
+        workspace.lockfile = lockfile;
+        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+
+        let matched = filter_bundles_by_scope(&workspace, "@wshobson/agents");
+
+        assert_eq!(matched.len(), 1);
+        assert!(matched.contains(&"@WSHobson/Agents/Accessibility".to_string()));
     }
 }

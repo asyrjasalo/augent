@@ -102,14 +102,21 @@ pub struct InstallArgs {
                   Uninstall a bundle:\n    augent uninstall my-bundle\n\n\
                   Uninstall without confirmation:\n    augent uninstall my-bundle -y\n\n\
                   Uninstall a specific bundle name:\n    augent uninstall author/bundle\n\n\
+                  Uninstall all bundles matching a scope:\n    augent uninstall @wshobson/agents\n\n\
+                  Uninstall scope without prompt:\n    augent uninstall @wshobson/agents --select-all\n\n\
                   Select bundle interactively:\n    augent uninstall")]
 pub struct UninstallArgs {
-    /// Bundle name to uninstall (if omitted, shows interactive menu)
+    /// Bundle name or scope to uninstall (if omitted, shows interactive menu)
+    /// Can be a specific bundle name or a scope prefix (e.g., @author/scope)
     pub name: Option<String>,
 
     /// Skip confirmation prompt
     #[arg(long, short = 'y')]
     pub yes: bool,
+
+    /// Select all bundles matching the scope without prompting
+    #[arg(long)]
+    pub select_all: bool,
 }
 
 /// Arguments for the list command
@@ -230,6 +237,7 @@ mod tests {
             Commands::Uninstall(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
                 assert!(!args.yes);
+                assert!(!args.select_all);
             }
             _ => panic!("Expected Uninstall command"),
         }
@@ -242,6 +250,7 @@ mod tests {
             Commands::Uninstall(args) => {
                 assert_eq!(args.name, None);
                 assert!(!args.yes);
+                assert!(!args.select_all);
             }
             _ => panic!("Expected Uninstall command"),
         }

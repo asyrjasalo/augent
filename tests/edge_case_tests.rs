@@ -240,12 +240,14 @@ fn test_uninstall_workspace_bundle() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
+    // Trying to uninstall the workspace name itself now returns a friendly message
+    // about no bundles matching the scope (which is the correct behavior)
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/workspace", "-y"])
         .assert()
-        .failure()
-        .stderr(predicate::str::contains("workspace"));
+        .success()
+        .stdout(predicate::str::contains("No bundles found matching scope"));
 }
 
 #[test]

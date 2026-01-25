@@ -2,43 +2,6 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
-      "name": "@wshobson/agents/accessibility-compliance",
-      "description": "WCAG accessibility auditing, compliance validation, UI testing for screen readers, keyboard navigation, and inclusive design",
-      "version": "1.2.1",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/wshobson/agents.git",
-        "path": "$plugin/accessibility-compliance",
-        "ref": null,
-        "sha": "1135ac606247648d9e4724f027280d4114282858",
-        "hash": "blake3:ba84891b9caffe442488b69f55e9b1f900d5f0933d8194e7a62ab58254816334"
-      },
-      "files": [
-        "agents/ui-visual-validator.md",
-        "commands/accessibility-audit.md",
-        "skills/screen-reader-testing/SKILL.md",
-        "skills/wcag-audit-patterns/SKILL.md"
-      ]
-    },
-    {
-      "name": "@wshobson/agents/agent-orchestration",
-      "description": "Multi-agent system optimization, agent improvement workflows, and context management",
-      "version": "1.2.0",
-      "source": {
-        "type": "git",
-        "url": "https://github.com/wshobson/agents.git",
-        "path": "$plugin/agent-orchestration",
-        "ref": null,
-        "sha": "1135ac606247648d9e4724f027280d4114282858",
-        "hash": "blake3:0f4b60e2254d6a9a544cc784156b1f19d6b44af2b2c845236a4605691f05a4a8"
-      },
-      "files": [
-        "agents/context-manager.md",
-        "commands/improve-agent.md",
-        "commands/multi-agent-optimize.md"
-      ]
-    },
-    {
       "name": "@asyrjasalo/augent/my-local-bundle",
       "source": {
         "type": "dir",

@@ -24,8 +24,8 @@ To install a set of resources (bundles) for your AI coding platforms:
     # Show a bundle's details
     augent show @wshobson/agents/accessibility-compliance
 
-    # Uninstall a bundle
-    augent uninstall @wshobson/agents/accessibility-compliance
+    # Uninstall all bundles with thix prefix (select bundles if many):
+    augent uninstall @wshobson/agents
 
 ## Usage
 
