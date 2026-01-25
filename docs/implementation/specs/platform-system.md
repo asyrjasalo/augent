@@ -377,7 +377,7 @@ impl PlatformLoader {
 ## References
 
 - PRD: [Other AI coding platforms](../mvp/prd.md#other-ai-coding-platforms)
-- ARCHITECTURE: [ADR-002: Platform System](../architecture.md#adr-002-platform-system)
+- ARCHITECTURE: [ADR-002: Platform System](../adrs/002-platform-system.md)
 - ARCHITECTURE: [Platform Detection and Resource Transformation](../architecture.md#platform-detection-and-resource-transformation)
 - USER DOCS: [Platform Support](../../platforms_schema.md)
 - SCHEMA: [Platforms Configuration Schema](../../platforms_schema.md)

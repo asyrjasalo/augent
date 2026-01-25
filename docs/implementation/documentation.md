@@ -134,7 +134,7 @@ Detailed documentation lives in `docs/` directory.
 | `docs/commands.md` | All commands with detailed examples |
 | `docs/bundles.md` | Bundle format, augent.yaml, lockfile |
 | `docs/platforms.md` | Supported platforms, adding new platforms |
-| `docs/MIGRATION.md` | Migrating from Claude Code plugins, OpenPackage |
+| `docs/workspace.md` | Workspace configuration and management |
 
 **File Naming Convention:**
 
@@ -205,12 +205,14 @@ Internal docs live in `docs/implementation/`.
 
 | File | Purpose |
 |------|---------|
-| `prd.md` | Product Requirements Document |
+| `mvp/prd.md` | Product Requirements Document |
 | `plan.md` | Implementation plan with epics/features/tasks |
 | `tasks.md` | Task tracking checklist |
 | `testing.md` | Testing strategy and requirements |
 | `architecture.md` | Architecture decisions and diagrams |
 | `documentation.md` | This file |
+| `building.md` | Build and release (Maturin, cross, CI) |
+| `interactive-testing.md` | Interactive CLI testing (PTY, inquire) |
 | `specs/` | Feature specifications |
 
 ### Feature Specifications (docs/implementation/specs/)
@@ -308,7 +310,7 @@ What happens as a result.
 ### For Architecture Changes
 
 1. **Confirm with user before implementing**
-2. Add new ADR to architecture.md
+2. Add new ADR to `docs/implementation/adrs/` and link it from `architecture.md`
 3. Update relevant documentation
 4. Never remove existing ADRs
 
@@ -480,7 +482,7 @@ From PRD:
 | docs/*.md | docs/ directory | All users |
 | Implementation docs | docs/implementation/ | Developers |
 | Feature specs | docs/implementation/specs/ | Developers |
-| ADRs | architecture.md | Developers |
+| ADRs | docs/implementation/adrs/ | Developers |
 
 **Key Principles:**
 

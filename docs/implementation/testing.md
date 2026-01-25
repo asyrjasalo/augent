@@ -301,38 +301,12 @@ cargo tarpaulin --out Html --output-dir ./coverage
 
 ### Continuous Integration
 
-CI runs tests on all platforms:
+CI runs tests on all platforms via `.github/workflows/ci.yml`:
 
 ```yaml
-# .github/workflows/test.yml
-
-name: Test
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable]
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-
-      - name: Run tests
-        run: cargo test --all
-
-      - name: Run coverage
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo tarpaulin --out Lcov --output-dir ./coverage
+# .github/workflows/ci.yml - excerpt
+# The build job runs `cargo test` (or `cross test`) per platform in the matrix.
+# See the full workflow for the exact test and lint steps.
 ```
 
 ### Pre-Merge

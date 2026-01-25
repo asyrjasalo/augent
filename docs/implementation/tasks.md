@@ -22,7 +22,7 @@ Update when you have started a feature and completed a feature (in **Status:** a
 ## Task Statistics
 
 - **Total Tasks:** 447
-- **Completed:** 441 (Phase 0-5 complete, Phase 6 Feature 13.16, 14.1 complete - 441 tasks)
+- **Completed:** 441 (Phase 0-5 complete including Epic 13.16, Phase 6 Feature 14.1 complete - 441 tasks)
 - **Pending:** 6 (Phase 6 Feature 14.2 - 6 tasks)
 
 ---
@@ -92,7 +92,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Add implementation process: Create/update documentation
 - [x] Add implementation process: Mark task complete in tasks.md with links
 - [x] Add implementation process: Update CHANGELOG.md for user-facing changes
-- [x] Add guideline: Do not reference code by specificnumbers
+- [x] Add guideline: Do not reference code by specific line numbers
 - [x] Add guideline: Do not count lines or use vanity metrics
 - [x] Add guideline: Do not commit unless explicitly asked
 - [x] Add guideline: Do not push unless explicitly asked
@@ -275,6 +275,10 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Generate initial `augent.yaml`, `augent.lock`, `augent.workspace.yaml`
 - [x] Set up `.augent/bundles/` directory structure
 - [x] Write tests for workspace initialization
+
+#### Feature 5.2: Workspace Locking
+
+- [x] Workspace locking via lockfile (creation in 5.1, validation in 6.2) and transaction/ADR-003; tests in 13.13
 
 #### Feature 5.3: Modified File Detection
 
@@ -574,6 +578,8 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Create `docs/implementation/specs/uninstall-command.md`
 - [x] Create `docs/implementation/specs/workspace-management.md`
 - [x] Create `docs/implementation/specs/platform-system.md`
+- [x] Create `docs/implementation/specs/platform-independence.md`
+- [x] Create `docs/implementation/specs/uninstall-dependencies.md`
 
 #### Feature 12.7: Documentation Verification
 
@@ -598,7 +604,7 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 ### Summary
 
-**All 15 Features Complete (137 tasks):**
+**All 16 Features Complete (147 tasks):**
 
 - [x] Feature 13.1: Fix Compilation Errors - Complete (6 tasks)
 - [x] Feature 13.2: Completions Command Test Coverage - Complete (9 tasks)
@@ -615,6 +621,7 @@ Additional test coverage improvements based on audit of user-facing functionalit
 - [x] Feature 13.13: Integration Test Scenarios - Complete (11 tasks)
 - [x] Feature 13.14: Documentation-Based Testing - Complete (10 tasks)
 - [x] Feature 13.15: Run All Tests and Verify Coverage - Complete (7 tasks)
+- [x] Feature 13.16: Marketplace.json Support for Bundle Discovery - Complete (10 tasks)
 
 **All Epic 13 Features Complete!**
 
@@ -835,6 +842,20 @@ Comprehensive test coverage for all user-facing functionality including integrat
 - [x] Run cargo audit (security audit)
 - [x] Run pre-commit hooks on all files
 
+#### Feature 13.16: Marketplace.json Support for Bundle Discovery
+
+**Status:** Complete
+
+- [x] Create MarketplaceConfig struct in src/config/marketplace.rs for parsing marketplace.json
+- [x] Add marketplace.json detection in discover_local_bundles()
+- [x] Implement discover_marketplace_bundles() to parse marketplace.json and create DiscoveredBundle entries
+- [x] Add detection for virtual bundles in resolve_local()
+- [x] Implement create_synthetic_bundle() to create cache directories with copied resources
+- [x] Write tests for marketplace.json parsing
+- [x] Write tests for virtual bundle discovery and resolution
+- [x] Update documentation for bundle discovery to mention marketplace.json support
+- [x] Run all tests and verify no regressions
+
 ---
 
 ## Phase 6: Release (Epic 14)
@@ -870,21 +891,5 @@ Set up cross-platform builds and distribution.
 - [ ] Make release pipeline publish Python packages to PyPI
 - [ ] Prepare release 0.5.0
 - [ ] Document release process in @CLAUDE.md
-
----
-
-### Feature 13.16: Marketplace.json Support for Bundle Discovery
-
-**Status:** Complete
-
-- [x] Create MarketplaceConfig struct in src/config/marketplace.rs for parsing marketplace.json
-- [x] Add marketplace.json detection in discover_local_bundles()
-- [x] Implement discover_marketplace_bundles() to parse marketplace.json and create DiscoveredBundle entries
-- [x] Add detection for virtual bundles in resolve_local()
-- [x] Implement create_synthetic_bundle() to create cache directories with copied resources
-- [x] Write tests for marketplace.json parsing
-- [x] Write tests for virtual bundle discovery and resolution
-- [x] Update documentation for bundle discovery to mention marketplace.json support
-- [x] Run all tests and verify no regressions
 
 ---

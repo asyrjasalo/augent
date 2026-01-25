@@ -33,7 +33,7 @@ A **Workspace** is a developer's working git repository with Augent configuratio
 
 ### Resources
 
-Resources can be in. Examples:
+Resources are platform-independent files that get transformed at install time. Examples:
 
 - `commands/debug.md`
 - `rules/lint.md`

@@ -21,9 +21,11 @@ use crate::error::{AugentError, Result};
 
 /// Normalize file:// URLs so libgit2 can resolve them on all platforms.
 ///
-/// On Windows, libgit2 mis-parses both `file://C:\path` and `file:///C:/path`
-/// (e.g. "failed to resolve path 'C'"). Passing a bare path (e.g. `C:/Users/...`)
-/// works, since git clone accepts local paths. On Unix, `file:///path` is fine.
+/// On Windows, `file://C:\path` and `file:///C:/path` are mis-parsed by libgit2
+/// ("failed to resolve path 'C'", "unsupported URL protocol" for bare paths).
+/// RFC 8089 allows `file:///C|/path` (pipe for the drive colon); some
+/// implementations accept this. We use it on Windows as a fallback. Unix
+/// `file:///path` is unchanged.
 fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     if !url.starts_with("file://") {
         return std::borrow::Cow::Borrowed(url);
@@ -31,16 +33,23 @@ fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     let after = &url[7..]; // after "file://"
     #[cfg(windows)]
     {
-        // On Windows, pass a bare path with backslashes so it's unambiguously
-        // a filesystem path (C:\path has no ':' after the first char that could
-        // be parsed as a URL scheme). file://C:\path -> C:\path;
-        // file:///C:/path -> C:\path
+        // Normalize to forward slashes: /C:/path or C:\path -> C:/path
         let path = if after.starts_with('/') {
-            after[1..].replace('/', "\\")
+            after[1..].to_string()
         } else {
-            after.to_string()
+            after.replace('\\', "/")
         };
-        std::borrow::Cow::Owned(path)
+        // RFC 8089 E.2: use pipe for drive colon so "C:" becomes "C|", e.g.
+        // file:///C|/Users/... . This avoids "C" being parsed as host/scheme.
+        let path = if path.len() >= 2
+            && path.chars().next().map(|c| c.is_ascii_alphabetic()) == Some(true)
+            && path.chars().nth(1) == Some(':')
+        {
+            format!("{}|{}", &path[..1], &path[2..])
+        } else {
+            path
+        };
+        std::borrow::Cow::Owned(format!("file:///{}", path))
     }
     #[cfg(not(windows))]
     {

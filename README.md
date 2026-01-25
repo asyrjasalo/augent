@@ -40,7 +40,7 @@ or remote Git repositories via https (or ssh).
 
 When you install a bundle from a remote Git repository, Augent:
 
-1. Fetches the bundle(s) and adds it to `.augent/aument.yaml` in your workspace
+1. Fetches the bundle(s) and adds it to `.augent/augent.yaml` in your workspace
 2. Resolves and locks the Git ref on first install (and creates a lockfile)
 3. Transforms the bundle's resources to match your AI coding platform's format
 4. Installs resources to the platforms (and creates an index what came where)
