@@ -10,44 +10,44 @@ bundles:
   enabled:
     agents/computer-vision-engineer.md:
     - .gemini/agents/computer-vision-engineer.md
+    agents/ai-engineer.md:
+    - .gemini/agents/ai-engineer.md
     agents/ml-engineer.md:
     - .gemini/agents/ml-engineer.md
     agents/nlp-engineer.md:
     - .gemini/agents/nlp-engineer.md
     agents/mlops-engineer.md:
     - .gemini/agents/mlops-engineer.md
-    agents/ai-engineer.md:
-    - .gemini/agents/ai-engineer.md
 
 - name: '@davila7/claude-code-templates/nextjs-vercel-pro'
   enabled:
-    commands/nextjs-scaffold.md:
-    - .gemini/commands/nextjs-scaffold.md
-    agents/frontend-developer.md:
-    - .gemini/agents/frontend-developer.md
     commands/vercel-edge-function.md:
     - .gemini/commands/vercel-edge-function.md
-    agents/fullstack-developer.md:
-    - .gemini/agents/fullstack-developer.md
-    commands/vercel-env-sync.md:
-    - .gemini/commands/vercel-env-sync.md
-    commands/vercel-deploy-optimize.md:
-    - .gemini/commands/vercel-deploy-optimize.md
     commands/nextjs-component-generator.md:
     - .gemini/commands/nextjs-component-generator.md
-    commands/nextjs-api-tester.md:
-    - .gemini/commands/nextjs-api-tester.md
+    commands/vercel-env-sync.md:
+    - .gemini/commands/vercel-env-sync.md
     commands/nextjs-performance-audit.md:
     - .gemini/commands/nextjs-performance-audit.md
+    commands/vercel-deploy-optimize.md:
+    - .gemini/commands/vercel-deploy-optimize.md
+    agents/fullstack-developer.md:
+    - .gemini/agents/fullstack-developer.md
+    agents/frontend-developer.md:
+    - .gemini/agents/frontend-developer.md
+    commands/nextjs-scaffold.md:
+    - .gemini/commands/nextjs-scaffold.md
+    commands/nextjs-api-tester.md:
+    - .gemini/commands/nextjs-api-tester.md
 
 - name: '@davila7/claude-code-templates/git-workflow'
   enabled:
-    commands/feature.md:
-    - .gemini/commands/feature.md
     commands/release.md:
     - .gemini/commands/release.md
     commands/hotfix.md:
     - .gemini/commands/hotfix.md
+    commands/feature.md:
+    - .gemini/commands/feature.md
     commands/flow-status.md:
     - .gemini/commands/flow-status.md
     commands/finish.md:

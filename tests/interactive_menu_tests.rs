@@ -439,9 +439,10 @@ bundles: []
 
     let output = test.wait_for_output().expect("Failed to wait for output");
 
-    assert!(output.contains("↑↓ to move") || output.contains("UP/DOWN to move"));
-    assert!(output.contains("SPACE to select") || output.contains("SPACE to select/deselect"));
-    assert!(output.contains("ENTER to confirm") || output.contains("ENTER"));
+    // Check for navigation hints - either the new concise format or patterns from it
+    assert!(output.contains("↑↓") || output.contains("UP/DOWN") || output.contains("navigate"));
+    assert!(output.contains("space") || output.contains("SPACE"));
+    assert!(output.contains("confirm") || output.contains("ENTER"));
 
     assert!(output.contains("Select bundles"));
 }

@@ -13,6 +13,15 @@ struct CustomTheme<'a> {
 
 impl<'a> Theme for CustomTheme<'a> {
     fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
+        // Add keyboard hints above the menu
+        writeln!(f)?;
+        writeln!(
+            f,
+            "{}",
+            Style::new()
+                .dim()
+                .apply_to("  ↑↓ navigate  space select  enter confirm  q/esc cancel")
+        )?;
         write!(f, "{}: ", prompt)
     }
 
@@ -106,7 +115,7 @@ pub fn select_bundles_interactively(
         .map(|b| b.resource_counts.clone())
         .collect();
 
-    println!("↑↓ to move, SPACE to select/deselect, ENTER to confirm, ESC/q to cancel\n");
+    println!();
 
     let selection = match MultiSelect::with_theme(&CustomTheme {
         items: item_refs,

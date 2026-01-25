@@ -12,6 +12,7 @@ use std::path::Path;
 
 use crate::cli::UninstallArgs;
 use crate::error::{AugentError, Result};
+use crate::platform;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use dialoguer::console::Style;
@@ -19,12 +20,39 @@ use dialoguer::console::Term;
 use dialoguer::{MultiSelect, theme::Theme};
 use std::fmt;
 
+/// Convert platform ID to display name using platform definitions (like show.rs does)
+fn platform_id_to_display_name(platform_id: &str) -> String {
+    // Get the platform name from the platform definitions
+    for p in platform::default_platforms() {
+        if p.id == platform_id {
+            return p.name;
+        }
+    }
+    // Fallback: capitalize the ID if not found
+    let mut chars = platform_id.chars();
+    match chars.next() {
+        None => "Other".to_string(),
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
+
 struct UninstallTheme<'a> {
-    descriptions: std::collections::HashMap<&'a str, Option<String>>,
+    items: Vec<&'a str>,
+    descriptions: Vec<Option<&'a str>>,
+    platforms: Vec<Vec<String>>,
 }
 
 impl<'a> Theme for UninstallTheme<'a> {
     fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
+        // Add keyboard hints above the menu
+        writeln!(f)?;
+        writeln!(
+            f,
+            "{}",
+            Style::new()
+                .dim()
+                .apply_to("  ↑↓ navigate  space select  enter confirm  q/esc cancel")
+        )?;
         write!(f, "{}: ", prompt)
     }
 
@@ -37,19 +65,50 @@ impl<'a> Theme for UninstallTheme<'a> {
     ) -> fmt::Result {
         let marker = if checked { "x" } else { " " };
 
-        if active {
-            write!(f, "> [{}] {}", marker, text)?;
+        // Find index by looking up text in items
+        let idx = self
+            .items
+            .iter()
+            .position(|item| *item == text)
+            .unwrap_or(0);
 
-            if let Some(desc) = self.descriptions.get(text) {
-                if let Some(d) = desc {
-                    if !d.is_empty() {
-                        writeln!(f)?;
-                        write!(f, "     {}", Style::new().dim().apply_to(&d))?;
-                    }
+        // Style for active marker with green
+        if active {
+            write!(
+                f,
+                "{} [{}] {}",
+                Style::new().green().apply_to(">"),
+                marker,
+                text
+            )?;
+        } else {
+            write!(f, "   [{}] {}", marker, text)?;
+        }
+
+        if active {
+            // Show description in dim gray (4-space indent)
+            if let Some(desc) = self.descriptions.get(idx).and_then(|d| *d) {
+                if !desc.is_empty() {
+                    writeln!(f)?;
+                    write!(f, "    {}", Style::new().dim().apply_to(desc))?;
                 }
             }
-        } else {
-            write!(f, "  [{}] {}", marker, text)?;
+
+            // Show platforms where bundle is installed (4-space indent)
+            if let Some(platforms) = self.platforms.get(idx) {
+                if !platforms.is_empty() {
+                    writeln!(f)?;
+                    let platform_names = platforms
+                        .iter()
+                        .map(|p| platform_id_to_display_name(p))
+                        .collect::<std::collections::HashSet<_>>()
+                        .into_iter()
+                        .collect::<Vec<_>>();
+
+                    let platforms_str = platform_names.join(", ");
+                    write!(f, "    {}", Style::new().cyan().apply_to(platforms_str))?;
+                }
+            }
         }
 
         Ok(())
@@ -88,22 +147,59 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         .map(|b| b.name.clone())
         .collect();
 
-    // Build a map from bundle names to descriptions with the same lifetime as items
-    let mut descriptions_map = std::collections::HashMap::new();
-    for bundle in &workspace.lockfile.bundles {
-        descriptions_map.insert(bundle.name.as_str(), bundle.description.clone());
-    }
+    let item_refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
 
-    let descriptions: std::collections::HashMap<&str, Option<String>> = descriptions_map;
+    let descriptions: Vec<Option<&str>> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|b| b.description.as_deref())
+        .collect();
 
-    println!("↑↓ to move, SPACE to select/deselect, ENTER to confirm, ESC/q to cancel\n");
+    // Build platforms list
+    let platforms: Vec<Vec<String>> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|bundle| {
+            // Collect all unique platform prefixes where this bundle is installed
+            if let Some(workspace_bundle) = workspace.workspace_config.find_bundle(&bundle.name) {
+                workspace_bundle
+                    .enabled
+                    .values()
+                    .flatten()
+                    .map(|location| {
+                        // Extract platform ID from location like ".opencode/..." or ".cursor/..."
+                        // First get the directory prefix
+                        let platform_dir = if let Some(idx) = location.find('/') {
+                            &location[..idx]
+                        } else {
+                            location
+                        };
+                        // Then strip the leading dot to get the platform ID
+                        platform_dir.trim_start_matches('.').to_string()
+                    })
+                    .collect::<std::collections::HashSet<_>>()
+                    .into_iter()
+                    .collect()
+            } else {
+                vec![]
+            }
+        })
+        .collect();
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme { descriptions })
-        .with_prompt("Select bundles to uninstall")
-        .items(&items)
-        .max_length(10)
-        .clear(false)
-        .interact_on_opt(&Term::stderr())?
+    println!();
+
+    let selection = match MultiSelect::with_theme(&UninstallTheme {
+        items: item_refs,
+        descriptions,
+        platforms,
+    })
+    .with_prompt("Select bundles to uninstall")
+    .items(&items)
+    .max_length(10)
+    .clear(false)
+    .interact_on_opt(&Term::stderr())?
     {
         Some(sel) => sel,
         None => return Ok(vec![]),
