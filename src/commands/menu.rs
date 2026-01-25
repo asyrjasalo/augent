@@ -5,7 +5,15 @@ use dialoguer::console::Term;
 use dialoguer::{MultiSelect, theme::Theme};
 use std::fmt;
 
-struct CustomTheme;
+struct CustomTheme {
+    max_name_width: usize,
+}
+
+impl CustomTheme {
+    fn new(max_name_width: usize) -> Self {
+        Self { max_name_width }
+    }
+}
 
 impl Theme for CustomTheme {
     fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
@@ -47,16 +55,24 @@ impl Theme for CustomTheme {
             write!(f, "   [{}] {}", marker, name)?;
         }
 
-        // Write description in grey if present
-        if let Some(desc) = desc {
-            writeln!(f)?;
-            write!(f, "{}", Style::new().dim().apply_to(desc))?;
+        // Add resources on the same line with proper alignment
+        if let Some(resources) = resources {
+            // Calculate padding to align resources
+            let padding = self.max_name_width.saturating_sub(name.len());
+            write!(
+                f,
+                "{}{}",
+                " ".repeat(padding + 2),
+                Style::new().yellow().apply_to(resources)
+            )?;
         }
 
-        // Write resource counts in yellow if present
-        if let Some(resources) = resources {
-            writeln!(f)?;
-            write!(f, "{}", Style::new().yellow().apply_to(resources))?;
+        // Write description in grey if present and non-empty (on next line)
+        if let Some(desc) = desc {
+            if !desc.is_empty() {
+                writeln!(f)?;
+                write!(f, "{}", Style::new().dim().apply_to(desc))?;
+            }
         }
 
         Ok(())
@@ -90,16 +106,22 @@ pub fn select_bundles_interactively(
         return Ok(vec![]);
     }
 
+    // Calculate max name width for alignment
+    let max_name_width = discovered.iter().map(|b| b.name.len()).max().unwrap_or(0);
+
     // Format items with embedded description and resource counts
     let items: Vec<String> = discovered
         .iter()
         .map(|b| {
             let mut item = b.name.clone();
 
-            // Add description if present
+            // Add description if present (even if empty, to keep separator consistent)
             if let Some(desc) = &b.description {
                 item.push_str("\n---\n    ");
                 item.push_str(desc);
+            } else {
+                // Add empty description separator to keep resources at position 2
+                item.push_str("\n---\n");
             }
 
             // Add resource counts if present
@@ -114,7 +136,7 @@ pub fn select_bundles_interactively(
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&CustomTheme)
+    let selection = match MultiSelect::with_theme(&CustomTheme::new(max_name_width))
         .with_prompt("Select bundles to install")
         .items(&items)
         .max_length(5)

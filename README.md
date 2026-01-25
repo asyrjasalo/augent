@@ -15,8 +15,8 @@ Your AI coding platforms are auto-detected in the workspace (git repository).
 
 To install a set of resources (bundles) for your AI coding platforms:
 
-    # Install from a public GitHub repository (select bundles if many):
-    augent install wshobson/agents
+    # Install from a public GitHub repository (prompts to select if many):
+    augent install @wshobson/agents
 
     # List all installed bundles
     augent list
@@ -24,28 +24,29 @@ To install a set of resources (bundles) for your AI coding platforms:
     # Show a bundle's details
     augent show @wshobson/agents/accessibility-compliance
 
-    # Uninstall all bundles with thix prefix (select bundles if many):
+    # Uninstall all bundles under this prefix (prompts to select if many):
     augent uninstall @wshobson/agents
 
 ## Usage
 
-Augent stores AI coding platform resources as **bundles**.
+Augent stores AI coding platform resources in universal format as **bundles**.
 
-- **Bundle**: A directory containing platform-independent resources with optional `augent.yaml` configuration
-- **Workspace**: Your working git repository with Augent configuration in `.augent/`
-- **Resources**: Resources transformed and installed for specific AI coding platforms
+- **Bundle**: A directory containing the platform-independent resources
+- **Workspace**: Your project's Git repository where you and your team work in
+- **Resources**: Universal resources transformed and installed for specific AI coding platforms
 
-Bundles are a local directories within workspace, or fetched via https (or ssh) from remote Git repositories.
+Bundles are a local directories within the same workspace,
+or fetched from remote Git repositories via https (or ssh).
 
-When you install a bundle, Augent:
+When you install a bundle from a remote Git repository, Augent:
 
-1. Fetches the bundle(s) and creates `.augment/augment.yaml` in your workspace.
-2. Transforms its resources to match your AI coding platforms' formats
-3. Installs resources to the AI coding platforms (creates a plain-text record)
-4. Locks the exact bundle versions for reproducibility (creates a lockfile)
+1. Fetches the bundle(s) and adds it to `.augent/aument.yaml` in your workspace
+2. Transforms the bundle's resources to match your AI coding platform's format
+3. Installs resources to the platforms (and creates an index what came where)
+4. Resolves and locks the git ref on first install (and creates a lockfile)
 
-To ensure a coherent Augment setup across your team, store all the three
-created files in `.augment/` (yaml, index, and lock) in your git repository.
+To ensure a coherent Augent setup across your team, store all the three
+created files in `.augent/` (yaml, index, and lock) in your git repository.
 
 ### Install bundles
 

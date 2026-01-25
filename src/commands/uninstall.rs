@@ -19,7 +19,15 @@ use dialoguer::console::Term;
 use dialoguer::{MultiSelect, theme::Theme};
 use std::fmt;
 
-struct UninstallTheme;
+struct UninstallTheme {
+    max_name_width: usize,
+}
+
+impl UninstallTheme {
+    fn new(max_name_width: usize) -> Self {
+        Self { max_name_width }
+    }
+}
 
 impl Theme for UninstallTheme {
     fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
@@ -43,12 +51,11 @@ impl Theme for UninstallTheme {
     ) -> fmt::Result {
         let marker = if checked { "x" } else { " " };
 
-        // Split text into bundle name and description
-        let (name, desc) = if let Some(pos) = text.find('\n') {
-            (&text[..pos], Some(&text[pos + 1..]))
-        } else {
-            (text, None)
-        };
+        // Split text by separator to get name, description, and platforms info
+        let parts: Vec<&str> = text.split("\n---\n").collect();
+        let name = parts[0];
+        let desc = parts.get(1).copied();
+        let platforms = parts.get(2).copied();
 
         if active {
             write!(
@@ -62,10 +69,24 @@ impl Theme for UninstallTheme {
             write!(f, "   [{}] {}", marker, name)?;
         }
 
-        // Write description in grey if present
+        // Add platforms on the same line with proper alignment
+        if let Some(platforms) = platforms {
+            // Calculate padding to align platforms
+            let padding = self.max_name_width.saturating_sub(name.len());
+            write!(
+                f,
+                "{}{}",
+                " ".repeat(padding + 2),
+                Style::new().cyan().apply_to(platforms)
+            )?;
+        }
+
+        // Write description in grey if present and non-empty (on next line)
         if let Some(desc) = desc {
-            writeln!(f)?;
-            write!(f, "{}", Style::new().dim().apply_to(desc))?;
+            if !desc.is_empty() {
+                writeln!(f)?;
+                write!(f, "{}", Style::new().dim().apply_to(desc))?;
+            }
         }
 
         Ok(())
@@ -83,13 +104,9 @@ impl Theme for UninstallTheme {
                 if idx > 0 {
                     write!(f, ", ")?;
                 }
-                // Only show bundle name, not description in selection
-                let bundle_name = if let Some(pos) = selection.find('\n') {
-                    &selection[..pos]
-                } else {
-                    selection
-                };
-                write!(f, "{}", bundle_name)?;
+                // Only show bundle name, not description or platforms
+                let name = selection.split("\n---\n").next().unwrap_or(selection);
+                write!(f, "{}", name)?;
             }
         }
         Ok(())
@@ -103,22 +120,70 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         std::process::exit(0);
     }
 
+    // Calculate max name width for alignment
+    let max_name_width = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|b| b.name.len())
+        .max()
+        .unwrap_or(0);
+
+    // Extract bundle names to workspace bundle mapping
+    let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
+        .workspace_config
+        .bundles
+        .iter()
+        .map(|wb| {
+            // Extract unique platforms from enabled files
+            let mut platforms = std::collections::HashSet::new();
+            for installed_paths in wb.enabled.values() {
+                for path in installed_paths {
+                    // Extract platform from path like ".opencode/commands/debug.md" or ".cursor/rules/debug.mdc"
+                    if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next())
+                    {
+                        platforms.insert(platform.to_string());
+                    }
+                }
+            }
+            let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
+            sorted_platforms.sort();
+            (wb.name.clone(), sorted_platforms)
+        })
+        .collect();
+
     let items: Vec<String> = workspace
         .lockfile
         .bundles
         .iter()
         .map(|b| {
-            // Format with description
-            match &b.description {
-                Some(desc) => format!("{}\n    {}", b.name, desc),
-                None => b.name.clone(),
+            let mut item = b.name.clone();
+
+            // Add description if present (even if empty, to keep separator consistent)
+            if let Some(desc) = &b.description {
+                item.push_str("\n---\n    ");
+                item.push_str(desc);
+            } else {
+                // Add empty description separator to keep platforms at position 2
+                item.push_str("\n---\n");
             }
+
+            // Add platforms if present
+            if let Some(platforms) = workspace_bundle_map.get(&b.name) {
+                if !platforms.is_empty() {
+                    let platforms_str = platforms.join(", ");
+                    item.push_str("\n---\n    ");
+                    item.push_str(&platforms_str);
+                }
+            }
+
+            item
         })
         .collect();
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme)
+    let selection = match MultiSelect::with_theme(&UninstallTheme::new(max_name_width))
         .with_prompt("Select bundles to uninstall")
         .items(&items)
         .max_length(5)
@@ -150,23 +215,68 @@ fn select_bundles_from_list(
         return Ok(bundle_names);
     }
 
+    // Calculate max name width for alignment
+    let max_name_width = bundle_names.iter().map(|n| n.len()).max().unwrap_or(0);
+
+    // Extract bundle names to workspace bundle mapping
+    let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
+        .workspace_config
+        .bundles
+        .iter()
+        .map(|wb| {
+            // Extract unique platforms from enabled files
+            let mut platforms = std::collections::HashSet::new();
+            for installed_paths in wb.enabled.values() {
+                for path in installed_paths {
+                    // Extract platform from path like ".opencode/commands/debug.md" or ".cursor/rules/debug.mdc"
+                    if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next())
+                    {
+                        platforms.insert(platform.to_string());
+                    }
+                }
+            }
+            let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
+            sorted_platforms.sort();
+            (wb.name.clone(), sorted_platforms)
+        })
+        .collect();
+
     let items: Vec<String> = bundle_names
         .iter()
         .map(|name| {
-            // Format with description
-            match workspace.lockfile.find_bundle(name) {
-                Some(bundle) => match &bundle.description {
-                    Some(desc) => format!("{}\n    {}", name, desc),
-                    None => name.clone(),
-                },
-                None => name.clone(),
+            let mut item = name.clone();
+
+            // Get bundle details from lockfile
+            if let Some(bundle) = workspace.lockfile.find_bundle(name) {
+                // Add description if present (even if empty, to keep separator consistent)
+                if let Some(desc) = &bundle.description {
+                    item.push_str("\n---\n    ");
+                    item.push_str(desc);
+                } else {
+                    // Add empty description separator to keep platforms at position 2
+                    item.push_str("\n---\n");
+                }
+            } else {
+                // Add empty description separator to keep platforms at position 2
+                item.push_str("\n---\n");
             }
+
+            // Add platforms if present
+            if let Some(platforms) = workspace_bundle_map.get(name) {
+                if !platforms.is_empty() {
+                    let platforms_str = platforms.join(", ");
+                    item.push_str("\n---\n    ");
+                    item.push_str(&platforms_str);
+                }
+            }
+
+            item
         })
         .collect();
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme)
+    let selection = match MultiSelect::with_theme(&UninstallTheme::new(max_name_width))
         .with_prompt("Select bundles to uninstall")
         .items(&items)
         .max_length(5)
