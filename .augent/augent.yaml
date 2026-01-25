@@ -1,3 +1,5 @@
 name: '@asyrjasalo/augent'
 
-bundles: []
+bundles:
+- name: my-local-bundle
+  subdirectory: my-local-bundle

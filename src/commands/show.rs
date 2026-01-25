@@ -333,10 +333,11 @@ fn display_bundle_info(
                 // Simple horizontal separator
                 println!(
                     "  {}",
-                    Style::new().dim().apply_to(format!(
-                        "{}",
-                        "─".repeat(file_width + platforms_display_width + 15)
-                    )),
+                    Style::new().dim().apply_to(
+                        "─"
+                            .repeat(file_width + platforms_display_width + 15)
+                            .to_string()
+                    ),
                 );
 
                 // File rows
@@ -392,10 +393,11 @@ fn display_bundle_info(
                 // Simple horizontal separator
                 println!(
                     "  {}",
-                    Style::new().dim().apply_to(format!(
-                        "{}",
-                        "─".repeat(file_width + platforms_display_width + 15)
-                    )),
+                    Style::new().dim().apply_to(
+                        "─"
+                            .repeat(file_width + platforms_display_width + 15)
+                            .to_string()
+                    ),
                 );
             }
         }
@@ -415,7 +417,7 @@ fn strip_ansi(s: &str) -> String {
         if c == '\x1b' {
             // Skip ANSI escape sequence
             if chars.next() == Some('[') {
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c.is_ascii_alphabetic() {
                         break;
                     }

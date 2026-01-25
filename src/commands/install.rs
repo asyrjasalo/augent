@@ -144,41 +144,13 @@ fn do_install_from_yaml(
 
         let mut resolver = Resolver::new(&workspace.root);
 
-        // Get all bundle sources from augent.yaml
-        let bundle_sources: Vec<String> = workspace
-            .bundle_config
-            .bundles
-            .iter()
-            .map(|dep| {
-                // Reconstruct source string from dependency
-                if let Some(ref git_url) = dep.git {
-                    let mut source = git_url.clone();
-                    if let Some(ref git_ref) = dep.git_ref {
-                        source.push('#');
-                        source.push_str(git_ref);
-                    }
-                    if let Some(ref subdir) = dep.subdirectory {
-                        source.push(':');
-                        source.push_str(subdir);
-                    }
-                    source
-                } else if let Some(ref subdir) = dep.subdirectory {
-                    // Local dependency
-                    subdir.clone()
-                } else {
-                    String::new()
-                }
-            })
-            .collect();
+        // Resolve workspace bundle which will automatically resolve its declared dependencies
+        // from augent.yaml. All bundles are treated uniformly by the resolver.
+        let bundle_sources = vec!["./.augent".to_string()];
 
-        if bundle_sources.is_empty() {
-            // No bundles defined - use empty workspace path
-            return do_install_empty_workspace(workspace, transaction, args, &[]);
-        }
+        println!("Resolving workspace bundle and its dependencies...");
 
-        println!("Resolving {} bundle(s)...", bundle_sources.len());
-
-        // Resolve all bundles and their dependencies
+        // Resolve all bundles uniformly through the resolver
         let resolved = resolver.resolve_multiple(&bundle_sources)?;
 
         if resolved.is_empty() {
@@ -200,41 +172,13 @@ fn do_install_from_yaml(
 
             let mut resolver = Resolver::new(&workspace.root);
 
-            // Get all bundle sources from augent.yaml
-            let bundle_sources: Vec<String> = workspace
-                .bundle_config
-                .bundles
-                .iter()
-                .map(|dep| {
-                    // Reconstruct source string from dependency
-                    if let Some(ref git_url) = dep.git {
-                        let mut source = git_url.clone();
-                        if let Some(ref git_ref) = dep.git_ref {
-                            source.push('#');
-                            source.push_str(git_ref);
-                        }
-                        if let Some(ref subdir) = dep.subdirectory {
-                            source.push(':');
-                            source.push_str(subdir);
-                        }
-                        source
-                    } else if let Some(ref subdir) = dep.subdirectory {
-                        // Local dependency
-                        subdir.clone()
-                    } else {
-                        String::new()
-                    }
-                })
-                .collect();
+            // Resolve workspace bundle which will automatically resolve its declared dependencies
+            // from augent.yaml. All bundles are treated uniformly by the resolver.
+            let bundle_sources = vec!["./.augent".to_string()];
 
-            if bundle_sources.is_empty() {
-                // No bundles defined - use empty workspace path
-                return do_install_empty_workspace(workspace, transaction, args, &[]);
-            }
+            println!("Resolving workspace bundle and its dependencies...");
 
-            println!("Resolving {} bundle(s)...", bundle_sources.len());
-
-            // Resolve all bundles and their dependencies
+            // Resolve all bundles uniformly through the resolver
             let resolved = resolver.resolve_multiple(&bundle_sources)?;
 
             if resolved.is_empty() {
@@ -420,6 +364,7 @@ fn do_install_from_yaml(
 
 /// Handle installation when no bundles are defined in augent.yaml
 /// Creates an empty workspace bundle with no dependencies, but installs its resources
+#[allow(dead_code)]
 fn do_install_empty_workspace(
     workspace: &mut Workspace,
     transaction: &mut Transaction,
@@ -460,7 +405,7 @@ fn do_install_empty_workspace(
     println!("Installing files...");
     let workspace_root = workspace.root.clone();
     let mut installer = Installer::new(&workspace_root, platforms.clone());
-    let workspace_bundles = installer.install_bundles(&[workspace_resolved.clone()])?;
+    let workspace_bundles = installer.install_bundles(std::slice::from_ref(&workspace_resolved))?;
 
     // Track created files in transaction
     for installed in installer.installed_files().values() {

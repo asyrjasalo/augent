@@ -1,6 +1,11 @@
 name: '@asyrjasalo/augent'
 
 bundles:
+- name: my-local-bundle
+  enabled:
+    commands/my-command.md:
+    - .gemini/commands/my-command.md
+
 - name: '@asyrjasalo/augent'
   enabled:
     agents/ai-engineer.md:

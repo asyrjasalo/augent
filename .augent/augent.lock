@@ -2,11 +2,22 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
+      "name": "my-local-bundle",
+      "source": {
+        "type": "dir",
+        "path": ".augent/my-local-bundle",
+        "hash": "blake3:b18049f81cbef8360e2191e839052db98f8bb91f6d6c4518e2a6683fc5feae32"
+      },
+      "files": [
+        "commands/my-command.md"
+      ]
+    },
+    {
       "name": "@asyrjasalo/augent",
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:430213be550b7257bb4bc377b7ccc4e2eee7a3b5ac1255c22b135c1ae3bec338"
+        "hash": "blake3:ca91bf4aa647c117b295eb07b0f90572dd49ca2bccc0eac249aa53977ce1fede"
       },
       "files": [
         "agents/ai-engineer.md"
