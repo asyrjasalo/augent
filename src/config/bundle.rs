@@ -163,7 +163,21 @@ impl BundleConfig {
 
     /// Remove dependency by name
     pub fn remove_dependency(&mut self, name: &str) -> Option<BundleDependency> {
-        if let Some(pos) = self.bundles.iter().position(|dep| dep.name == name) {
+        if let Some(pos) = self.bundles.iter().position(|dep| {
+            // Check if this is a simple name match
+            if dep.name == name {
+                return true;
+            }
+
+            // Check if this is a full bundle name (e.g., "author/repo/subdir")
+            // and match against name + subdirectory combination
+            if let Some(subdir) = &dep.subdirectory {
+                let full_name = format!("{}/{}", dep.name, subdir);
+                return full_name == name;
+            }
+
+            false
+        }) {
             Some(self.bundles.remove(pos))
         } else {
             None

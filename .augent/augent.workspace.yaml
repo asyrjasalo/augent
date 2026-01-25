@@ -1,38 +1,56 @@
 name: '@asyrjasalo/augent'
 
 bundles:
-- name: '@wshobson/agents/plugins/agent-orchestration'
-  enabled:
-    agents/context-manager.md:
-    - .claude/agents/context-manager.md
-    - .opencode/agents/context-manager.md
-    commands/improve-agent.md:
-    - .claude/commands/improve-agent.md
-    - .opencode/commands/improve-agent.md
-    commands/multi-agent-optimize.md:
-    - .claude/commands/multi-agent-optimize.md
-    - .opencode/commands/multi-agent-optimize.md
-
-- name: '@davila7/claude-code-templates/ai-ml-toolkit'
-  enabled:
-    agents/ml-engineer.md:
-    - .claude/agents/ml-engineer.md
-    - .opencode/agents/ml-engineer.md
-    agents/computer-vision-engineer.md:
-    - .claude/agents/computer-vision-engineer.md
-    - .opencode/agents/computer-vision-engineer.md
-    agents/mlops-engineer.md:
-    - .claude/agents/mlops-engineer.md
-    - .opencode/agents/mlops-engineer.md
-    agents/ai-engineer.md:
-    - .claude/agents/ai-engineer.md
-    - .opencode/agents/ai-engineer.md
-    agents/nlp-engineer.md:
-    - .claude/agents/nlp-engineer.md
-    - .opencode/agents/nlp-engineer.md
-
 - name: '@davila7/claude-code-templates/devops-automation'
   enabled:
     agents/cloud-architect.md:
-    - .claude/agents/cloud-architect.md
-    - .opencode/agents/cloud-architect.md
+    - .gemini/agents/cloud-architect.md
+
+- name: '@davila7/claude-code-templates/ai-ml-toolkit'
+  enabled:
+    agents/computer-vision-engineer.md:
+    - .gemini/agents/computer-vision-engineer.md
+    agents/ml-engineer.md:
+    - .gemini/agents/ml-engineer.md
+    agents/nlp-engineer.md:
+    - .gemini/agents/nlp-engineer.md
+    agents/mlops-engineer.md:
+    - .gemini/agents/mlops-engineer.md
+    agents/ai-engineer.md:
+    - .gemini/agents/ai-engineer.md
+
+- name: '@davila7/claude-code-templates/nextjs-vercel-pro'
+  enabled:
+    commands/nextjs-scaffold.md:
+    - .gemini/commands/nextjs-scaffold.md
+    agents/frontend-developer.md:
+    - .gemini/agents/frontend-developer.md
+    commands/vercel-edge-function.md:
+    - .gemini/commands/vercel-edge-function.md
+    agents/fullstack-developer.md:
+    - .gemini/agents/fullstack-developer.md
+    commands/vercel-env-sync.md:
+    - .gemini/commands/vercel-env-sync.md
+    commands/vercel-deploy-optimize.md:
+    - .gemini/commands/vercel-deploy-optimize.md
+    commands/nextjs-component-generator.md:
+    - .gemini/commands/nextjs-component-generator.md
+    commands/nextjs-api-tester.md:
+    - .gemini/commands/nextjs-api-tester.md
+    commands/nextjs-performance-audit.md:
+    - .gemini/commands/nextjs-performance-audit.md
+
+- name: '@davila7/claude-code-templates/git-workflow'
+  enabled:
+    commands/feature.md:
+    - .gemini/commands/feature.md
+    commands/release.md:
+    - .gemini/commands/release.md
+    commands/hotfix.md:
+    - .gemini/commands/hotfix.md
+    commands/flow-status.md:
+    - .gemini/commands/flow-status.md
+    commands/finish.md:
+    - .gemini/commands/finish.md
+    agents/git-flow-manager.md:
+    - .gemini/agents/git-flow-manager.md

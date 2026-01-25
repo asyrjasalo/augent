@@ -168,40 +168,6 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         }
     }
 
-    // Confirm once for all bundles
-    if !args.yes {
-        if bundle_names.len() == 1 {
-            print!(
-                "Are you sure you want to uninstall bundle '{}'? [y/N]: ",
-                bundle_names[0]
-            );
-        } else {
-            print!(
-                "Are you sure you want to uninstall {} bundles? [y/N]: ",
-                bundle_names.len()
-            );
-            println!();
-            for bundle_name in &bundle_names {
-                println!("  - {}", bundle_name);
-            }
-        }
-        use std::io::Write;
-        std::io::stdout().flush().unwrap();
-
-        let mut input = String::new();
-        std::io::stdin()
-            .read_line(&mut input)
-            .map_err(|e| AugentError::IoError {
-                message: format!("Failed to read confirmation: {}", e),
-            })?;
-
-        let input = input.trim().to_lowercase();
-        if input != "y" && input != "yes" {
-            println!("Uninstall cancelled.");
-            return Ok(());
-        }
-    }
-
     let mut transaction = Transaction::new(&workspace);
     transaction.backup_configs()?;
 
