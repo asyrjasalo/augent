@@ -20,6 +20,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -80,6 +85,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+          cache-on-failure: true
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -87,38 +98,21 @@ jobs:
 
       - name: Install cross (for cross-compilation)
         if: matrix.use_cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-index-
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-
+        run: |
+          if ! command -v cross &>/dev/null; then
+            cargo install cross
+          fi
 
       - name: Run tests
         if: matrix.build_only != true
-        env:
-          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         shell: bash
         run: |
+          # Use /tmp for cross (Docker): runner.temp is not mounted in the container.
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            export AUGENT_CACHE_DIR=/tmp/augent-cache
+          else
+            export AUGENT_CACHE_DIR="${{ runner.temp }}/augent-cache"
+          fi
           if [ "${{ matrix.use_cross }}" = "true" ]; then
             cross test --release --target ${{ matrix.target }}
           else
