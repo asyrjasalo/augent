@@ -1,6 +1,6 @@
 # Augent
 
-Augments AI coding platforms (such as Claude Code, OpenCode,Cursor) via packages (of skills, commands, rules, MCP servers...) in a reproducible,
+Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via packages (of skills, commands, rules, MCP servers...) in a reproducible,
 platform independent, and intuitive manner.
 
 ## Quick Start
@@ -133,6 +133,7 @@ What it does NOT:
 
 - [Commands Reference](docs/commands.md) - Detailed command documentation
 - [Bundle Format](docs/bundles.md) - Bundle structure and configuration
+- [Platform Support](docs/platforms.md) - Supported platforms and adding new ones
 - [Workspace Configuration](docs/workspace.md) - Workspace setup and management
 
 ## License

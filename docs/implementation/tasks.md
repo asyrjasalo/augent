@@ -886,7 +886,7 @@ Set up cross-platform builds and distribution.
 **Status:** Pending
 
 - [ ] Set up GitHub Releases with release notes from CHANGELOG
-- [ ] Make release pipeline publish to creates.io
+- [ ] Make release pipeline publish to crates.io
 - [ ] Make release pipeline publish binaries as release artifacts
 - [ ] Make release pipeline publish Python packages to PyPI
 - [ ] Prepare release 0.5.0

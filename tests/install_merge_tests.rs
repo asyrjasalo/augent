@@ -204,16 +204,31 @@ bundles: []
         .assert()
         .success();
 
-    // Verify both bundles are installed
-    let list_output = std::process::Command::new(env!("CARGO_BIN_EXE_augent"))
+    // Verify both bundles are installed (use augent_cmd for consistency with install; assert
+    // list success with stderr on failure for clearer CI errors on aarch64/cross)
+    let list_output = augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
         .output()
         .expect("Failed to run list command");
 
+    assert!(
+        list_output.status.success(),
+        "augent list failed: {}",
+        String::from_utf8_lossy(&list_output.stderr)
+    );
+
     let output = String::from_utf8_lossy(&list_output.stdout);
-    assert!(output.contains("bundle-1"), "bundle-1 should be installed");
-    assert!(output.contains("bundle-2"), "bundle-2 should be installed");
+    assert!(
+        output.contains("@test/bundle-1"),
+        "bundle-1 should be installed; list stdout: {}",
+        output
+    );
+    assert!(
+        output.contains("@test/bundle-2"),
+        "bundle-2 should be installed; list stdout: {}",
+        output
+    );
 }
 
 // Tests deep merge behavior for JSON files (used by default platforms for mcp.jsonc)
@@ -482,16 +497,31 @@ bundles: []
         .assert()
         .success();
 
-    // Verify both bundles are installed
-    let list_output = std::process::Command::new(env!("CARGO_BIN_EXE_augent"))
+    // Verify both bundles are installed (use augent_cmd for consistency with install; assert
+    // list success with stderr on failure for clearer CI errors on aarch64/cross)
+    let list_output = augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
         .output()
         .expect("Failed to run list command");
 
+    assert!(
+        list_output.status.success(),
+        "augent list failed: {}",
+        String::from_utf8_lossy(&list_output.stderr)
+    );
+
     let output = String::from_utf8_lossy(&list_output.stdout);
-    assert!(output.contains("bundle-a"), "bundle-a should be installed");
-    assert!(output.contains("bundle-b"), "bundle-b should be installed");
+    assert!(
+        output.contains("@test/bundle-a"),
+        "bundle-a should be installed; list stdout: {}",
+        output
+    );
+    assert!(
+        output.contains("@test/bundle-b"),
+        "bundle-b should be installed; list stdout: {}",
+        output
+    );
 }
 
 #[test]

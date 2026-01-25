@@ -369,7 +369,7 @@ Testing infrastructure, documentation, and comprehensive test coverage.
 
 **Status:** Complete
 
-Additional test coverage improvements based on audit of user-facing functionality.
+Additional test coverage improvements based on audit of user-facing functionality (Features 13.1–13.16), including Marketplace.json support for bundle discovery.
 
 ---
 
