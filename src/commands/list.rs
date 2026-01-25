@@ -3,6 +3,8 @@
 //! This command lists all installed bundles with their sources,
 //! enabled platforms, and file counts.
 
+use dialoguer::console::Style;
+
 use std::path::PathBuf;
 
 use crate::cli::ListArgs;
@@ -45,6 +47,7 @@ fn list_bundles(workspace: &Workspace, detailed: bool) -> Result<()> {
     }
 
     println!("Installed bundles ({}):", lockfile.bundles.len());
+    println!();
 
     for bundle in &lockfile.bundles {
         if detailed {
@@ -61,18 +64,87 @@ fn list_bundles(workspace: &Workspace, detailed: bool) -> Result<()> {
 /// Display bundle in simple format
 fn display_bundle_simple(
     bundle: &crate::config::LockedBundle,
-    workspace_config: &crate::config::WorkspaceConfig,
+    _workspace_config: &crate::config::WorkspaceConfig,
     _detailed: bool,
 ) {
-    let platforms = get_platforms_for_bundle(&bundle.name, workspace_config);
-    let source_str = format_source(&bundle.source);
+    let resource_counts = count_resources_by_type(&bundle.files);
 
-    println!("  {}", bundle.name);
-    println!("    Source: {}", source_str);
-    if !platforms.is_empty() {
-        println!("    Platforms: {}", platforms.join(", "));
+    println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
+    println!("    {}", Style::new().bold().apply_to("Source:"));
+    display_source_detailed_with_indent(&bundle.source, "      ");
+    if !resource_counts.is_empty() {
+        println!("    {}", Style::new().bold().apply_to("Resources:"));
+
+        // Group by resource type
+        let mut resource_by_type: std::collections::HashMap<&str, Vec<String>> =
+            std::collections::HashMap::new();
+        for file in &bundle.files {
+            let resource_type = extract_resource_type(file);
+            resource_by_type
+                .entry(resource_type)
+                .or_default()
+                .push(file.clone());
+        }
+
+        // Sort resource types
+        let mut sorted_types: Vec<_> = resource_by_type.keys().copied().collect();
+        sorted_types.sort();
+
+        // Display each resource type with simple file list
+        for resource_type in sorted_types.iter() {
+            let type_display = capitalize_word(resource_type);
+            println!("      {}", Style::new().cyan().apply_to(type_display));
+
+            // File rows
+            let files = resource_by_type.get(resource_type).unwrap();
+            for file in files {
+                println!("        {}", Style::new().dim().apply_to(file),);
+            }
+        }
     }
-    println!("    Files: {}", bundle.files.len());
+}
+
+/// Count resources by type (commands, rules, skills, agents, etc.)
+fn count_resources_by_type(files: &[String]) -> Vec<(&str, usize)> {
+    use std::collections::HashMap;
+    let mut counts: HashMap<&str, usize> = HashMap::new();
+
+    for file in files {
+        let resource_type = extract_resource_type(file);
+        *counts.entry(resource_type).or_insert(0) += 1;
+    }
+
+    let mut result: Vec<_> = counts.into_iter().collect();
+    result.sort_by(|a, b| a.0.cmp(b.0));
+    result
+}
+
+/// Extract resource type from file path
+fn extract_resource_type(file: &str) -> &'static str {
+    let parts: Vec<&str> = file.split('/').collect();
+    if parts.is_empty() {
+        return "other";
+    }
+
+    let first_part = parts[0];
+    match first_part {
+        "commands" => "commands",
+        "rules" => "rules",
+        "skills" => "skills",
+        "agents" => "agents",
+        "tools" => "tools",
+        "prompts" => "prompts",
+        "templates" => "templates",
+        _ => "other",
+    }
+}
+
+/// Capitalize first letter of a word
+fn capitalize_word(word: &str) -> String {
+    if word.is_empty() {
+        return String::new();
+    }
+    word.chars().next().unwrap().to_uppercase().to_string() + &word[1..]
 }
 
 /// Display bundle in detailed format
@@ -81,34 +153,64 @@ fn display_bundle_detailed(
     workspace_config: &crate::config::WorkspaceConfig,
     detailed: bool,
 ) {
-    let platforms = get_platforms_for_bundle(&bundle.name, workspace_config);
-    let source_str = format_source_detailed(&bundle.source);
     let workspace_bundle = workspace_config.find_bundle(&bundle.name);
+    let resource_counts = count_resources_by_type(&bundle.files);
 
-    println!("  {}", bundle.name);
+    println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
 
     // Display metadata if available
     if let Some(ref description) = bundle.description {
-        println!("    Description: {}", description);
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Description:"),
+            description
+        );
     }
     if let Some(ref version) = bundle.version {
-        println!("    Version: {}", version);
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Version:"),
+            version
+        );
     }
     if let Some(ref author) = bundle.author {
-        println!("    Author: {}", author);
+        println!("    {} {}", Style::new().bold().apply_to("Author:"), author);
     }
     if let Some(ref license) = bundle.license {
-        println!("    License: {}", license);
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("License:"),
+            license
+        );
     }
     if let Some(ref homepage) = bundle.homepage {
-        println!("    Homepage: {}", homepage);
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Homepage:"),
+            homepage
+        );
     }
 
-    println!("    Source: {}", source_str);
-    println!("    Files: {}", bundle.files.len());
+    println!();
+    println!("{}", Style::new().bold().apply_to("Source:"));
+    display_source_detailed(&bundle.source);
 
-    if !platforms.is_empty() {
-        println!("    Platforms: {}", platforms.join(", "));
+    println!();
+    println!(
+        "    {} {}",
+        Style::new().bold().apply_to("Files:"),
+        bundle.files.len()
+    );
+
+    if !resource_counts.is_empty() {
+        println!("    {}", Style::new().bold().apply_to("Resources:"));
+        for (resource_type, count) in resource_counts {
+            println!(
+                "      {}: {}",
+                Style::new().cyan().apply_to(resource_type),
+                count
+            );
+        }
     }
 
     if detailed && !bundle.files.is_empty() {
@@ -129,15 +231,27 @@ fn display_bundle_detailed(
     }
 }
 
-/// Format source for simple display
-fn format_source(source: &LockedSource) -> String {
+/// Display source information in detailed format (same as show command)
+fn display_source_detailed(source: &LockedSource) {
+    display_source_detailed_with_indent(source, "  ");
+}
+
+/// Display source information with custom indentation
+fn display_source_detailed_with_indent(source: &LockedSource, indent: &str) {
     match source {
         LockedSource::Dir { path, .. } => {
-            if let Some(stripped) = path.strip_prefix(".augent/bundles/") {
-                stripped.to_string()
-            } else {
-                path.clone()
-            }
+            println!(
+                "{}{} {}",
+                indent,
+                Style::new().bold().apply_to("Type:"),
+                Style::new().green().apply_to("Directory")
+            );
+            println!(
+                "{}{} {}",
+                indent,
+                Style::new().bold().apply_to("Path:"),
+                path
+            );
         }
         LockedSource::Git {
             url,
@@ -146,132 +260,44 @@ fn format_source(source: &LockedSource) -> String {
             path,
             ..
         } => {
-            let mut parts = vec![url.clone()];
-            if let Some(ref_str) = git_ref {
-                parts.push(format!("ref: {}", ref_str));
+            println!(
+                "{}{} {}",
+                indent,
+                Style::new().bold().apply_to("Type:"),
+                Style::new().green().apply_to("Git")
+            );
+            println!("{}{} {}", indent, Style::new().bold().apply_to("URL:"), url);
+            if let Some(ref_name) = git_ref {
+                println!(
+                    "{}{} {}",
+                    indent,
+                    Style::new().bold().apply_to("Ref:"),
+                    ref_name
+                );
             }
-            parts.push(format!("sha: {}", &sha[..8]));
-            if let Some(p) = path {
-                parts.push(format!("path: {}", p));
-            }
-            parts.join(", ")
-        }
-    }
-}
-
-/// Format source for detailed display
-fn format_source_detailed(source: &LockedSource) -> String {
-    match source {
-        LockedSource::Dir { path, hash } => {
-            format!("Dir: {} (hash: {})", path, hash)
-        }
-        LockedSource::Git {
-            url,
-            git_ref,
-            sha,
-            path,
-            hash,
-        } => {
-            let mut parts = vec![format!("Git: {}", url)];
-            if let Some(ref_str) = git_ref {
-                parts.push(format!("ref: {}", ref_str));
-            }
-            parts.push(format!("sha: {}", sha));
-            if let Some(p) = path {
-                parts.push(format!("subdir: {}", p));
-            }
-            parts.push(format!("hash: {}", hash));
-            parts.join("\n          ")
-        }
-    }
-}
-
-/// Get list of platforms that have files installed from this bundle
-fn get_platforms_for_bundle(
-    bundle_name: &str,
-    workspace_config: &crate::config::WorkspaceConfig,
-) -> Vec<String> {
-    let workspace_bundle = match workspace_config.find_bundle(bundle_name) {
-        Some(b) => b,
-        None => return vec![],
-    };
-
-    let mut platforms = std::collections::HashSet::new();
-    for locations in workspace_bundle.enabled.values() {
-        for location in locations {
-            if let Some(platform) = location.split('/').next() {
-                let platform = platform.trim_start_matches('.');
-                if !platform.is_empty() {
-                    platforms.insert(platform.to_string());
-                }
+            println!("{}{} {}", indent, Style::new().bold().apply_to("SHA:"), sha);
+            if let Some(subdir) = path {
+                println!(
+                    "{}{} {}",
+                    indent,
+                    Style::new().bold().apply_to("Subdirectory:"),
+                    subdir
+                );
             }
         }
     }
-
-    let mut platforms: Vec<String> = platforms.into_iter().collect();
-    platforms.sort();
-    platforms
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{WorkspaceBundle, WorkspaceConfig};
 
     #[test]
-    fn test_format_source_dir() {
-        let source = LockedSource::Dir {
-            path: ".augent/bundles/test-bundle".to_string(),
-            hash: "blake3:abc123".to_string(),
-        };
-        let formatted = format_source(&source);
-        assert_eq!(formatted, "test-bundle");
-    }
-
-    #[test]
-    fn test_format_source_git() {
-        let source = LockedSource::Git {
-            url: "https://github.com/author/repo.git".to_string(),
-            git_ref: Some("main".to_string()),
-            sha: "abc123def456".to_string(),
-            path: Some("subdir".to_string()),
-            hash: "blake3:xyz789".to_string(),
-        };
-        let formatted = format_source(&source);
-        assert!(formatted.contains("https://github.com/author/repo.git"));
-        assert!(formatted.contains("ref: main"));
-        assert!(formatted.contains("sha: abc123de"));
-        assert!(formatted.contains("path: subdir"));
-    }
-
-    #[test]
-    fn test_get_platforms_for_bundle() {
-        let mut workspace_config = WorkspaceConfig::new("@test/bundle");
-        let mut bundle = WorkspaceBundle::new("test-bundle");
-
-        bundle.add_file(
-            "commands/test.md",
-            vec![
-                ".opencode/commands/test.md".to_string(),
-                ".cursor/rules/test.mdc".to_string(),
-            ],
-        );
-
-        bundle.add_file("agents/test.md", vec![".claude/agents/test.md".to_string()]);
-
-        workspace_config.add_bundle(bundle);
-
-        let platforms = get_platforms_for_bundle("test-bundle", &workspace_config);
-        assert_eq!(platforms.len(), 3);
-        assert!(platforms.contains(&"opencode".to_string()));
-        assert!(platforms.contains(&"cursor".to_string()));
-        assert!(platforms.contains(&"claude".to_string()));
-    }
-
-    #[test]
-    fn test_get_platforms_for_bundle_empty() {
-        let workspace_config = WorkspaceConfig::new("@test/bundle");
-        let platforms = get_platforms_for_bundle("non-existent", &workspace_config);
-        assert!(platforms.is_empty());
+    fn test_extract_resource_type() {
+        assert_eq!(extract_resource_type("commands/test.md"), "commands");
+        assert_eq!(extract_resource_type("rules/lint.md"), "rules");
+        assert_eq!(extract_resource_type("skills/review.md"), "skills");
+        assert_eq!(extract_resource_type("agents/cicd.md"), "agents");
+        assert_eq!(extract_resource_type("other_file.txt"), "other");
     }
 }

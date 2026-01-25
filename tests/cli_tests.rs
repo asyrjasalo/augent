@@ -190,11 +190,10 @@ bundles:
         .stdout(predicate::str::contains("Installed bundles (2)"))
         .stdout(predicate::str::contains("test-bundle-1"))
         .stdout(predicate::str::contains("test-bundle-2"))
-        .stdout(predicate::str::contains("Files: 2"))
-        .stdout(predicate::str::contains("Files: 1"))
-        .stdout(predicate::str::contains(
-            "Platforms: claude, cursor, opencode",
-        ));
+        .stdout(predicate::str::contains("Type: Git"))
+        .stdout(predicate::str::contains("Agents"))
+        .stdout(predicate::str::contains("Commands"))
+        .stdout(predicate::str::contains("Rules"));
 }
 
 #[test]
@@ -245,8 +244,10 @@ bundles:
         .assert()
         .success()
         .stdout(predicate::str::contains("test-bundle"))
-        .stdout(predicate::str::contains("Dir:"))
-        .stdout(predicate::str::contains("blake3:abc123"))
+        .stdout(predicate::str::contains("Type: Directory"))
+        .stdout(predicate::str::contains(
+            "Path: .augent/bundles/test-bundle",
+        ))
         .stdout(predicate::str::contains("commands/test.md →"))
         .stdout(predicate::str::contains(".opencode/commands/test.md"));
 }
@@ -306,15 +307,17 @@ bundles:
 "#,
     );
 
+    // Create .opencode directory so platform is detected
+    fs::create_dir_all(workspace.path.join(".opencode")).unwrap();
+
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["show", "@user/test-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Bundle: @user/test-bundle"))
-        .stdout(predicate::str::contains("Type: Directory"))
-        .stdout(predicate::str::contains("Files (1)"))
-        .stdout(predicate::str::contains("- commands/test.md"))
+        .stdout(predicate::str::contains("@user/test-bundle"))
+        .stdout(predicate::str::contains("Commands"))
+        .stdout(predicate::str::contains("commands/test.md"))
         .stdout(predicate::str::contains("Dependencies: None"));
 }
 
@@ -366,10 +369,9 @@ bundles:
         .args(["show", "@user/test-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Bundle: @user/test-bundle"))
-        .stdout(predicate::str::contains(
-            "Installation Status: Not installed",
-        ));
+        .stdout(predicate::str::contains("@user/test-bundle"))
+        .stdout(predicate::str::contains("Resources:"))
+        .stdout(predicate::str::contains("Not installed"));
 }
 
 #[test]

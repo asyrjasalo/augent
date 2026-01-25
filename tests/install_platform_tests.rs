@@ -536,8 +536,8 @@ bundles: []
         "Rules should transform to .opencode/rules/"
     );
     assert!(
-        workspace.file_exists(".opencode/skills/debug.md"),
-        "Skills should transform to .opencode/skills/"
+        workspace.file_exists(".opencode/skills/debug/SKILL.md"),
+        "Skills should transform to .opencode/skills/<name>/SKILL.md"
     );
 
     assert_eq!(
@@ -551,7 +551,7 @@ bundles: []
         "Rule content should be preserved"
     );
     assert_eq!(
-        workspace.read_file(".opencode/skills/debug.md"),
+        workspace.read_file(".opencode/skills/debug/SKILL.md"),
         "# Debugging skill",
         "Skill content should be preserved"
     );

@@ -129,10 +129,11 @@ pub struct ListArgs {
 #[command(after_help = "EXAMPLES:\n  \
                   Show bundle information:\n    augent show my-bundle\n\n\
                   Show a specific bundle:\n    augent show author/debug-tools\n\n\
+                  Select bundle interactively:\n    augent show\n\n\
                   Use verbose output:\n    augent show my-bundle -v")]
 pub struct ShowArgs {
-    /// Bundle name to show
-    pub name: String,
+    /// Bundle name to show (if omitted, shows interactive menu)
+    pub name: Option<String>,
 }
 
 /// Arguments for completions command
@@ -257,7 +258,18 @@ mod tests {
         let cli = Cli::try_parse_from(["augent", "show", "my-bundle"]).unwrap();
         match cli.command {
             Commands::Show(args) => {
-                assert_eq!(args.name, "my-bundle");
+                assert_eq!(args.name, Some("my-bundle".to_string()));
+            }
+            _ => panic!("Expected Show command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_show_no_name() {
+        let cli = Cli::try_parse_from(["augent", "show"]).unwrap();
+        match cli.command {
+            Commands::Show(args) => {
+                assert_eq!(args.name, None);
             }
             _ => panic!("Expected Show command"),
         }

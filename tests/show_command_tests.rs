@@ -194,8 +194,9 @@ bundles: []
         .args(["show", "@test/single-agent-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Installation Status"))
-        .stdout(predicate::str::contains("cursor"));
+        .stdout(predicate::str::contains("Commands"))
+        .stdout(predicate::str::contains("commands/test.md"))
+        .stdout(predicate::str::contains("Cursor"));
 }
 
 #[test]
@@ -230,7 +231,9 @@ bundles: []
         .args(["show", "@test/multi-file-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Files"))
+        .stdout(predicate::str::contains("Commands"))
+        .stdout(predicate::str::contains("Rules"))
+        .stdout(predicate::str::contains("Skills"))
         .stdout(predicate::str::contains("commands/cmd1.md"))
         .stdout(predicate::str::contains("commands/cmd2.md"))
         .stdout(predicate::str::contains("rules/rule1.md"))
@@ -264,5 +267,6 @@ bundles: []
         .args(["show", "@test/empty-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Files: None").or(predicate::str::contains("0 files")));
+        .stdout(predicate::str::contains("Resources:"))
+        .stdout(predicate::str::contains("No files installed"));
 }

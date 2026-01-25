@@ -47,8 +47,8 @@ bundles: []
         .success()
         .stdout(predicate::str::contains("test-bundle"))
         .stdout(predicate::str::contains("Source:"))
-        .stdout(predicate::str::contains("Files:"))
-        .stdout(predicate::str::contains("Platforms:"));
+        .stdout(predicate::str::contains("Type: Directory"))
+        .stdout(predicate::str::contains("Provided files:"));
 }
 
 // ============================================================================
@@ -305,8 +305,7 @@ bundles: []
         .stdout(predicate::str::contains("License:"))
         .stdout(predicate::str::contains("Homepage:"))
         .stdout(predicate::str::contains("Source:"))
-        .stdout(predicate::str::contains("Files:"))
-        .stdout(predicate::str::contains("Platforms:"));
+        .stdout(predicate::str::contains("Provided files:"));
 }
 
 #[test]

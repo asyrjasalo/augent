@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Interactive bundle selection menu for `show` command when no bundle name is provided
 - Initial release of Augent
 - Supports 14 AI coding platforms (incl. Claude Code, Cursor, OpenCode)
 - Packaging for commands, rules, skills, subagents and MCP servers

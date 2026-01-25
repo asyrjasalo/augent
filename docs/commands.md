@@ -180,19 +180,19 @@ debug-tools   ./local         all
 
 ## show
 
-Display detailed information about a specific bundle.
+Display detailed information about a bundle.
 
 ### Syntax
 
 ```bash
-augent show [OPTIONS] <NAME>
+augent show [OPTIONS] [NAME]
 ```
 
 ### Arguments
 
 | Argument | Description |
 |----------|-------------|
-| `<NAME>` | Bundle name to show |
+| `[NAME]` | Bundle name to show (if omitted, shows interactive menu) |
 
 ### Options
 
@@ -211,9 +211,16 @@ augent show my-bundle
 # Show a specific bundle
 augent show author/debug-tools
 
+# Select bundle interactively
+augent show
+
 # Use verbose output
 augent show my-bundle -v
 ```
+
+### Interactive Mode
+
+When no bundle name is provided, `augent show` displays an interactive menu showing all installed bundles. Use arrow keys to navigate and press ENTER to select a bundle.
 
 ### Information Displayed
 

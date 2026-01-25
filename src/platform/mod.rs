@@ -266,7 +266,6 @@ pub fn default_platforms() -> Vec<Platform> {
         // OpenCode
         Platform::new("opencode", "OpenCode", ".opencode")
             .with_detection(".opencode")
-            .with_detection("AGENTS.md")
             .with_transform(TransformRule::new(
                 "commands/**/*.md",
                 ".opencode/commands/**/*.md",
@@ -281,7 +280,7 @@ pub fn default_platforms() -> Vec<Platform> {
             ))
             .with_transform(TransformRule::new(
                 "skills/**/*.md",
-                ".opencode/skills/**/*.md",
+                ".opencode/skills/{name}/SKILL.md",
             ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".opencode/opencode.json")

@@ -455,12 +455,20 @@ impl<'a> Installer<'a> {
         };
 
         for installation in installations {
-            let source_content = fs::read_to_string(&installation.source_path).map_err(|e| {
-                AugentError::FileReadFailed {
-                    path: installation.source_path.display().to_string(),
-                    reason: e.to_string(),
+            let mut source_content =
+                fs::read_to_string(&installation.source_path).map_err(|e| {
+                    AugentError::FileReadFailed {
+                        path: installation.source_path.display().to_string(),
+                        reason: e.to_string(),
+                    }
+                })?;
+
+            // Convert OpenCode frontmatter if needed
+            if self.is_opencode_metadata_file(target_path) {
+                if let Ok(converted) = self.convert_opencode_frontmatter_only(&source_content) {
+                    source_content = converted;
                 }
-            })?;
+            }
 
             if !result.is_empty() {
                 result.push_str("\n\n<!-- Augent: merged content below -->\n\n");
@@ -694,6 +702,11 @@ impl<'a> Installer<'a> {
             return self.convert_markdown_to_toml(source, target);
         }
 
+        // Check if this is an OpenCode commands/agents/skills file that needs frontmatter conversion
+        if self.is_opencode_metadata_file(target) {
+            return self.convert_opencode_frontmatter(source, target);
+        }
+
         fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
             path: target.display().to_string(),
             reason: e.to_string(),
@@ -705,6 +718,14 @@ impl<'a> Installer<'a> {
     fn is_gemini_command_file(&self, target: &Path) -> bool {
         let path_str = target.to_string_lossy();
         path_str.contains(".gemini/commands/") && path_str.ends_with(".md")
+    }
+
+    /// Check if target path is an OpenCode commands/agents/skills file
+    fn is_opencode_metadata_file(&self, target: &Path) -> bool {
+        let path_str = target.to_string_lossy();
+        (path_str.contains(".opencode/commands/") && path_str.ends_with(".md"))
+            || (path_str.contains(".opencode/agents/") && path_str.ends_with(".md"))
+            || (path_str.contains(".opencode/skills/") && path_str.ends_with(".md"))
     }
 
     /// Convert markdown file to TOML format for Gemini CLI commands
@@ -761,9 +782,9 @@ impl<'a> Installer<'a> {
         let lines: Vec<&str> = content.lines().collect();
 
         // Check for frontmatter (between --- lines)
-        if lines.len() >= 3 && lines[0] == "---" {
+        if lines.len() >= 3 && lines[0].eq("---") {
             // Find closing --- (skip first one at index 0)
-            if let Some(end_idx) = lines[1..].iter().position(|line| *line == "---") {
+            if let Some(end_idx) = lines[1..].iter().position(|line| line.eq(&"---")) {
                 // Convert back to full index
                 let end_idx = end_idx + 1;
 
@@ -771,7 +792,7 @@ impl<'a> Installer<'a> {
                 let frontmatter: String = lines[1..end_idx].join("\n");
                 let description = self.extract_description_from_frontmatter(&frontmatter);
 
-                // Get the prompt content (everything after the closing ---)
+                // Get the prompt content (everything after closing ---)
                 let prompt: String = lines[end_idx + 1..].join("\n");
 
                 return (description, prompt);
@@ -809,6 +830,213 @@ impl<'a> Installer<'a> {
         }
 
         None
+    }
+
+    /// Convert markdown frontmatter to OpenCode format
+    fn convert_opencode_frontmatter(&self, source: &Path, target: &Path) -> Result<()> {
+        // Read markdown content
+        let content = fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
+            path: source.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        let path_str = target.to_string_lossy();
+
+        // Determine file type and convert accordingly
+        if path_str.contains(".opencode/skills/") {
+            self.convert_opencode_skill(&content, target)?;
+        } else if path_str.contains(".opencode/commands/") {
+            self.convert_opencode_command(&content, target)?;
+        } else if path_str.contains(".opencode/agents/") {
+            self.convert_opencode_agent(&content, target)?;
+        } else {
+            // Fallback: just copy
+            fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
+                path: target.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+
+        Ok(())
+    }
+
+    /// Convert to OpenCode skill format with proper frontmatter
+    fn convert_opencode_skill(&self, content: &str, target: &Path) -> Result<()> {
+        let lines: Vec<&str> = content.lines().collect();
+
+        // Extract frontmatter fields if present
+        let (frontmatter, body) = if lines.len() >= 3 && lines[0].eq("---") {
+            if let Some(end_idx) = lines[1..].iter().position(|line| line.eq(&"---")) {
+                let fm = lines[1..end_idx + 1].join("\n");
+                let body_content = lines[end_idx + 2..].join("\n");
+                (Some(fm), body_content)
+            } else {
+                (None, content.to_string())
+            }
+        } else {
+            (None, content.to_string())
+        };
+
+        // Build OpenCode frontmatter for skills (only if frontmatter exists)
+        if frontmatter.is_none() {
+            // No frontmatter - just write content as-is
+            fs::write(target, body).map_err(|e| AugentError::FileWriteFailed {
+                path: target.display().to_string(),
+                reason: e.to_string(),
+            })?;
+            return Ok(());
+        }
+
+        let mut new_frontmatter = String::new();
+        let mut frontmatter_map = std::collections::HashMap::new();
+
+        // Parse existing frontmatter
+        if let Some(fm) = &frontmatter {
+            for line in fm.lines() {
+                let line = line.trim();
+                if let Some((key, value)) = line.split_once(':') {
+                    let key = key.trim();
+                    let value = value.trim().trim_start_matches('"').trim_end_matches('"');
+                    frontmatter_map.insert(key.to_string(), value.to_string());
+                }
+            }
+        }
+
+        // Required fields for OpenCode skills
+        new_frontmatter.push_str("---\n");
+
+        // name (required) - extract from filename if not present
+        let name = frontmatter_map
+            .get("name")
+            .map(|s| s.as_str())
+            .or_else(|| target.file_stem().and_then(|s| s.to_str()))
+            .unwrap_or("unknown");
+        new_frontmatter.push_str(&format!("name: {}\n", name));
+
+        // description (required)
+        if let Some(desc) = frontmatter_map.get("description") {
+            new_frontmatter.push_str(&format!("description: {}\n", desc));
+        }
+
+        // Optional fields
+        if let Some(license) = frontmatter_map.get("license") {
+            new_frontmatter.push_str(&format!("license: {}\n", license));
+        }
+
+        if let Some(compatibility) = frontmatter_map.get("compatibility") {
+            new_frontmatter.push_str(&format!("compatibility: {}\n", compatibility));
+        }
+
+        // metadata (optional, string-to-string map)
+        if frontmatter_map.contains_key("metadata") {
+            // Keep existing metadata if present
+            if let Some(meta) = frontmatter_map.get("metadata") {
+                new_frontmatter.push_str(&format!("metadata: {}\n", meta));
+            }
+        }
+
+        new_frontmatter.push_str("---\n\n");
+
+        // Write to target
+        fs::write(target, format!("{}{}", new_frontmatter, body)).map_err(|e| {
+            AugentError::FileWriteFailed {
+                path: target.display().to_string(),
+                reason: e.to_string(),
+            }
+        })?;
+
+        Ok(())
+    }
+
+    /// Convert to OpenCode command format with proper frontmatter
+    fn convert_opencode_command(&self, content: &str, target: &Path) -> Result<()> {
+        let (description, prompt) = self.extract_description_and_prompt(content);
+
+        // Build OpenCode frontmatter for commands
+        let mut new_content = String::new();
+
+        if let Some(desc) = description {
+            new_content.push_str("---\n");
+            new_content.push_str(&format!("description: {}\n", desc));
+            new_content.push_str("---\n\n");
+        }
+
+        new_content.push_str(&prompt);
+
+        // Write to target
+        fs::write(target, new_content).map_err(|e| AugentError::FileWriteFailed {
+            path: target.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        Ok(())
+    }
+
+    /// Convert to OpenCode agent format with proper frontmatter
+    fn convert_opencode_agent(&self, content: &str, target: &Path) -> Result<()> {
+        let (description, prompt) = self.extract_description_and_prompt(content);
+
+        // Build OpenCode frontmatter for agents
+        let mut new_content = String::new();
+
+        if let Some(desc) = description {
+            new_content.push_str("---\n");
+            new_content.push_str(&format!("description: {}\n", desc));
+            new_content.push_str("---\n\n");
+        }
+
+        new_content.push_str(&prompt);
+
+        // Write to target
+        fs::write(target, new_content).map_err(|e| AugentError::FileWriteFailed {
+            path: target.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        Ok(())
+    }
+
+    /// Convert OpenCode frontmatter only (for merge operations)
+    fn convert_opencode_frontmatter_only(&self, content: &str) -> Result<String> {
+        let lines: Vec<&str> = content.lines().collect();
+
+        // Extract frontmatter fields if present
+        let (frontmatter, body) = if lines.len() >= 3 && lines[0].eq("---") {
+            if let Some(end_idx) = lines[1..].iter().position(|line| line.eq(&"---")) {
+                let fm = lines[1..end_idx + 1].join("\n");
+                let body_content = lines[end_idx + 2..].join("\n");
+                (Some(fm), body_content)
+            } else {
+                (None, content.to_string())
+            }
+        } else {
+            (None, content.to_string())
+        };
+
+        // Build OpenCode frontmatter
+        let mut new_frontmatter = String::new();
+        let mut frontmatter_map = std::collections::HashMap::new();
+
+        // Parse existing frontmatter
+        if let Some(fm) = &frontmatter {
+            for line in fm.lines() {
+                let line = line.trim();
+                if let Some((key, value)) = line.split_once(':') {
+                    let key = key.trim();
+                    let value = value.trim().trim_start_matches('"').trim_end_matches('"');
+                    frontmatter_map.insert(key.to_string(), value.to_string());
+                }
+            }
+        }
+
+        // Add frontmatter
+        new_frontmatter.push_str("---\n");
+        for (key, value) in &frontmatter_map {
+            new_frontmatter.push_str(&format!("{}: {}\n", key, value));
+        }
+        new_frontmatter.push_str("---\n\n");
+
+        Ok(format!("{}{}", new_frontmatter, body))
     }
 
     /// Escape a string for use in TOML basic strings
