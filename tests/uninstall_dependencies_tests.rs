@@ -254,7 +254,6 @@ bundles: []
         .success();
 
     // Verify bundles are installed
-    let initial_list = "initial list before uninstall";
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
