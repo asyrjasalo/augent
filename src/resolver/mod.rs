@@ -434,6 +434,11 @@ impl Resolver {
             self.current_context.join(path)
         };
 
+        // Validate that local bundle path doesn't escape the workspace root
+        // This security check ensures all local bundles are contained within the workspace
+        // Also validate that paths in dependencies are not absolute
+        self.validate_local_bundle_path(&full_path, path, dependency.is_some())?;
+
         // Check if directory exists
         if !full_path.is_dir() {
             return Err(AugentError::BundleNotFound {
@@ -1026,6 +1031,97 @@ impl Resolver {
     #[allow(dead_code)]
     pub fn resolved_bundles(&self) -> &HashMap<String, ResolvedBundle> {
         &self.resolved
+    }
+
+    /// Validate that a local bundle path doesn't escape the workspace root
+    ///
+    /// This ensures that local bundles (with `type: dir` in the lockfile) are always
+    /// contained within the workspace repository. This is a security measure to prevent
+    /// bundles from referencing files outside the repository.
+    ///
+    /// # Errors
+    /// Returns `BundleValidationFailed` if the resolved path is outside the workspace.
+    fn validate_local_bundle_path(
+        &self,
+        full_path: &Path,
+        user_path: &Path,
+        is_dependency: bool,
+    ) -> Result<()> {
+        use std::path::Component;
+
+        // Reject absolute paths in dependencies - only relative paths are allowed for bundles in augent.yaml
+        // Absolute paths break portability when the repo is cloned or moved to a different machine
+        if is_dependency && user_path.is_absolute() {
+            return Err(AugentError::BundleValidationFailed {
+                message: format!(
+                    "Local bundle path '{}' is an absolute path. \
+                     Bundles in augent.yaml must use relative paths (e.g., './bundles/my-bundle', '../shared-bundle'). \
+                     Absolute paths break portability when the repository is cloned or moved to a different machine.",
+                    user_path.display()
+                ),
+            });
+        }
+
+        // Helper function to normalize a path by resolving . and .. components
+        // This does NOT resolve symlinks, only normalizes path separators and dot references
+        fn normalize_path(path: &Path) -> std::path::PathBuf {
+            let mut normalized = std::path::PathBuf::new();
+            for component in path.components() {
+                match component {
+                    Component::ParentDir => {
+                        normalized.pop();
+                    }
+                    Component::CurDir => {
+                        // . means current directory, skip it
+                    }
+                    _ => {
+                        normalized.push(component);
+                    }
+                }
+            }
+            normalized
+        }
+
+        // Also try to canonicalize (resolve symlinks) for a secondary check
+        let full_path_canonical = std::fs::canonicalize(full_path).ok();
+        let workspace_root_canonical = std::fs::canonicalize(&self.workspace_root).ok();
+
+        // Normalize both paths to handle `.` and `..` components
+        let normalized_full = normalize_path(full_path);
+        let normalized_workspace = normalize_path(&self.workspace_root);
+
+        // Check if the bundle path is within the workspace using the primary check
+        let is_within_normalized = normalized_full.starts_with(&normalized_workspace);
+
+        // Also check using canonical paths if both can be canonicalized
+        let is_within_canonical = if let (Some(full_canon), Some(workspace_canon)) =
+            (&full_path_canonical, &workspace_root_canonical)
+        {
+            full_canon.starts_with(workspace_canon)
+        } else {
+            // If we can't canonicalize, trust the normalized check
+            is_within_normalized
+        };
+
+        // The path must pass the normalized check, or if both can be canonicalized, the canonical check
+        let is_valid = is_within_normalized
+            || (full_path_canonical.is_some()
+                && workspace_root_canonical.is_some()
+                && is_within_canonical);
+
+        if !is_valid {
+            return Err(AugentError::BundleValidationFailed {
+                message: format!(
+                    "Local bundle path '{}' resolves to '{}' which is outside the workspace at '{}'. \
+                     Local bundles (type: dir in lockfile) cannot reference paths outside the repository.",
+                    user_path.display(),
+                    normalized_full.display(),
+                    normalized_workspace.display()
+                ),
+            });
+        }
+
+        Ok(())
     }
 }
 

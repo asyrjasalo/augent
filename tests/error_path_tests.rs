@@ -344,3 +344,88 @@ fn test_list_with_insufficient_permissions() {
             .success();
     }
 }
+
+#[test]
+fn test_local_bundle_path_escaping_rejected() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    // Simply create a bundle reference that goes up beyond the workspace root
+    workspace.write_file(
+        ".augent/augent.yaml",
+        r#"name: "@test/workspace"
+bundles:
+  - name: "@test/external"
+    path: ../../../nonexistent
+"#,
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("outside")
+                .or(predicate::str::contains("escape"))
+                .or(predicate::str::contains("validation")),
+        );
+}
+
+#[test]
+fn test_local_bundle_with_parent_directory_escaping() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    // Create augent.yaml with a path that escapes the workspace using multiple .. to go beyond
+    workspace.write_file(
+        ".augent/augent.yaml",
+        r#"name: "@test/workspace"
+bundles:
+  - name: "@test/external"
+    path: ../../../outside-workspace
+"#,
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("outside")
+                .or(predicate::str::contains("escape"))
+                .or(predicate::str::contains("validation")),
+        );
+}
+
+#[test]
+fn test_local_bundle_with_absolute_path_rejected() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+
+    // Create augent.yaml with an absolute path - this should be rejected
+    // Absolute paths in dependencies break portability when the repo is cloned or moved
+    workspace.write_file(
+        ".augent/augent.yaml",
+        r#"name: "@test/workspace"
+bundles:
+  - name: "@test/absolute"
+    path: /usr/local/bundles/absolute-bundle
+"#,
+    );
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("absolute")
+                .or(predicate::str::contains("relative"))
+                .or(predicate::str::contains("portability")),
+        );
+}
