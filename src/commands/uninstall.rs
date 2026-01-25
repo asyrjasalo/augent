@@ -19,71 +19,8 @@ use dialoguer::console::Term;
 use dialoguer::{MultiSelect, theme::Theme};
 use std::fmt;
 
-#[derive(Default, Clone)]
-struct ResourceCounts {
-    commands: usize,
-    rules: usize,
-    agents: usize,
-    skills: usize,
-    subagents: usize,
-    prompts: usize,
-    other: usize,
-}
-
-impl ResourceCounts {
-    fn format(&self) -> Option<String> {
-        let parts = [
-            if self.commands > 0 {
-                Some(format!("{} commands", self.commands))
-            } else {
-                None
-            },
-            if self.rules > 0 {
-                Some(format!("{} rules", self.rules))
-            } else {
-                None
-            },
-            if self.agents > 0 {
-                Some(format!("{} agents", self.agents))
-            } else {
-                None
-            },
-            if self.skills > 0 {
-                Some(format!("{} skills", self.skills))
-            } else {
-                None
-            },
-            if self.subagents > 0 {
-                Some(format!("{} subagents", self.subagents))
-            } else {
-                None
-            },
-            if self.prompts > 0 {
-                Some(format!("{} prompts", self.prompts))
-            } else {
-                None
-            },
-            if self.other > 0 {
-                Some(format!("{} other", self.other))
-            } else {
-                None
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
-
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join(", "))
-        }
-    }
-}
-
 struct UninstallTheme<'a> {
-    items: Vec<&'a str>,
-    resource_counts: Vec<ResourceCounts>,
+    descriptions: std::collections::HashMap<&'a str, Option<String>>,
 }
 
 impl<'a> Theme for UninstallTheme<'a> {
@@ -100,31 +37,19 @@ impl<'a> Theme for UninstallTheme<'a> {
     ) -> fmt::Result {
         let marker = if checked { "x" } else { " " };
 
-        let idx = self
-            .items
-            .iter()
-            .position(|item| *item == text)
-            .unwrap_or(0);
-
         if active {
-            write!(
-                f,
-                "{} [{}] {}",
-                Style::new().green().apply_to(">"),
-                marker,
-                text
-            )?;
-        } else {
-            write!(f, "   [{}] {}", marker, text)?;
-        }
+            write!(f, "> [{}] {}", marker, text)?;
 
-        if active {
-            if let Some(counts) = self.resource_counts.get(idx) {
-                if let Some(formatted) = counts.format() {
-                    writeln!(f)?;
-                    write!(f, "    {}", Style::new().yellow().apply_to(&formatted))?;
+            if let Some(desc) = self.descriptions.get(text) {
+                if let Some(d) = desc {
+                    if !d.is_empty() {
+                        writeln!(f)?;
+                        write!(f, "     {}", Style::new().dim().apply_to(&d))?;
+                    }
                 }
             }
+        } else {
+            write!(f, "  [{}] {}", marker, text)?;
         }
 
         Ok(())
@@ -163,53 +88,22 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         .map(|b| b.name.clone())
         .collect();
 
-    let item_refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
+    // Build a map from bundle names to descriptions with the same lifetime as items
+    let mut descriptions_map = std::collections::HashMap::new();
+    for bundle in &workspace.lockfile.bundles {
+        descriptions_map.insert(bundle.name.as_str(), bundle.description.clone());
+    }
 
-    let resource_counts: Vec<ResourceCounts> = workspace
-        .lockfile
-        .bundles
-        .iter()
-        .map(|bundle| {
-            let workspace_bundle = workspace.workspace_config.find_bundle(&bundle.name);
-
-            let mut counts = ResourceCounts::default();
-
-            if let Some(ws_bundle) = workspace_bundle {
-                for (bundle_file, installed_locations) in &ws_bundle.enabled {
-                    // Determine resource type from bundle file path
-                    if bundle_file.starts_with("commands/") {
-                        counts.commands += installed_locations.len();
-                    } else if bundle_file.starts_with("rules/") {
-                        counts.rules += installed_locations.len();
-                    } else if bundle_file.starts_with("agents/") {
-                        counts.agents += installed_locations.len();
-                    } else if bundle_file.starts_with("skills/") {
-                        counts.skills += installed_locations.len();
-                    } else if bundle_file.starts_with("subagents/") {
-                        counts.subagents += installed_locations.len();
-                    } else if bundle_file.starts_with("prompts/") {
-                        counts.prompts += installed_locations.len();
-                    } else {
-                        counts.other += installed_locations.len();
-                    }
-                }
-            }
-
-            counts
-        })
-        .collect();
+    let descriptions: std::collections::HashMap<&str, Option<String>> = descriptions_map;
 
     println!("↑↓ to move, SPACE to select/deselect, ENTER to confirm, ESC/q to cancel\n");
 
-    let selection = match MultiSelect::with_theme(&UninstallTheme {
-        items: item_refs,
-        resource_counts,
-    })
-    .with_prompt("Select bundles to uninstall")
-    .items(&items)
-    .max_length(10)
-    .clear(false)
-    .interact_on_opt(&Term::stderr())?
+    let selection = match MultiSelect::with_theme(&UninstallTheme { descriptions })
+        .with_prompt("Select bundles to uninstall")
+        .items(&items)
+        .max_length(10)
+        .clear(false)
+        .interact_on_opt(&Term::stderr())?
     {
         Some(sel) => sel,
         None => return Ok(vec![]),
