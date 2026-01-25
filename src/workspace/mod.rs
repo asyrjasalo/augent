@@ -356,6 +356,231 @@ impl Workspace {
         }
     }
 
+    /// Rebuild workspace configuration by scanning filesystem for installed files
+    ///
+    /// This method reconstructs the workspace.yaml by:
+    /// 1. Detecting which platforms are installed (by checking for .dirs)
+    /// 2. For each bundle in lockfile, scanning for its files across all platforms
+    /// 3. Reconstructing the workspace.yaml file mappings
+    ///
+    /// This is useful when workspace.yaml is missing or corrupted.
+    pub fn rebuild_workspace_config(&mut self) -> Result<()> {
+        let mut rebuilt_config = WorkspaceConfig::new(self.bundle_config.name.clone());
+
+        // Detect which platforms exist in the workspace
+        let platform_dirs = self.detect_installed_platforms()?;
+
+        // For each bundle, scan for its files
+        for locked_bundle in &self.lockfile.bundles {
+            let mut workspace_bundle =
+                crate::config::WorkspaceBundle::new(locked_bundle.name.clone());
+
+            // For each file in the locked bundle
+            for bundle_file in &locked_bundle.files {
+                let mut installed_locations = Vec::new();
+
+                // Check all detected platform directories for this file
+                for platform_dir in &platform_dirs {
+                    // Try to find the file in common locations
+                    let candidate_paths = self.find_file_candidates(bundle_file, platform_dir)?;
+                    for candidate_path in candidate_paths {
+                        if candidate_path.exists() {
+                            installed_locations.push(
+                                candidate_path
+                                    .strip_prefix(&self.root)
+                                    .unwrap_or(&candidate_path)
+                                    .to_string_lossy()
+                                    .to_string(),
+                            );
+                        }
+                    }
+                }
+
+                // If we found installed locations, add them to the workspace bundle
+                if !installed_locations.is_empty() {
+                    workspace_bundle.add_file(bundle_file.clone(), installed_locations);
+                }
+            }
+
+            // Add this bundle to the workspace config (even if empty)
+            rebuilt_config.add_bundle(workspace_bundle);
+        }
+
+        self.workspace_config = rebuilt_config;
+        self.save()?;
+
+        Ok(())
+    }
+
+    /// Detect which platforms are installed by checking for platform directories
+    ///
+    /// Uses the platform definitions from `platform::default_platforms()` to detect
+    /// which platforms are installed, making this truly platform-independent.
+    fn detect_installed_platforms(&self) -> Result<Vec<PathBuf>> {
+        let mut platforms = Vec::new();
+
+        // Get all known platforms from platform definitions
+        let known_platforms = crate::platform::default_platforms();
+
+        // Check each platform's directory for existence
+        for platform in known_platforms {
+            let platform_dir = self.root.join(&platform.directory);
+            if platform_dir.exists() && platform_dir.is_dir() {
+                platforms.push(platform_dir);
+            }
+        }
+
+        Ok(platforms)
+    }
+
+    /// Find candidate file locations for a bundle file across a platform directory
+    ///
+    /// Returns a list of possible paths where the file might be installed.
+    /// Accounts for platform-specific transformations defined in platform definitions.
+    fn find_file_candidates(&self, bundle_file: &str, platform_dir: &Path) -> Result<Vec<PathBuf>> {
+        let mut candidates = Vec::new();
+
+        // Get the platform ID from the directory name (e.g., ".cursor" -> "cursor")
+        let platform_id = platform_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.trim_start_matches('.'))
+            .unwrap_or("");
+
+        // Find the matching platform definition
+        let platform = crate::platform::default_platforms()
+            .into_iter()
+            .find(|p| p.id == platform_id);
+
+        if let Some(platform) = platform {
+            // Use platform transformation rules to find candidate locations
+            for transform_rule in &platform.transforms {
+                // Check if this transformation rule applies to this bundle file
+                if self.matches_glob(&transform_rule.from, bundle_file) {
+                    // Generate the transformed path
+                    let transformed = self.apply_transform(&transform_rule.to, bundle_file);
+                    let candidate = platform_dir.join(&transformed);
+                    candidates.push(candidate);
+                }
+            }
+        }
+
+        // Also try direct path as fallback: .platform/resourcetype/filename
+        let parts: Vec<&str> = bundle_file.split('/').collect();
+        if !parts.is_empty() {
+            let resource_type = parts[0];
+            let filename = parts.last().unwrap_or(&"");
+            let direct_path = platform_dir.join(resource_type).join(filename);
+            if !candidates.contains(&direct_path) {
+                candidates.push(direct_path);
+            }
+        }
+
+        // Add common transformation patterns as fallback
+        if let Some(filename) = bundle_file.split('/').next_back() {
+            // For rules: .md might become .mdc
+            if bundle_file.starts_with("rules/") && filename.ends_with(".md") {
+                let mdc_name = filename.replace(".md", ".mdc");
+                let mdc_path = platform_dir.join("rules").join(&mdc_name);
+                if !candidates.contains(&mdc_path) {
+                    candidates.push(mdc_path);
+                }
+            }
+        }
+
+        Ok(candidates)
+    }
+
+    /// Check if a glob pattern matches a file path
+    fn matches_glob(&self, pattern: &str, file_path: &str) -> bool {
+        // Simple glob matching: * matches any sequence, ** matches any depth
+        let pattern_parts: Vec<&str> = pattern.split('/').collect();
+        let file_parts: Vec<&str> = file_path.split('/').collect();
+
+        self.matches_glob_parts(&pattern_parts, &file_parts)
+    }
+
+    /// Recursive helper for glob matching
+    #[allow(clippy::only_used_in_recursion)]
+    fn matches_glob_parts(&self, pattern_parts: &[&str], file_parts: &[&str]) -> bool {
+        // Base cases
+        if pattern_parts.is_empty() && file_parts.is_empty() {
+            return true;
+        }
+        if pattern_parts.is_empty() || file_parts.is_empty() {
+            return pattern_parts.is_empty() && file_parts.is_empty();
+        }
+
+        let pattern = pattern_parts[0];
+        let file = file_parts[0];
+
+        if pattern == "**" {
+            // ** matches zero or more directories
+            if pattern_parts.len() == 1 {
+                return true; // ** at end matches everything
+            }
+
+            // Try matching with ** consuming zero directories
+            if self.matches_glob_parts(&pattern_parts[1..], file_parts) {
+                return true;
+            }
+
+            // Try matching with ** consuming one or more directories
+            if self.matches_glob_parts(pattern_parts, &file_parts[1..]) {
+                return true;
+            }
+
+            return false;
+        }
+
+        if pattern == "*" || pattern.contains('*') {
+            // Simple wildcard matching
+            let pattern_re = pattern
+                .replace(".", "\\.")
+                .replace("*", ".*")
+                .replace("?", ".");
+            if let Ok(re) = regex::Regex::new(&format!("^{}$", pattern_re)) {
+                if re.is_match(file) {
+                    return self.matches_glob_parts(&pattern_parts[1..], &file_parts[1..]);
+                }
+            }
+            return false;
+        }
+
+        if pattern == file {
+            return self.matches_glob_parts(&pattern_parts[1..], &file_parts[1..]);
+        }
+
+        false
+    }
+
+    /// Apply a transformation pattern to a bundle file path
+    fn apply_transform(&self, to_pattern: &str, from_path: &str) -> String {
+        // Simple transformation: replace wildcards with matched segments
+        let mut from_parts: Vec<&str> = from_path.split('/').collect();
+        let pattern_parts: Vec<&str> = to_pattern.split('/').collect();
+        let mut result = Vec::new();
+
+        for pattern_part in pattern_parts {
+            if pattern_part == "*" && !from_parts.is_empty() {
+                result.push(from_parts.remove(0).to_string());
+            } else if pattern_part == "{name}" {
+                // Extract filename without extension
+                if let Some(last) = from_parts.last() {
+                    if let Some(pos) = last.rfind('.') {
+                        result.push(last[..pos].to_string());
+                    } else {
+                        result.push(last.to_string());
+                    }
+                }
+            } else {
+                result.push(pattern_part.to_string());
+            }
+        }
+
+        result.join("/")
+    }
+
     /// Save all configuration files to the config directory
     pub fn save(&self) -> Result<()> {
         // Sync workspace_config name with bundle_config name

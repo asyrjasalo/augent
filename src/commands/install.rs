@@ -174,7 +174,7 @@ fn do_install_from_yaml(
         // If lockfile is empty/doesn't exist, automatically create it
         // Also automatically detect if augent.yaml has changed
         let lockfile_is_empty = workspace.lockfile.bundles.is_empty();
-        let augent_yaml_changed = !lockfile_is_empty && has_augent_yaml_changed(&workspace)?;
+        let augent_yaml_changed = !lockfile_is_empty && has_augent_yaml_changed(workspace)?;
 
         let resolved = if lockfile_is_empty || augent_yaml_changed {
             // Lockfile doesn't exist, is empty, or augent.yaml has changed - resolve dependencies
@@ -340,11 +340,21 @@ fn do_install_from_yaml(
     // Always ensure lockfile name matches workspace bundle config (regardless of update flag)
     workspace.lockfile.name = workspace.bundle_config.name.clone();
 
+    // Check if workspace config is missing or empty - if so, rebuild it by scanning filesystem
+    let needs_rebuild =
+        workspace.workspace_config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
+
     // Save workspace if configurations were updated or if lockfile name needed fixing
     let needs_save = configs_updated || original_name_needs_fixing;
     if needs_save {
         println!("Saving workspace...");
         workspace.save()?;
+    }
+
+    // After saving, if workspace config was empty, rebuild it by scanning the filesystem
+    if needs_rebuild {
+        println!("Rebuilding workspace configuration from installed files...");
+        workspace.rebuild_workspace_config()?;
     }
 
     // Print summary
