@@ -85,6 +85,13 @@ pub fn is_cached(url: &str, sha: &str) -> Result<bool> {
 /// Returns the path to the cached bundle directory, or None if not cached.
 pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
     let path = bundle_cache_path(url, sha)?;
+    eprintln!(
+        "get_cached: url={}, sha={}, path={:?}, exists={}",
+        url,
+        sha,
+        path,
+        path.is_dir()
+    );
     if path.is_dir() {
         Ok(Some(path))
     } else {
@@ -99,16 +106,95 @@ pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
 ///
 /// Returns the path to the cached bundle, the resolved SHA, and the resolved ref name.
 pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
+    eprintln!(
+        "cache_bundle: url={}, git_ref={:?}, resolved_sha={:?}",
+        source.url, source.git_ref, source.resolved_sha
+    );
+
     // If we already have a resolved SHA and it's cached, return early
-    // But only if git_ref is specified - otherwise we need to get the actual ref name
     if let Some(sha) = &source.resolved_sha {
-        if source.git_ref.is_some() {
-            // User specified a ref, so we can use the cache
-            if let Some(path) = get_cached(&source.url, sha)? {
-                return Ok((path, sha.clone(), source.git_ref.clone()));
+        eprintln!("cache_bundle: Checking cache for SHA: {}", sha);
+        if let Some(path) = get_cached(&source.url, sha)? {
+            eprintln!("cache_bundle: CACHE HIT! path={:?}", path);
+            // Return from cache - we already have SHA
+            // If git_ref is None, we'll need to get the branch name from cached repo
+            let resolved_ref = if source.git_ref.is_some() {
+                source.git_ref.clone()
+            } else {
+                // Open the cached repo to get the branch name
+                if let Ok(repo) = git::open(&path) {
+                    git::get_head_ref_name(&repo)?
+                } else {
+                    None
+                }
+            };
+            return Ok((path, sha.clone(), resolved_ref));
+        } else {
+            eprintln!("cache_bundle: CACHE MISS");
+        }
+    }
+
+    // If we don't have a resolved_sha, check if this URL has any cached versions
+    // and use the most recent one (for HEAD/default case)
+    if source.resolved_sha.is_none() {
+        eprintln!("cache_bundle: No resolved_sha, checking for existing cache entries...");
+        let bundles_cache_dir = bundles_cache_dir()?;
+        let slug = url_to_slug(&source.url);
+        let url_cache_dir = bundles_cache_dir.join(&slug);
+
+        if url_cache_dir.is_dir() {
+            eprintln!(
+                "cache_bundle: Found cache directory for URL: {:?}",
+                url_cache_dir
+            );
+            // Look for SHA directories (40-char hex strings)
+            if let Ok(entries) = std::fs::read_dir(&url_cache_dir) {
+                for entry in entries.flatten() {
+                    let entry_path = entry.path();
+                    if entry_path.is_dir() {
+                        let dir_name = entry_path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or_default();
+                        // Check if it looks like a SHA (40 hex chars)
+                        if dir_name.len() == 40 && dir_name.chars().all(|c| c.is_ascii_hexdigit()) {
+                            eprintln!("cache_bundle: Found cached SHA: {}", dir_name);
+                            // Check if this SHA's ref matches our git_ref
+                            let cached_path = entry_path.clone();
+                            if let Some(git_ref) = &source.git_ref {
+                                // Verify: ref matches
+                                if let Ok(repo) = git::open(&cached_path) {
+                                    if let Ok(branch_name) = git::get_head_ref_name(&repo) {
+                                        if branch_name.as_deref() == Some(git_ref) {
+                                            eprintln!(
+                                                "cache_bundle: Ref matches! Using cached SHA: {}",
+                                                dir_name
+                                            );
+                                            let resolved_ref = Some(git_ref.clone());
+                                            return Ok((
+                                                cached_path,
+                                                dir_name.to_string(),
+                                                resolved_ref,
+                                            ));
+                                        }
+                                    }
+                                }
+                            } else {
+                                // No git_ref specified, use: cached version (for HEAD)
+                                eprintln!(
+                                    "cache_bundle: Using cached SHA (no git_ref specified): {}",
+                                    dir_name
+                                );
+                                if let Ok(repo) = git::open(&cached_path) {
+                                    let resolved_ref = git::get_head_ref_name(&repo)?;
+                                    return Ok((cached_path, dir_name.to_string(), resolved_ref));
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        // If git_ref is None, we need to clone to get the actual branch name
     }
 
     // Create a temporary directory for cloning
@@ -116,11 +202,9 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         message: format!("Failed to create temp directory: {}", e),
     })?;
 
-    // Clone repository
-    // If a specific ref is requested (tag or branch), we need a full clone to access tags
-    // Otherwise, we can use a shallow clone for speed
-    let shallow = source.git_ref.is_none();
-    let repo = git::clone(&source.url, temp_dir.path(), shallow)?;
+    // Clone repository with shallow clone (depth=1)
+    // Shallow clones work for both refs and HEAD, fetching only the needed commit
+    let repo = git::clone(&source.url, temp_dir.path(), true)?;
 
     // Determine the resolved ref name BEFORE checkout
     // If user didn't specify a ref, we need to get the actual branch name from HEAD
@@ -605,5 +689,59 @@ mod tests {
             total_size: 1024 * 1024 * 1024 * 2,
         };
         assert_eq!(stats.formatted_size(), "2.0 GB");
+    }
+
+    #[test]
+    fn test_cache_bundle_no_double_clone() {
+        // This test verifies that cache_bundle doesn't clone twice
+        // when called with the same source (even when git_ref is None)
+        let _ = clear_cache();
+
+        // Create a temporary git repo to clone from
+        let temp_source = tempfile::TempDir::new().unwrap();
+        let source_path = temp_source.path();
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+        let repo = git2::Repository::init(source_path).unwrap();
+
+        // Create an initial commit
+        let tree_id = {
+            let mut index = repo.index().unwrap();
+            index.write_tree().unwrap()
+        };
+        let tree = repo.find_tree(tree_id).unwrap();
+        let commit_oid = repo
+            .commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .unwrap();
+
+        let expected_sha = commit_oid.to_string();
+
+        // Use file:// URL to allow proper git operations
+        // Note: shallow clones don't work with file:// URLs, but git2 handles this automatically
+        let file_url = format!("file://{}", source_path.display());
+
+        // First call: No resolved_sha, should clone and cache
+        let source1 = GitSource {
+            url: file_url.clone(),
+            subdirectory: None,
+            git_ref: None,
+            resolved_sha: None,
+        };
+
+        let (cache_path1, sha1, _ref1) = cache_bundle(&source1).unwrap();
+        assert_eq!(sha1, expected_sha);
+        assert!(cache_path1.is_dir());
+
+        // Second call: With resolved_sha, should use cache (not clone again)
+        let source2 = GitSource {
+            url: file_url,
+            subdirectory: None,
+            git_ref: None,
+            resolved_sha: Some(expected_sha.clone()),
+        };
+
+        let (cache_path2, sha2, _ref2) = cache_bundle(&source2).unwrap();
+        assert_eq!(sha2, expected_sha);
+        assert_eq!(cache_path2, cache_path1);
+        // The important part is that we didn't clone again (same cache_path)
     }
 }

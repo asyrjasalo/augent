@@ -76,8 +76,11 @@ pub fn clone(url: &str, target: &Path, shallow: bool) -> Result<Repository> {
     fetch_options.remote_callbacks(callbacks);
 
     // Shallow clone for remote URLs only if requested
-    // (not supported for local file:// URLs)
-    if shallow && !url.starts_with("file://") {
+    // (not supported for local file:// URLs or local paths)
+    let is_local = url.starts_with("file://")
+        || url.starts_with('/')
+        || std::path::Path::new(url).is_absolute();
+    if shallow && !is_local {
         fetch_options.depth(1);
     }
 

@@ -319,7 +319,7 @@ impl Resolver {
 
     /// Discover bundles in a cached git repository
     fn discover_git_bundles(&self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
-        let (cache_path, _sha, resolved_ref) = cache::cache_bundle(source)?;
+        let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
         let content_path = cache::get_bundle_content_path(source, &cache_path);
 
         let mut discovered = self.discover_local_bundles(&content_path)?;
@@ -354,12 +354,12 @@ impl Resolver {
             };
 
             // Create GitSource with this bundle's specific subdirectory
-            // Preserve resolved_ref from cache so it's available when resolving
+            // Preserve resolved_sha and resolved_ref from cache so it's available when resolving
             bundle.git_source = Some(GitSource {
                 url: source.url.clone(),
                 subdirectory: subdirectory.or_else(|| source.subdirectory.clone()),
                 git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
-                resolved_sha: None,
+                resolved_sha: Some(sha.clone()),
             });
         }
 
@@ -520,7 +520,7 @@ impl Resolver {
     }
 
     /// Resolve a git bundle
-    fn resolve_git(
+    pub fn resolve_git(
         &mut self,
         source: &GitSource,
         dependency: Option<&BundleDependency>,

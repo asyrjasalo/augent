@@ -381,11 +381,11 @@ fn do_install(
         resolver.resolve(source_str)?
     } else if selected_bundles.len() == 1 {
         // Single bundle found
-        // Check if the discovered bundle has git source info
+        // Check if discovered bundle has git source info
         if let Some(ref git_source) = selected_bundles[0].git_source {
-            // Reconstruct the source string from git source to preserve git metadata
-            let source_string = format_git_source_string(git_source);
-            resolver.resolve(&source_string)?
+            // Use GitSource directly (already has resolved_sha from discovery)
+            // This avoids re-cloning the repository
+            vec![resolver.resolve_git(git_source, None)?]
         } else {
             // Local directory, use discovered path
             let bundle_path = selected_bundles[0].path.to_string_lossy().to_string();
@@ -400,9 +400,10 @@ fn do_install(
             let mut all_bundles = Vec::new();
             for discovered in selected_bundles {
                 if let Some(ref git_source) = discovered.git_source {
-                    let source_string = format_git_source_string(git_source);
-                    let bundles = resolver.resolve(&source_string)?;
-                    all_bundles.extend(bundles);
+                    // Use GitSource directly (already has resolved_sha from discovery)
+                    // This avoids re-cloning the repository
+                    let bundle = resolver.resolve_git(git_source, None)?;
+                    all_bundles.push(bundle);
                 } else {
                     // Local directory
                     let bundle_path = discovered.path.to_string_lossy().to_string();
@@ -593,25 +594,6 @@ fn create_locked_bundle(bundle: &crate::resolver::ResolvedBundle) -> Result<Lock
         source,
         files,
     })
-}
-
-/// Format a GitSource as a source string that can be parsed
-fn format_git_source_string(git_source: &crate::source::GitSource) -> String {
-    let mut url = git_source.url.clone();
-
-    // Append ref if present
-    if let Some(ref git_ref) = git_source.git_ref {
-        url.push('#');
-        url.push_str(git_ref);
-    }
-
-    // Append subdirectory if present
-    if let Some(ref subdir) = git_source.subdirectory {
-        url.push(':');
-        url.push_str(subdir);
-    }
-
-    url
 }
 
 /// Update workspace configuration files
