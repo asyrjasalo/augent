@@ -561,9 +561,14 @@ fn do_install(
     };
 
     // If we detected modified files, ensure workspace bundle is in the resolved list
-    if has_modified_files && !resolved_bundles.iter().any(|b| b.name == "workspace") {
+    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    if has_modified_files
+        && !resolved_bundles
+            .iter()
+            .any(|b| b.name == workspace_bundle_name)
+    {
         let workspace_bundle = crate::resolver::ResolvedBundle {
-            name: "workspace".to_string(),
+            name: workspace_bundle_name,
             dependency: None,
             source_path: workspace.get_bundle_source_path(),
             resolved_sha: None,

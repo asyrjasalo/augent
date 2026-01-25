@@ -21,6 +21,24 @@
       ]
     },
     {
+      "name": "@wshobson/agents/agent-orchestration",
+      "description": "Multi-agent system optimization, agent improvement workflows, and context management",
+      "version": "1.2.0",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/wshobson/agents.git",
+        "path": "$plugin/agent-orchestration",
+        "ref": null,
+        "sha": "1135ac606247648d9e4724f027280d4114282858",
+        "hash": "blake3:0f4b60e2254d6a9a544cc784156b1f19d6b44af2b2c845236a4605691f05a4a8"
+      },
+      "files": [
+        "agents/context-manager.md",
+        "commands/improve-agent.md",
+        "commands/multi-agent-optimize.md"
+      ]
+    },
+    {
       "name": "@asyrjasalo/augent/my-local-bundle",
       "source": {
         "type": "dir",
@@ -36,7 +54,7 @@
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:df8549a6eb00257474528fe15bab4290151be417aa6d0c454571a7708eb32a20"
+        "hash": "blake3:beed6329231745e75628e49a114236e970a0997f771b96dadc877631aa1a5747"
       },
       "files": [
         "agents/ai-engineer.md"
