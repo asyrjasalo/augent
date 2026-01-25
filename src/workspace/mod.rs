@@ -298,7 +298,7 @@ impl Workspace {
     }
 
     /// Save bundle configuration to a directory
-    fn save_bundle_config(config_dir: &Path, config: &BundleConfig) -> Result<()> {
+    pub fn save_bundle_config(config_dir: &Path, config: &BundleConfig) -> Result<()> {
         let path = config_dir.join(BUNDLE_CONFIG_FILE);
         let content = config.to_yaml()?;
 

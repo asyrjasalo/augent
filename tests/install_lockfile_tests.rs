@@ -301,3 +301,70 @@ fn test_lockfile_regeneration_after_ref_change() {
         "Lockfile should change when installing different version"
     );
 }
+
+#[test]
+fn test_install_with_only_lockfile_creates_augent_yaml_and_workspace_yaml() {
+    let workspace = common::TestWorkspace::new();
+
+    // Initialize .augent directory with only lockfile
+    workspace.create_augent_dir();
+    workspace.create_agent_dir("cursor");
+
+    // Create a simple bundle
+    workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
+
+    // First, create a proper lockfile by installing normally
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    // Read the generated lockfile for comparison later
+    let _original_lockfile = workspace.read_file(".augent/augent.lock");
+
+    // Now simulate the scenario where only lockfile exists
+    // Delete augent.yaml and augent.workspace.yaml (augent.lock stays)
+    std::fs::remove_file(workspace.path.join(".augent/augent.yaml"))
+        .expect("Failed to delete augent.yaml");
+    std::fs::remove_file(workspace.path.join(".augent/augent.workspace.yaml"))
+        .expect("Failed to delete augent.workspace.yaml");
+
+    // Verify they're gone
+    assert!(!workspace.file_exists(".augent/augent.yaml"));
+    assert!(!workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.lock"));
+
+    // Now run install again with only augent.lock
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install"])
+        .assert()
+        .success();
+
+    // Verify augent.yaml was created
+    assert!(workspace.file_exists(".augent/augent.yaml"));
+    let new_augent_yaml = workspace.read_file(".augent/augent.yaml");
+    assert!(
+        !new_augent_yaml.is_empty(),
+        "augent.yaml should not be empty"
+    );
+    // Should contain the bundle name from lockfile
+    assert!(
+        new_augent_yaml.contains("simple-bundle"),
+        "augent.yaml should reference the bundle from lockfile"
+    );
+
+    // Verify augent.workspace.yaml was created
+    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    let new_workspace_yaml = workspace.read_file(".augent/augent.workspace.yaml");
+    assert!(
+        !new_workspace_yaml.is_empty(),
+        "augent.workspace.yaml should not be empty"
+    );
+
+    // The lockfile might be modified (e.g., workspace bundle added), so we just verify it still exists and has content
+    assert!(workspace.file_exists(".augent/augent.lock"));
+    let new_lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(!new_lockfile.is_empty(), "augent.lock should not be empty");
+}

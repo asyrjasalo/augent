@@ -2,21 +2,10 @@
   "name": "@asyrjasalo/augent",
   "bundles": [
     {
-      "name": "@asyrjasalo/.augent",
-      "source": {
-        "type": "dir",
-        "path": ".augent",
-        "hash": "blake3:6c5d0d1f8bd4f4378ea04cbec57fcc6043abb9cd9d3edabef1f0ec3e326c3d00"
-      },
-      "files": [
-        "agents/ai-engineer.md"
-      ]
-    },
-    {
       "name": "@asyrjasalo/augent/my-local-bundle",
       "source": {
         "type": "dir",
-        "path": ".augent/./my-local-bundle",
+        "path": ".augent/my-local-bundle",
         "hash": "blake3:b18049f81cbef8360e2191e839052db98f8bb91f6d6c4518e2a6683fc5feae32"
       },
       "files": [
@@ -28,7 +17,7 @@
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:3b6447369b66e7ed297fee349ea952a65ff7eede0442e0e1ae0b273b40fd3261"
+        "hash": "blake3:df8549a6eb00257474528fe15bab4290151be417aa6d0c454571a7708eb32a20"
       },
       "files": [
         "agents/ai-engineer.md"

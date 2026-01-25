@@ -140,6 +140,21 @@ fn do_install_from_yaml(
         modified::preserve_modified_files(workspace, &modified_files)?;
     }
 
+    // Check if augent.yaml is missing but augent.lock exists with bundles
+    let augent_yaml_missing =
+        workspace.bundle_config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
+
+    if augent_yaml_missing {
+        println!(
+            "augent.yaml is missing but augent.lock contains {} bundle(s).",
+            workspace.lockfile.bundles.len()
+        );
+        println!("Reconstructing augent.yaml from augent.lock...");
+
+        // Reconstruct augent.yaml from lockfile
+        reconstruct_augent_yaml_from_lockfile(workspace)?;
+    }
+
     // Backup the original lockfile - we'll restore it if --update was not given
     let original_lockfile = workspace.lockfile.clone();
 
@@ -174,7 +189,14 @@ fn do_install_from_yaml(
         // If lockfile is empty/doesn't exist, automatically create it
         // Also automatically detect if augent.yaml has changed
         let lockfile_is_empty = workspace.lockfile.bundles.is_empty();
-        let augent_yaml_changed = !lockfile_is_empty && has_augent_yaml_changed(workspace)?;
+
+        // If we just reconstructed augent.yaml from lockfile, don't treat it as a change
+        // (it's not really a change, just a recovery of the previous state)
+        let augent_yaml_changed = if augent_yaml_missing {
+            false // We just reconstructed from lockfile, so it's not a "change"
+        } else {
+            !lockfile_is_empty && has_augent_yaml_changed(workspace)?
+        };
 
         let resolved = if lockfile_is_empty || augent_yaml_changed {
             // Lockfile doesn't exist, is empty, or augent.yaml has changed - resolve dependencies
@@ -921,6 +943,80 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
 /// - If a bundle is not cached, it is fetched from git and cached
 /// - Never shows "File not found" errors for missing cache entries
 /// - Ensures installation succeeds even with empty cache
+///
+/// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
+fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()> {
+    // Convert locked bundles back to bundle dependencies
+    // Exclude workspace bundle entries (which have the workspace's own name or are from .augent dir)
+    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    let mut bundles = Vec::new();
+
+    for locked in &workspace.lockfile.bundles {
+        // Skip workspace bundle entries with the workspace's own name
+        if locked.name == workspace_bundle_name {
+            continue;
+        }
+
+        // Skip bundles from .augent directory that match workspace structure
+        // (e.g., @asyrjasalo/.augent) - these are workspace config bundles
+        if let LockedSource::Dir { path, .. } = &locked.source {
+            // Only skip if path is exactly ".augent" (not subdirectories like ".augent/my-local-bundle")
+            if path == ".augent" {
+                continue;
+            }
+        }
+
+        let dependency = match &locked.source {
+            LockedSource::Dir { path, .. } => {
+                // Normalize path to be relative to augent.yaml location
+                // If path is ".augent/./my-local-bundle", convert to "./my-local-bundle"
+                // If path is ".augent/my-local-bundle", convert to "./my-local-bundle"
+                let normalized_path = if path.starts_with(".augent/") {
+                    // Remove ".augent/" prefix and ensure it starts with "./"
+                    let without_augent = path.strip_prefix(".augent/").unwrap();
+                    if without_augent.starts_with("./") {
+                        without_augent.to_string()
+                    } else {
+                        format!("./{}", without_augent)
+                    }
+                } else {
+                    path.clone()
+                };
+
+                // For directory sources, use the normalized path
+                BundleDependency {
+                    name: locked.name.clone(),
+                    path: Some(normalized_path),
+                    git: None,
+                    git_ref: None,
+                }
+            }
+            LockedSource::Git {
+                url, git_ref, path, ..
+            } => {
+                // For git sources, reconstruct the git URL and ref
+                BundleDependency {
+                    name: locked.name.clone(),
+                    git: Some(url.clone()),
+                    git_ref: git_ref.clone(),
+                    path: path.clone(),
+                }
+            }
+        };
+        bundles.push(dependency);
+    }
+
+    // Update the bundle config with reconstructed bundles
+    workspace.bundle_config.bundles = bundles;
+
+    // Save the reconstructed augent.yaml
+    Workspace::save_bundle_config(&workspace.config_dir, &workspace.bundle_config)?;
+
+    println!("Successfully reconstructed augent.yaml from augent.lock.");
+
+    Ok(())
+}
+
 fn locked_bundles_to_resolved(
     locked_bundles: &[LockedBundle],
     workspace_root: &std::path::Path,
