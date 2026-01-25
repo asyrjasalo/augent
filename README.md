@@ -6,46 +6,57 @@ Augments AI coding platforms (such as OpenCode, Claude Code, Cursor) via package
 
 Your AI coding platforms are auto-detected in the workspace (git repository).
 
-Use it via uvx (recommended):
+It is available in [PyPI](https://pypi.org/project/augent/):
 
-    uvx augent
+    pip install augent
 
 Or download pre-built binaries from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
 
-All four core commands:
+Your AI coding platforms are auto-detected in the workspace (git repository).
+
+To install resources, such as skills, for the detected AI coding platforms:
 
     # Install bundles from public GitHub repository (select if many):
-    uvx augent install shobson/agents
+    augent install shobson/agents
 
     # List all installed bundles
-    uvx augent list
+    augent list
 
     # Show bundle details
-    uvx augent show @wshobson/agents
+    augent show @wshobson/agents
 
     # Uninstall the bundle
-    uvx augent uninstall @wshobson/agents
+    augent uninstall @wshobson/agents
 
 ## Usage
 
-Augent stores AI coding platform resources as **bundles** in Git repositories:
+Augent stores AI coding platform resources as **bundles**.
 
 - **Bundle**: A directory containing platform-independent resources with optional `augent.yaml` configuration
 - **Workspace**: Your working git repository with Augent configuration in `.augent/`
 - **Resources**: Resources transformed and installed for specific AI coding platforms
 
+Bundles are a local directories within workspace, or fetched via https (or ssh) from remote Git repositories.
+
 When you install a bundle, Augent:
 
-1. Fetches and caches the bundle from Git
-2. Transforms resources to match your AI coding platform's format
-3. Installs them into your workspace
-4. Locks exact versions for reproducibility
+1. Fetches the bundle(s) and creates `.augment/augment.yaml` in your workspace.
+2. Transforms its resources to match your AI coding platforms' formats
+3. Installs resources to the AI coding platforms (creates a plain-text record)
+4. Locks the exact bundle versions for reproducibility (creates a lockfile)
+
+To ensure a coherent Augment setup across your team, store all the three
+created files in `.augment/` (yaml, index, and lock) in your git repository.
 
 ### Install bundles
 
 Install from local directory within workspace:
 
     augent install ./local-bundle
+
+Install only for specific platforms (otherwise installs to all detected):
+
+    augent install ./local-bundle --for cursor opencode
 
 Install from GitHub:
 
@@ -59,10 +70,6 @@ Install by using GitHub Web UI URL directly:
 
     augent install https://github.com/author/bundle/tree/develop/plugins/which
 
-Install only for specific platforms (otherwise installs to all detected):
-
-    augent install ./bundle --for cursor opencode
-
 Update bundles to latest versions (changes the lockfile):
 
     augent install --update
@@ -71,13 +78,9 @@ Install autodetects various different bundle formats, such as Claude Marketplace
 
 You select specific bundles if there are many (or `--select-all` is used).
 
-### The other 3 commands
+### Lifecycle management
 
 Most commands will display an interactive menu if used without arguments.
-
-Uninstall a bundle and remove its resources (unless they were changed by you):
-
-    augent uninstall my-bundle
 
 List installed bundles:
 
@@ -86,6 +89,10 @@ List installed bundles:
 Show details of a bundle (and where its resources are enabled):
 
     augent show my-bundle
+
+Uninstall a bundle and remove its resources (unless they were changed by you):
+
+    augent uninstall my-bundle
 
 ## Bundle Format
 
@@ -99,7 +106,7 @@ A bundle contains resources in platform-independent format, e.g.:
     │   └── analyze.md       # Skills for AI coding platforms
     └── mcp.jsonc            # MCP server configuration
 
-## Why Augment
+## Why Augent?
 
 What it does:
 
