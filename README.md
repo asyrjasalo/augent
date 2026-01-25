@@ -15,16 +15,16 @@ Your AI coding platforms are auto-detected in the workspace (Git repository).
 
 To install a set of resources (bundles) for your AI coding platforms:
 
-    # Install from a public GitHub repository (prompts to select if many):
+    # Install bundle(s) from a public GitHub repository (select if many):
     augent install @wshobson/agents
 
     # List all installed bundles
     augent list
 
-    # Show a bundle's details
-    augent show @wshobson/agents/accessibility-compliance
+    # Show installation details
+    augent show @wshobson/agents
 
-    # Uninstall all bundles under this prefix (prompts to select if many):
+    # Uninstall bundle (all under this prefix, select if many):
     augent uninstall @wshobson/agents
 
 ## Usage
@@ -86,15 +86,15 @@ Resolves remote bundles to the latest versions (and updates the lockfile):
 
     augent install --update
 
-List installed bundles:
+List all installed bundles:
 
     augent list
 
-Show details of a bundle (and where its resources are enabled):
+Show where bundle's resources are enabled:
 
     augent show @author/repository/bundle
 
-Uninstall a bundle and remove its resources:
+Uninstall the bundle and remove its resources:
 
     augent uninstall @author/repository/bundle
 

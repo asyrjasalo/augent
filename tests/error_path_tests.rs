@@ -74,7 +74,9 @@ fn test_show_with_bundle_not_found() {
         .assert()
         .failure()
         .stderr(
-            predicate::str::contains("not found").or(predicate::str::contains("Bundle not found")),
+            predicate::str::contains("not found")
+                .or(predicate::str::contains("Bundle not found"))
+                .or(predicate::str::contains("No bundles found matching")),
         );
 }
 

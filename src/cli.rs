@@ -139,10 +139,12 @@ pub struct ListArgs {
 #[command(after_help = "EXAMPLES:\n  \
                   Show bundle information:\n    augent show my-bundle\n\n\
                   Show a specific bundle:\n    augent show author/debug-tools\n\n\
+                  Show all bundles under a scope:\n    augent show @wshobson/agents\n\n\
                   Select bundle interactively:\n    augent show\n\n\
                   Use verbose output:\n    augent show my-bundle -v")]
 pub struct ShowArgs {
-    /// Bundle name to show (if omitted, shows interactive menu)
+    /// Bundle name or scope prefix to show (if omitted, shows interactive menu)
+    /// Supports scope prefixes like @author/scope to show all matching bundles
     pub name: Option<String>,
 }
 

@@ -6,7 +6,7 @@
       "source": {
         "type": "dir",
         "path": ".augent/my-local-bundle",
-        "hash": "blake3:b18049f81cbef8360e2191e839052db98f8bb91f6d6c4518e2a6683fc5feae32"
+        "hash": "blake3:c7874f2dd177dca4af1fcbfef8dbe14ab4fc6040b6209b582f94cbdd2526dceb"
       },
       "files": [
         "commands/my-command.md"
@@ -17,7 +17,7 @@
       "source": {
         "type": "dir",
         "path": ".augent",
-        "hash": "blake3:beed6329231745e75628e49a114236e970a0997f771b96dadc877631aa1a5747"
+        "hash": "blake3:0a1da80c233a3e6f30dee4e08149d4c9cfa70a6311adac653a45753c116658ab"
       },
       "files": [
         "agents/ai-engineer.md"

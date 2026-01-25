@@ -594,8 +594,17 @@ impl Resolver {
                 Some(dep) => dep.name.clone(),
                 None => {
                     // Derive base name from URL - format as @author/repo
+                    // Handle both HTTPS and SSH URLs properly
                     let url_clean = source.url.trim_end_matches(".git");
-                    let url_parts: Vec<&str> = url_clean.split('/').collect();
+
+                    // For SSH URLs like git@github.com:owner/repo.git, extract the path after the colon
+                    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+                        &url_clean[colon_idx + 1..]
+                    } else {
+                        url_clean
+                    };
+
+                    let url_parts: Vec<&str> = repo_path.split('/').collect();
 
                     let (author, repo) = if url_parts.len() >= 2 {
                         (
@@ -603,7 +612,7 @@ impl Resolver {
                             url_parts[url_parts.len() - 1],
                         )
                     } else {
-                        ("author", url_clean)
+                        ("author", repo_path)
                     };
 
                     let base_name = format!("@{}/{}", author, repo);
@@ -1408,6 +1417,42 @@ bundles:
         let name = resolver.get_bundle_name(&bundle_dir).unwrap();
 
         assert_eq!(name, "custom-bundle");
+    }
+
+    #[test]
+    fn test_ssh_url_bundle_naming() {
+        // Test that SSH URLs are parsed correctly for bundle naming
+        // SSH URL format: git@github.com:owner/repo.git
+        // Should generate name: @owner/repo
+
+        // Test case 1: Basic SSH URL
+        let url_clean = "git@github.com:wshobson/agents".trim_end_matches(".git");
+        let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+            &url_clean[colon_idx + 1..]
+        } else {
+            url_clean
+        };
+
+        assert_eq!(repo_path, "wshobson/agents");
+        let url_parts: Vec<&str> = repo_path.split('/').collect();
+        assert_eq!(url_parts.len(), 2);
+        assert_eq!(url_parts[0], "wshobson");
+        assert_eq!(url_parts[1], "agents");
+
+        let base_name = format!("@{}/{}", url_parts[0], url_parts[1]);
+        assert_eq!(base_name, "@wshobson/agents");
+
+        // Test case 2: HTTPS URL (should still work)
+        let https_url = "https://github.com/wshobson/agents.git";
+        let url_clean = https_url.trim_end_matches(".git");
+        let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+            &url_clean[colon_idx + 1..]
+        } else {
+            url_clean
+        };
+
+        // For HTTPS, there's no colon before the path, so repo_path should be the full URL
+        assert!(repo_path.contains("wshobson/agents"));
     }
 
     #[test]

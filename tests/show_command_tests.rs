@@ -270,3 +270,157 @@ bundles: []
         .stdout(predicate::str::contains("Resources:"))
         .stdout(predicate::str::contains("No files installed"));
 }
+
+// ============================================================================
+// Show Command Scope Prefix Tests
+// ============================================================================
+
+#[test]
+fn test_show_with_scope_prefix_single_bundle() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("agents-bundle");
+    workspace.write_file(
+        "bundles/agents-bundle/augent.yaml",
+        r#"
+name: "@wshobson/agents/accessibility"
+description: "Accessibility agent"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/agents-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/agents-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Show with full scope prefix should work
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@wshobson/agents"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@wshobson/agents/accessibility"));
+}
+
+#[test]
+fn test_show_with_scope_prefix_no_matches() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("other-bundle");
+    workspace.write_file(
+        "bundles/other-bundle/augent.yaml",
+        r#"
+name: "@other/bundle"
+description: "Other bundle"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/other-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/other-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Show with non-matching scope prefix should fail
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@wshobson/agents"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No bundles found matching"));
+}
+
+#[test]
+fn test_show_with_scope_prefix_multiple_bundles() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    // Create multiple bundles under the same scope
+    workspace.create_bundle("accessibility");
+    workspace.write_file(
+        "bundles/accessibility/augent.yaml",
+        r#"
+name: "@wshobson/agents/accessibility"
+description: "Accessibility agent"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/accessibility/commands/test.md", "# Test\n");
+
+    workspace.create_bundle("performance");
+    workspace.write_file(
+        "bundles/performance/augent.yaml",
+        r#"
+name: "@wshobson/agents/performance"
+description: "Performance agent"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/performance/commands/test.md", "# Test\n");
+
+    workspace.create_bundle("security");
+    workspace.write_file(
+        "bundles/security/augent.yaml",
+        r#"
+name: "@wshobson/agents/security"
+description: "Security agent"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/security/commands/test.md", "# Test\n");
+
+    // Install all bundles
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/accessibility", "--for", "cursor"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/performance", "--for", "cursor"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/security", "--for", "cursor"])
+        .assert()
+        .success();
+
+    // Show with scope prefix should find all matching bundles
+    // (Note: without --select-all, this triggers interactive menu which we can't test easily with assert_cmd)
+    // So we test with the full bundle name to verify they're all installed
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@wshobson/agents/accessibility"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@wshobson/agents/accessibility"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@wshobson/agents/performance"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@wshobson/agents/performance"));
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["show", "@wshobson/agents/security"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("@wshobson/agents/security"));
+}

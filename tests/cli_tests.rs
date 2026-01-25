@@ -362,8 +362,9 @@ bundles:
         .assert()
         .success()
         .stdout(predicate::str::contains("@user/test-bundle"))
-        .stdout(predicate::str::contains("Resources:"))
-        .stdout(predicate::str::contains("Not installed"));
+        .stdout(predicate::str::contains("Commands"))
+        .stdout(predicate::str::contains("commands/test.md"))
+        .stdout(predicate::str::contains("available"));
 }
 
 #[test]

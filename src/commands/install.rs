@@ -726,7 +726,19 @@ fn create_locked_bundle(
         let relative_path = if let Some(root) = workspace_root {
             match bundle.source_path.strip_prefix(root) {
                 Ok(rel_path) => {
-                    let path_str = rel_path.to_string_lossy().replace('\\', "/");
+                    let mut path_str = rel_path.to_string_lossy().replace('\\', "/");
+                    // Normalize the path - remove all redundant ./ segments
+                    loop {
+                        if let Some(pos) = path_str.find("/./") {
+                            // Replace /./ with /
+                            path_str = format!("{}{}", &path_str[..pos], &path_str[pos + 2..]);
+                        } else if path_str.starts_with("./") {
+                            // Remove leading ./
+                            path_str = path_str[2..].to_string();
+                        } else {
+                            break;
+                        }
+                    }
                     // If path is empty (bundle is at root), use "."
                     if path_str.is_empty() {
                         ".".to_string()
