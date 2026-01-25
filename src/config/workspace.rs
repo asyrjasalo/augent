@@ -7,9 +7,29 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::error::{AugentError, Result};
+
+/// Custom serializer for enabled map that sorts keys alphabetically
+fn serialize_enabled_sorted<S>(
+    map: &HashMap<String, Vec<String>>,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    use serde::ser::SerializeMap;
+
+    let mut sorted_entries: Vec<_> = map.iter().collect();
+    sorted_entries.sort_by_key(|(k, _)| k.as_str());
+
+    let mut map_serializer = serializer.serialize_map(Some(sorted_entries.len()))?;
+    for (key, value) in sorted_entries {
+        map_serializer.serialize_entry(key, value)?;
+    }
+    map_serializer.end()
+}
 
 /// Workspace configuration (augent.workspace.yaml)
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -30,7 +50,7 @@ pub struct WorkspaceBundle {
     /// Mapping of bundle files to installed locations per agent
     /// Key: bundle file path (e.g., "commands/debug.md")
     /// Value: list of installed locations (e.g., [".opencode/commands/debug.md", ".cursor/rules/debug.mdc"])
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_enabled_sorted")]
     pub enabled: HashMap<String, Vec<String>>,
 }
 
@@ -399,5 +419,55 @@ bundles:
         assert!(removed.is_some());
         assert!(config.find_bundle("bundle1").is_none());
         assert!(config.find_bundle("bundle2").is_some());
+    }
+
+    #[test]
+    fn test_workspace_bundle_enabled_alphabetical_order() {
+        let mut config = WorkspaceConfig::new("@test/workspace");
+
+        // Create a bundle with files added in non-alphabetical order
+        let mut bundle = WorkspaceBundle::new("test-bundle");
+        // Add files in reverse alphabetical order to test sorting
+        bundle.add_file(
+            "commands/zebra.md",
+            vec![".cursor/commands/zebra.md".to_string()],
+        );
+        bundle.add_file("agents/beta.md", vec![".cursor/agents/beta.md".to_string()]);
+        bundle.add_file(
+            "commands/apple.md",
+            vec![".cursor/commands/apple.md".to_string()],
+        );
+        bundle.add_file(
+            "agents/alpha.md",
+            vec![".cursor/agents/alpha.md".to_string()],
+        );
+        config.add_bundle(bundle);
+
+        let yaml = config.to_yaml().unwrap();
+
+        // Verify all entries are present
+        assert!(yaml.contains("commands/zebra.md"));
+        assert!(yaml.contains("agents/beta.md"));
+        assert!(yaml.contains("commands/apple.md"));
+        assert!(yaml.contains("agents/alpha.md"));
+
+        // Verify they appear in alphabetical order in the YAML
+        let agents_alpha_pos = yaml.find("agents/alpha.md").unwrap();
+        let agents_beta_pos = yaml.find("agents/beta.md").unwrap();
+        let commands_apple_pos = yaml.find("commands/apple.md").unwrap();
+        let commands_zebra_pos = yaml.find("commands/zebra.md").unwrap();
+
+        assert!(
+            agents_alpha_pos < agents_beta_pos,
+            "agents/alpha.md should come before agents/beta.md"
+        );
+        assert!(
+            agents_beta_pos < commands_apple_pos,
+            "agents/beta.md should come before commands/apple.md"
+        );
+        assert!(
+            commands_apple_pos < commands_zebra_pos,
+            "commands/apple.md should come before commands/zebra.md"
+        );
     }
 }
