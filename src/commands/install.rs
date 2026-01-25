@@ -39,46 +39,9 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
         })?,
     };
 
-    // If no source provided, load from augent.yaml in workspace
-    if args.source.is_none() {
-        // Find and open existing workspace
-        let workspace_root =
-            Workspace::find_from(&current_dir).ok_or(AugentError::WorkspaceNotFound {
-                path: current_dir.display().to_string(),
-            })?;
-
-        let mut workspace = Workspace::open(&workspace_root)?;
-
-        // Determine which augent.yaml file we're using
-        let augent_yaml_path = if workspace_root.join("augent.yaml").exists() {
-            workspace_root.join("augent.yaml")
-        } else {
-            workspace_root.join(".augent/augent.yaml")
-        };
-
-        // Calculate relative path for display
-        let display_path = augent_yaml_path
-            .strip_prefix(&current_dir)
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| augent_yaml_path.to_string_lossy().to_string());
-
-        println!("Augent: Installing bundles from {}", display_path);
-
-        // Create transaction for atomic operations
-        let mut transaction = Transaction::new(&workspace);
-        transaction.backup_configs()?;
-
-        // Install all bundles from augent.yaml
-        match do_install_from_yaml(&args, &mut workspace, &mut transaction) {
-            Ok(()) => {
-                transaction.commit();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    } else {
-        // Source provided - discover and install
-        let source_str = args.source.as_ref().unwrap().as_str();
+    // If source provided, discover and install
+    if let Some(source_str) = &args.source {
+        let source_str = source_str.as_str();
 
         // Parse source and discover bundles BEFORE creating workspace
         let source = BundleSource::parse(source_str)?;
@@ -111,6 +74,43 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
 
         // Perform installation
         match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
+            Ok(()) => {
+                transaction.commit();
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        // No source provided, load from augent.yaml in workspace
+        // Find and open existing workspace
+        let workspace_root =
+            Workspace::find_from(&current_dir).ok_or(AugentError::WorkspaceNotFound {
+                path: current_dir.display().to_string(),
+            })?;
+
+        let mut workspace = Workspace::open(&workspace_root)?;
+
+        // Determine which augent.yaml file we're using
+        let augent_yaml_path = if workspace_root.join("augent.yaml").exists() {
+            workspace_root.join("augent.yaml")
+        } else {
+            workspace_root.join(".augent/augent.yaml")
+        };
+
+        // Calculate relative path for display
+        let display_path = augent_yaml_path
+            .strip_prefix(&current_dir)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| augent_yaml_path.to_string_lossy().to_string());
+
+        println!("Augent: Installing bundles from {}", display_path);
+
+        // Create transaction for atomic operations
+        let mut transaction = Transaction::new(&workspace);
+        transaction.backup_configs()?;
+
+        // Install all bundles from augent.yaml
+        match do_install_from_yaml(&args, &mut workspace, &mut transaction) {
             Ok(()) => {
                 transaction.commit();
                 Ok(())
