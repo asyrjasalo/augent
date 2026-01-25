@@ -785,6 +785,12 @@ fn update_configs(
         workspace.lockfile.add_bundle(locked_bundle);
     }
 
+    // Reorganize lockfile to ensure correct ordering
+    // (git bundles in install order -> dir bundles -> workspace bundle last)
+    workspace
+        .lockfile
+        .reorganize(Some(&workspace.bundle_config.name));
+
     // Ensure lockfile name matches workspace bundle config
     workspace.lockfile.name = workspace.bundle_config.name.clone();
 
@@ -795,6 +801,9 @@ fn update_configs(
         // Add new entry
         workspace.workspace_config.add_bundle(bundle);
     }
+
+    // Reorganize workspace config to match lockfile order
+    workspace.workspace_config.reorganize(&workspace.lockfile);
 
     Ok(())
 }
@@ -825,6 +834,12 @@ fn update_configs_from_yaml(
         }
     }
 
+    // Reorganize lockfile to ensure correct ordering
+    // (git bundles in install order -> dir bundles -> workspace bundle last)
+    workspace
+        .lockfile
+        .reorganize(Some(&workspace.bundle_config.name));
+
     // Always update workspace config (which files are installed where)
     for bundle in workspace_bundles {
         // Remove existing entry for this bundle if present
@@ -832,6 +847,9 @@ fn update_configs_from_yaml(
         // Add new entry
         workspace.workspace_config.add_bundle(bundle);
     }
+
+    // Reorganize workspace config to match lockfile order
+    workspace.workspace_config.reorganize(&workspace.lockfile);
 
     // Clean up files from earlier bundles that are overridden by later bundles
     cleanup_overridden_files(workspace)?;

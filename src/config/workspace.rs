@@ -106,9 +106,42 @@ impl WorkspaceConfig {
         Ok(formatted.join("\n"))
     }
 
+    /// Reorganize all bundles to match lockfile order
+    ///
+    /// Ensures all bundles are in the correct order based on lockfile.
+    pub fn reorganize(&mut self, lockfile: &crate::config::Lockfile) {
+        self.reorder_to_match_lockfile(lockfile);
+    }
+
     /// Add a bundle to the workspace
     pub fn add_bundle(&mut self, bundle: WorkspaceBundle) {
         self.bundles.push(bundle);
+    }
+
+    /// Reorder bundles to match the order in a lockfile
+    ///
+    /// This ensures the workspace config has the same ordering as the lockfile,
+    /// with local (dir-based) bundles last so they override external dependencies.
+    pub fn reorder_to_match_lockfile(&mut self, lockfile: &crate::config::Lockfile) {
+        let mut reordered = Vec::new();
+
+        // Add bundles in the same order as the lockfile
+        for locked_bundle in &lockfile.bundles {
+            if let Some(workspace_bundle) =
+                self.bundles.iter().find(|b| b.name == locked_bundle.name)
+            {
+                reordered.push(workspace_bundle.clone());
+            }
+        }
+
+        // Add any bundles that are in workspace but not in lockfile (shouldn't happen, but be safe)
+        for bundle in &self.bundles {
+            if !reordered.iter().any(|b| b.name == bundle.name) {
+                reordered.push(bundle.clone());
+            }
+        }
+
+        self.bundles = reordered;
     }
 
     /// Find a bundle by name
@@ -469,5 +502,55 @@ bundles:
             commands_apple_pos < commands_zebra_pos,
             "commands/apple.md should come before commands/zebra.md"
         );
+    }
+
+    #[test]
+    fn test_workspace_config_reorder_to_match_lockfile() {
+        let mut workspace_config = WorkspaceConfig::new("@test/workspace");
+
+        // Add bundles in one order in workspace config
+        let mut bundle1 = WorkspaceBundle::new("local-bundle");
+        bundle1.add_file("file1.md", vec![".augent/file1.md".to_string()]);
+        workspace_config.add_bundle(bundle1);
+
+        let mut bundle2 = WorkspaceBundle::new("git-bundle-1");
+        bundle2.add_file("file2.md", vec![".claude/file2.md".to_string()]);
+        workspace_config.add_bundle(bundle2);
+
+        let mut bundle3 = WorkspaceBundle::new("git-bundle-2");
+        bundle3.add_file("file3.md", vec![".claude/file3.md".to_string()]);
+        workspace_config.add_bundle(bundle3);
+
+        // Create a lockfile with different order (git bundles first, then local)
+        let mut lockfile = crate::config::Lockfile::new("@test/workspace");
+        lockfile.add_bundle(crate::config::LockedBundle::git(
+            "git-bundle-1",
+            "https://github.com/test/repo1.git",
+            "sha123",
+            "blake3:hash1",
+            vec!["file2.md".to_string()],
+        ));
+        lockfile.add_bundle(crate::config::LockedBundle::git(
+            "git-bundle-2",
+            "https://github.com/test/repo2.git",
+            "sha456",
+            "blake3:hash2",
+            vec!["file3.md".to_string()],
+        ));
+        lockfile.add_bundle(crate::config::LockedBundle::dir(
+            "local-bundle",
+            ".augent/local-bundle",
+            "blake3:hash3",
+            vec!["file1.md".to_string()],
+        ));
+
+        // Reorder workspace config to match lockfile
+        workspace_config.reorder_to_match_lockfile(&lockfile);
+
+        // Verify the new order
+        assert_eq!(workspace_config.bundles.len(), 3);
+        assert_eq!(workspace_config.bundles[0].name, "git-bundle-1");
+        assert_eq!(workspace_config.bundles[1].name, "git-bundle-2");
+        assert_eq!(workspace_config.bundles[2].name, "local-bundle");
     }
 }

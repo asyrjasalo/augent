@@ -362,9 +362,26 @@ impl Workspace {
         let mut synced_workspace_config = self.workspace_config.clone();
         synced_workspace_config.name = self.bundle_config.name.clone();
 
-        Self::save_bundle_config(&self.config_dir, &self.bundle_config)?;
-        Self::save_lockfile(&self.config_dir, &self.lockfile)?;
-        Self::save_workspace_config(&self.config_dir, &synced_workspace_config)?;
+        // Reorganize all configs to ensure consistent ordering before saving:
+        // 1. Git bundles/dependencies in installation order
+        // 2. Dir bundles/dependencies in dependency order
+        // 3. Workspace bundle last (for workspace config and lockfile only)
+
+        // Reorganize bundle config (augent.yaml): git deps -> local deps
+        let mut ordered_bundle_config = self.bundle_config.clone();
+        ordered_bundle_config.reorganize();
+
+        // Reorganize lockfile: git -> dir -> workspace
+        let mut ordered_lockfile = self.lockfile.clone();
+        ordered_lockfile.reorganize(Some(&self.bundle_config.name));
+
+        // Reorganize workspace config to match lockfile order
+        let mut ordered_workspace_config = synced_workspace_config.clone();
+        ordered_workspace_config.reorganize(&ordered_lockfile);
+
+        Self::save_bundle_config(&self.config_dir, &ordered_bundle_config)?;
+        Self::save_lockfile(&self.config_dir, &ordered_lockfile)?;
+        Self::save_workspace_config(&self.config_dir, &ordered_workspace_config)?;
         Ok(())
     }
 }

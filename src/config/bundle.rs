@@ -138,9 +138,57 @@ impl BundleConfig {
         Ok(())
     }
 
+    /// Reorganize dependencies to maintain consistent order
+    ///
+    /// Ensures all dependencies are in the correct order while PRESERVING git dependency order:
+    /// 1. Git dependencies - IN THEIR ORIGINAL ORDER (never reordered)
+    /// 2. Local (subdirectory-only) dependencies - In dependency order (dependencies first)
+    ///
+    /// IMPORTANT: Git dependencies maintain their exact order. New git dependencies
+    /// are only added at the end, existing ones are never moved or reordered.
+    pub fn reorganize(&mut self) {
+        // Separate dependencies into git and local (dir) types
+        // IMPORTANT: git_deps iteration preserves the order from self.bundles
+        let mut git_deps = Vec::new();
+        let mut local_deps = Vec::new();
+
+        for dep in self.bundles.drain(..) {
+            if dep.git.is_some() {
+                git_deps.push(dep);
+            } else {
+                local_deps.push(dep);
+            }
+        }
+
+        // Reconstruct in correct order, preserving git dependency installation order
+        self.bundles = git_deps; // Git dependencies in their original order
+        self.bundles.extend(local_deps); // Local dependencies last
+    }
+
     /// Add a dependency to bundle
+    ///
+    /// Maintains order: Git-based dependencies first (in installation order), then local (subdirectory-only) dependencies last.
+    /// This ensures local dependencies override external git dependencies while preserving git dependency order.
+    ///
+    /// IMPORTANT: Git dependencies are NEVER reordered. They maintain their exact order.
+    /// New git dependencies are always added immediately before any local dependencies.
     pub fn add_dependency(&mut self, dep: BundleDependency) {
-        self.bundles.push(dep);
+        let is_local_dep = dep.git.is_none();
+
+        if is_local_dep {
+            // Local dependencies go at the end (preserves all existing git dependency order)
+            self.bundles.push(dep);
+        } else {
+            // Git dependencies go before any local dependencies
+            // Find the first local dependency and insert before it
+            // This preserves the order of existing git dependencies
+            if let Some(pos) = self.bundles.iter().position(|b| b.git.is_none()) {
+                self.bundles.insert(pos, dep);
+            } else {
+                // No local dependencies yet, just append
+                self.bundles.push(dep);
+            }
+        }
     }
 
     /// Merge another bundle config into this one
@@ -417,5 +465,54 @@ bundles:
         // Invalid: empty name
         let dep = BundleDependency::local("", "path");
         assert!(dep.validate().is_err());
+    }
+
+    #[test]
+    fn test_dependency_ordering_local_last() {
+        let mut config = BundleConfig::new("@test/bundle");
+
+        // Add dependencies in mixed order - should reorder so local deps come last
+        // First add a git dependency
+        config.add_dependency(BundleDependency::git(
+            "git-dep-1",
+            "https://github.com/test/repo1.git",
+            Some("main".to_string()),
+        ));
+
+        // Then add a local dependency
+        config.add_dependency(BundleDependency::local(
+            "local-dep-1",
+            ".augent/local-dep-1",
+        ));
+
+        // Add another git dependency
+        config.add_dependency(BundleDependency::git(
+            "git-dep-2",
+            "https://github.com/test/repo2.git",
+            Some("v1.0".to_string()),
+        ));
+
+        // Add another local dependency
+        config.add_dependency(BundleDependency::local(
+            "local-dep-2",
+            ".augent/local-dep-2",
+        ));
+
+        // Verify order: git dependencies should come before local dependencies
+        assert_eq!(config.bundles.len(), 4);
+
+        // Git dependencies should be at positions 0-1
+        assert_eq!(config.bundles[0].name, "git-dep-1");
+        assert!(config.bundles[0].is_git());
+
+        assert_eq!(config.bundles[1].name, "git-dep-2");
+        assert!(config.bundles[1].is_git());
+
+        // Local dependencies should be at positions 2-3
+        assert_eq!(config.bundles[2].name, "local-dep-1");
+        assert!(config.bundles[2].is_local());
+
+        assert_eq!(config.bundles[3].name, "local-dep-2");
+        assert!(config.bundles[3].is_local());
     }
 }
