@@ -1,19 +1,14 @@
 use crate::error::Result;
-use crate::resolver::{DiscoveredBundle, ResourceCounts};
+use crate::resolver::DiscoveredBundle;
 use dialoguer::console::Style;
 use dialoguer::console::Term;
 use dialoguer::{MultiSelect, theme::Theme};
 use std::fmt;
 
-struct CustomTheme<'a> {
-    items: Vec<&'a str>,
-    descriptions: Vec<Option<&'a str>>,
-    resource_counts: Vec<ResourceCounts>,
-}
+struct CustomTheme;
 
-impl<'a> Theme for CustomTheme<'a> {
+impl Theme for CustomTheme {
     fn format_multi_select_prompt(&self, f: &mut dyn fmt::Write, prompt: &str) -> fmt::Result {
-        // Add keyboard hints above the menu
         writeln!(f)?;
         writeln!(
             f,
@@ -34,40 +29,34 @@ impl<'a> Theme for CustomTheme<'a> {
     ) -> fmt::Result {
         let marker = if checked { "x" } else { " " };
 
-        // Find index by looking up text in items
-        let idx = self
-            .items
-            .iter()
-            .position(|item| *item == text)
-            .unwrap_or(0);
+        // Split text by separator to get name, description, and resource info
+        let parts: Vec<&str> = text.split("\n---\n").collect();
+        let name = parts[0];
+        let desc = parts.get(1).copied();
+        let resources = parts.get(2).copied();
 
-        // Style for active marker with green
         if active {
             write!(
                 f,
                 "{} [{}] {}",
                 Style::new().green().apply_to(">"),
                 marker,
-                text
+                name
             )?;
         } else {
-            write!(f, "   [{}] {}", marker, text)?;
+            write!(f, "   [{}] {}", marker, name)?;
         }
 
-        if active {
-            // Show description in dim gray
-            if let Some(desc) = self.descriptions.get(idx).and_then(|d| *d) {
-                writeln!(f)?;
-                write!(f, "    {}", Style::new().dim().apply_to(desc))?;
-            }
+        // Write description in grey if present
+        if let Some(desc) = desc {
+            writeln!(f)?;
+            write!(f, "{}", Style::new().dim().apply_to(desc))?;
+        }
 
-            // Show resource counts in yellow
-            if let Some(counts) = self.resource_counts.get(idx) {
-                if let Some(formatted) = counts.format() {
-                    writeln!(f)?;
-                    write!(f, "    {}", Style::new().yellow().apply_to(&formatted))?;
-                }
-            }
+        // Write resource counts in yellow if present
+        if let Some(resources) = resources {
+            writeln!(f)?;
+            write!(f, "{}", Style::new().yellow().apply_to(resources))?;
         }
 
         Ok(())
@@ -85,7 +74,9 @@ impl<'a> Theme for CustomTheme<'a> {
                 if idx > 0 {
                     write!(f, ", ")?;
                 }
-                write!(f, "{}", selection)?;
+                // Only show bundle name, not description or resources
+                let name = selection.split("\n---\n").next().unwrap_or(selection);
+                write!(f, "{}", name)?;
             }
         }
         Ok(())
@@ -99,34 +90,35 @@ pub fn select_bundles_interactively(
         return Ok(vec![]);
     }
 
-    // Collect bundle names
-    let items: Vec<String> = discovered.iter().map(|b| b.name.clone()).collect();
-
-    let item_refs: Vec<&str> = items.iter().map(|s| s.as_str()).collect();
-
-    let descriptions: Vec<Option<&str>> = discovered
+    // Format items with embedded description and resource counts
+    let items: Vec<String> = discovered
         .iter()
-        .map(|b| b.description.as_deref())
-        .collect();
+        .map(|b| {
+            let mut item = b.name.clone();
 
-    // Get resource counts from discovered bundles
-    let resource_counts: Vec<ResourceCounts> = discovered
-        .iter()
-        .map(|b| b.resource_counts.clone())
+            // Add description if present
+            if let Some(desc) = &b.description {
+                item.push_str("\n---\n    ");
+                item.push_str(desc);
+            }
+
+            // Add resource counts if present
+            if let Some(formatted) = b.resource_counts.format() {
+                item.push_str("\n---\n    ");
+                item.push_str(&formatted);
+            }
+
+            item
+        })
         .collect();
 
     println!();
 
-    let selection = match MultiSelect::with_theme(&CustomTheme {
-        items: item_refs,
-        descriptions,
-        resource_counts,
-    })
-    .with_prompt("Select bundles to install")
-    .items(&items)
-    .max_length(10)
-    .clear(false)
-    .interact_on_opt(&Term::stderr())?
+    let selection = match MultiSelect::with_theme(&CustomTheme)
+        .with_prompt("Select bundles to install")
+        .items(&items)
+        .max_length(5)
+        .interact_on_opt(&Term::stderr())?
     {
         Some(sel) => sel,
         None => return Ok(vec![]),

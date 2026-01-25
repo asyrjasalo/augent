@@ -64,6 +64,7 @@ impl BundleSource {
     /// - `/absolute/path` - Absolute local path
     /// - `file:///absolute/path` - Local directory with file:// protocol
     /// - `github:user/repo` - GitHub repository
+    /// - `@user/repo` - GitHub repository (@ shorthand)
     /// - `user/repo` - GitHub repository (short form)
     /// - `https://github.com/user/repo.git` - Git HTTPS URL
     /// - `https://github.com/user/repo/tree/ref/path` - GitHub web UI URL
@@ -373,9 +374,21 @@ impl GitSource {
 
     /// Parse the URL portion (without fragment)
     fn parse_url(input: &str) -> Result<String> {
-        // GitHub short form: github:user/repo or just user/repo
+        // GitHub short form: github:user/repo or just user/repo or @user/repo
         if let Some(rest) = input.strip_prefix("github:") {
             return Ok(format!("https://github.com/{}.git", rest));
+        }
+
+        // Check for @user/repo format (GitHub shorthand with @ prefix)
+        if let Some(rest) = input.strip_prefix('@') {
+            if !rest.contains("://")
+                && !rest.starts_with("git@")
+                && !rest.starts_with("file://")
+                && rest.matches('/').count() == 1
+                && !rest.starts_with('/')
+            {
+                return Ok(format!("https://github.com/{}.git", rest));
+            }
         }
 
         // Check for user/repo format (GitHub shorthand)
@@ -384,6 +397,7 @@ impl GitSource {
             && !input.starts_with("git@")
             && !input.starts_with("file://")
             && !input.starts_with("github:")
+            && !input.starts_with('@')
             && input.matches('/').count() == 1
             && !input.starts_with('/')
         {
@@ -469,6 +483,42 @@ mod tests {
         assert!(source.is_git());
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
+    }
+
+    #[test]
+    fn test_parse_github_at_prefix() {
+        let source = BundleSource::parse("@author/repo").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+    }
+
+    #[test]
+    fn test_parse_github_at_prefix_with_ref() {
+        let source = BundleSource::parse("@author/repo#main").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("main".to_string()));
+    }
+
+    #[test]
+    fn test_parse_github_at_prefix_with_subdirectory() {
+        let source = BundleSource::parse("@author/repo:plugins/my-plugin").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.path, Some("plugins/my-plugin".to_string()));
+    }
+
+    #[test]
+    fn test_parse_github_at_prefix_with_ref_and_subdirectory() {
+        let source = BundleSource::parse("@author/repo#main:plugins/my-plugin").unwrap();
+        assert!(source.is_git());
+        let git = source.as_git().unwrap();
+        assert_eq!(git.url, "https://github.com/author/repo.git");
+        assert_eq!(git.git_ref, Some("main".to_string()));
+        assert_eq!(git.path, Some("plugins/my-plugin".to_string()));
     }
 
     #[test]
@@ -652,6 +702,12 @@ mod tests {
     #[test]
     fn test_display_url_github_shorthand() {
         let source = BundleSource::parse("author/repo").unwrap();
+        assert_eq!(source.display_url(), "https://github.com/author/repo.git");
+    }
+
+    #[test]
+    fn test_display_url_at_prefix() {
+        let source = BundleSource::parse("@author/repo").unwrap();
         assert_eq!(source.display_url(), "https://github.com/author/repo.git");
     }
 

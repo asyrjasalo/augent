@@ -121,6 +121,7 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
     let selection = match MultiSelect::with_theme(&UninstallTheme)
         .with_prompt("Select bundles to uninstall")
         .items(&items)
+        .max_length(5)
         .interact_on_opt(&Term::stderr())?
     {
         Some(sel) => sel,
@@ -168,6 +169,7 @@ fn select_bundles_from_list(
     let selection = match MultiSelect::with_theme(&UninstallTheme)
         .with_prompt("Select bundles to uninstall")
         .items(&items)
+        .max_length(5)
         .interact_on_opt(&Term::stderr())?
     {
         Some(sel) => sel,

@@ -23,6 +23,7 @@ use std::path::PathBuf;
                   across multiple platforms (Claude, Cursor, OpenCode, ...) in a platform-independent, \
                   reproducible manner.",
     after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n    \
+                  augent install @author/bundle\n    \
                   augent install github:author/bundle\n    \
                   augent install ./local-bundle\n    \
                   augent uninstall my-bundle\n    \
@@ -71,12 +72,14 @@ pub enum Commands {
 /// Arguments for the install command
 #[derive(Parser, Debug)]
 #[command(after_help = "EXAMPLES:\n  \
-                   Install from GitHub:\n    augent install github:author/bundle\n\n\
+                   Install from GitHub:\n    augent install @author/bundle\n    \
+                   augent install github:author/bundle\n\n\
                    Install from local directory:\n    augent install ./my-bundle\n\n\
                    Install for specific platforms:\n    augent install ./bundle --for cursor\n\n\
-                   Install with frozen lockfile:\n    augent install github:author/bundle --frozen")]
+                   Install with frozen lockfile:\n    augent install @author/bundle --frozen")]
 pub struct InstallArgs {
     /// Bundle source (path, URL, or github:author/repo). If not provided, reads from augent.yaml
+    /// Supports: @author/repo, github:author/repo, author/repo, ./local-path, https://...
     pub source: Option<String>,
 
     /// Install only for specific platforms (e.g., --for cursor opencode)
