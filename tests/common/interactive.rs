@@ -127,7 +127,15 @@ impl InteractiveTest {
 
                     thread::sleep(Duration::from_millis(50));
                 }
-                Err(e) => return Err(e),
+                Err(e) => {
+                    // EIO (code 5 on Linux) can occur when process closes PTY
+                    // Treat this as EOF condition, not an error
+                    #[cfg(unix)]
+                    if e.raw_os_error() == Some(5) {
+                        break;
+                    }
+                    return Err(e);
+                }
             }
         }
 
@@ -167,7 +175,18 @@ impl InteractiveTest {
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     thread::sleep(Duration::from_millis(50));
                 }
-                Err(e) => return Err(e),
+                Err(e) => {
+                    // EIO (code 5 on Linux) can occur when process closes PTY
+                    // Treat this as EOF condition, not an error
+                    #[cfg(unix)]
+                    if e.raw_os_error() == Some(5) {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            format!("EOF before finding text: '{}'", expected),
+                        ));
+                    }
+                    return Err(e);
+                }
             }
         }
     }
