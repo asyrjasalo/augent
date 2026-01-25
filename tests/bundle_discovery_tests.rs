@@ -14,7 +14,11 @@ use predicates::prelude::*;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
-    Command::cargo_bin("augent").unwrap()
+    // Use workspace-relative cache so it's writable in cross/Docker (env may not be passed through).
+    // Callers set current_dir(workspace.path), so .augent-cache resolves to workspace/.augent-cache.
+    let mut cmd = Command::cargo_bin("augent").unwrap();
+    cmd.env("AUGENT_CACHE_DIR", ".augent-cache");
+    cmd
 }
 
 #[test]

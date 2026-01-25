@@ -12,10 +12,13 @@ documentation = "https://docs.rs/augent"
 keywords = ["ai", "agent", "package", "manager"]
 categories = ["command-line-utilities", "development-tools"]
 exclude = [
+    ".augent/",
+    ".claude/",
     ".github/",
-    "coverage/",
+    ".opencode/",
     "docs/implementation/",
-    "AGENTS.md",
+    ".codespellrc",
+    ".pre-commit-config.yaml",
     "CLAUDE.md",
     "pyproject.toml"
 ]

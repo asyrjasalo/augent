@@ -700,6 +700,22 @@ mod tests {
         assert_eq!(stats.formatted_size(), "2.0 GB");
     }
 
+    /// Build a file:// URL from a path in a cross-platform way.
+    /// On Windows, libgit2 requires file:///C:/path (three slashes, forward slashes).
+    /// Plain file:// + drive + backslashes yields "The filename, directory name, or volume
+    /// label syntax is incorrect" from libgit2.
+    fn path_to_file_url(p: &Path) -> String {
+        #[cfg(windows)]
+        {
+            let s = p.to_str().expect("path is valid UTF-8").replace('\\', "/");
+            format!("file:///{}", s)
+        }
+        #[cfg(not(windows))]
+        {
+            format!("file://{}", p.display())
+        }
+    }
+
     #[test]
     #[serial]
     fn test_cache_bundle_no_double_clone() {
@@ -729,9 +745,9 @@ mod tests {
 
         let expected_sha = commit_oid.to_string();
 
-        // Use file:// URL to allow proper git operations
-        // Note: shallow clones don't work with file:// URLs, but git2 handles this automatically
-        let file_url = format!("file://{}", source_path.display());
+        // Use file:// URL in a format libgit2 accepts on all platforms.
+        // On Windows, file://C:\path fails; file:///C:/path works.
+        let file_url = path_to_file_url(source_path);
 
         // First call: No resolved_sha, should clone and cache
         let source1 = GitSource {
