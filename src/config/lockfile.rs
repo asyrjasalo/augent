@@ -5,6 +5,7 @@
 
 #![allow(dead_code)]
 
+use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};
@@ -20,7 +21,7 @@ pub struct Lockfile {
 }
 
 /// A resolved bundle in the lockfile
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LockedBundle {
     /// Bundle name
     pub name: String,
@@ -50,6 +51,39 @@ pub struct LockedBundle {
 
     /// Files provided by this bundle (relative paths)
     pub files: Vec<String>,
+}
+
+impl Serialize for LockedBundle {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("LockedBundle", 9)?;
+        state.serialize_field("name", &self.name)?;
+        if let Some(ref description) = self.description {
+            state.serialize_field("description", description)?;
+        }
+        if let Some(ref version) = self.version {
+            state.serialize_field("version", version)?;
+        }
+        if let Some(ref author) = self.author {
+            state.serialize_field("author", author)?;
+        }
+        if let Some(ref license) = self.license {
+            state.serialize_field("license", license)?;
+        }
+        if let Some(ref homepage) = self.homepage {
+            state.serialize_field("homepage", homepage)?;
+        }
+        state.serialize_field("source", &self.source)?;
+
+        // Sort files alphabetically before serialization
+        let mut sorted_files = self.files.clone();
+        sorted_files.sort();
+        state.serialize_field("files", &sorted_files)?;
+
+        state.end()
+    }
 }
 
 /// Resolved source information
@@ -527,5 +561,36 @@ mod tests {
         ));
 
         assert!(!lockfile1.equals(&lockfile2));
+    }
+
+    #[test]
+    fn test_lockfile_files_serialized_alphabetically() {
+        let mut lockfile = Lockfile::new("@test/bundle");
+        let bundle = LockedBundle::git(
+            "test-bundle",
+            "https://github.com/test/repo.git",
+            "abc123",
+            "blake3:hash1",
+            vec![
+                "commands/zebra.md".to_string(),
+                "agents/alpha.md".to_string(),
+                "commands/apple.md".to_string(),
+                "agents/beta.md".to_string(),
+            ],
+        );
+        lockfile.add_bundle(bundle);
+
+        let json = lockfile.to_json().unwrap();
+
+        // Verify alphabetical order in the JSON
+        let alpha_pos = json.find("agents/alpha.md").unwrap();
+        let beta_pos = json.find("agents/beta.md").unwrap();
+        let apple_pos = json.find("commands/apple.md").unwrap();
+        let zebra_pos = json.find("commands/zebra.md").unwrap();
+
+        // Files should be in alphabetical order
+        assert!(alpha_pos < beta_pos, "alpha should come before beta");
+        assert!(beta_pos < apple_pos, "beta should come before apple");
+        assert!(apple_pos < zebra_pos, "apple should come before zebra");
     }
 }

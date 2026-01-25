@@ -30,10 +30,10 @@
         "hash": "blake3:939c22f381d9d7a63e2d56920298b1c0ba8ff37e9ddc50b72f93e018f17780d8"
       },
       "files": [
+        "agents/ai-engineer.md",
         "agents/computer-vision-engineer.md",
         "agents/ml-engineer.md",
         "agents/mlops-engineer.md",
-        "agents/ai-engineer.md",
         "agents/nlp-engineer.md"
       ]
     },
@@ -50,15 +50,15 @@
         "hash": "blake3:6325967bbbbf4687f9a1d8be06a13eac653f232b8be70c9b713560ce3042d014"
       },
       "files": [
-        "commands/nextjs-scaffold.md",
-        "commands/nextjs-component-generator.md",
-        "commands/vercel-env-sync.md",
-        "commands/nextjs-api-tester.md",
-        "commands/nextjs-performance-audit.md",
-        "commands/vercel-edge-function.md",
-        "commands/vercel-deploy-optimize.md",
+        "agents/frontend-developer.md",
         "agents/fullstack-developer.md",
-        "agents/frontend-developer.md"
+        "commands/nextjs-api-tester.md",
+        "commands/nextjs-component-generator.md",
+        "commands/nextjs-performance-audit.md",
+        "commands/nextjs-scaffold.md",
+        "commands/vercel-deploy-optimize.md",
+        "commands/vercel-edge-function.md",
+        "commands/vercel-env-sync.md"
       ]
     },
     {
@@ -74,12 +74,12 @@
         "hash": "blake3:4271eb9ed9366aed614f89bef45c1a8f35cb2cff683b7bbbcd7c31e856a423e2"
       },
       "files": [
-        "commands/flow-status.md",
-        "commands/finish.md",
-        "commands/hotfix.md",
-        "commands/release.md",
+        "agents/git-flow-manager.md",
         "commands/feature.md",
-        "agents/git-flow-manager.md"
+        "commands/finish.md",
+        "commands/flow-status.md",
+        "commands/hotfix.md",
+        "commands/release.md"
       ]
     }
   ]
