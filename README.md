@@ -2,59 +2,31 @@
 
 Augments AI coding platforms (such as OpenCode, Claude Code, Cursor) via packages (of skills, subagents, commands, rules, MCP servers, etc.) in a reproducible, platform independent, and intuitive manner.
 
-What it does:
-
-- Stores bundles of capabilities as Git repositories and directories.
-- Implements locking to ensure 100% reproducibility across your team.
-- Frees you from burden of converting between AI coding platform specific formats.
-
-It does NOT:
-
-- Rely on a central package registry.
-- Cargo cult existing package managers.
-- Require a PhD in dependency management.
-
 ## Quick Start
 
-```bash
-# Install a bundle from GitHub
-augent install github:wshobson/agents
+Your AI coding platforms are auto-detected in the workspace (git repository).
 
-# List installed bundles
-augent list
+Use it via uvx (recommended):
 
-# Show bundle details
-augent show debug-tools
+    uvx augent
 
-# Uninstall a bundle
-augent uninstall debug-tools
-```
+Or download pre-built binaries from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
 
-## Installation
+All four core commands:
 
-### Via uvx (Recommended)
+    # Install bundles from public GitHub repository (select if many):
+    uvx augent install shobson/agents
 
-```bash
-uvx augent
-```
+    # List all installed bundles
+    uvx augent list
 
-### Pre-built Binaries
+    # Show bundle details
+    uvx augent show @wshobson/agents
 
-Download the latest release from [GitHub Releases](https://github.com/asyrjasalo/augent/releases).
+    # Uninstall the bundle
+    uvx augent uninstall @wshobson/agents
 
-### Via Cargo
-
-```bash
-cargo install --git https://github.com/asyrjasalo/augent
-```
-
-### Via pip
-
-```bash
-pip install augent
-```
-
-## How It Works
+## Usage
 
 Augent stores AI coding platform resources as **bundles** in Git repositories:
 
@@ -69,42 +41,77 @@ When you install a bundle, Augent:
 3. Installs them into your workspace
 4. Locks exact versions for reproducibility
 
-## Common Commands
+### Install bundles
 
-```bash
-# Install from various sources
-augent install github:author/bundle              # GitHub
-augent install https://github.com/author/bundle   # Git URL
-augent install ./local-bundle                    # Local directory
+Install from local directory within workspace:
 
-# Install for specific platforms
-augent install ./bundle --for cursor opencode
+    augent install ./local-bundle
 
-# Update bundles to latest versions
-augent install --update
+Install from GitHub:
 
-# Manage bundles
-augent list                                       # List installed
-augent show my-bundle                             # Show details
-augent uninstall my-bundle                        # Remove bundle
+    augent install github:author/bundled
 
-# Clean cache
-augent clean-cache --all                          # Remove all cached bundles
-```
+Install from Git repository, `develop` branch, subdirectory `plugins/which`:
+
+    augent install github:author/repo#develop:plugins/which
+
+Install by using GitHub Web UI URL directly:
+
+    augent install https://github.com/author/bundle/tree/develop/plugins/which
+
+Install only for specific platforms (otherwise installs to all detected):
+
+    augent install ./bundle --for cursor opencode
+
+Update bundles to latest versions (changes the lockfile):
+
+    augent install --update
+
+Install autodetects various different bundle formats, such as Claude Marketplace plugins.
+
+You select specific bundles if there are many (or `--select-all` is used).
+
+### The other 3 commands
+
+Most commands will display an interactive menu if used without arguments.
+
+Uninstall a bundle and remove its resources (unless they were changed by you):
+
+    augent uninstall my-bundle
+
+List installed bundles:
+
+    augent list
+
+Show details of a bundle (and where its resources are enabled):
+
+    augent show my-bundle
 
 ## Bundle Format
 
-A bundle contains resources in platform-independent format:
+A bundle contains resources in platform-independent format, e.g.:
 
-```text
-my-bundle/
-├── augent.yaml           # Bundle metadata and dependencies
-├── rules/
-│   └── debug.md         # Rules for AI coding platforms
-├── skills/
-│   └── analyze.md       # Skills for AI coding platforms
-└── mcp.jsonc            # MCP server configuration
-```
+    my-bundle/
+    ├── augent.yaml           # Bundle metadata and dependencies
+    ├── rules/
+    │   └── debug.md         # Rules for AI coding platforms
+    ├── skills/
+    │   └── analyze.md       # Skills for AI coding platforms
+    └── mcp.jsonc            # MCP server configuration
+
+## Why Augment
+
+What it does:
+
+- Stores bundles of capabilities as Git repositories and directories.
+- Implements locking to ensure 100% reproducibility across your team.
+- Frees you from burden of converting between AI coding platform specific formats.
+
+It does NOT:
+
+- Rely on a central package registry.
+- Cargo cult existing package managers.
+- Require a PhD in dependency management.
 
 ## Documentation
 
@@ -112,17 +119,10 @@ my-bundle/
 - [Bundle Format](docs/bundles.md) - Bundle structure and configuration
 - [Workspace Configuration](docs/workspace.md) - Workspace setup and management
 
-## Why Augent?
-
-- **No central registry**: Distribute bundles as Git repositories
-- **100% reproducible**: Lockfile ensures team consistency
-- **Platform-independent**: Use same bundles across Claude, Cursor, OpenCode
-- **Simple**: Only 4 essential commands: `install`, `uninstall`, `list`, `show`
-
 ## License
 
 AGPL v3 - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-Platform conversion approach inspired by [OpenPackage](https://github.com/enulus/OpenPackage).
+- Platform conversion approach inspired by [OpenPackage](https://github.com/enulus/OpenPackage).
