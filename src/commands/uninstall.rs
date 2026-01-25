@@ -264,12 +264,115 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         }
     }
 
+    // Get list of bundles that were explicitly installed (from workspace config before modification)
+    let explicitly_installed: std::collections::HashSet<String> = workspace
+        .bundle_config
+        .bundles
+        .iter()
+        .map(|d| d.name.clone())
+        .collect();
+
+    // Find transitive dependencies that can be removed
+    // A bundle should be removed if:
+    // 1. It's being explicitly uninstalled, OR
+    // 2. It was NOT explicitly installed AND it comes before an uninstalled bundle AND it's not needed by other bundles
+    let mut bundles_to_uninstall = bundle_names
+        .iter()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+
+    // Iterate until no more bundles are added
+    let mut changed = true;
+    while changed {
+        changed = false;
+
+        // Get indices of uninstalled bundles
+        let uninstall_indices: std::collections::HashSet<usize> = workspace
+            .lockfile
+            .bundles
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, b)| {
+                if bundles_to_uninstall.contains(&b.name) {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if uninstall_indices.is_empty() {
+            break;
+        }
+
+        let max_uninstall_idx = uninstall_indices.iter().max().copied().unwrap();
+
+        // Check each bundle that comes before any uninstalled bundle
+        for (idx, bundle) in workspace.lockfile.bundles.iter().enumerate() {
+            if bundles_to_uninstall.contains(&bundle.name) {
+                continue; // Already marked for uninstall
+            }
+
+            // Skip if this bundle was explicitly installed
+            if explicitly_installed.contains(&bundle.name) {
+                continue;
+            }
+
+            // Check if this bundle comes before any uninstalled bundle
+            if idx < max_uninstall_idx {
+                // This might be a transitive dependency
+                // Check if any non-uninstalled bundle needs it
+                let is_needed_by_remaining = workspace.lockfile.bundles.iter().enumerate().any(
+                    |(other_idx, other_bundle)| {
+                        if bundles_to_uninstall.contains(&other_bundle.name)
+                            || other_bundle.name == bundle.name
+                        {
+                            return false;
+                        }
+
+                        // Very conservative: if the other bundle comes AFTER this one in the lockfile,
+                        // assume it might depend on it (since dependencies come first)
+                        other_idx > idx
+                    },
+                );
+
+                if !is_needed_by_remaining {
+                    bundles_to_uninstall.insert(bundle.name.clone());
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    // Convert to ordered list for uninstall (reverse topological order, so dependencies last)
+    let ordered_bundles: Vec<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .rev()
+        .filter(|b| bundles_to_uninstall.contains(&b.name))
+        .map(|b| b.name.clone())
+        .collect();
+
+    if ordered_bundles.len() > bundle_names.len() {
+        println!(
+            "\nUninstalling {} dependent bundle(s) that are no longer needed:",
+            ordered_bundles.len() - bundle_names.len()
+        );
+        for name in &ordered_bundles {
+            if !bundle_names.contains(name) {
+                println!("  - {}", name);
+            }
+        }
+        println!();
+    }
+
     let mut transaction = Transaction::new(&workspace);
     transaction.backup_configs()?;
 
     let mut failed = false;
 
-    for bundle_name in &bundle_names {
+    for bundle_name in &ordered_bundles {
         let locked_bundle = workspace
             .lockfile
             .find_bundle(bundle_name)

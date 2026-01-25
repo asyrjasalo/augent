@@ -179,9 +179,17 @@ bundles: []
     assert!(workspace.file_exists(".cursor/skills/c.md"));
 
     let config = workspace.read_file(".augent/augent.yaml");
+    // Only the root bundle (bundle-a) should be in workspace config
+    // Transitive dependencies (bundle-b, bundle-c) are NOT added to workspace config
     assert!(config.contains("@test/bundle-a"));
-    assert!(config.contains("@test/bundle-b"));
-    assert!(config.contains("@test/bundle-c"));
+    assert!(!config.contains("@test/bundle-b"));
+    assert!(!config.contains("@test/bundle-c"));
+
+    // But they should be in the lockfile
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(lockfile.contains("@test/bundle-a"));
+    assert!(lockfile.contains("@test/bundle-b"));
+    assert!(lockfile.contains("@test/bundle-c"));
 }
 
 #[test]
@@ -226,10 +234,21 @@ bundles: []
         .success();
 
     let config = workspace.read_file(".augent/augent.yaml");
+    // Bundle A should be in config (it's the root bundle being installed)
+    assert!(config.contains("@test/bundle-a"));
+    // Bundle B should NOT be in config (it's a transitive dependency)
     let bundle_b_count = config.matches("@test/bundle-b").count();
     assert_eq!(
-        bundle_b_count, 1,
-        "Bundle B should appear once in config (duplicates are de-duplicated)"
+        bundle_b_count, 0,
+        "Bundle B should not appear in workspace config (it's a transitive dependency)"
+    );
+
+    // But bundle B should still be in the lockfile, de-duplicated
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    let bundle_b_lockfile_count = lockfile.matches("@test/bundle-b").count();
+    assert_eq!(
+        bundle_b_lockfile_count, 1,
+        "Bundle B should appear once in lockfile (duplicates are de-duplicated)"
     );
 }
 

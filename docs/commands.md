@@ -129,6 +129,13 @@ Augent checks for dependencies before uninstalling:
 - Warns if other bundles depend on the target bundle
 - Requires confirmation before proceeding (use `-y` to skip)
 - Only removes files that aren't provided by other bundles
+- **Automatically removes transitive dependencies** if no other bundle needs them
+
+### Dependency Behavior
+
+Augent automatically removes transitive dependencies when they're no longer needed. For example, if you installed `bundle-a` which depends on `bundle-b` and `bundle-c`, uninstalling `bundle-a` will also remove `bundle-b` and `bundle-c` if no other bundle depends on them.
+
+For comprehensive documentation on dependency handling, gotchas, and examples, see [Uninstall with Dependencies](./implementation/specs/uninstall-dependencies.md).
 
 ---
 

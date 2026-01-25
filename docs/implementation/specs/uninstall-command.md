@@ -10,9 +10,16 @@ The uninstall command removes bundles from the workspace while ensuring:
 
 - Only files not provided by other bundles are removed
 - Dependencies are checked (warn if other bundles depend on target)
+- Transitive dependencies are automatically removed if no longer needed
 - Configuration files are updated atomically
 - Workspace is never left in inconsistent state
 - Rollback is available on any failure
+
+## Related Documentation
+
+For detailed information about dependency handling, gotchas, and best practices, see:
+
+- [Uninstall with Dependencies](./uninstall-dependencies.md) - Comprehensive guide on dependency removal behavior
 
 ## Requirements
 
@@ -26,6 +33,7 @@ From PRD:
 - Update configuration files (augent.yaml, augent.lock, augent.workspace.yaml)
 - Support `-y, --yes` flag to skip confirmation
 - Provide atomic rollback on failure
+- Automatically remove transitive dependencies when no longer needed
 
 ## Design
 

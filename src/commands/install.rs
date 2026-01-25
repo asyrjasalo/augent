@@ -733,7 +733,7 @@ fn update_configs(
     resolved_bundles: &[crate::resolver::ResolvedBundle],
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
 ) -> Result<()> {
-    // Add all resolved bundles to bundle config
+    // Add only direct/root bundles to workspace config (not transitive dependencies)
     for bundle in resolved_bundles.iter() {
         if bundle.dependency.is_none() {
             // Skip the workspace bundle - it's not a normal dependency
@@ -769,12 +769,11 @@ fn update_configs(
                 };
                 workspace.bundle_config.add_dependency(dependency);
             }
-        } else if let Some(dep) = &bundle.dependency {
-            // Transitive dependency: add as-is from the original dependency declaration
-            if !workspace.bundle_config.has_dependency(&bundle.name) {
-                workspace.bundle_config.add_dependency(dep.clone());
-            }
         }
+        // NOTE: Transitive dependencies (bundle.dependency.is_some()) are NOT added to
+        // workspace.bundle_config. They are managed automatically through the dependency
+        // declarations in the parent bundles. Only direct installs should appear in the
+        // workspace's own augent.yaml.
     }
 
     // Update lockfile - merge new bundles with existing ones (in topological order)
