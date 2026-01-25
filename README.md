@@ -32,24 +32,26 @@ augent uninstall debug-tools
 
 ## Installation
 
-### Via pip (Recommended)
+### Via uvx (Recommended)
 
 ```bash
-pip install augent
+uvx augent
 ```
 
 ### Pre-built Binaries
 
 Download the latest release from [GitHub Releases](https://github.com/asyrjasalo/augent/releases).
 
-### Build from Source
+### Via Cargo
 
 ```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Build and install
 cargo install --git https://github.com/asyrjasalo/augent
+```
+
+### Via pip
+
+```bash
+pip install augent
 ```
 
 ## How It Works
@@ -77,6 +79,9 @@ augent install ./local-bundle                    # Local directory
 
 # Install for specific platforms
 augent install ./bundle --for cursor opencode
+
+# Update bundles to latest versions
+augent install --update
 
 # Manage bundles
 augent list                                       # List installed

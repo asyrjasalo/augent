@@ -36,18 +36,6 @@ Augent supports 14 AI coding platforms through a flexible platform system.
   - MCP Config: `.claude/mcp.json`
   - Root File: `CLAUDE.md`
 
-### Claude Plugin
-
-- **Platform ID:** `claude-plugin`
-- **Directory:** `.claude-plugin/`
-- **Detection:** `.claude-plugin/plugin.json` file
-- **Resource Locations:**
-  - Rules: `rules/**/*.md`
-  - Commands: `commands/**/*.md`
-  - Agents: `agents/**/*.md`
-  - Skills: `skills/**/*`
-  - MCP Config: `.mcp.json`
-
 ### Codex CLI
 
 - **Platform ID:** `codex`
@@ -252,14 +240,14 @@ For detailed schema information and all available options, see [Platform Configu
 
 Augent automatically transforms universal resource formats to platform-specific formats:
 
-| Universal | Antigravity | Augment | Claude | Claude Plugin | Codex |
-|----------|-------------|----------|--------|--------------|--------|
-| `commands/**/*.md` | `.agent/workflows/**/*.md` | `.augment/commands/**/*.md` | `.claude/commands/**/*.md` | `commands/**/*.md` | `.codex/prompts/**/*.md` |
-| `rules/**/*.md` | `.agent/rules/**/*.md` | `.augment/rules/**/*.md` | `.claude/rules/**/*.md` | `rules/**/*.md` | |
-| `agents/**/*.md` | | | `.claude/agents/**/*.md` | `agents/**/*.md` | |
-| `skills/**/*` | `.agent/skills/**/*` | | `.claude/skills/**/*.md` | `skills/**/*` | `.codex/skills/**/*` |
-| `mcp.jsonc` | | | `.claude/mcp.json` | `.mcp.json` | `.codex/config.toml` |
-| `AGENTS.md` | | | `CLAUDE.md` | | `AGENTS.md` |
+| Universal | Antigravity | Augment | Claude | Codex |
+|----------|-------------|----------|--------|--------|
+| `commands/**/*.md` | `.agent/workflows/**/*.md` | `.augment/commands/**/*.md` | `.claude/commands/**/*.md` | `.codex/prompts/**/*.md` |
+| `rules/**/*.md` | `.agent/rules/**/*.md` | `.augment/rules/**/*.md` | `.claude/rules/**/*.md` | |
+| `agents/**/*.md` | | | `.claude/agents/**/*.md` | |
+| `skills/**/*` | `.agent/skills/**/*` | | `.claude/skills/**/*.md` | `.codex/skills/**/*` |
+| `mcp.jsonc` | | | `.claude/mcp.json` | `.codex/config.toml` |
+| `AGENTS.md` | | | `CLAUDE.md` | `AGENTS.md` |
 
 | Universal | Cursor | Factory | Kilo | Kiro | OpenCode | Qwen | Roo |
 |----------|--------|---------|-------|------|----------|-------|-----|

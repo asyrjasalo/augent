@@ -6,23 +6,22 @@ Augent is **fully platform-independent** by design. The system does NOT hardcode
 
 ## Supported Platforms
 
-Augent ships with support for **15 AI coding platforms** out of the box:
+Augent ships with support for **14 AI coding platforms** out of the box:
 
 1. **Antigravity** - Google Antigravity (`.agent`)
 2. **Augment Code** - Augment Code (`.augment`)
 3. **Claude Code** - Claude Code (`.claude`)
-4. **Claude Plugin** - Claude Code Plugin (`.claude-plugin`)
-5. **Cursor** - Cursor AI (`.cursor`)
-6. **Codex CLI** - Codex CLI (`.codex`)
-7. **Factory AI** - Factory AI (`.factory`)
-8. **Gemini CLI** - Gemini CLI (`.gemini`)
-9. **Kilo Code** - Kilo Code (`.kilocode`)
-10. **Kiro** - Kiro (`.kiro`)
-11. **OpenCode** - OpenCode (`.opencode`)
-12. **Qwen Code** - Qwen Code (`.qwen`)
-13. **Roo Code** - Roo Code (`.roo`)
-14. **Warp** - Warp (`.warp`)
-15. **Windsurf** - Windsurf (`.windsurf`)
+4. **Cursor** - Cursor AI (`.cursor`)
+5. **Codex CLI** - Codex CLI (`.codex`)
+6. **Factory AI** - Factory AI (`.factory`)
+7. **Gemini CLI** - Gemini CLI (`.gemini`)
+8. **Kilo Code** - Kilo Code (`.kilocode`)
+9. **Kiro** - Kiro (`.kiro`)
+10. **OpenCode** - OpenCode (`.opencode`)
+11. **Qwen Code** - Qwen Code (`.qwen`)
+12. **Roo Code** - Roo Code (`.roo`)
+13. **Warp** - Warp (`.warp`)
+14. **Windsurf** - Windsurf (`.windsurf`)
 
 **Note**: This list can be extended without modifying Augent's source code.
 

@@ -132,7 +132,7 @@ augent uninstall my-bundle
 
 When rebuilding `augent.workspace.yaml`, Augent:
 
-1. **Detects all platforms**: Dynamically checks for any of the 15+ supported platforms defined in the system (including `.claude/`, `.cursor/`, `.opencode/`, `.windsurf/`, `.gemini/`, `.agent/`, `.augment/`, `.claude-plugin/`, `.codex/`, `.factory/`, `.kilocode/`, `.kiro/`, `.qwen/`, `.roo/`, `.warp/`, and more)
+1. **Detects all platforms**: Dynamically checks for any of the 14 supported platforms defined in the system (including `.claude/`, `.cursor/`, `.opencode/`, `.windsurf/`, `.gemini/`, `.agent/`, `.augment/`, `.codex/`, `.factory/`, `.kilocode/`, `.kiro/`, `.qwen/`, `.roo/`, `.warp/`, and more)
 2. **Scans for files**: For each bundle in the lockfile, searches for its files across all detected platform directories
 3. **Handles transformations**: Uses platform-specific transformation rules to find files (e.g., `.md` → `.mdc` for Cursor rules, `.md` → `{name}/SKILL.md` for OpenCode skills)
 4. **Reconstructs mapping**: Records which files are installed where
@@ -187,8 +187,8 @@ Augent infers workspace name from git remote:
 
 | Resource Type | Cursor | Claude Code | OpenCode |
 |--------------|--------|-------------|----------|
-| Rules | `.cursor/rules/` | `.claude/rules/` | `.opencode/agents/` |
-| Skills | `.cursor/skills/` | `.claude/skills/` | `.opencode/agents/` |
+| Rules | `.cursor/rules/` | `.claude/rules/` | `.opencode/rules/` |
+| Skills | `.cursor/skills/` | `.claude/skills/` | `.opencode/skills/` |
 | Commands | `.cursor/commands/` | `.claude/commands/` | `.opencode/commands/` |
 | MCP | `.cursor/mcp.jsonc` | `.claude/mcp.jsonc` | `.opencode/mcp.jsonc` |
 | AGENTS.md | - | Merged into `AGENTS.md` | Merged into `AGENTS.md` |
