@@ -12,7 +12,7 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # Linting and formatting - runs first as prerequisite
+  # Linting and formatting - runs in parallel with build jobs
   lint:
     name: Lint and format check
     runs-on: ubuntu-latest
@@ -26,19 +26,14 @@ jobs:
           components: rustfmt
 
       - name: Check formatting
-        env:
-          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         run: cargo fmt --all -- --check
 
       - name: Run clippy
-        env:
-          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         run: cargo clippy --all-targets --all-features -- -D warnings
 
   # Test and build on all platforms in parallel
   build:
     name: Build (${{ matrix.os }} - ${{ matrix.target }})
-    needs: [lint]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -132,8 +127,6 @@ jobs:
 
       - name: Build release binary
         if: matrix.build_only == true
-        env:
-          AUGENT_CACHE_DIR: ${{ runner.temp }}/augent-cache
         shell: bash
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then

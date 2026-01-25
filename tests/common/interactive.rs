@@ -78,6 +78,9 @@ impl InteractiveTest {
         let mut no_data_count = 0;
         const MAX_NO_DATA: usize = 20; // Allow up to 1 second of no data (20 * 50ms)
 
+        // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
+        thread::sleep(Duration::from_millis(50));
+
         loop {
             if start.elapsed() > timeout {
                 return Err(std::io::Error::new(
@@ -88,16 +91,7 @@ impl InteractiveTest {
 
             // Check if process has exited first
             if self.session.check(Eof).is_ok() {
-                // Process exited, do final read attempts to get any remaining output
-                for _ in 0..5 {
-                    thread::sleep(Duration::from_millis(50));
-                    match self.session.read(&mut buffer) {
-                        Ok(n) if n > 0 => {
-                            output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
-                        }
-                        _ => {}
-                    }
-                }
+                self.drain_remaining_output(&mut output, &mut buffer);
                 break;
             }
 
@@ -111,7 +105,7 @@ impl InteractiveTest {
                     // No data available (n == 0)
                     no_data_count += 1;
                     if no_data_count > MAX_NO_DATA {
-                        // No data for too long, assume we're done
+                        self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
                     thread::sleep(Duration::from_millis(50));
@@ -119,19 +113,22 @@ impl InteractiveTest {
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     no_data_count += 1;
                     if no_data_count > MAX_NO_DATA {
+                        self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
                     thread::sleep(Duration::from_millis(50));
                 }
                 Err(e) => {
-                    // EIO (code 5 on Linux) can occur when process closes PTY
-                    // Also handle generic IO errors gracefully
+                    // EIO (code 5 on Linux) can occur when process closes PTY slave;
+                    // drain before breaking to capture any buffered output
                     #[cfg(unix)]
                     if e.raw_os_error() == Some(5) {
+                        self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
                     // For Windows or other errors, check if process exited
                     if self.session.check(Eof).is_ok() {
+                        self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
                     return Err(e);
@@ -140,6 +137,18 @@ impl InteractiveTest {
         }
 
         Ok(output)
+    }
+
+    /// Drain any remaining output from the PTY (e.g. after Eof or EIO on Linux).
+    fn drain_remaining_output(&mut self, output: &mut String, buffer: &mut [u8]) {
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(50));
+            if let Ok(n) = self.session.read(buffer) {
+                if n > 0 {
+                    output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
+                }
+            }
+        }
     }
 
     pub fn wait_for_text(&mut self, expected: &str, timeout: Duration) -> std::io::Result<String> {
