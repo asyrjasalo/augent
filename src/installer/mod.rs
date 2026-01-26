@@ -291,6 +291,18 @@ impl<'a> Installer<'a> {
         target_path: &Path,
         installations: &[PendingInstallation],
     ) -> Result<InstalledFile> {
+        eprintln!(
+            "[AUGENT DEBUG] execute_installations: target_path={:?}, installations.len()={}",
+            target_path,
+            installations.len()
+        );
+        for (i, inst) in installations.iter().enumerate() {
+            eprintln!(
+                "[AUGENT DEBUG]   installation[{}]: source_path={:?}, target_path={:?}, merge_strategy={:?}, bundle_path={:?}",
+                i, inst.source_path, inst.target_path, inst.merge_strategy, inst.bundle_path
+            );
+        }
+
         if installations.is_empty() {
             return Err(AugentError::FileReadFailed {
                 path: target_path.display().to_string(),
@@ -300,12 +312,24 @@ impl<'a> Installer<'a> {
 
         if installations.len() == 1 {
             let installation = &installations[0];
+            eprintln!(
+                "[AUGENT DEBUG] Copying single file: {:?} -> {:?}",
+                installation.source_path, target_path
+            );
             self.apply_merge_and_copy(
                 &installation.source_path,
                 target_path,
                 &installation.merge_strategy,
             )?;
+            eprintln!(
+                "[AUGENT DEBUG] File copied successfully. Checking if target exists: {:?}",
+                target_path.exists()
+            );
         } else {
+            eprintln!(
+                "[AUGENT DEBUG] Merging multiple installations to: {:?}",
+                target_path
+            );
             self.merge_multiple_installations(target_path, installations)?;
         }
 
@@ -592,9 +616,19 @@ impl<'a> Installer<'a> {
 
     /// Apply a transform rule to get the target path for a resource
     fn apply_transform_rule(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
+        // Debug: Log initial inputs
+        eprintln!(
+            "[AUGENT DEBUG] apply_transform_rule: rule.from={:?}, rule.to={:?}, rule.extension={:?}, resource_path={:?}",
+            rule.from, rule.to, rule.extension, resource_path
+        );
+
         // Normalize to forward slashes so strip_prefix and path logic work on Windows
         // where Path::to_string_lossy() yields backslashes
         let path_str = resource_path.to_string_lossy().replace('\\', "/");
+        eprintln!(
+            "[AUGENT DEBUG] After normalization: path_str={:?}",
+            path_str
+        );
 
         // Build target path by substituting variables
         let mut target = rule.to.clone();
@@ -630,9 +664,9 @@ impl<'a> Installer<'a> {
 
                 // Get everything after ** in target
                 let suffix = if suffix_start < target.len() {
-                    &target[suffix_start..]
+                    target[suffix_start..].to_string()
                 } else {
-                    ""
+                    String::new()
                 };
 
                 // If suffix starts with '/', it's meant to be part of path structure
@@ -646,14 +680,34 @@ impl<'a> Installer<'a> {
                         target =
                             format!("{}{}{}", target_prefix, relative_part, suffix_without_slash);
                     }
+                } else if !suffix.is_empty() {
+                    // Suffix doesn't start with '/', append it directly
+                    target = format!("{}{}{}", target_prefix, relative_part, suffix);
+                } else {
+                    // No suffix, just replace ** with relative_part
+                    target = format!("{}{}", target_prefix, relative_part);
                 }
+                eprintln!(
+                    "[AUGENT DEBUG] After ** wildcard replacement: target={:?}, source_prefix={:?}, relative_part={:?}, suffix={:?}",
+                    target, source_prefix, relative_part, suffix
+                );
+            } else {
+                eprintln!(
+                    "[AUGENT DEBUG] After ** wildcard replacement: No ** found in target, target={:?}, source_prefix={:?}, relative_part={:?}",
+                    target, source_prefix, relative_part
+                );
             }
         }
 
         // Handle * wildcard (single file) - must be done BEFORE extension transformation
         if target.contains('*') && !target.contains("**") {
             if let Some(stem) = resource_path.file_stem() {
+                let old_target = target.clone();
                 target = target.replace('*', &stem.to_string_lossy());
+                eprintln!(
+                    "[AUGENT DEBUG] After * wildcard replacement: old={:?}, new={:?}, stem={:?}",
+                    old_target, target, stem
+                );
             }
         }
 
@@ -662,33 +716,57 @@ impl<'a> Installer<'a> {
             // Replace extension only in the filename part, preserving directory structure
             // Normalize to forward slashes first for consistent processing on all platforms
             let target_normalized = target.replace('\\', "/");
-            let target_path = PathBuf::from(&target_normalized);
-            if let Some(parent) = target_path.parent() {
-                if let Some(file_stem) = target_path.file_stem() {
-                    let new_target = parent.join(file_stem).with_extension(ext);
-                    // Normalize to forward slashes for consistent join (Windows to_string_lossy uses \)
-                    target = new_target.to_string_lossy().replace('\\', "/");
-                } else {
-                    // Fallback: if file_stem is None, try to replace extension in string directly
-                    if let Some(pos) = target_normalized.rfind('.') {
-                        target = format!("{}.{}", &target_normalized[..pos], ext);
+            eprintln!(
+                "[AUGENT DEBUG] Before extension transformation: target={:?}, target_normalized={:?}, ext={:?}",
+                target, target_normalized, ext
+            );
+
+            // Find the last dot to identify the extension
+            if let Some(last_dot_pos) = target_normalized.rfind('.') {
+                // Check if this dot is part of the filename (not a directory)
+                // Find the last slash before the dot
+                if let Some(last_slash_pos) = target_normalized.rfind('/') {
+                    if last_dot_pos > last_slash_pos {
+                        // The dot is in the filename, replace the extension
+                        target = format!("{}.{}", &target_normalized[..last_dot_pos], ext);
+                        eprintln!(
+                            "[AUGENT DEBUG] Extension transformation (filename): last_dot_pos={}, last_slash_pos={}, result={:?}",
+                            last_dot_pos, last_slash_pos, target
+                        );
                     } else {
+                        // The dot is in a directory name, append extension
                         target = format!("{}.{}", target_normalized, ext);
+                        eprintln!(
+                            "[AUGENT DEBUG] Extension transformation (directory): last_dot_pos={}, last_slash_pos={}, result={:?}",
+                            last_dot_pos, last_slash_pos, target
+                        );
                     }
+                } else {
+                    // No slash found, the dot must be in the filename
+                    target = format!("{}.{}", &target_normalized[..last_dot_pos], ext);
+                    eprintln!(
+                        "[AUGENT DEBUG] Extension transformation (no slash): last_dot_pos={}, result={:?}",
+                        last_dot_pos, target
+                    );
                 }
             } else {
-                // Fallback: if parent is None, try to replace extension in string directly
-                if let Some(pos) = target_normalized.rfind('.') {
-                    target = format!("{}.{}", &target_normalized[..pos], ext);
-                } else {
-                    target = format!("{}.{}", target_normalized, ext);
-                }
+                // No extension found, append it
+                target = format!("{}.{}", target_normalized, ext);
+                eprintln!(
+                    "[AUGENT DEBUG] Extension transformation (no dot): result={:?}",
+                    target
+                );
             }
         }
 
         // Normalize target to forward slashes so join yields correct path on all platforms
         let target_normalized = target.replace('\\', "/");
-        self.workspace_root.join(&target_normalized)
+        let final_path = self.workspace_root.join(&target_normalized);
+        eprintln!(
+            "[AUGENT DEBUG] Final path: target={:?}, target_normalized={:?}, workspace_root={:?}, final_path={:?}",
+            target, target_normalized, self.workspace_root, final_path
+        );
+        final_path
     }
 
     /// Apply merge strategy and copy file
@@ -699,16 +777,34 @@ impl<'a> Installer<'a> {
         target: &Path,
         strategy: &MergeStrategy,
     ) -> Result<()> {
+        eprintln!(
+            "[AUGENT DEBUG] apply_merge_and_copy: source={:?}, target={:?}, strategy={:?}, target.exists()={}",
+            source,
+            target,
+            strategy,
+            target.exists()
+        );
+
         // Ensure parent directory exists
         if let Some(parent) = target.parent() {
+            eprintln!(
+                "[AUGENT DEBUG] apply_merge_and_copy: Creating parent directory: {:?}, exists={}",
+                parent,
+                parent.exists()
+            );
             fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
                 path: parent.display().to_string(),
                 reason: e.to_string(),
             })?;
+            eprintln!(
+                "[AUGENT DEBUG] apply_merge_and_copy: Parent directory created, exists={}",
+                parent.exists()
+            );
         }
 
         // If target doesn't exist, just copy
         if !target.exists() {
+            eprintln!("[AUGENT DEBUG] apply_merge_and_copy: Target doesn't exist, copying file");
             return self.copy_file(source, target);
         }
 
@@ -733,20 +829,55 @@ impl<'a> Installer<'a> {
 
     /// Copy a single file
     fn copy_file(&self, source: &Path, target: &Path) -> Result<()> {
+        eprintln!(
+            "[AUGENT DEBUG] copy_file: source={:?}, target={:?}, source.exists()={}, target.exists()={}",
+            source,
+            target,
+            source.exists(),
+            target.exists()
+        );
+
         // Check if this is a gemini commands file that needs markdown to TOML conversion
         if self.is_gemini_command_file(target) {
+            eprintln!("[AUGENT DEBUG] copy_file: Detected gemini command file, converting to TOML");
             return self.convert_markdown_to_toml(source, target);
         }
 
         // Check if this is an OpenCode commands/agents/skills file that needs frontmatter conversion
         if self.is_opencode_metadata_file(target) {
+            eprintln!(
+                "[AUGENT DEBUG] copy_file: Detected OpenCode metadata file, converting frontmatter"
+            );
             return self.convert_opencode_frontmatter(source, target);
         }
 
+        // Ensure parent directory exists
+        if let Some(parent) = target.parent() {
+            eprintln!(
+                "[AUGENT DEBUG] copy_file: Creating parent directory: {:?}, exists={}",
+                parent,
+                parent.exists()
+            );
+            fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
+            eprintln!(
+                "[AUGENT DEBUG] copy_file: Parent directory created, exists={}",
+                parent.exists()
+            );
+        }
+
+        eprintln!("[AUGENT DEBUG] copy_file: Copying file...");
         fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
             path: target.display().to_string(),
             reason: e.to_string(),
         })?;
+        eprintln!(
+            "[AUGENT DEBUG] copy_file: File copied successfully. target.exists()={}, target={:?}",
+            target.exists(),
+            target
+        );
         Ok(())
     }
 
