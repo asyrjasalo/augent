@@ -5,7 +5,6 @@ mod interactive;
 #[allow(unused_imports)]
 pub use interactive::{InteractiveTest, MenuAction, run_with_timeout, send_menu_actions};
 
-use assert_cmd::Command;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -59,12 +58,6 @@ impl TestWorkspace {
     pub fn file_exists(&self, path: &str) -> bool {
         let full_path = self.path.join(path);
         full_path.exists()
-    }
-
-    /// Get path to augent binary
-    #[allow(dead_code)]
-    pub fn augent_bin() -> PathBuf {
-        PathBuf::from(env!("CARGO_BIN_EXE_augent"))
     }
 
     /// Copy fixture bundle to workspace
@@ -232,48 +225,10 @@ impl TestWorkspace {
         repo_path
     }
 
-    /// Count files in a bundle directory
-    #[allow(dead_code)]
-    pub fn count_bundle_files(&self, bundle_path: &str) -> usize {
-        let path = self.path.join(bundle_path);
-        if !path.exists() {
-            return 0;
-        }
-
-        walkdir::WalkDir::new(&path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-            .filter(|e| !e.path().ends_with("augent.yaml"))
-            .filter(|e| !e.path().ends_with("augent.lock"))
-            .filter(|e| !e.path().ends_with("augent.index.yaml"))
-            .count()
-    }
-
-    /// Check if files exist in workspace
-    #[allow(dead_code)]
-    pub fn files_exist(&self, paths: &[&str]) -> bool {
-        paths.iter().all(|path| self.file_exists(path))
-    }
-
     /// Modify a file in workspace
     #[allow(dead_code)]
     pub fn modify_file(&self, path: &str, new_content: &str) {
         self.write_file(path, new_content);
-    }
-
-    /// Delete a file in workspace
-    #[allow(dead_code)]
-    pub fn delete_file(&self, path: &str) {
-        let file_path = self.path.join(path);
-        std::fs::remove_file(&file_path).expect("Failed to delete file");
-    }
-
-    /// Create directory in workspace
-    #[allow(dead_code)]
-    pub fn create_dir(&self, path: &str) {
-        let dir_path = self.path.join(path);
-        std::fs::create_dir_all(&dir_path).expect("Failed to create directory");
     }
 }
 
@@ -303,18 +258,6 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
     }
 
     Ok(())
-}
-
-/// Run augent command with workspace context
-#[allow(dead_code)]
-pub fn run_augent_cmd(workspace: &TestWorkspace, args: &[&str]) -> Command {
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    cmd.current_dir(&workspace.path);
-    for arg in args {
-        cmd.arg(arg);
-    }
-    cmd
 }
 
 #[cfg(test)]
