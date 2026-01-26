@@ -48,7 +48,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             use_cross: false
-            use_system_openssl: false
+            use_system_openssl: true
             artifact_name: augent
             archive_name: augent-x86_64-linux.tar.gz
           - os: ubuntu-latest
