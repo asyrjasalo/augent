@@ -18,19 +18,19 @@ use std::path::PathBuf;
         .usage(AnsiColor::Green.on_default().bold())
         .literal(AnsiColor::Cyan.on_default().bold())
         .placeholder(AnsiColor::Cyan.on_default()),
-    about = "AI configuration manager for AI coding platforms",
+    about = "Lean package manager for various AI coding platforms",
     long_about = "Augent manages AI coding platform resources (commands, rules, skills, MCP servers) \
                   across multiple platforms (Claude, Cursor, OpenCode, ...) in a platform-independent, \
                   reproducible manner.",
-    after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n    \
-                  augent install @author/bundle\n    \
-                  augent install github:author/bundle\n    \
-                  augent install ./local-bundle\n    \
-                  augent uninstall my-bundle\n    \
-                  augent list\n    \
-                  augent show my-bundle\n\n\
-                  \x1b[1m\x1b[32mDocumentation:\x1b[0m\n    \
-                  https://github.com/asyrjasalo/augent"
+    disable_help_subcommand = true,
+    after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n   \
+                  augent install @author/bundle          \x1b[90m# Install from GitHub shorthand\x1b[0m\n   \
+                  augent install ./bundle --for claude   \x1b[90m# Install only for Claude Code\x1b[0m\n   \
+                  augent uninstall @author/bundle        \x1b[90m# Uninstall bundle\x1b[0m\n   \
+                  augent uninstall @author --select-all  \x1b[90m# Uninstall scope without prompt\x1b[0m\n   \
+                  augent list                            \x1b[90m# List all installed bundles\x1b[0m\n   \
+                  augent show local                      \x1b[90m# Show bundle information\x1b[0m\n\n\
+"
 )]
 pub struct Cli {
     /// Workspace directory (defaults to current directory)
@@ -63,6 +63,7 @@ pub enum Commands {
     CleanCache(CleanCacheArgs),
 
     /// Show version information
+    #[command(hide = true)]
     Version,
 
     /// Generate shell completions

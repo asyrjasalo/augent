@@ -38,7 +38,7 @@ jobs:
 
   # Test and build on all platforms in parallel
   build:
-    name: Build (${{ matrix.os }} - ${{ matrix.target }})
+    name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -96,7 +96,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
-      - name: Install cross (for cross-compilation)
+      - name: Install cross
         if: matrix.use_cross
         run: |
           if ! command -v cross &>/dev/null; then

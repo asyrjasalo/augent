@@ -9,7 +9,7 @@ description = "Lean package manager for various AI coding platforms"
 readme = "README.md"
 repository = "https://github.com/asyrjasalo/augent"
 documentation = "https://docs.rs/augent"
-keywords = ["ai", "agent", "package", "manager"]
+keywords = ["ai", "agents", "package-manager"]
 categories = ["command-line-utilities", "development-tools"]
 exclude = [
     ".augent/",
