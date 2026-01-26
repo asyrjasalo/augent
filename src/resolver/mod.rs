@@ -1271,8 +1271,7 @@ bundles:
         let bundles = match result {
             Ok(bundles) => bundles,
             Err(ref e) => {
-                eprintln!("Error: {:?}", e);
-                panic!("Expected Ok result");
+                panic!("Expected Ok result: {:?}", e);
             }
         };
 

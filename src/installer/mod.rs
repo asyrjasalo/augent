@@ -128,51 +128,16 @@ impl<'a> Installer<'a> {
 
     /// Install a single bundle
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
-        eprintln!(
-            "[AUGENT DEBUG] install_bundle: bundle={:?}, source_path={:?}",
-            bundle.name, bundle.source_path
-        );
         let resources = Self::discover_resources(&bundle.source_path)?;
-        eprintln!(
-            "[AUGENT DEBUG] install_bundle: discovered {} resources",
-            resources.len()
-        );
-        for (i, res) in resources.iter().enumerate() {
-            eprintln!(
-                "[AUGENT DEBUG]   resource[{}]: bundle_path={:?}, resource_type={:?}",
-                i, res.bundle_path, res.resource_type
-            );
-        }
 
         let pending_installations = self.collect_pending_installations(&resources, bundle)?;
-        eprintln!(
-            "[AUGENT DEBUG] install_bundle: {} pending installations",
-            pending_installations.len()
-        );
 
         let grouped_by_target = self.group_by_target(&pending_installations);
-        eprintln!(
-            "[AUGENT DEBUG] install_bundle: {} unique target paths",
-            grouped_by_target.len()
-        );
 
         let mut workspace_bundle = WorkspaceBundle::new(&bundle.name);
 
         for (ref target_path, ref installations) in grouped_by_target {
             let _installed = self.execute_installations(target_path, installations)?;
-        }
-
-        // Debug: List all files in .cursor/rules/ after installation
-        let cursor_rules_dir = self.workspace_root.join(".cursor/rules");
-        if cursor_rules_dir.exists() {
-            eprintln!("[AUGENT DEBUG] install_bundle: Files in .cursor/rules/:");
-            if let Ok(entries) = std::fs::read_dir(&cursor_rules_dir) {
-                for entry in entries.flatten() {
-                    eprintln!("[AUGENT DEBUG]   - {:?}", entry.path());
-                }
-            }
-        } else {
-            eprintln!("[AUGENT DEBUG] install_bundle: .cursor/rules/ directory does not exist");
         }
 
         // Build source-to-targets mapping from newly installed files.
@@ -328,18 +293,6 @@ impl<'a> Installer<'a> {
         target_path: &Path,
         installations: &[PendingInstallation],
     ) -> Result<InstalledFile> {
-        eprintln!(
-            "[AUGENT DEBUG] execute_installations: target_path={:?}, installations.len()={}",
-            target_path,
-            installations.len()
-        );
-        for (i, inst) in installations.iter().enumerate() {
-            eprintln!(
-                "[AUGENT DEBUG]   installation[{}]: source_path={:?}, target_path={:?}, merge_strategy={:?}, bundle_path={:?}",
-                i, inst.source_path, inst.target_path, inst.merge_strategy, inst.bundle_path
-            );
-        }
-
         if installations.is_empty() {
             return Err(AugentError::FileReadFailed {
                 path: target_path.display().to_string(),
@@ -349,24 +302,12 @@ impl<'a> Installer<'a> {
 
         if installations.len() == 1 {
             let installation = &installations[0];
-            eprintln!(
-                "[AUGENT DEBUG] Copying single file: {:?} -> {:?}",
-                installation.source_path, target_path
-            );
             self.apply_merge_and_copy(
                 &installation.source_path,
                 target_path,
                 &installation.merge_strategy,
             )?;
-            eprintln!(
-                "[AUGENT DEBUG] File copied successfully. Checking if target exists: {:?}",
-                target_path.exists()
-            );
         } else {
-            eprintln!(
-                "[AUGENT DEBUG] Merging multiple installations to: {:?}",
-                target_path
-            );
             self.merge_multiple_installations(target_path, installations)?;
         }
 
@@ -723,34 +664,16 @@ impl<'a> Installer<'a> {
         target: &Path,
         strategy: &MergeStrategy,
     ) -> Result<()> {
-        eprintln!(
-            "[AUGENT DEBUG] apply_merge_and_copy: source={:?}, target={:?}, strategy={:?}, target.exists()={}",
-            source,
-            target,
-            strategy,
-            target.exists()
-        );
-
         // Ensure parent directory exists
         if let Some(parent) = target.parent() {
-            eprintln!(
-                "[AUGENT DEBUG] apply_merge_and_copy: Creating parent directory: {:?}, exists={}",
-                parent,
-                parent.exists()
-            );
             fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
                 path: parent.display().to_string(),
                 reason: e.to_string(),
             })?;
-            eprintln!(
-                "[AUGENT DEBUG] apply_merge_and_copy: Parent directory created, exists={}",
-                parent.exists()
-            );
         }
 
         // If target doesn't exist, just copy
         if !target.exists() {
-            eprintln!("[AUGENT DEBUG] apply_merge_and_copy: Target doesn't exist, copying file");
             return self.copy_file(source, target);
         }
 
@@ -775,55 +698,28 @@ impl<'a> Installer<'a> {
 
     /// Copy a single file
     fn copy_file(&self, source: &Path, target: &Path) -> Result<()> {
-        eprintln!(
-            "[AUGENT DEBUG] copy_file: source={:?}, target={:?}, source.exists()={}, target.exists()={}",
-            source,
-            target,
-            source.exists(),
-            target.exists()
-        );
-
         // Check if this is a gemini commands file that needs markdown to TOML conversion
         if self.is_gemini_command_file(target) {
-            eprintln!("[AUGENT DEBUG] copy_file: Detected gemini command file, converting to TOML");
             return self.convert_markdown_to_toml(source, target);
         }
 
         // Check if this is an OpenCode commands/agents/skills file that needs frontmatter conversion
         if self.is_opencode_metadata_file(target) {
-            eprintln!(
-                "[AUGENT DEBUG] copy_file: Detected OpenCode metadata file, converting frontmatter"
-            );
             return self.convert_opencode_frontmatter(source, target);
         }
 
         // Ensure parent directory exists
         if let Some(parent) = target.parent() {
-            eprintln!(
-                "[AUGENT DEBUG] copy_file: Creating parent directory: {:?}, exists={}",
-                parent,
-                parent.exists()
-            );
             fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
                 path: parent.display().to_string(),
                 reason: e.to_string(),
             })?;
-            eprintln!(
-                "[AUGENT DEBUG] copy_file: Parent directory created, exists={}",
-                parent.exists()
-            );
         }
 
-        eprintln!("[AUGENT DEBUG] copy_file: Copying file...");
         fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
             path: target.display().to_string(),
             reason: e.to_string(),
         })?;
-        eprintln!(
-            "[AUGENT DEBUG] copy_file: File copied successfully. target.exists()={}, target={:?}",
-            target.exists(),
-            target
-        );
         Ok(())
     }
 

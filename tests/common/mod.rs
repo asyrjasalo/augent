@@ -58,32 +58,7 @@ impl TestWorkspace {
     /// Check if a file exists in workspace
     pub fn file_exists(&self, path: &str) -> bool {
         let full_path = self.path.join(path);
-        let exists = full_path.exists();
-        if !exists {
-            eprintln!(
-                "[TEST DEBUG] File does not exist: {:?} (full path: {:?})",
-                path, full_path
-            );
-            // List parent directory contents for debugging
-            if let Some(parent) = full_path.parent() {
-                if parent.exists() {
-                    eprintln!("[TEST DEBUG] Parent directory exists: {:?}", parent);
-                    if let Ok(entries) = std::fs::read_dir(parent) {
-                        eprintln!("[TEST DEBUG] Contents of parent directory:");
-                        for entry in entries.flatten() {
-                            eprintln!(
-                                "[TEST DEBUG]   - {:?} (is_dir: {})",
-                                entry.path(),
-                                entry.path().is_dir()
-                            );
-                        }
-                    }
-                } else {
-                    eprintln!("[TEST DEBUG] Parent directory does not exist: {:?}", parent);
-                }
-            }
-        }
-        exists
+        full_path.exists()
     }
 
     /// Get path to augent binary
