@@ -22,7 +22,6 @@ use std::path::PathBuf;
     long_about = "Augent manages AI coding platform resources (commands, rules, skills, MCP servers) \
                   across multiple platforms (Claude, Cursor, OpenCode, ...) in a platform-independent, \
                   reproducible manner.",
-    disable_help_subcommand = true,
     after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n   \
                   augent install @author/bundle          \x1b[90m# Install from GitHub shorthand\x1b[0m\n   \
                   augent install ./bundle --for claude   \x1b[90m# Install only for Claude Code\x1b[0m\n   \
