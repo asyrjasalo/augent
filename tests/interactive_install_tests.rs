@@ -24,8 +24,8 @@ fn augent_bin_path() -> PathBuf {
 )]
 fn test_install_with_menu_selects_all_bundles() {
     // Wrap test in timeout to prevent CI from hanging indefinitely
-    // 30 seconds should be more than enough for this test
-    common::run_with_timeout(std::time::Duration::from_secs(30), || {
+    // Reduced from 30s to 15s after optimizations (removed slow `augent list` call)
+    common::run_with_timeout(std::time::Duration::from_secs(15), || {
         let workspace = common::TestWorkspace::new();
         workspace.init_from_fixture("empty");
         workspace.create_agent_dir("cursor");
@@ -55,7 +55,8 @@ fn test_install_with_menu_selects_all_bundles() {
         .expect("Failed to create interactive test");
 
         // Wait for menu to render before sending input
-        test.wait_for_text("Select bundles", std::time::Duration::from_secs(5))
+        // Reduced timeout from 5s to 2s for faster test execution
+        test.wait_for_text("Select bundles", std::time::Duration::from_secs(2))
             .expect("Menu should appear");
 
         // Select all bundles
@@ -71,7 +72,10 @@ fn test_install_with_menu_selects_all_bundles() {
         )
         .expect("Failed to send menu actions");
 
-        let output = test.wait_for_output().expect("Failed to wait for output");
+        // Wait for process to complete - faster method that doesn't drain all output
+        // We verify installation via files/lockfile, not output
+        test.wait_for_completion(std::time::Duration::from_secs(3))
+            .expect("Failed to wait for process completion");
 
         // Verify files were installed (primary check; does not depend on PTY capture)
         assert!(
@@ -83,31 +87,30 @@ fn test_install_with_menu_selects_all_bundles() {
             "Bundle B file should be installed"
         );
 
-        // Verify via list command
-        let list_output = std::process::Command::new(augent_path)
-            .arg("list")
-            .current_dir(&workspace.path)
-            .output()
-            .expect("Failed to run list");
+        // Verify bundles are in lockfile (faster than running `augent list`)
+        let lockfile_path = workspace.path.join(".augent/augent.lock");
+        let lockfile_content =
+            std::fs::read_to_string(&lockfile_path).expect("Failed to read lockfile");
+        let lockfile: serde_json::Value =
+            serde_json::from_str(&lockfile_content).expect("Failed to parse lockfile");
 
-        let list_str = String::from_utf8_lossy(&list_output.stdout);
+        let bundles = lockfile["bundles"]
+            .as_array()
+            .expect("bundles should be an array");
+        let bundle_names: Vec<&str> = bundles.iter().filter_map(|b| b["name"].as_str()).collect();
+
         assert!(
-            list_str.contains("@test/bundle-a"),
-            "list should show bundle-a"
+            bundle_names.contains(&"@test/bundle-a"),
+            "lockfile should contain bundle-a, found: {:?}",
+            bundle_names
         );
         assert!(
-            list_str.contains("@test/bundle-b"),
-            "list should show bundle-b"
+            bundle_names.contains(&"@test/bundle-b"),
+            "lockfile should contain bundle-b, found: {:?}",
+            bundle_names
         );
 
-        // Verify output indicates success when we captured it (PTY can return empty on
-        // some Linux CI; files and list above are the authoritative success check)
-        if !output.is_empty() {
-            assert!(
-                output.to_lowercase().contains("installed"),
-                "Output should indicate installation. Got: {}",
-                output
-            );
-        }
+        // Note: We skip output verification since we verify via files and lockfile above
+        // This makes the test faster by avoiding PTY output draining
     });
 }

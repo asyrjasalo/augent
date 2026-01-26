@@ -76,10 +76,10 @@ impl InteractiveTest {
         let mut buffer = [0u8; 4096];
         let start = std::time::Instant::now();
         let mut no_data_count = 0;
-        const MAX_NO_DATA: usize = 20; // Allow up to 1 second of no data (20 * 50ms)
+        const MAX_NO_DATA: usize = 4; // Allow up to 200ms of no data (4 * 50ms) - reduced for faster tests
 
         // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(Duration::from_millis(25));
 
         loop {
             if start.elapsed() > timeout {
@@ -108,7 +108,7 @@ impl InteractiveTest {
                         self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
-                    thread::sleep(Duration::from_millis(50));
+                    thread::sleep(Duration::from_millis(25));
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     no_data_count += 1;
@@ -120,7 +120,7 @@ impl InteractiveTest {
                         self.drain_remaining_output(&mut output, &mut buffer);
                         break;
                     }
-                    thread::sleep(Duration::from_millis(50));
+                    thread::sleep(Duration::from_millis(25));
                 }
                 Err(e) => {
                     // EIO (code 5 on Linux) can occur when process closes PTY slave;
@@ -144,9 +144,10 @@ impl InteractiveTest {
     }
 
     /// Drain any remaining output from the PTY (e.g. after Eof or EIO on Linux).
+    /// Optimized to drain faster (reduced from 5 iterations to 2).
     fn drain_remaining_output(&mut self, output: &mut String, buffer: &mut [u8]) {
-        for _ in 0..5 {
-            thread::sleep(Duration::from_millis(50));
+        for _ in 0..2 {
+            thread::sleep(Duration::from_millis(25));
             if let Ok(n) = self.session.read(buffer) {
                 if n > 0 {
                     output.push_str(std::str::from_utf8(&buffer[..n]).unwrap_or(""));
@@ -166,7 +167,7 @@ impl InteractiveTest {
         let max_iterations = (timeout.as_millis() / 50) as usize + 100;
 
         // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(Duration::from_millis(25));
 
         loop {
             iteration_count += 1;
@@ -228,7 +229,7 @@ impl InteractiveTest {
                             ),
                         ));
                     }
-                    thread::sleep(Duration::from_millis(50));
+                    thread::sleep(Duration::from_millis(25));
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     // WouldBlock is normal on Windows conpty when no data is available
@@ -247,7 +248,7 @@ impl InteractiveTest {
                             ),
                         ));
                     }
-                    thread::sleep(Duration::from_millis(50));
+                    thread::sleep(Duration::from_millis(25));
                 }
                 Err(e) => {
                     // Other errors: check if process exited (e.g., EIO on Linux)
@@ -289,6 +290,27 @@ impl InteractiveTest {
                     return Err(e);
                 }
             }
+        }
+    }
+
+    /// Wait for process to finish without draining all output (faster than wait_for_output)
+    /// This is useful when you only need to verify files/state, not capture output.
+    pub fn wait_for_completion(&mut self, timeout: Duration) -> std::io::Result<()> {
+        let start = std::time::Instant::now();
+
+        loop {
+            if start.elapsed() > timeout {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Timeout waiting for process completion",
+                ));
+            }
+
+            if self.session.check(Eof).is_ok() {
+                return Ok(());
+            }
+
+            thread::sleep(Duration::from_millis(25));
         }
     }
 
@@ -367,7 +389,8 @@ pub fn send_menu_actions(
             }
         }
         // Add a small delay between actions for menu to update
-        thread::sleep(Duration::from_millis(150));
+        // Reduced from 150ms to 25ms for faster test execution
+        thread::sleep(Duration::from_millis(25));
     }
     Ok(())
 }
