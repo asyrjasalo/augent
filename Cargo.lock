@@ -102,7 +102,6 @@ dependencies = [
  "git2",
  "inquire",
  "miette",
- "openssl-sys",
  "path-clean",
  "predicates",
  "serde",
