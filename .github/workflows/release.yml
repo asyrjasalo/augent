@@ -210,9 +210,10 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         env:
-          OPENSSL_NO_VENDOR: 0
+          PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig
+          PKG_CONFIG_LIBDIR: /usr/lib/x86_64-linux-gnu
           OPENSSL_DIR: /usr
-          OPENSSL_LIB_DIR: /usr/lib/x86_64-linux-gnu
+          OPENSSL_NO_VENDOR: 1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --compatibility pypi
