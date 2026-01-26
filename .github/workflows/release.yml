@@ -247,7 +247,7 @@ jobs:
   # Create GitHub release with binaries (second, after crates.io succeeds)
   github-release:
     name: Create GitHub release
-    needs: [build-binaries, publish-crates]
+    needs: [build-wheels, build-binaries]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
