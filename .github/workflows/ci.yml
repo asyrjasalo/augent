@@ -109,10 +109,15 @@ jobs:
             cargo install cross
           fi
 
+      - name: Set OpenSSL environment for wheel build
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_system_openssl }}" = "true" ]; then
+            echo "OPENSSL_NO_VENDOR=1" >> $GITHUB_ENV
+          fi
+
       - name: Build wheel
         uses: PyO3/maturin-action@v1
-        env:
-          OPENSSL_NO_VENDOR: ${{ matrix.use_system_openssl && '1' || '' }}
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --compatibility pypi
