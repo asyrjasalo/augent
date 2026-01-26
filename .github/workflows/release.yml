@@ -248,7 +248,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --compatibility pypi
-          manylinux: auto
+          manylinux: ${{ matrix.platform == 'linux' && 'auto' || '' }}
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -335,7 +335,7 @@ jobs:
   # Publish to PyPI (last, after GitHub release succeeds)
   publish-pypi:
     name: Publish to PyPI
-    needs: [github-release]
+    needs: [github-release, build-wheels]
     runs-on: ubuntu-latest
     environment:
       name: pypi
