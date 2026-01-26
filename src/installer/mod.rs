@@ -816,42 +816,43 @@ impl<'a> Installer<'a> {
 
             // Use PathBuf to properly identify the filename and extension
             // This handles Windows path separators correctly
-            let target_path = PathBuf::from(&target_normalized);
+            // Create PathBuf from normalized string to ensure consistent behavior across platforms
+            let target_path =
+                if target_normalized.starts_with('/') || target_normalized.starts_with('.') {
+                    // Absolute path or path starting with dot - use as-is
+                    PathBuf::from(&target_normalized)
+                } else {
+                    // Relative path - ensure it's treated as a path
+                    PathBuf::from(&target_normalized)
+                };
+
             if let Some(file_name) = target_path.file_name() {
                 let file_name_str = file_name.to_string_lossy();
-                // Check if filename has an extension
-                if let Some(dot_pos) = file_name_str.rfind('.') {
-                    // Filename has extension, replace it
-                    let stem = &file_name_str[..dot_pos];
-                    let new_file_name = format!("{}.{}", stem, ext);
-                    if let Some(parent) = target_path.parent() {
-                        target = parent
-                            .join(&new_file_name)
-                            .to_string_lossy()
-                            .replace('\\', "/");
-                    } else {
-                        target = new_file_name.clone();
-                    }
-                    eprintln!(
-                        "[AUGENT DEBUG] Extension transformation (replaced): file_name={:?}, stem={:?}, new_file_name={:?}, result={:?}",
-                        file_name_str, stem, new_file_name, target
-                    );
+                // Use PathBuf::file_stem() to get the stem (filename without extension)
+                // This is more reliable than rfind('.') which can match dots in directory names
+                let new_file_name = if let Some(stem) = target_path.file_stem() {
+                    // Has a stem, replace extension
+                    format!("{}.{}", stem.to_string_lossy(), ext)
                 } else {
-                    // Filename has no extension, append it
-                    let new_file_name = format!("{}.{}", file_name_str, ext);
-                    if let Some(parent) = target_path.parent() {
-                        target = parent
-                            .join(&new_file_name)
-                            .to_string_lossy()
-                            .replace('\\', "/");
-                    } else {
-                        target = new_file_name.clone();
-                    }
-                    eprintln!(
-                        "[AUGENT DEBUG] Extension transformation (appended): file_name={:?}, new_file_name={:?}, result={:?}",
-                        file_name_str, new_file_name, target
-                    );
-                }
+                    // No stem found, append extension to filename
+                    format!("{}.{}", file_name_str, ext)
+                };
+
+                let result_target = if let Some(parent) = target_path.parent() {
+                    // Reconstruct path with new filename
+                    let new_path = parent.join(&new_file_name);
+                    new_path.to_string_lossy().replace('\\', "/")
+                } else {
+                    // No parent, just use the new filename
+                    new_file_name.clone()
+                };
+
+                eprintln!(
+                    "[AUGENT DEBUG] Extension transformation: file_name={:?}, new_file_name={:?}, result={:?}",
+                    file_name_str, new_file_name, result_target
+                );
+
+                target = result_target;
             } else {
                 // No filename found (shouldn't happen), append extension to entire path
                 target = format!("{}.{}", target_normalized, ext);
