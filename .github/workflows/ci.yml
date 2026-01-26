@@ -48,8 +48,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             use_cross: false
-            use_system_openssl: true
-            manylinux_version: 2_34
+            use_system_openssl: false
             artifact_name: augent
             archive_name: augent-x86_64-linux.tar.gz
           - os: ubuntu-latest
@@ -111,10 +110,15 @@ jobs:
             cargo install cross
           fi
 
+      - name: Set OpenSSL environment for wheel build
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_system_openssl }}" = "true" ]; then
+            echo "OPENSSL_NO_VENDOR=1" >> $GITHUB_ENV
+          fi
+
       - name: Build wheel
         uses: PyO3/maturin-action@v1
-        env:
-          OPENSSL_NO_VENDOR: ${{ matrix.use_system_openssl == 'true' && '1' || '' }}
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --compatibility pypi
