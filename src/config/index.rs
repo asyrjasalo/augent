@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use crate::error::{AugentError, Result};
 
-/// Custom serializer for enabled map that sorts keys alphabetically
+/// Custom serializer for enabled map that sorts keys and values alphabetically
 fn serialize_enabled_sorted<S>(
     map: &HashMap<String, Vec<String>>,
     serializer: S,
@@ -26,7 +26,10 @@ where
 
     let mut map_serializer = serializer.serialize_map(Some(sorted_entries.len()))?;
     for (key, value) in sorted_entries {
-        map_serializer.serialize_entry(key, value)?;
+        // Sort the values (installed locations) alphabetically
+        let mut sorted_values = value.clone();
+        sorted_values.sort();
+        map_serializer.serialize_entry(key, &sorted_values)?;
     }
     map_serializer.end()
 }
@@ -503,6 +506,79 @@ bundles:
         assert!(
             commands_apple_pos < commands_zebra_pos,
             "commands/apple.md should come before commands/zebra.md"
+        );
+    }
+
+    #[test]
+    fn test_workspace_bundle_enabled_values_alphabetical_order() {
+        let mut config = WorkspaceConfig::new("@test/workspace");
+
+        // Create a bundle with locations added in non-alphabetical order
+        let mut bundle = WorkspaceBundle::new("test-bundle");
+        // Add locations in reverse alphabetical order to test sorting
+        bundle.add_file(
+            "agents/backend-architect.md",
+            vec![
+                ".opencode/agents/backend-architect.md".to_string(),
+                ".claude/agents/backend-architect.md".to_string(),
+            ],
+        );
+        bundle.add_file(
+            "agents/django-pro.md",
+            vec![
+                ".opencode/agents/django-pro.md".to_string(),
+                ".claude/agents/django-pro.md".to_string(),
+            ],
+        );
+        bundle.add_file(
+            "agents/fastapi-pro.md",
+            vec![
+                ".opencode/agents/fastapi-pro.md".to_string(),
+                ".claude/agents/fastapi-pro.md".to_string(),
+            ],
+        );
+        config.add_bundle(bundle);
+
+        let yaml = config.to_yaml().unwrap();
+
+        // Verify that locations are sorted alphabetically within each file entry
+        // .claude should come before .opencode alphabetically
+        // Find the positions of the locations in the YAML
+        let backend_claude = yaml.find(".claude/agents/backend-architect.md");
+        let backend_opencode = yaml.find(".opencode/agents/backend-architect.md");
+
+        assert!(
+            backend_claude.is_some() && backend_opencode.is_some(),
+            "Both locations should be present for backend-architect"
+        );
+        assert!(
+            backend_claude.unwrap() < backend_opencode.unwrap(),
+            ".claude should come before .opencode alphabetically for backend-architect"
+        );
+
+        // Verify the same for other files
+        let django_claude = yaml.find(".claude/agents/django-pro.md");
+        let django_opencode = yaml.find(".opencode/agents/django-pro.md");
+
+        assert!(
+            django_claude.is_some() && django_opencode.is_some(),
+            "Both locations should be present for django-pro"
+        );
+        assert!(
+            django_claude.unwrap() < django_opencode.unwrap(),
+            ".claude should come before .opencode alphabetically for django-pro"
+        );
+
+        let fastapi_claude = yaml.find(".claude/agents/fastapi-pro.md");
+        let fastapi_opencode = yaml.find(".opencode/agents/fastapi-pro.md");
+
+        assert!(
+            fastapi_claude.is_some() && fastapi_opencode.is_some(),
+            "Both locations should be present for fastapi-pro"
+        );
+        assert!(
+            fastapi_claude.unwrap() < fastapi_opencode.unwrap(),
+            ".claude should come before .opencode alphabetically for fastapi-pro"
         );
     }
 

@@ -4,17 +4,17 @@ bundles:
 - name: '@wshobson/agents/plugins/api-scaffolding'
   enabled:
     agents/backend-architect.md:
-    - .opencode/agents/backend-architect.md
     - .claude/agents/backend-architect.md
+    - .opencode/agents/backend-architect.md
     agents/django-pro.md:
-    - .opencode/agents/django-pro.md
     - .claude/agents/django-pro.md
+    - .opencode/agents/django-pro.md
     agents/fastapi-pro.md:
     - .claude/agents/fastapi-pro.md
     - .opencode/agents/fastapi-pro.md
     agents/graphql-architect.md:
-    - .opencode/agents/graphql-architect.md
     - .claude/agents/graphql-architect.md
+    - .opencode/agents/graphql-architect.md
     skills/fastapi-templates/SKILL.md:
-    - .opencode/skills/SKILL/SKILL.md
     - .claude/skills/fastapi-templates/SKILL.md
+    - .opencode/skills/SKILL/SKILL.md
