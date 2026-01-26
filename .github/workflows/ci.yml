@@ -48,13 +48,11 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             use_cross: false
-            manylinux_version: 2_28
             artifact_name: augent
             archive_name: augent-x86_64-linux.tar.gz
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             use_cross: true
-            manylinux_version: auto
             artifact_name: augent
             archive_name: augent-aarch64-linux.tar.gz
 
