@@ -830,7 +830,7 @@ impl<'a> Installer<'a> {
                             .to_string_lossy()
                             .replace('\\', "/");
                     } else {
-                        target = new_file_name;
+                        target = new_file_name.clone();
                     }
                     eprintln!(
                         "[AUGENT DEBUG] Extension transformation (replaced): file_name={:?}, stem={:?}, new_file_name={:?}, result={:?}",
@@ -845,7 +845,7 @@ impl<'a> Installer<'a> {
                             .to_string_lossy()
                             .replace('\\', "/");
                     } else {
-                        target = new_file_name;
+                        target = new_file_name.clone();
                     }
                     eprintln!(
                         "[AUGENT DEBUG] Extension transformation (appended): file_name={:?}, new_file_name={:?}, result={:?}",
