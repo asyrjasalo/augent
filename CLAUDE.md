@@ -4,7 +4,7 @@ This document serves as CLAUDE.md/AGENTS.md rules file for AI coding platforms w
 
 ## Project Overview
 
-Augent is an AI coding platform (such as OpenCode, Claude Code, Cursor) package manager which manages capabilities (such as skills, subagents, commands, rules, MCP servers, etc.) for various AI coding platforms in a reproducible, platform independent, and intuitive manner.
+Augent is an AI coding platform (such as OpenCode, Claude Code, Cursor) package manager which manages capabilities (such as skills, subagents, commands, rules, MCP servers, etc.) for various AI coding platforms in a reproducible, platform-independent, and intuitive manner.
 
 What it does:
 
@@ -92,28 +92,30 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
 - ❌ Implement platform detection - get_platform in src/platform/detection.rs
 - ❌ Add resource conflict detection logic - find_conflicts() and has_conflict() in WorkspaceBundle
 
-## CRITICAL: GIT OPERATIONS RESTRICTIONS
+## Key Directories
 
-**YOU MUST NEVER, UNDER ANY CIRCUMSTANCES, RUN THE FOLLOWING GIT COMMANDS:**
-
-- ❌ `git checkout` - **ABSOLUTELY FORBIDDEN**
-- ❌ `git reset` - **ABSOLUTELY FORBIDDEN**
-
-**These commands are strictly prohibited because:**
-
-1. They can destroy user's (or another agent's) work
-2. They can undo changes the user intentionally made
-3. They can break the git history in unrecoverable ways
-4. They are DANGEROUS and should never be run by an AI coding platform
-
-**If you make mistakes:**
-
-- Use `git diff` to understand what changed
-- Manually revert changes using `edit` tool
-- Ask the user how they want to proceed
-- NEVER attempt to "undo" with git checkout or reset
-
-**This is a hard rule with NO exceptions.**
+- `src/` - Source code
+  - `src/commands/` - CLI command implementations
+  - `src/config/` - Configuration file handling (bundle, lockfile, workspace, marketplace)
+  - `src/platform/` - Platform detection and transformation engine
+  - `src/source/` - Bundle source parsing and bundle models
+  - `src/workspace/` - Workspace management and initialization
+  - `src/cache/` - Bundle caching system
+  - `src/git/` - Git repository operations
+  - `src/resolver/` - Dependency resolution
+  - `src/installer/` - Installation and uninstallation logic
+  - `src/transaction/` - Transaction management for atomic operations
+  - `src/hash.rs` - BLAKE3 hashing for integrity verification
+  - `src/error.rs` - Error handling with miette
+  - `src/cli.rs` - CLI framework with clap
+  - `src/progress.rs` - Progress reporting for long-running operations
+- `tests/` - Integration tests using assert_cmd
+  - `tests/cli_tests.rs` - Main CLI integration tests
+  - `tests/common/` - Test fixtures and utilities
+- `docs/` - User documentation
+- `docs/implementation/` - Implementation documentation
+  - `docs/implementation/specs/` - Feature specifications
+  - `docs/implementation/adrs/` - Architecture Decision Records
 
 ## Key Documentation
 
@@ -134,37 +136,11 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
 | @docs/platforms.md | Platform support documentation |
 | @docs/platforms_schema.md | Platform schema and transformation documentation |
 
-## Key Directories
-
-- `src/` - Source code
-  - `src/commands/` - CLI command implementations
-  - `src/config/` - Configuration file handling (bundle, lockfile, workspace)
-  - `src/platform/` - Platform detection and transformation engine
-  - `src/source/` - Bundle source parsing and bundle models
-  - `src/workspace/` - Workspace management and initialization
-  - `src/cache/` - Bundle caching system
-  - `src/git/` - Git repository operations
-  - `src/resource/` - Resource models
-  - `src/resolver/` - Dependency resolution
-  - `src/installer/` - Installation and uninstallation logic
-  - `src/transaction/` - Transaction management for atomic operations
-  - `src/hash.rs` - BLAKE3 hashing for integrity verification
-  - `src/error.rs` - Error handling with miette
-  - `src/cli.rs` - CLI framework with clap
-- `tests/` - Integration tests using assert_cmd
-  - `tests/cli_tests.rs` - Main CLI integration tests
-  - `tests/common/` - Test fixtures and utilities
-- `docs/` - User documentation
-- `docs/implementation/` - Implementation documentation
-  - `docs/implementation/specs/` - Feature specifications
-  - `docs/implementation/adrs/` - Architecture Decision Records
-
 ## Core Principles
 
 - We are primarily building a resources manager, NOT a package manager
 - Simplicity and developer-friendliness are paramount
 - No cargo culting existing package managers
-- All Type 1 decisions in PRD are fundamental and non-reversible
 - Integration tests must use REAL CLI
 
 ## Commands Reference

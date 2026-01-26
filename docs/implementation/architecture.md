@@ -279,28 +279,47 @@ augent/
 │   ├── main.rs           # CLI entry point
 │   ├── cli.rs            # CLI definitions (clap)
 │   ├── error.rs          # Error types (thiserror + miette)
+│   ├── hash.rs           # BLAKE3 hashing for integrity verification
+│   ├── progress.rs       # Progress reporting for long-running operations
 │   ├── config/
 │   │   ├── mod.rs
 │   │   ├── bundle.rs     # augent.yaml structures
 │   │   ├── lockfile.rs   # augent.lock structures
-│   │   └── workspace.rs  # augent.workspace.yaml structures
+│   │   ├── workspace.rs  # augent.workspace.yaml structures
+│   │   └── marketplace.rs # marketplace.json parsing
 │   ├── platform/
 │   │   ├── mod.rs
 │   │   ├── detection.rs  # Platform detection
-│   │   └── transform.rs  # Transformation engine
+│   │   ├── loader.rs     # Platform configuration loading
+│   │   └── merge.rs       # Merge strategies for special files
 │   ├── git/
 │   │   └── mod.rs        # Git operations
 │   ├── cache/
 │   │   └── mod.rs        # Bundle caching
+│   ├── source/
+│   │   ├── mod.rs
+│   │   └── bundle.rs     # Bundle source parsing and models
+│   ├── resolver/
+│   │   └── mod.rs        # Dependency resolution
+│   ├── installer/
+│   │   └── mod.rs        # Installation and uninstallation logic
+│   ├── transaction/
+│   │   └── mod.rs        # Transaction management for atomic operations
+│   ├── workspace/
+│   │   └── mod.rs        # Workspace management and initialization
 │   └── commands/
 │       ├── mod.rs
 │       ├── install.rs
 │       ├── uninstall.rs
 │       ├── list.rs
-│       └── show.rs
+│       ├── show.rs
+│       ├── clean_cache.rs
+│       ├── completions.rs
+│       ├── version.rs
+│       └── menu.rs        # Interactive menu for bundle selection
 ├── tests/
 │   ├── common/
-│   │   └── mod.rs        # Test utilities
+│   │   └── mod.rs        # Test utilities and fixtures
 │   ├── install_tests.rs
 │   └── ...
 └── docs/

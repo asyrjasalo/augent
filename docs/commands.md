@@ -67,40 +67,26 @@ augent install github:author/bundle#v1.0.0
 augent install github:author/bundle@main
 ```
 
-### What Happens During Install
+### Installation Process
 
-1. **Cache**: Bundle is downloaded and cached in `~/.cache/augent/bundles/`
-2. **Resolve**: Git refs are resolved to exact SHAs
-3. **Transform**: Resources are transformed to match your AI coding platform's format
-4. **Install**: Files are installed in appropriate locations
-5. **Lock**: Lockfile is updated with resolved SHAs for reproducibility
+1. **Cache** → Bundle downloaded to `~/.cache/augent/bundles/`
+2. **Resolve** → Git refs resolved to exact SHAs
+3. **Transform** → Resources converted to platform-specific format
+4. **Install** → Files installed to platform directories
+5. **Lock** → Lockfile updated with resolved SHAs
 
 ### Installing from augent.yaml
 
-When running `augent install` without a source, Augent installs all bundles declared in `augent.yaml`:
+Run `augent install` without arguments to install all bundles from `.augent/augent.yaml`:
 
 ```yaml
 # .augent/augent.yaml
-name: my-workspace
 bundles:
-  - name: my-bundle
-    path: ./my-bundle
   - github:author/debug-tools
+  - ./local-bundle
 ```
 
-**Behavior:**
-
-- Only bundles in `augent.yaml` are resolved
-- New bundles are added to `augent.lock` and `augent.workspace.yaml`
-- Bundles removed from `augent.yaml` are **NOT** removed from lockfile/workspace
-- Allows temporary disabling of bundles by editing `augent.yaml`
-
-**To completely remove a bundle**, explicitly uninstall it:
-
-```bash
-augent uninstall my-bundle
-# Now removed from all configuration files
-```
+**Note:** Removing a bundle from `augent.yaml` doesn't uninstall it. Use `augent uninstall <name>` to completely remove it.
 
 ---
 
@@ -144,25 +130,17 @@ augent uninstall author/bundle
 
 ### What Gets Removed
 
-1. Files provided by the bundle (unless overridden by other bundles)
-2. Bundle entry from `augent.yaml`
-3. Bundle entry from `augent.lock`
-4. Bundle entries from `augent.workspace.yaml`
+- Files provided by the bundle (unless overridden by other bundles)
+- Bundle entries from `augent.yaml`, `augent.lock`, and `augent.workspace.yaml`
+- **Transitive dependencies** (if no other bundle needs them)
 
 ### Safety Checks
 
-Augent checks for dependencies before uninstalling:
-
 - Warns if other bundles depend on the target bundle
-- Requires confirmation before proceeding (use `-y` to skip)
-- Only removes files that aren't provided by other bundles
-- **Automatically removes transitive dependencies** if no other bundle needs them
+- Requires confirmation (use `-y` to skip)
+- Only removes files not provided by other bundles
 
-### Dependency Behavior
-
-Augent automatically removes transitive dependencies when they're no longer needed. For example, if you installed `bundle-a` which depends on `bundle-b` and `bundle-c`, uninstalling `bundle-a` will also remove `bundle-b` and `bundle-c` if no other bundle depends on them.
-
-For comprehensive documentation on dependency handling, gotchas, and examples, see [Uninstall with Dependencies](./implementation/specs/uninstall-dependencies.md).
+For detailed dependency handling, see [Uninstall with Dependencies](./implementation/specs/uninstall-dependencies.md).
 
 ---
 

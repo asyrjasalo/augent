@@ -96,47 +96,12 @@ Each bundle lists its **bundle-relative paths** (e.g. `rules/debug.md`) and the 
 
 ## Lazy Workspace Configuration
 
-Augent can work without an `augent.workspace.yaml` file. This is useful when:
+Augent can work without `augent.workspace.yaml`. When missing:
 
-- Migrating from another system
-- Workspace config is corrupted or deleted
-- First time installing bundles in a workspace
+- **On Install**: Augent generates the workspace config file automatically
+- **On Uninstall**: Augent scans the workspace to rebuild the config by detecting platforms, scanning installed files, and matching them to bundles from the lockfile
 
-### How It Works
-
-When `augent.workspace.yaml` is missing:
-
-1. **On Install**: Augent installs bundles normally and generates the workspace config file
-2. **On Uninstall**: Before removing files, Augent scans the workspace to rebuild the workspace config by:
-   - Detecting which platforms are installed (`.dirs` present)
-   - Scanning each platform directory for installed files
-   - Matching files to bundles from the lockfile
-   - Reconstructing the workspace configuration
-
-### Example: Migrating a Workspace
-
-```bash
-# Scenario: You have .augent/augent.lock but no augent.workspace.yaml
-
-# List works (reads from lockfile)
-augent list
-
-# Uninstall rebuilds workspace.yaml first
-augent uninstall my-bundle
-# Output: Workspace configuration is missing. Rebuilding from installed files...
-# Then proceeds with uninstall
-```
-
-### Workspace Scanning Behavior
-
-When rebuilding `augent.workspace.yaml`, Augent:
-
-1. **Detects all platforms**: Dynamically checks for any of the 14 supported platforms defined in the system (including `.claude/`, `.cursor/`, `.opencode/`, `.windsurf/`, `.gemini/`, `.agent/`, `.augment/`, `.codex/`, `.factory/`, `.kilocode/`, `.kiro/`, `.qwen/`, `.roo/`, `.warp/`, and more)
-2. **Scans for files**: For each bundle in the lockfile, searches for its files across all detected platform directories
-3. **Handles transformations**: Uses platform-specific transformation rules to find files (e.g., `.md` → `.mdc` for Cursor rules, `.md` → `{name}/SKILL.md` for OpenCode skills)
-4. **Reconstructs mapping**: Records which files are installed where
-
-**Platform Independence**: The detection system is fully platform-agnostic—it automatically detects any platform defined in the system configuration without hardcoding specific platforms. New platforms can be added via `platforms.jsonc` configuration files.
+This is useful when migrating from another system or if the config is corrupted.
 
 ---
 
@@ -317,114 +282,36 @@ cat .augent/augent.lock
 
 ## Bundle Lifecycle
 
-Understanding how bundles are managed throughout their lifecycle in your workspace.
+### Adding Bundles
 
-### Adding Bundles to Configuration
+Add to `augent.yaml` and run `augent install`:
 
-When you add a bundle to `augent.yaml` and run `augent install`:
+- Bundle resolved and added to `augent.lock` and `augent.workspace.yaml`
+- Resources installed to platform directories
 
-```yaml
-# augent.yaml
-bundles:
-  - name: my-bundle
-    path: ./my-bundle
-```
+### Removing from Configuration
 
-**What happens:**
+Removing from `augent.yaml` and running `augent install`:
 
-1. Bundle is resolved and its resources discovered
-2. Bundle entry is added to `augent.lock` with exact SHA/reference
-3. Bundle entry is added to `augent.workspace.yaml` with installed files
-4. Resources are transformed and installed to platform directories
+- Bundle **NOT** removed from lockfile or workspace config
+- Files **NOT** uninstalled
+- Allows temporary disabling without losing configuration
 
-**Result:** Bundle is now tracked in both configuration and lockfile.
+### Explicit Removal
 
-### Removing Bundles from Configuration
+Use `augent uninstall <name>` to completely remove:
 
-When you remove a bundle from `augent.yaml` and run `augent install`:
+- Files removed (unless overridden by other bundles)
+- Entries removed from all config files
+- Dependencies cleaned up if unused
 
-```yaml
-# augent.yaml (before)
-bundles:
-  - name: old-bundle
-    path: ./old-bundle
-  - name: new-bundle
-    path: ./new-bundle
+### Configuration Files
 
-# augent.yaml (after)
-bundles:
-  - name: new-bundle
-    path: ./new-bundle
-```
-
-**What happens:**
-
-1. Only bundles in current `augent.yaml` are resolved
-2. Old bundle is NOT removed from `augent.lock`
-3. Old bundle is NOT removed from `augent.workspace.yaml`
-4. Old bundle's files are NOT uninstalled
-
-**Why?** This design ensures:
-
-- Bundles can be temporarily removed and re-added without re-resolving
-- History is preserved in lockfile and workspace config
-- Manual bundle management is possible without accidental deletions
-- Team members can comment out bundles without losing configuration
-
-### Explicitly Removing Bundles
-
-To completely remove a bundle's resources and entries:
-
-```bash
-# Remove from configuration first
-# (remove from augent.yaml)
-
-# Then explicitly uninstall to clean up
-augent uninstall my-bundle
-```
-
-**What happens:**
-
-1. Files provided by bundle are removed (unless overridden by others)
-2. Bundle entry is removed from `augent.lock`
-3. Bundle entry is removed from `augent.workspace.yaml`
-4. Dependencies are cleaned up if no other bundle needs them
-
-### Configuration vs. Resolved State
-
-Important distinction:
-
-| Aspect | augent.yaml | augent.lock | augent.workspace.yaml |
-|--------|------------|-------------|----------------------|
-| **Contains** | Bundles to install | Resolved bundle info | Installed file tracking |
-| **Updated when** | Manual edit + install | Bundle resolved | Files installed |
-| **Removed when** | Manual deletion | `augent uninstall` | `augent uninstall` |
-| **Manual edits** | Expected (bundles list) | Not recommended | Not recommended |
-| **Persists after removal** | No | Yes (until uninstall) | Yes (until uninstall) |
-
-### Workflow: Adding and Removing Bundles
-
-```bash
-# 1. Add bundle to configuration
-echo "- name: my-bundle\n  path: ./my-bundle" >> .augent/augent.yaml
-
-# 2. Install
-augent install
-# Bundle added to lock and workspace config
-
-# 3. Later, temporarily disable
-# Edit augent.yaml and comment out the bundle
-vi .augent/augent.yaml
-
-# 4. Install again
-augent install
-# Bundle entry REMAINS in lock and workspace config (good!)
-# Files are NOT re-installed (no changes)
-
-# 5. To truly remove, uninstall explicitly
-augent uninstall my-bundle
-# Now it's completely removed from all config files
-```
+| File | Contains | Updated When | Removed When |
+|------|----------|--------------|--------------|
+| `augent.yaml` | Bundles to install | Manual edit + install | Manual deletion |
+| `augent.lock` | Resolved bundle info | Bundle resolved | `augent uninstall` |
+| `augent.workspace.yaml` | Installed file tracking | Files installed | `augent uninstall` |
 
 ---
 

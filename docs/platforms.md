@@ -248,32 +248,18 @@ For detailed schema information and all available options, see [Platform Configu
 
 ## Resource Transformations
 
-Augent automatically transforms universal resource formats to platform-specific formats:
+Augent automatically transforms universal resources to platform-specific formats. Common transformations:
 
-| Universal | Antigravity | Augment | Claude | Codex |
-|----------|-------------|----------|--------|--------|
-| `commands/**/*.md` | `.agent/workflows/**/*.md` | `.augment/commands/**/*.md` | `.claude/commands/**/*.md` | `.codex/prompts/**/*.md` |
-| `rules/**/*.md` | `.agent/rules/**/*.md` | `.augment/rules/**/*.md` | `.claude/rules/**/*.md` | |
-| `agents/**/*.md` | | | `.claude/agents/**/*.md` | |
-| `skills/**/*` | `.agent/skills/**/*` | | `.claude/skills/**/*.md` | `.codex/skills/**/*` |
-| `mcp.jsonc` | | | `.claude/mcp.json` | `.codex/config.toml` |
-| `AGENTS.md` | | | `CLAUDE.md` | `AGENTS.md` |
+| Universal Format | Example Platforms |
+|-----------------|-------------------|
+| `commands/**/*.md` | `.claude/commands/`, `.cursor/commands/`, `.opencode/commands/`, `.codex/prompts/`, `.kilocode/workflows/` |
+| `rules/**/*.md` | `.claude/rules/`, `.cursor/rules/*.mdc`, `.opencode/rules/`, `.kilocode/rules/`, `.kiro/steering/` |
+| `agents/**/*.md` | `.claude/agents/`, `.cursor/agents/`, `.opencode/agents/`, `.factory/droids/`, `.qwen/agents/` |
+| `skills/**/*` | `.claude/skills/`, `.cursor/skills/`, `.opencode/skills/`, `.windsurf/skills/`, `.gemini/skills/` |
+| `mcp.jsonc` | `.claude/mcp.json`, `.cursor/mcp.json`, `.opencode/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
+| `AGENTS.md` | `CLAUDE.md`, `AGENTS.md`, `QWEN.md`, `WARP.md`, `GEMINI.md` |
 
-| Universal | Cursor | Factory | Kilo | Kiro | OpenCode | Qwen | Roo |
-|----------|--------|---------|-------|------|----------|-------|-----|
-| `commands/**/*.md` | `.cursor/commands/**/*.md` | `.factory/commands/**/*.md` | `.kilocode/workflows/**/*.md` | | `.opencode/commands/**/*.md` | | `.roo/commands/**/*.md` |
-| `rules/**/*.md` | `.cursor/rules/**/*.mdc` |  | `.kilocode/rules/**/*.md` | `.kiro/steering/**/*.md` | `.opencode/rules/**/*.md` |  |  |
-| `agents/**/*.md` | `.cursor/agents/**/*.md` | `.factory/droids/**/*.md` |  |  | `.opencode/agents/**/*.md` | `.qwen/agents/**/*.md` |  |
-| `skills/**/*` | `.cursor/skills/**/*` | `.factory/skills/**/*` | `.kilocode/skills/**/*` | | `.opencode/skills/**/*.md` | `.qwen/skills/**/*` | `.roo/skills/**/*` |
-| `mcp.jsonc` | `.cursor/mcp.json` | `.factory/settings/mcp.json` | `.kilocode/mcp.json` | `.kiro/settings/mcp.json` | `.opencode/mcp.json` | `.qwen/settings.json` | `.roo/mcp.json` |
-| `AGENTS.md` | `.cursor/AGENTS.md` | `.factory/AGENTS.md` | `.kilocode/AGENTS.md` | | `.opencode/AGENTS.md` | `.qwen/QWEN.md` | `.roo/AGENTS.md` |
-
-| Universal | Warp | Windsurf | Gemini CLI |
-| `rules/**/*.md` | | |  |
-| `agents/**/*.md` | | |  |
-| `skills/**/*` | | `.windsurf/skills/**/*` | `.gemini/skills/**/*` |
-| `mcp.jsonc` | | | `.gemini/settings.json` |
-| `AGENTS.md` | `WARP.md` | `GEMINI.md` |
+For complete transformation details, see [Platform Configuration Schema](platforms_schema.md).
 
 ## Merge Strategies
 

@@ -216,56 +216,31 @@ root/
 
 ## Creating a Bundle
 
-### Step 1: Create Directory Structure
+1. **Create directory structure:**
 
-```bash
-mkdir my-awesome-bundle
-cd my-awesome-bundle
-mkdir rules skills
-```
+   ```bash
+   mkdir my-awesome-bundle && cd my-awesome-bundle
+   mkdir rules skills commands
+   ```
 
-### Step 2: Add Resources
+2. **Add resources** (rules, skills, commands, etc.) to their respective directories
 
-```bash
-# Add rules
-cat > rules/deploy.md << 'EOF'
-# Deployment Rules
+3. **Create `augent.yaml`** (optional but recommended):
 
-Always test deployments before merging.
-EOF
+   ```yaml
+   name: my-awesome-bundle
+   description: Deployment automation tools
+   ```
 
-# Add skills
-cat > skills/automate.md << 'EOF'
-# Automation Skills
+4. **Publish as Git repository:**
 
-Automate repetitive deployment tasks.
-EOF
-```
+   ```bash
+   git init && git add . && git commit -m "Initial commit"
+   git remote add origin https://github.com/author/my-awesome-bundle
+   git push -u origin main
+   ```
 
-### Step 3: Create Configuration
-
-```bash
-cat > augent.yaml << 'EOF'
-name: my-awesome-bundle
-description: Deployment automation tools
-EOF
-```
-
-### Step 4: Publish as Git Repository
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/author/my-awesome-bundle
-git push -u origin main
-```
-
-### Step 5: Install Bundle
-
-```bash
-augent install github:author/my-awesome-bundle
-```
+5. **Install:** `augent install github:author/my-awesome-bundle`
 
 ---
 
@@ -299,59 +274,14 @@ augent install github:author/my-awesome-bundle
 
 ## Bundle Sources
 
-### GitHub Short-form
-
-```bash
-augent install author/bundle
-augent install github:author/bundle
-```
-
-### Git URL
-
-```bash
-augent install https://github.com/author/bundle.git
-augent install git@github.com:author/bundle.git
-```
-
-### GitHub Web UI URL
-
-You can copy URLs directly from your browser when viewing a repository on GitHub:
-
-```bash
-# Install from a specific branch/tag and subdirectory
-augent install https://github.com/author/repo/tree/main/plugins/bundle-name
-
-# Install from a specific tag/release
-augent install https://github.com/author/repo/tree/v1.0.0
-
-# Install nested subdirectories
-augent install https://github.com/author/repo/tree/main/deeply/nested/path/to/bundle
-```
-
-**Note:** This format automatically extracts the ref (branch/tag) and subdirectory path from the URL.
-
-### Local Directory
-
-```bash
-augent install ./local-bundle
-augent install ../shared/bundle
-```
-
-### Subdirectory
-
-```bash
-augent install github:author/repo#plugins/my-bundle
-```
-
-### Specific Version
-
-```bash
-augent install github:author/bundle#v1.0.0
-augent install github:author/bundle@main
-augent install github:author/bundle#abc123def456
-```
-
-Both `#` and `@` are supported as ref separators. Use either to specify a tag, branch, or commit.
+| Format | Example | Description |
+|--------|---------|-------------|
+| **GitHub short-form** | `author/bundle` or `github:author/bundle` | GitHub repository |
+| **Git URL** | `https://github.com/author/bundle.git` or `git@github.com:author/bundle.git` | Any Git repository |
+| **GitHub Web UI URL** | `https://github.com/author/repo/tree/main/plugins/bundle` | Copy from browser (auto-extracts ref and path) |
+| **Local directory** | `./local-bundle` or `../shared/bundle` | Local path |
+| **Subdirectory** | `github:author/repo#plugins/my-bundle` | Repository subdirectory |
+| **Specific version** | `github:author/bundle#v1.0.0` or `github:author/bundle@main` | Tag, branch, or commit (both `#` and `@` supported) |
 
 ---
 
