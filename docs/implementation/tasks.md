@@ -129,7 +129,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Define data structures for `augent.yaml`
 - [x] Define data structures for `augent.lock`
-- [x] Define data structures for `augent.workspace.yaml`
+- [x] Define data structures for `augent.index.yaml`
 - [x] Implement YAML serialization/deserialization with `serde_yaml`
 - [x] Add validation logic for config file schemas
 - [x] Implement config file merging behavior
@@ -272,7 +272,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement workspace detection (`.augent/` directory)
 - [x] Create initial workspace bundle name inference from git remote
 - [x] Create fallback naming (USERNAME/WORKSPACE_DIR)
-- [x] Generate initial `augent.yaml`, `augent.lock`, `augent.workspace.yaml`
+- [x] Generate initial `augent.yaml`, `augent.lock`, `augent.index.yaml`
 - [x] Set up `.augent/bundles/` directory structure
 - [x] Write tests for workspace initialization
 
@@ -282,7 +282,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 5.3: Modified File Detection
 
-- [x] Trace files from `augent.workspace.yaml` to source bundle/SHA
+- [x] Trace files from `augent.index.yaml` to source bundle/SHA
 - [x] Calculate BLAKE3 checksum of original file from cached bundle
 - [x] Compare with current workspace file
 - [x] Identify modified files
@@ -332,7 +332,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Update `augent.yaml` with new bundle entry
 - [x] Update `augent.lock` with resolved dependencies
-- [x] Update `augent.workspace.yaml` with installed files mapping
+- [x] Update `augent.index.yaml` with installed files mapping
 - [x] Track which agents each file is installed for
 - [x] Handle `--for <agent>` flag logic
 - [x] Write tests for configuration updates
@@ -379,7 +379,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 - [x] Remove bundle from `augent.yaml`
 - [x] Remove bundle from `augent.lock`
-- [x] Remove bundle entries from `augent.workspace.yaml`
+- [x] Remove bundle entries from `augent.index.yaml`
 - [x] Update bundle order in config files
 - [x] Write tests for configuration cleanup
 
@@ -739,7 +739,7 @@ Comprehensive test coverage for all user-facing functionality including integrat
 
 - [x] Test install with corrupted augent.yaml
 - [x] Test install with corrupted augent.lock
-- [x] Test install with corrupted augent.workspace.yaml
+- [x] Test install with corrupted augent.index.yaml
 - [x] Test install with circular dependencies (error case)
 - [x] Test install with missing dependency bundle (error case)
 - [x] Test uninstall with bundle not found (error case)

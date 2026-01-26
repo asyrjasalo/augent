@@ -1,6 +1,6 @@
-//! Tests for lazy workspace.yaml initialization
+//! Tests for lazy index.yaml initialization
 //!
-//! These tests verify that augent can work without augent.workspace.yaml
+//! These tests verify that augent can work without augent.index.yaml
 //! and automatically rebuilds it when needed.
 
 mod common;
@@ -15,7 +15,7 @@ fn augent_cmd() -> Command {
 }
 
 #[test]
-fn test_install_without_workspace_yaml_creates_it() {
+fn test_install_without_index_yaml_creates_it() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -28,27 +28,24 @@ bundles: []
 "#,
     );
 
-    // Install bundle (workspace.yaml doesn't exist yet)
+    // Install bundle (index.yaml doesn't exist yet)
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    // Verify workspace.yaml was created
-    let workspace_yaml = workspace.path.join(".augent/augent.workspace.yaml");
-    assert!(
-        workspace_yaml.exists(),
-        "augent.workspace.yaml should be created"
-    );
+    // Verify index.yaml was created
+    let index_yaml = workspace.path.join(".augent/augent.index.yaml");
+    assert!(index_yaml.exists(), "augent.index.yaml should be created");
 
     // Verify it contains the bundle entry
-    let content = fs::read_to_string(&workspace_yaml).expect("should read workspace.yaml");
+    let content = fs::read_to_string(&index_yaml).expect("should read index.yaml");
     assert!(content.contains("@test/test-bundle"));
 }
 
 #[test]
-fn test_uninstall_without_workspace_yaml_rebuilds_it() {
+fn test_uninstall_without_index_yaml_rebuilds_it() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -68,13 +65,13 @@ bundles: []
         .assert()
         .success();
 
-    // Delete workspace.yaml to simulate missing file
-    let workspace_yaml = workspace.path.join(".augent/augent.workspace.yaml");
-    fs::remove_file(&workspace_yaml).expect("should delete workspace.yaml");
+    // Delete index.yaml to simulate missing file
+    let index_yaml = workspace.path.join(".augent/augent.index.yaml");
+    fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
-    assert!(!workspace_yaml.exists(), "workspace.yaml should be deleted");
+    assert!(!index_yaml.exists(), "index.yaml should be deleted");
 
-    // Try to uninstall - it should rebuild workspace.yaml first
+    // Try to uninstall - it should rebuild index.yaml first
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/test-bundle", "-y"])
@@ -86,7 +83,7 @@ bundles: []
 }
 
 #[test]
-fn test_uninstall_without_workspace_yaml_finds_installed_files() {
+fn test_uninstall_without_index_yaml_finds_installed_files() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -117,9 +114,9 @@ bundles: []
     let installed_file = workspace.path.join(".cursor/commands/debug.md");
     assert!(installed_file.exists(), "file should be installed");
 
-    // Delete workspace.yaml to simulate missing file
-    let workspace_yaml = workspace.path.join(".augent/augent.workspace.yaml");
-    fs::remove_file(&workspace_yaml).expect("should delete workspace.yaml");
+    // Delete index.yaml to simulate missing file
+    let index_yaml = workspace.path.join(".augent/augent.index.yaml");
+    fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // Uninstall should still work and find the file
     augent_cmd()
@@ -128,15 +125,15 @@ bundles: []
         .assert()
         .success();
 
-    // Verify the file was removed despite workspace.yaml being missing initially
+    // Verify the file was removed despite index.yaml being missing initially
     assert!(
         !installed_file.exists(),
-        "file should be uninstalled even with missing workspace.yaml"
+        "file should be uninstalled even with missing index.yaml"
     );
 }
 
 #[test]
-fn test_list_without_workspace_yaml_still_works() {
+fn test_list_without_index_yaml_still_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -156,9 +153,9 @@ bundles: []
         .assert()
         .success();
 
-    // Delete workspace.yaml
-    let workspace_yaml = workspace.path.join(".augent/augent.workspace.yaml");
-    fs::remove_file(&workspace_yaml).expect("should delete workspace.yaml");
+    // Delete index.yaml
+    let index_yaml = workspace.path.join(".augent/augent.index.yaml");
+    fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // List should still work (reads from lockfile)
     augent_cmd()
@@ -170,7 +167,7 @@ bundles: []
 }
 
 #[test]
-fn test_multiple_bundles_without_workspace_yaml() {
+fn test_multiple_bundles_without_index_yaml() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -209,11 +206,11 @@ bundles: []
         .assert()
         .success();
 
-    // Delete workspace.yaml
-    let workspace_yaml = workspace.path.join(".augent/augent.workspace.yaml");
-    fs::remove_file(&workspace_yaml).expect("should delete workspace.yaml");
+    // Delete index.yaml
+    let index_yaml = workspace.path.join(".augent/augent.index.yaml");
+    fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
-    // Uninstall first bundle - should still work and rebuild workspace.yaml
+    // Uninstall first bundle - should still work and rebuild index.yaml
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/bundle-a", "-y"])
@@ -226,17 +223,17 @@ bundles: []
     // Verify second bundle's file still exists
     assert!(workspace.path.join(".cursor/commands/cmd-b.md").exists());
 
-    // Verify workspace.yaml was recreated and contains second bundle
-    let workspace_yaml_content =
-        fs::read_to_string(&workspace_yaml).expect("should have recreated workspace.yaml");
+    // Verify index.yaml was recreated and contains second bundle
+    let index_yaml_content =
+        fs::read_to_string(&index_yaml).expect("should have recreated index.yaml");
     assert!(
-        workspace_yaml_content.contains("@test/bundle-b"),
-        "workspace.yaml should contain remaining bundle"
+        index_yaml_content.contains("@test/bundle-b"),
+        "index.yaml should contain remaining bundle"
     );
 }
 
 #[test]
-fn test_workspace_yaml_scan_detects_platform_directories() {
+fn test_index_yaml_scan_detects_platform_directories() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
@@ -262,9 +259,9 @@ bundles: []
         .assert()
         .success();
 
-    // Delete workspace.yaml
-    let workspace_yaml = workspace.path.join(".augent/augent.workspace.yaml");
-    fs::remove_file(&workspace_yaml).expect("should delete workspace.yaml");
+    // Delete index.yaml
+    let index_yaml = workspace.path.join(".augent/augent.index.yaml");
+    fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // Trigger rebuild via uninstall
     augent_cmd()

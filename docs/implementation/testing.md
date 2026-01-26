@@ -41,11 +41,11 @@ src/
 │   ├── mod.rs
 │   ├── bundle.rs         # Tests at bottom of file
 │   ├── lockfile.rs       # Tests at bottom of file
-│   └── workspace.rs      # Tests at bottom of file
+│   └── index.rs          # Tests at bottom of file
 ├── platform/
 │   ├── mod.rs
 │   └── transform.rs      # Tests at bottom of file
-└── error.rs             # Tests at bottom of file
+└── error.rs              # Tests at bottom of file
 ```
 
 ### Example Pattern

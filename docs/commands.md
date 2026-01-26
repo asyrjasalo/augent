@@ -131,7 +131,7 @@ augent uninstall author/bundle
 ### What Gets Removed
 
 - Files provided by the bundle (unless overridden by other bundles)
-- Bundle entries from `augent.yaml`, `augent.lock`, and `augent.workspace.yaml`
+- Bundle entries from `augent.yaml`, `augent.lock`, and `augent.index.yaml`
 - **Transitive dependencies** (if no other bundle needs them)
 
 ### Safety Checks

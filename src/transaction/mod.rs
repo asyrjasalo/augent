@@ -81,7 +81,7 @@ impl Transaction {
         let config_files = [
             self.augent_dir.join("augent.yaml"),
             self.augent_dir.join("augent.lock"),
-            self.augent_dir.join("augent.workspace.yaml"),
+            self.augent_dir.join("augent.index.yaml"),
         ];
 
         for path in &config_files {

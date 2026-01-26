@@ -203,7 +203,7 @@ The command only removes files from platforms where the bundle was installed.
 **Example**:
 
 ```yaml
-# workspace.yaml after installing bundle-a for claude and cursor
+# index.yaml after installing bundle-a for claude and cursor
 bundles:
   - name: bundle-a
     enabled:
@@ -281,7 +281,7 @@ bundle-a → bundle-b → bundle-a  # ❌ Circular!
 - Remaining bundles keep their resolved SHAs
 - Lockfile is reorganized to maintain correct order
 
-### augent.workspace.yaml (File locations)
+### augent.index.yaml (File locations)
 
 - All entries for uninstalled bundles are removed
 - File location mappings are cleaned up

@@ -10,7 +10,7 @@
 //! .augent/
 //! ├── augent.yaml           # Workspace bundle config
 //! ├── augent.lock           # Resolved dependencies
-//! └── augent.workspace.yaml # Per-agent file mappings
+//! └── augent.index.yaml # Per-agent file mappings
 //! ```
 //!
 #![allow(dead_code)]
@@ -33,8 +33,8 @@ pub const BUNDLE_CONFIG_FILE: &str = "augent.yaml";
 /// Lockfile filename
 pub const LOCKFILE_NAME: &str = "augent.lock";
 
-/// Workspace config filename
-pub const WORKSPACE_CONFIG_FILE: &str = "augent.workspace.yaml";
+/// Workspace index filename
+pub const WORKSPACE_INDEX_FILE: &str = "augent.index.yaml";
 
 /// Represents an Augent workspace
 #[derive(Debug)]
@@ -45,7 +45,7 @@ pub struct Workspace {
     /// Path to the .augent directory (legacy location, always present)
     pub augent_dir: PathBuf,
 
-    /// Path to the configuration directory (where augent.yaml/augent.lock/augent.workspace.yaml are)
+    /// Path to the configuration directory (where augent.yaml/augent.lock/augent.index.yaml are)
     /// This is either root (if augent.yaml is in root) or .augent (if augent.yaml is in .augent)
     pub config_dir: PathBuf,
 
@@ -55,7 +55,7 @@ pub struct Workspace {
     /// Lockfile (augent.lock)
     pub lockfile: Lockfile,
 
-    /// Workspace configuration (augent.workspace.yaml)
+    /// Workspace configuration (augent.index.yaml)
     pub workspace_config: WorkspaceConfig,
 }
 
@@ -90,7 +90,7 @@ impl Workspace {
     /// 1. If augent.yaml exists in the root, use that (takes precedence)
     /// 2. Otherwise, use .augent/augent.yaml
     ///
-    /// Configuration files (augent.lock, augent.workspace.yaml) are loaded from the same
+    /// Configuration files (augent.lock, augent.index.yaml) are loaded from the same
     /// directory as augent.yaml.
     pub fn open(root: &Path) -> Result<Self> {
         let augent_dir = root.join(WORKSPACE_DIR);
@@ -284,7 +284,7 @@ impl Workspace {
 
     /// Load workspace configuration from a directory
     fn load_workspace_config(config_dir: &Path) -> Result<WorkspaceConfig> {
-        let path = config_dir.join(WORKSPACE_CONFIG_FILE);
+        let path = config_dir.join(WORKSPACE_INDEX_FILE);
 
         if !path.exists() {
             // Return empty workspace config if not present
@@ -323,7 +323,7 @@ impl Workspace {
 
     /// Save workspace configuration to a directory
     fn save_workspace_config(config_dir: &Path, config: &WorkspaceConfig) -> Result<()> {
-        let path = config_dir.join(WORKSPACE_CONFIG_FILE);
+        let path = config_dir.join(WORKSPACE_INDEX_FILE);
         let content = config.to_yaml()?;
 
         fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
@@ -360,12 +360,12 @@ impl Workspace {
 
     /// Rebuild workspace configuration by scanning filesystem for installed files
     ///
-    /// This method reconstructs the workspace.yaml by:
+    /// This method reconstructs the index.yaml by:
     /// 1. Detecting which platforms are installed (by checking for .dirs)
     /// 2. For each bundle in lockfile, scanning for its files across all platforms
-    /// 3. Reconstructing the workspace.yaml file mappings
+    /// 3. Reconstructing the index.yaml file mappings
     ///
-    /// This is useful when workspace.yaml is missing or corrupted.
+    /// This is useful when index.yaml is missing or corrupted.
     pub fn rebuild_workspace_config(&mut self) -> Result<()> {
         let mut rebuilt_config = WorkspaceConfig::new(self.bundle_config.name.clone());
 
@@ -809,7 +809,7 @@ mod tests {
         assert!(
             temp.path()
                 .join(WORKSPACE_DIR)
-                .join(WORKSPACE_CONFIG_FILE)
+                .join(WORKSPACE_INDEX_FILE)
                 .exists()
         );
 

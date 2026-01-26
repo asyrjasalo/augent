@@ -49,7 +49,7 @@ fn test_install_with_corrupted_augent_lock() {
 }
 
 #[test]
-fn test_install_with_corrupted_augent_workspace_yaml() {
+fn test_install_with_corrupted_augent_index_yaml() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");

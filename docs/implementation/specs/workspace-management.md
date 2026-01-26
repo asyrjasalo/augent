@@ -6,7 +6,7 @@
 
 ## Overview
 
-Workspace management provides initialization, detection, and configuration management for Augent workspaces. Workspaces contain `.augent/` directory with configuration files (augent.yaml, augent.lock, augent.workspace.yaml) and track which bundles are installed and which files they provide.
+Workspace management provides initialization, detection, and configuration management for Augent workspaces. Workspaces contain `.augent/` directory with configuration files (augent.yaml, augent.lock, augent.index.yaml) and track which bundles are installed and which files they provide.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ From PRD:
 - Support custom workspace location via `-w, --workspace` flag
 - Track installed bundles in `augent.yaml`
 - Track locked dependencies in `augent.lock` with exact SHAs
-- Track file-to-bundle mappings in `augent.workspace.yaml`
+- Track file-to-bundle mappings in `augent.index.yaml`
 - Detect modified files and move them to workspace bundle
 - Ensure workspace is never left in inconsistent state
 
@@ -75,7 +75,7 @@ fn initialize_workspace(workspace_path: &Path) -> Result<Workspace> {
     // Write configuration files
     write_config(&augent_dir.join("augent.yaml"), &workspace_config)?;
     write_config(&augent_dir.join("augent.lock"), &lockfile)?;
-    write_config(&augent_dir.join("augent.workspace.yaml"), &workspace_lock)?;
+    write_config(&augent_dir.join("augent.index.yaml"), &workspace_lock)?;
 
     Ok(Workspace { config: workspace_config, lockfile, workspace_lock })
 }
@@ -154,7 +154,7 @@ bundles:
     hash: blake3_hash_value
 ```
 
-**augent.workspace.yaml** - File tracking:
+**augent.index.yaml** - File tracking:
 
 ```yaml
 name: my-workspace
@@ -224,7 +224,7 @@ fn detect_modified_files(workspace: &Workspace, new_bundle: &Bundle) -> Result<V
 
 1. For each file in new bundle
 2. Check if file already exists in workspace
-3. Get original file content from source bundle (via augent.workspace.yaml)
+3. Get original file content from source bundle (via augent.index.yaml)
 4. Calculate BLAKE3 hash of original content
 5. Compare with hash of current workspace file
 6. If hashes differ, file is modified

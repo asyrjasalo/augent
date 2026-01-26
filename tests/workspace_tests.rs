@@ -35,7 +35,7 @@ bundles: []
     assert!(workspace.file_exists(".augent"));
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.index.yaml"));
 }
 
 #[test]
@@ -118,9 +118,9 @@ bundles: []
 
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
-    let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_config = workspace.read_file(".augent/augent.index.yaml");
     assert!(workspace_config.contains("name: '@user/test-project'"));
 
     let bundle_config = workspace.read_file(".augent/augent.yaml");
@@ -159,13 +159,13 @@ bundles: []
 
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
     let username = std::env::var("USER")
         .or_else(|_| std::env::var("USERNAME"))
         .unwrap_or_else(|_| "user".to_string());
 
-    let workspace_config = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_config = workspace.read_file(".augent/augent.index.yaml");
 
     assert!(
         workspace_config.contains(&format!("name: '@{}/", username)),
@@ -515,7 +515,7 @@ bundles: []
 
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.index.yaml"));
 }
 
 #[test]
@@ -540,7 +540,7 @@ bundles: []
     assert!(workspace.file_exists(".augent"));
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+    assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
     augent_cmd()
         .current_dir(&workspace.path)

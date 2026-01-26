@@ -298,7 +298,7 @@ bundles: []
         .success();
 
     let lockfile_before = workspace.read_file(".augent/augent.lock");
-    let workspace_config_before = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_config_before = workspace.read_file(".augent/augent.index.yaml");
 
     augent_cmd()
         .current_dir(&workspace.path)
@@ -307,7 +307,7 @@ bundles: []
         .success();
 
     let lockfile_after = workspace.read_file(".augent/augent.lock");
-    let workspace_config_after = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_config_after = workspace.read_file(".augent/augent.index.yaml");
 
     assert_eq!(
         lockfile_before, lockfile_after,
@@ -650,7 +650,7 @@ bundles: []
         .success();
 
     let lockfile_after = workspace.read_file(".augent/augent.lock");
-    let workspace_config_after = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_config_after = workspace.read_file(".augent/augent.index.yaml");
     let bundle_config_after = workspace.read_file(".augent/augent.yaml");
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
@@ -687,7 +687,7 @@ bundles: [invalid yaml here
 
     let workspace_config_before = workspace.file_exists(".augent/augent.yaml");
     let lockfile_before = workspace.file_exists(".augent/augent.lock");
-    let workspace_file_before = workspace.file_exists(".augent/augent.workspace.yaml");
+    let workspace_file_before = workspace.file_exists(".augent/augent.index.yaml");
 
     augent_cmd()
         .current_dir(&workspace.path)
@@ -714,7 +714,7 @@ bundles: [invalid yaml here
     }
     if workspace_file_before {
         assert!(
-            workspace.file_exists(".augent/augent.workspace.yaml"),
+            workspace.file_exists(".augent/augent.index.yaml"),
             "Workspace config should still exist after failed install"
         );
     }

@@ -23,7 +23,7 @@ my-project/
 ├── .augent/                           # Augent workspace directory
 │   ├── augent.yaml                    # Workspace bundle definition
 │   ├── augent.lock                    # Locked bundle versions
-│   └── augent.workspace.yaml          # Resource tracking
+│   └── augent.index.yaml          # Resource tracking
 ├── .claude/                           # Claude Code configuration
 ├── .cursor/                           # Cursor configuration
 ├── .opencode/                         # OpenCode configuration
@@ -71,7 +71,7 @@ bundles:
 
 **Never manually edit** - regenerated on install.
 
-### augent.workspace.yaml
+### augent.index.yaml
 
 Tracks which bundles provide which resources:
 
@@ -96,7 +96,7 @@ Each bundle lists its **bundle-relative paths** (e.g. `rules/debug.md`) and the 
 
 ## Lazy Workspace Configuration
 
-Augent can work without `augent.workspace.yaml`. When missing:
+Augent can work without `augent.index.yaml`. When missing:
 
 - **On Install**: Augent generates the workspace config file automatically
 - **On Uninstall**: Augent scans the workspace to rebuild the config by detecting platforms, scanning installed files, and matching them to bundles from the lockfile
@@ -145,7 +145,7 @@ Augent infers workspace name from git remote:
 2. **Transform**: Resources transformed to AI coding platform-specific format
 3. **Merge**: Merged into existing resources (if applicable)
 4. **Install**: Copied to AI coding platform directories
-5. **Track**: Metadata added to `augent.workspace.yaml`
+5. **Track**: Metadata added to `augent.index.yaml`
 
 ### Installation Locations
 
@@ -205,7 +205,7 @@ augent install new-bundle
 augent install github:author/new-bundle
 
 # View workspace configuration to see tracking
-cat .augent/augent.workspace.yaml
+cat .augent/augent.index.yaml
 ```
 
 ---
@@ -286,7 +286,7 @@ cat .augent/augent.lock
 
 Add to `augent.yaml` and run `augent install`:
 
-- Bundle resolved and added to `augent.lock` and `augent.workspace.yaml`
+- Bundle resolved and added to `augent.lock` and `augent.index.yaml`
 - Resources installed to platform directories
 
 ### Removing from Configuration
@@ -311,7 +311,7 @@ Use `augent uninstall <name>` to completely remove:
 |------|----------|--------------|--------------|
 | `augent.yaml` | Bundles to install | Manual edit + install | Manual deletion |
 | `augent.lock` | Resolved bundle info | Bundle resolved | `augent uninstall` |
-| `augent.workspace.yaml` | Installed file tracking | Files installed | `augent uninstall` |
+| `augent.index.yaml` | Installed file tracking | Files installed | `augent uninstall` |
 
 ---
 

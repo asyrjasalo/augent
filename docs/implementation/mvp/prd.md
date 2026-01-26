@@ -93,9 +93,9 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - Some resources are merged with the existing ones if they already exist for the agent, e.g. AGENTS.md and mcp.jsonc files. The merging strategy likely differs between these file types (AGENTS.md is markdown, mcp.jsonc is JSON). **TODO: Research OpenPackage's platforms.jsonc schema for the exact merging behavior for each file type.**
 
-- Augent will know how to install the directory's content for AI coding platforms regardless of whether `augent.yaml`, `augent.lock`, `augent.workspace.yaml` is present in the directory. This ensures we maintain compatibility with Claude Code plugins, skills only repos, etc.
+- Augent will know how to install the directory's content for AI coding platforms regardless of whether `augent.yaml`, `augent.lock`, `augent.index.yaml` is present in the directory. This ensures we maintain compatibility with Claude Code plugins, skills only repos, etc.
 
-- If a dependency is installed in the workspace, then `augent.lock` if the same directory as `augent.yaml` has an entry for it. It does not necessary mean that that dependency's provided files are installed for all or even any of the agents. What is installed per agent (and "where did the resources come from" is tracked in `augent.workspace.yaml`)
+- If a dependency is installed in the workspace, then `augent.lock` if the same directory as `augent.yaml` has an entry for it. It does not necessary mean that that dependency's provided files are installed for all or even any of the agents. What is installed per agent (and "where did the resources come from" is tracked in `augent.index.yaml`)
 
 #### Locking
 
@@ -115,17 +115,17 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - The last entry in the lockfile is the bundle itself. Thus the bundles own resources (in the bundle's dir) always override the resources from earlier dependencies if the file names overlap, except where resources are merged.
 
-- Each bundle in lockfile has a calculated `hash` per its contents (all files, including `augent.yaml`, but excluding its `augent.lock` and `augent.workspace.yaml` files). The hashing algorithm used is BLAKE3. Also the last entry, this bundle.
+- Each bundle in lockfile has a calculated `hash` per its contents (all files, including `augent.yaml`, but excluding its `augent.lock` and `augent.index.yaml` files). The hashing algorithm used is BLAKE3. Also the last entry, this bundle.
 
 #### Workspace
 
-- On first install, augent creates `augent.yaml`, `augent.lock`, and `augent.workspace.yaml` with a workspace bundle named `@author/workspace-dir-name`. The name is inferred from the git repository remote URL (org/user), with a fallback to `USERNAME/WORKSPACE_ROOT_DIR_NAME` if no git remote is configured.
+- On first install, augent creates `augent.yaml`, `augent.lock`, and `augent.index.yaml` with a workspace bundle named `@author/workspace-dir-name`. The name is inferred from the git repository remote URL (org/user), with a fallback to `USERNAME/WORKSPACE_ROOT_DIR_NAME` if no git remote is configured.
 
 - The user can change AI coding platforms' files directly in repo (e.g. `.opencode/commands/debug.md`). When `install` is run, it detects files that differ from the bundle's version and copies them to the workspace bundle's directory as platform independent resources. This includes modifications to files from bundle dependencies - the modified file is added to the workspace bundle and overrides the dependency's version for that specific file. This ensures `install` never overwrites local user changes.
 
-- Modified file detection: augent uses `augent.workspace.yaml` to trace which bundle and git-SHA each file came from, then calculates the BLAKE3 checksum of the original file from the cached bundle and compares it to the current workspace file. If they differ, the file is considered modified.
+- Modified file detection: augent uses `augent.index.yaml` to trace which bundle and git-SHA each file came from, then calculates the BLAKE3 checksum of the original file from the cached bundle and compares it to the current workspace file. If they differ, the file is considered modified.
 
-- The mapping for bundle resources and AI coding platform resources is stored in `augent.workspace.yaml`. The format is file for each file that particular bundle provides, and for each AI coding platform that it is installed for (user can use `install --for <platform>...` to install some bundles only for specific platforms).
+- The mapping for bundle resources and AI coding platform resources is stored in `augent.index.yaml`. The format is file for each file that particular bundle provides, and for each AI coding platform that it is installed for (user can use `install --for <platform>...` to install some bundles only for specific platforms).
 
 #### Sources
 
@@ -166,7 +166,7 @@ We adopt a `platforms.jsonc` configuration file approach to support ever increas
 - Merge behavior for special files (AGENTS.md, mcp.jsonc, etc.)
 - Root file/dir handling
 
-Note: Since augent.workspace.yaml tracks which files are used by which bundle, we may later implement a mechanism to detect and remove unused bundles (bundles that don't provide any files that are currently in use). This is not in scope for v1.0.
+Note: Since augent.index.yaml tracks which files are used by which bundle, we may later implement a mechanism to detect and remove unused bundles (bundles that don't provide any files that are currently in use). This is not in scope for v1.0.
 
 If another package format becomes popular, we will collaborate to add support to import from it, but we will not compromise our goal to implement some features just for the sake of something being popular.
 
@@ -181,13 +181,13 @@ Even though we don't have centralized registry, we might later implement a centr
 augent install [--for <agent>...] [--frozen] <source>
 
 - adds bundle to augent.yaml and augent.lock
-- updates augent.workspace.yaml (per --for <platform>, otherwise detects all used AI coding platforms by checking for platform-specific directories like `.opencode/`, `.cursor/`, `.claude/`, etc. and targets those)
+- updates augent.index.yaml (per --for <platform>, otherwise detects all used AI coding platforms by checking for platform-specific directories like `.opencode/`, `.cursor/`, `.claude/`, etc. and targets those)
 - installs bundles resources per AI coding platform in format that platform expects
 
 augent uninstall <bundle-name>
 
 - removes files from all agents it is installed in, but only removes files that are not currently provided/overridden by later bundles (to avoid removing files that belong to other bundles)
-- updates augent.workspace.yaml
+- updates augent.index.yaml
 - removes bundle from augent.yaml and augent.lock
 
 augent list - list installed bundles (name, source URL, enabled agents, file count)
@@ -202,7 +202,7 @@ augent version - show version number, build info, and Rust version
 - When an error occurs (invalid source URL, repository doesn't exist, failed to resolve dependencies, etc.), augent shows a clear, human-readable error message and exits with a non-zero status code.
 - No changes are made to the workspace when an error occurs - all operations are atomic and rollback any partial changes.
 - This ensures the workspace is never left in an inconsistent state due to a failed operation.
-- If configuration files (`augent.yaml`, `augent.lock`, `augent.workspace.yaml`) are corrupted or invalid, augent shows a clear error message indicating which file is invalid and what the problem is, then exits with a non-zero status code. No automatic fixes or restorations are performed.
+- If configuration files (`augent.yaml`, `augent.lock`, `augent.index.yaml`) are corrupted or invalid, augent shows a clear error message indicating which file is invalid and what the problem is, then exits with a non-zero status code. No automatic fixes or restorations are performed.
 
 ### CI/CD Environments
 
@@ -217,7 +217,7 @@ augent version - show version number, build info, and Rust version
 .augent/
 --- augent.yaml - bundle config
 --- augent.lock - bundles with resolved sources and included resources
---- augent.workspace.yaml - workspace config for per agent
+--- augent.index.yaml - workspace config for per agent
 --- bundles/
     |_ my-debug-bundle/
     |_ code-documentation/
@@ -313,7 +313,7 @@ This is the lockfile which has resolved sources (like git repository URL and SHA
 
 ```
 
-### augent.workspace.yaml
+### augent.index.yaml
 
 This file tracks what files are installed from which bundles to which AI coding platforms. This file answers the question, where did e.g. `.cursor/rules/debug.mdc` came from? Do note that one platform specific resource can be only be installed from one bundle at the time, so in the end that file comes from platform independent format from this bundle, or its last dependency where that file is available. When a file is modified even if it came from dependency, that file is copied to the bundle's directory in platform independent format on `install`. This way, `install` does not override local changes either.
 

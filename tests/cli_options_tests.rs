@@ -101,7 +101,7 @@ bundles: []
 "#,
     );
     workspace.write_file(
-        ".augent/augent.workspace.yaml",
+        ".augent/augent.index.yaml",
         r#"name: "@test/workspace"
 bundles: []
 "#,

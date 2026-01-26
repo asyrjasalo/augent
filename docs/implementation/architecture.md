@@ -28,7 +28,7 @@ A **Workspace** is a developer's working git repository with Augent configuratio
 - `.augent/` - Augent workspace directory
 - `.augent/augent.yaml` - Workspace bundle config
 - `.augent/augent.lock` - Resolved dependencies
-- `.augent/augent.workspace.yaml` - Per-agent file mappings
+- `.augent/augent.index.yaml` - Per-agent file mappings
 - `.augent/bundles/` - Local bundle directories
 
 ### Resources
@@ -116,7 +116,7 @@ sequenceDiagram
         Augent->>FS: Create .augent/
         Augent->>FS: Create augent.yaml (name: @author/workspace-dir)
         Augent->>FS: Create augent.lock (empty)
-        Augent->>FS: Create augent.workspace.yaml
+        Augent->>FS: Create augent.index.yaml
     end
     Augent->>FS: Detect AI coding platform directories
     FS-->>Augent: [.cursor/, .opencode/, etc.]
@@ -152,7 +152,7 @@ sequenceDiagram
     end
     Augent->>FS: Update augent.yaml
     Augent->>FS: Update augent.lock
-    Augent->>FS: Update augent.workspace.yaml
+    Augent->>FS: Update augent.index.yaml
     Augent-->>User: Bundle installed
 ```
 
@@ -209,7 +209,7 @@ sequenceDiagram
     end
     Augent->>FS: Update augent.yaml
     Augent->>FS: Update augent.lock
-    Augent->>FS: Update augent.workspace.yaml
+    Augent->>FS: Update augent.index.yaml
     Augent-->>User: Bundle uninstalled
 ```
 
@@ -223,7 +223,7 @@ sequenceDiagram
     participant FS as File System
 
     User->>Augent: augent install (after local changes)
-    Augent->>FS: Read augent.workspace.yaml
+    Augent->>FS: Read augent.index.yaml
     loop For each tracked file
         Augent->>FS: Read current file
         Augent->>Cache: Get original from cached bundle
@@ -285,7 +285,7 @@ augent/
 │   │   ├── mod.rs
 │   │   ├── bundle.rs     # augent.yaml structures
 │   │   ├── lockfile.rs   # augent.lock structures
-│   │   ├── workspace.rs  # augent.workspace.yaml structures
+│   │   ├── index.rs  # augent.index.yaml structures
 │   │   └── marketplace.rs # marketplace.json parsing
 │   ├── platform/
 │   │   ├── mod.rs

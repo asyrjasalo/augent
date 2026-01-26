@@ -62,7 +62,7 @@ bundles: []
 bundles: []
 "#;
     fs::write(
-        augent_dir.join("augent.workspace.yaml"),
+        augent_dir.join("augent.index.yaml"),
         workspace_config_content,
     )
     .expect("Failed to write workspace config");
@@ -112,7 +112,7 @@ bundles: []
 bundles: []
 "#;
     fs::write(
-        augent_dir.join("augent.workspace.yaml"),
+        augent_dir.join("augent.index.yaml"),
         workspace_config_content,
     )
     .expect("Failed to write workspace config");
@@ -179,7 +179,7 @@ bundles:
         - .opencode/rules/linting.md
 "#;
     fs::write(
-        augent_dir.join("augent.workspace.yaml"),
+        augent_dir.join("augent.index.yaml"),
         workspace_config_content,
     )
     .expect("Failed to write workspace config");
@@ -233,7 +233,7 @@ bundles:
         - .opencode/commands/test.md
 "#;
     fs::write(
-        augent_dir.join("augent.workspace.yaml"),
+        augent_dir.join("augent.index.yaml"),
         workspace_config_content,
     )
     .expect("Failed to write workspace config");
@@ -293,7 +293,7 @@ bundles:
     );
 
     workspace.write_file(
-        ".augent/augent.workspace.yaml",
+        ".augent/augent.index.yaml",
         r#"
 name: "@user/workspace"
 bundles:
@@ -394,7 +394,7 @@ bundles: []
     );
 
     workspace.write_file(
-        ".augent/augent.workspace.yaml",
+        ".augent/augent.index.yaml",
         r#"
 name: "@user/workspace"
 bundles: []

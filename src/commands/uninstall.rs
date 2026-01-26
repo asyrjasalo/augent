@@ -751,7 +751,7 @@ mod tests {
         )
         .unwrap();
 
-        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        let workspace_config_path = augent_dir.join("augent.index.yaml");
         fs::write(
             &workspace_config_path,
             "name: \"@test/workspace\"\nbundles: []",
@@ -788,7 +788,7 @@ mod tests {
         )
         .unwrap();
 
-        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        let workspace_config_path = augent_dir.join("augent.index.yaml");
         fs::write(
             &workspace_config_path,
             "name: \"@test/workspace\"\nbundles: []",
@@ -874,7 +874,7 @@ bundles:
         )
         .unwrap();
 
-        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        let workspace_config_path = augent_dir.join("augent.index.yaml");
         fs::write(
             &workspace_config_path,
             r#"
@@ -912,7 +912,7 @@ bundles:
         )
         .unwrap();
 
-        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        let workspace_config_path = augent_dir.join("augent.index.yaml");
         fs::write(
             &workspace_config_path,
             "name: \"@test/workspace\"\nbundles: []",
@@ -1171,7 +1171,7 @@ bundles:
         )
         .unwrap();
 
-        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        let workspace_config_path = augent_dir.join("augent.index.yaml");
         fs::write(
             &workspace_config_path,
             "name: \"@test/workspace\"\nbundles: []",
@@ -1222,7 +1222,7 @@ bundles:
         )
         .unwrap();
 
-        let workspace_config_path = augent_dir.join("augent.workspace.yaml");
+        let workspace_config_path = augent_dir.join("augent.index.yaml");
         fs::write(
             &workspace_config_path,
             "name: \"@test/workspace\"\nbundles: []",

@@ -51,7 +51,7 @@ bundles: []
         "File should be installed to claude"
     );
 
-    let workspace_config_path = workspace.path.join(".augent/augent.workspace.yaml");
+    let workspace_config_path = workspace.path.join(".augent/augent.index.yaml");
     let workspace_config_content = std::fs::read_to_string(&workspace_config_path)
         .expect("Should be able to read workspace config");
 

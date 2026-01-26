@@ -1,4 +1,4 @@
-//! Workspace configuration (augent.workspace.yaml) data structures
+//! Index configuration (augent.index.yaml) data structures
 //!
 //! This file tracks which files are installed from which bundles
 //! to which AI coding platforms.
@@ -31,7 +31,7 @@ where
     map_serializer.end()
 }
 
-/// Workspace configuration (augent.workspace.yaml)
+/// Index configuration (augent.index.yaml)
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WorkspaceConfig {
     /// Bundle name (same as augent.yaml)

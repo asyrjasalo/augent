@@ -117,12 +117,12 @@ impl TestWorkspace {
             .expect("Failed to copy augent.lock");
         }
 
-        if source_dir.join("augent.workspace.yaml").exists() {
+        if source_dir.join("augent.index.yaml").exists() {
             std::fs::copy(
-                source_dir.join("augent.workspace.yaml"),
-                augent_dir.join("augent.workspace.yaml"),
+                source_dir.join("augent.index.yaml"),
+                augent_dir.join("augent.index.yaml"),
             )
-            .expect("Failed to copy augent.workspace.yaml");
+            .expect("Failed to copy augent.index.yaml");
         }
 
         std::fs::create_dir_all(augent_dir.join("bundles"))
@@ -246,7 +246,7 @@ impl TestWorkspace {
             .filter(|e| e.file_type().is_file())
             .filter(|e| !e.path().ends_with("augent.yaml"))
             .filter(|e| !e.path().ends_with("augent.lock"))
-            .filter(|e| !e.path().ends_with("augent.workspace.yaml"))
+            .filter(|e| !e.path().ends_with("augent.index.yaml"))
             .count()
     }
 
@@ -351,7 +351,7 @@ mod tests {
 
         assert!(workspace.file_exists(".augent/augent.yaml"));
         assert!(workspace.file_exists(".augent/augent.lock"));
-        assert!(workspace.file_exists(".augent/augent.workspace.yaml"));
+        assert!(workspace.file_exists(".augent/augent.index.yaml"));
     }
 
     #[test]

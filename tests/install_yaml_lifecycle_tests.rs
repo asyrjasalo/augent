@@ -59,7 +59,7 @@ fn test_bundle_added_to_yaml_appears_in_lockfile_and_workspace() {
     );
 
     // Verify workspace config contains the bundle
-    let workspace_content = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_content = workspace.read_file(".augent/augent.index.yaml");
     assert!(
         workspace_content.contains("test-bundle"),
         "Bundle should be in workspace config"
@@ -154,7 +154,7 @@ fn test_bundle_removed_from_yaml_stays_in_lockfile_and_workspace() {
     );
 
     // Verify both bundles are STILL in workspace config
-    let workspace_content = workspace.read_file(".augent/augent.workspace.yaml");
+    let workspace_content = workspace.read_file(".augent/augent.index.yaml");
     assert!(
         workspace_content.contains("test-bundle-1"),
         "Bundle 1 should still be in workspace config"

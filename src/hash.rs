@@ -44,7 +44,7 @@ pub fn hash_file(path: &Path) -> Result<String> {
 /// Calculate BLAKE3 hash of a directory's contents
 ///
 /// This hashes all files in the directory recursively, sorted by path
-/// for deterministic results. Excludes augent.lock and augent.workspace.yaml.
+/// for deterministic results. Excludes augent.lock and augent.index.yaml.
 pub fn hash_directory(path: &Path) -> Result<String> {
     if !path.is_dir() {
         return Err(AugentError::FileNotFound {
@@ -60,7 +60,7 @@ pub fn hash_directory(path: &Path) -> Result<String> {
         .filter(|e| {
             let name = e.file_name().to_string_lossy();
             // Exclude lockfile and workspace config from hash
-            name != "augent.lock" && name != "augent.workspace.yaml"
+            name != "augent.lock" && name != "augent.index.yaml"
         })
         .collect();
 

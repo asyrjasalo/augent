@@ -206,7 +206,7 @@ After successful file installation, configuration files are updated:
 
 1. Add bundle entry to `augent.yaml`
 2. Add locked entry to `augent.lock`
-3. Add file mappings to `augent.workspace.yaml`
+3. Add file mappings to `augent.index.yaml`
 
 All updates use atomic writes (write to temp file, then rename).
 

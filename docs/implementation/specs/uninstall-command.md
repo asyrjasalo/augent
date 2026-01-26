@@ -30,7 +30,7 @@ From PRD:
 - Warn user about dependent bundles
 - Only remove files not provided by other bundles
 - Handle root files/directories carefully
-- Update configuration files (augent.yaml, augent.lock, augent.workspace.yaml)
+- Update configuration files (augent.yaml, augent.lock, augent.index.yaml)
 - Support `-y, --yes` flag to skip confirmation
 - Provide atomic rollback on failure
 - Automatically remove transitive dependencies when no longer needed
@@ -221,7 +221,7 @@ fn cleanup_configuration(
     workspace.lockfile_mut().remove_bundle(target_name)?;
     atomic_write_config(workspace.lockfile_path(), workspace.lockfile())?;
 
-    // Remove from augent.workspace.yaml
+    // Remove from augent.index.yaml
     workspace.workspace_lock_mut().remove_bundle(target_name)?;
     atomic_write_config(workspace.workspace_lock_path(), workspace.workspace_lock())?;
 
@@ -233,7 +233,7 @@ fn cleanup_configuration(
 
 1. Update `augent.yaml` (remove from user bundle list / dependencies)
 2. Update `augent.lock` (remove locked entry)
-3. Update `augent.workspace.yaml` (remove file mappings)
+3. Update `augent.index.yaml` (remove file mappings)
 
 All updates use atomic writes (temp file + rename).
 
