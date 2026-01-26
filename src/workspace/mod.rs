@@ -416,13 +416,14 @@ impl Workspace {
 
     /// Detect which platforms are installed by checking for platform directories
     ///
-    /// Uses the platform definitions from `platform::default_platforms()` to detect
+    /// Uses the platform definitions from PlatformLoader to detect
     /// which platforms are installed, making this truly platform-independent.
     fn detect_installed_platforms(&self) -> Result<Vec<PathBuf>> {
         let mut platforms = Vec::new();
 
-        // Get all known platforms from platform definitions
-        let known_platforms = crate::platform::default_platforms();
+        // Get all known platforms from platform definitions (including custom platforms.jsonc)
+        let loader = crate::platform::loader::PlatformLoader::new(&self.root);
+        let known_platforms = loader.load()?;
 
         // Check each platform's directory for existence
         for platform in known_platforms {
@@ -449,10 +450,9 @@ impl Workspace {
             .map(|s| s.trim_start_matches('.'))
             .unwrap_or("");
 
-        // Find the matching platform definition
-        let platform = crate::platform::default_platforms()
-            .into_iter()
-            .find(|p| p.id == platform_id);
+        // Find the matching platform definition (including custom platforms.jsonc)
+        let loader = crate::platform::loader::PlatformLoader::new(&self.root);
+        let platform = loader.load()?.into_iter().find(|p| p.id == platform_id);
 
         if let Some(platform) = platform {
             // Use platform transformation rules to find candidate locations

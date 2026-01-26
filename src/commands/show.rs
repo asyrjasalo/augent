@@ -384,8 +384,9 @@ fn display_installed_resources(workspace_root: &std::path::Path, ws_bundle: &Wor
     // Get detected platforms in the workspace
     let detected = crate::platform::detection::detect_platforms(workspace_root).unwrap_or_default();
     let mut all_platforms = if detected.is_empty() {
-        // If no platforms detected, show all platforms
-        crate::platform::default_platforms()
+        // If no platforms detected, show all platforms (including custom platforms.jsonc)
+        let loader = crate::platform::loader::PlatformLoader::new(workspace_root);
+        loader.load().unwrap_or_default()
     } else {
         detected
     };

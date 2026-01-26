@@ -179,7 +179,12 @@ augent install github:author/bundle --for claude cursor
 
 ## Adding New Platforms
 
-You can add support for new AI coding platforms by creating a `platforms.jsonc` configuration file in your workspace's `.augent/` directory.
+You can add support for new AI coding platforms by creating a `platforms.jsonc` configuration file.
+
+**File locations** (checked in order, later override earlier):
+
+1. Workspace: `<workspace>/platforms.jsonc`
+2. Global: `~/.config/augent/platforms.jsonc`
 
 **Note:** This requires understanding the target platform's resource file format and directory structure.
 
@@ -187,7 +192,7 @@ For the full schema documentation, see [Platform Configuration Schema](platforms
 
 ### Example: Adding a New Platform
 
-Create `.augent/platforms.jsonc`:
+Create `platforms.jsonc` in your workspace root:
 
 ```jsonc
 {

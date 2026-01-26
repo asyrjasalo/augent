@@ -6,9 +6,21 @@ This document describes the `platforms.jsonc` schema for defining AI coding plat
 
 The `platforms.jsonc` file defines how Augent detects and transforms resources for different AI coding platforms. This enables Augent to support new AI coding platforms without code changes.
 
+**File locations** (checked in order, later override earlier):
+
+1. Workspace: `<workspace>/platforms.jsonc`
+2. Global: `~/.config/augent/platforms.jsonc`
+
+**Format support:**
+
+- JSONC format with comments (`//` and `/* */`)
+- Object format: `{"platforms": [...]}`
+- Array format: `[{...}, {...}]` (also supported)
+
 ## Structure
 
 ```jsonc
+// Object format (recommended)
 {
   // Built-in platform definitions
   "platforms": [
@@ -48,6 +60,17 @@ The `platforms.jsonc` file defines how Augent detects and transforms resources f
     }
   ]
 }
+
+// Array format (also supported)
+[
+  {
+    "id": "claude",
+    "name": "Claude Code",
+    "directory": ".claude",
+    "detection": [".claude", "CLAUDE.md"],
+    "transforms": []
+  }
+]
 ```
 
 ## Platform Fields
@@ -362,8 +385,10 @@ Merge text files using delimiters. Preserves content from both files.
 
 ## Notes
 
-- **JSONC Format:** File uses JSON with Comments (`.jsonc`) for better documentation
+- **JSONC Format:** File uses JSON with Comments (`.jsonc`) - comments (`//` and `/* */`) are automatically stripped
+- **Format Support:** Both object format `{"platforms": [...]}` and array format `[{...}]` are supported
 - **Glob Patterns:** Support `*` (any characters), `**` (recursive), `{name}` (variable extraction)
 - **Variable Extraction:** `{name}` in `to` pattern extracts the filename (without extension) from `from` path
 - **Merging Order:** Later bundles override earlier bundles in dependency order
+- **Platform Loading Priority:** Built-in platforms → Workspace `platforms.jsonc` → Global `platforms.jsonc` (later override earlier with matching IDs)
 - **Built-in Platforms:** Augent includes built-in definitions for common platforms. Custom `platforms.jsonc` files can extend or override these

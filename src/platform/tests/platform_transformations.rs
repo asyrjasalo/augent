@@ -6,7 +6,8 @@ use super::{default_platforms, detection::get_platform};
 
 /// Helper to verify transformation rules exist
 fn verify_transform_rule(platform_id: &str, from_pattern: &str, expected_to: &str) {
-    let platform = get_platform(platform_id).expect(&format!("Platform {} not found", platform_id));
+    let platform =
+        get_platform(platform_id, None).expect(&format!("Platform {} not found", platform_id));
     let rule = platform
         .transforms
         .iter()
@@ -70,7 +71,7 @@ fn test_claude_skills_transform() {
 
 #[test]
 fn test_claude_mcp_transform() {
-    let platform = get_platform("claude").unwrap();
+    let platform = get_platform("claude", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -82,7 +83,7 @@ fn test_claude_mcp_transform() {
 
 #[test]
 fn test_claude_agents_md_transform() {
-    let platform = get_platform("claude").unwrap();
+    let platform = get_platform("claude", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -114,7 +115,7 @@ fn test_claude_plugin_skills_transform() {
 
 #[test]
 fn test_claude_plugin_mcp_transform() {
-    let platform = get_platform("claude-plugin").unwrap();
+    let platform = get_platform("claude-plugin", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -136,7 +137,7 @@ fn test_codex_skills_transform() {
 
 #[test]
 fn test_codex_mcp_to_toml_transform() {
-    let platform = get_platform("codex").unwrap();
+    let platform = get_platform("codex", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -148,7 +149,7 @@ fn test_codex_mcp_to_toml_transform() {
 
 #[test]
 fn test_cursor_rules_transform() {
-    let platform = get_platform("cursor").unwrap();
+    let platform = get_platform("cursor", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -176,7 +177,7 @@ fn test_cursor_skills_transform() {
 
 #[test]
 fn test_cursor_mcp_transform() {
-    let platform = get_platform("cursor").unwrap();
+    let platform = get_platform("cursor", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -188,7 +189,7 @@ fn test_cursor_mcp_transform() {
 
 #[test]
 fn test_cursor_agents_md_transform() {
-    let platform = get_platform("cursor").unwrap();
+    let platform = get_platform("cursor", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -215,7 +216,7 @@ fn test_factory_skills_transform() {
 
 #[test]
 fn test_factory_mcp_transform() {
-    let platform = get_platform("factory").unwrap();
+    let platform = get_platform("factory", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -227,7 +228,7 @@ fn test_factory_mcp_transform() {
 
 #[test]
 fn test_factory_agents_md_transform() {
-    let platform = get_platform("factory").unwrap();
+    let platform = get_platform("factory", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -254,7 +255,7 @@ fn test_kilo_skills_transform() {
 
 #[test]
 fn test_kilo_mcp_transform() {
-    let platform = get_platform("kilo").unwrap();
+    let platform = get_platform("kilo", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -266,7 +267,7 @@ fn test_kilo_mcp_transform() {
 
 #[test]
 fn test_kilo_agents_md_transform() {
-    let platform = get_platform("kilo").unwrap();
+    let platform = get_platform("kilo", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -283,7 +284,7 @@ fn test_kiro_rules_to_steering_transform() {
 
 #[test]
 fn test_kiro_mcp_transform() {
-    let platform = get_platform("kiro").unwrap();
+    let platform = get_platform("kiro", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -315,7 +316,7 @@ fn test_opencode_skills_transform() {
 
 #[test]
 fn test_opencode_mcp_transform() {
-    let platform = get_platform("opencode").unwrap();
+    let platform = get_platform("opencode", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -327,7 +328,7 @@ fn test_opencode_mcp_transform() {
 
 #[test]
 fn test_opencode_agents_md_transform() {
-    let platform = get_platform("opencode").unwrap();
+    let platform = get_platform("opencode", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -349,7 +350,7 @@ fn test_qwen_skills_transform() {
 
 #[test]
 fn test_qwen_agents_md_to_qwen_md_transform() {
-    let platform = get_platform("qwen").unwrap();
+    let platform = get_platform("qwen", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -361,7 +362,7 @@ fn test_qwen_agents_md_to_qwen_md_transform() {
 
 #[test]
 fn test_qwen_mcp_to_settings_transform() {
-    let platform = get_platform("qwen").unwrap();
+    let platform = get_platform("qwen", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -383,7 +384,7 @@ fn test_roo_skills_transform() {
 
 #[test]
 fn test_roo_mcp_transform() {
-    let platform = get_platform("roo").unwrap();
+    let platform = get_platform("roo", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -395,7 +396,7 @@ fn test_roo_mcp_transform() {
 
 #[test]
 fn test_roo_agents_md_transform() {
-    let platform = get_platform("roo").unwrap();
+    let platform = get_platform("roo", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -407,7 +408,7 @@ fn test_roo_agents_md_transform() {
 
 #[test]
 fn test_warp_agents_md_to_warp_md_transform() {
-    let platform = get_platform("warp").unwrap();
+    let platform = get_platform("warp", None).unwrap();
     let rule = platform
         .transforms
         .iter()
@@ -429,7 +430,7 @@ fn test_windsurf_skills_transform() {
 
 #[test]
 fn test_cursor_extension_transformation() {
-    let platform = get_platform("cursor").unwrap();
+    let platform = get_platform("cursor", None).unwrap();
 
     let rules_rule = platform
         .transforms

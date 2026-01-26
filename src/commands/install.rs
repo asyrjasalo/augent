@@ -594,13 +594,14 @@ fn detect_target_platforms(workspace_root: &Path, platforms: &[String]) -> Resul
         // Auto-detect platforms in workspace
         let detected = detection::detect_platforms(workspace_root)?;
         if detected.is_empty() {
-            // Return all default platforms if none detected
-            return Ok(platform::default_platforms());
+            // Return all platforms (including custom platforms.jsonc) if none detected
+            let loader = platform::loader::PlatformLoader::new(workspace_root);
+            return loader.load();
         }
         Ok(detected)
     } else {
         // Use specified platforms
-        detection::get_platforms(platforms)
+        detection::get_platforms(platforms, Some(workspace_root))
     }
 }
 

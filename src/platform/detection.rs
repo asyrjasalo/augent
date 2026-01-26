@@ -1,12 +1,10 @@
 //! Platform detection for finding AI coding platforms in a workspace
 
-#![allow(dead_code)]
-
 use std::path::Path;
 
 use crate::error::{AugentError, Result};
 
-use super::{Platform, default_platforms};
+use super::{Platform, loader::PlatformLoader};
 
 /// Detect which platforms are present in the workspace
 ///
@@ -19,7 +17,8 @@ pub fn detect_platforms(workspace_root: &Path) -> Result<Vec<Platform>> {
         });
     }
 
-    let platforms = default_platforms();
+    let loader = PlatformLoader::new(workspace_root);
+    let platforms = loader.load()?;
     let detected: Vec<Platform> = platforms
         .into_iter()
         .filter(|p| p.is_detected(workspace_root))
@@ -39,10 +38,25 @@ pub fn detect_platforms_or_error(workspace_root: &Path) -> Result<Vec<Platform>>
     Ok(platforms)
 }
 
-/// Get a platform by ID from the default platforms
+/// Get a platform by ID, loading from platforms.jsonc if available
 /// First tries to find exact ID match, then looks for alias matches
-pub fn get_platform(id: &str) -> Option<Platform> {
-    let platforms = default_platforms();
+///
+/// If workspace_root is provided, loads custom platforms from platforms.jsonc.
+/// Otherwise, falls back to default platforms.
+pub fn get_platform(id: &str, workspace_root: Option<&Path>) -> Option<Platform> {
+    let platforms = if let Some(root) = workspace_root {
+        PlatformLoader::new(root).load().ok().unwrap_or_default()
+    } else {
+        // Try to find workspace root from current directory
+        if let Ok(current_dir) = std::env::current_dir() {
+            PlatformLoader::new(&current_dir)
+                .load()
+                .ok()
+                .unwrap_or_default()
+        } else {
+            super::default_platforms()
+        }
+    };
 
     // First try exact ID match
     if let Some(platform) = platforms.iter().find(|p| p.id == id) {
@@ -60,11 +74,13 @@ pub fn get_platform(id: &str) -> Option<Platform> {
 
 /// Get multiple platforms by ID
 /// Supports alias resolution - each ID is resolved through get_platform()
-pub fn get_platforms(ids: &[String]) -> Result<Vec<Platform>> {
+///
+/// If workspace_root is provided, loads custom platforms from platforms.jsonc.
+pub fn get_platforms(ids: &[String], workspace_root: Option<&Path>) -> Result<Vec<Platform>> {
     let mut platforms = Vec::new();
 
     for id in ids {
-        match get_platform(id) {
+        match get_platform(id, workspace_root) {
             Some(p) => platforms.push(p),
             None => {
                 return Err(AugentError::PlatformNotSupported {
@@ -82,7 +98,7 @@ pub fn resolve_platforms(workspace_root: &Path, specified: &[String]) -> Result<
     if specified.is_empty() {
         detect_platforms_or_error(workspace_root)
     } else {
-        get_platforms(specified)
+        get_platforms(specified, Some(workspace_root))
     }
 }
 
@@ -137,23 +153,23 @@ mod tests {
 
     #[test]
     fn test_get_platform() {
-        let claude = get_platform("claude");
+        let claude = get_platform("claude", None);
         assert!(claude.is_some());
         assert_eq!(claude.unwrap().id, "claude");
 
-        let unknown = get_platform("unknown");
+        let unknown = get_platform("unknown", None);
         assert!(unknown.is_none());
     }
 
     #[test]
     fn test_get_platforms() {
-        let platforms = get_platforms(&["claude".to_string(), "cursor".to_string()]).unwrap();
+        let platforms = get_platforms(&["claude".to_string(), "cursor".to_string()], None).unwrap();
         assert_eq!(platforms.len(), 2);
     }
 
     #[test]
     fn test_get_platforms_unknown() {
-        let result = get_platforms(&["unknown".to_string()]);
+        let result = get_platforms(&["unknown".to_string()], None);
         assert!(result.is_err());
     }
 
@@ -178,11 +194,11 @@ mod tests {
 
     #[test]
     fn test_get_platform_resolves_alias() {
-        let cursor = get_platform("cursor");
+        let cursor = get_platform("cursor", None);
         assert!(cursor.is_some());
         assert_eq!(cursor.clone().unwrap().id, "cursor");
 
-        let cursor_ai = get_platform("cursor-ai");
+        let cursor_ai = get_platform("cursor-ai", None);
         assert!(cursor_ai.is_some());
         assert_eq!(cursor_ai.clone().unwrap().id, "cursor");
         assert_eq!(cursor_ai.clone().unwrap().name, "Cursor");
@@ -190,7 +206,8 @@ mod tests {
 
     #[test]
     fn test_get_platforms_resolves_aliases() {
-        let platforms = get_platforms(&["cursor-ai".to_string(), "claude".to_string()]).unwrap();
+        let platforms =
+            get_platforms(&["cursor-ai".to_string(), "claude".to_string()], None).unwrap();
         assert_eq!(platforms.len(), 2);
         assert_eq!(platforms[0].id, "cursor");
         assert_eq!(platforms[0].name, "Cursor");
@@ -200,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_get_platform_unknown_alias() {
-        let unknown = get_platform("unknown-alias");
+        let unknown = get_platform("unknown-alias", None);
         assert!(unknown.is_none());
     }
 }

@@ -3,12 +3,10 @@
 //! This module handles loading platform configurations from platforms.jsonc files
 //! and merging them with built-in platform definitions.
 
-#![allow(dead_code)]
-
 use std::fs;
 use std::path::PathBuf;
 
-use super::Platform;
+use super::{Platform, default_platforms};
 use crate::error::{AugentError, Result};
 
 /// Platform configuration loader
@@ -32,7 +30,7 @@ impl PlatformLoader {
     /// 2. Workspace platforms.jsonc (if exists)
     /// 3. Global platforms.jsonc from ~/.config/augent/platforms.jsonc (if exists)
     pub fn load(&self) -> Result<Vec<Platform>> {
-        let mut platforms = Self::builtin_platforms();
+        let mut platforms = default_platforms();
 
         if let Some(workspace_platforms) = self.load_workspace_platforms()? {
             platforms = Self::merge_platforms(platforms, workspace_platforms);
@@ -59,11 +57,9 @@ impl PlatformLoader {
                 reason: e.to_string(),
             })?;
 
-        let loaded: Vec<Platform> =
-            serde_json::from_str(&content).map_err(|e| AugentError::ConfigParseFailed {
-                path: platforms_path.to_string_lossy().to_string(),
-                reason: e.to_string(),
-            })?;
+        let json_content = Self::strip_jsonc_comments_impl(&content);
+        let loaded =
+            Self::parse_platforms_json_impl(&json_content, &platforms_path.to_string_lossy())?;
 
         Ok(Some(loaded))
     }
@@ -86,11 +82,9 @@ impl PlatformLoader {
                 reason: e.to_string(),
             })?;
 
-        let loaded: Vec<Platform> =
-            serde_json::from_str(&content).map_err(|e| AugentError::ConfigParseFailed {
-                path: platforms_path.to_string_lossy().to_string(),
-                reason: e.to_string(),
-            })?;
+        let json_content = Self::strip_jsonc_comments_impl(&content);
+        let loaded =
+            Self::parse_platforms_json_impl(&json_content, &platforms_path.to_string_lossy())?;
 
         Ok(Some(loaded))
     }
@@ -113,19 +107,118 @@ impl PlatformLoader {
         merged
     }
 
-    /// Get built-in platform definitions
-    fn builtin_platforms() -> Vec<Platform> {
-        vec![
-            Platform::new("claude", "Claude Code", ".claude")
-                .with_detection(".claude")
-                .with_detection("CLAUDE.md"),
-            Platform::new("cursor", "Cursor AI", ".cursor")
-                .with_detection(".cursor")
-                .with_detection("AGENTS.md"),
-            Platform::new("opencode", "OpenCode", ".opencode")
-                .with_detection(".opencode")
-                .with_detection("AGENTS.md"),
-        ]
+    /// Parse platforms JSON, supporting both array format and object with "platforms" key
+    #[cfg(test)]
+    pub(crate) fn parse_platforms_json(json_content: &str, path: &str) -> Result<Vec<Platform>> {
+        Self::parse_platforms_json_impl(json_content, path)
+    }
+
+    /// Parse platforms JSON, supporting both array format and object with "platforms" key
+    fn parse_platforms_json_impl(json_content: &str, path: &str) -> Result<Vec<Platform>> {
+        let value: serde_json::Value =
+            serde_json::from_str(json_content).map_err(|e| AugentError::ConfigParseFailed {
+                path: path.to_string(),
+                reason: e.to_string(),
+            })?;
+
+        match value {
+            serde_json::Value::Array(platforms) => {
+                serde_json::from_value(serde_json::Value::Array(platforms)).map_err(|e| {
+                    AugentError::ConfigParseFailed {
+                        path: path.to_string(),
+                        reason: e.to_string(),
+                    }
+                })
+            }
+            serde_json::Value::Object(obj) => {
+                if let Some(platforms_value) = obj.get("platforms") {
+                    if let serde_json::Value::Array(platforms) = platforms_value {
+                        serde_json::from_value(serde_json::Value::Array(platforms.clone())).map_err(
+                            |e| AugentError::ConfigParseFailed {
+                                path: path.to_string(),
+                                reason: e.to_string(),
+                            },
+                        )
+                    } else {
+                        Err(AugentError::ConfigParseFailed {
+                            path: path.to_string(),
+                            reason: "platforms field must be an array".to_string(),
+                        })
+                    }
+                } else {
+                    Err(AugentError::ConfigParseFailed {
+                        path: path.to_string(),
+                        reason: "Expected array of platforms or object with 'platforms' key"
+                            .to_string(),
+                    })
+                }
+            }
+            _ => Err(AugentError::ConfigParseFailed {
+                path: path.to_string(),
+                reason: "Expected array of platforms or object with 'platforms' key".to_string(),
+            }),
+        }
+    }
+
+    /// Strip JSONC comments from content
+    #[cfg(test)]
+    pub(crate) fn strip_jsonc_comments(content: &str) -> String {
+        Self::strip_jsonc_comments_impl(content)
+    }
+
+    /// Strip JSONC comments from content
+    fn strip_jsonc_comments_impl(content: &str) -> String {
+        let mut result = String::new();
+        let mut in_string = false;
+        let mut in_single_comment = false;
+        let mut in_multi_comment = false;
+        let chars: Vec<char> = content.chars().collect();
+        let len = chars.len();
+        let mut i = 0;
+
+        while i < len {
+            let c = chars[i];
+            let next = chars.get(i + 1).copied();
+
+            if in_single_comment {
+                if c == '\n' {
+                    in_single_comment = false;
+                    result.push(c);
+                }
+            } else if in_multi_comment {
+                if c == '*' && next == Some('/') {
+                    in_multi_comment = false;
+                    i += 1;
+                }
+            } else if in_string {
+                result.push(c);
+                if c == '"' && (i == 0 || chars[i - 1] != '\\') {
+                    in_string = false;
+                }
+            } else {
+                match (c, next) {
+                    ('/', Some('/')) => {
+                        in_single_comment = true;
+                        i += 1;
+                    }
+                    ('/', Some('*')) => {
+                        in_multi_comment = true;
+                        i += 1;
+                    }
+                    ('"', _) => {
+                        in_string = true;
+                        result.push(c);
+                    }
+                    _ => {
+                        result.push(c);
+                    }
+                }
+            }
+
+            i += 1;
+        }
+
+        result
     }
 }
 
@@ -177,5 +270,44 @@ mod tests {
         assert_eq!(merged.len(), 2);
         assert_eq!(merged[0].id, "claude");
         assert_eq!(merged[1].id, "windsurf");
+    }
+
+    #[test]
+    fn test_parse_platforms_json_array() {
+        let json = r#"[{"id":"test","name":"Test","directory":".test","detection":[".test"],"transforms":[]}]"#;
+        let platforms = PlatformLoader::parse_platforms_json(json, "test.jsonc").unwrap();
+        assert_eq!(platforms.len(), 1);
+        assert_eq!(platforms[0].id, "test");
+    }
+
+    #[test]
+    fn test_parse_platforms_json_object() {
+        let json = r#"{"platforms":[{"id":"test","name":"Test","directory":".test","detection":[".test"],"transforms":[]}]}"#;
+        let platforms = PlatformLoader::parse_platforms_json(json, "test.jsonc").unwrap();
+        assert_eq!(platforms.len(), 1);
+        assert_eq!(platforms[0].id, "test");
+    }
+
+    #[test]
+    fn test_parse_platforms_jsonc_with_comments() {
+        let jsonc = r#"{
+            // This is a comment
+            "platforms": [
+                {
+                    "id": "test",
+                    "name": "Test",
+                    "directory": ".test",
+                    "detection": [".test"],
+                    "transforms": []
+                }
+            ]
+        }"#;
+        let platforms = PlatformLoader::parse_platforms_json(
+            &PlatformLoader::strip_jsonc_comments(jsonc),
+            "test.jsonc",
+        )
+        .unwrap();
+        assert_eq!(platforms.len(), 1);
+        assert_eq!(platforms[0].id, "test");
     }
 }
