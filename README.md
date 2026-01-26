@@ -9,7 +9,7 @@ Install it from [PyPI](https://pypi.org/project/augent/):
 
     pip install augent
 
-Alternatively, download binaries from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
+Alternatively, download from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
 
 Your AI coding platforms are auto-detected in the workspace (Git repository).
 
