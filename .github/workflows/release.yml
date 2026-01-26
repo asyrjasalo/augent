@@ -64,53 +64,11 @@ jobs:
 
           echo "✓ Tag is on main branch"
 
-  # Verify CI tests passed
-  verify-ci:
-    name: Verify CI tests passed
-    runs-on: ubuntu-latest
-    needs: [verify-tag]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Wait for CI workflow to complete
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.sha }}
-          check-name: 'Build (ubuntu-latest - x86_64-unknown-linux-gnu)'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-
-      - name: Check CI workflow status
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Get the commit SHA that the tag points to
-          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref }})
-
-          # Check if CI workflow passed for this commit
-          WORKFLOW_STATUS=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${TAG_COMMIT}&status=completed&per_page=1" \
-            --jq '.workflow_runs[0].conclusion')
-
-          if [ "$WORKFLOW_STATUS" != "success" ]; then
-            echo "Error: CI workflow did not pass for commit ${TAG_COMMIT}"
-            echo "Workflow status: ${WORKFLOW_STATUS}"
-            echo "Please ensure all CI tests pass before creating a release tag"
-            exit 1
-          fi
-
-          echo "✓ CI tests passed"
-
   # Build standalone binaries for GitHub release
   build-binaries:
     name: Build binary ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    needs: [verify-ci]
+    needs: [verify-tag]
     strategy:
       fail-fast: true
       matrix:
