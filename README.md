@@ -2,17 +2,21 @@
 
 Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via bundles (of skills, commands, rules, MCP servers...) in a platform-independent, reproducible, and intuitive manner:
 
-- It frees you from the burden of using AI coding platform specific formats.
-- It ensures 100% reproducibility across the teams by locking bundle versions.
+- It frees you from the burden of managing AI coding platform specific formats.
+- It ensures reproducibility across the teams by locking bundle versions.
 - You get and share bundles via public or private Git repositories. That's it.
 
-## Quick Start
+## Setup
 
-Install it from [PyPI](https://pypi.org/project/augent/):
+You can install it from [PyPI](https://pypi.org/project/augent/):
 
     pip install augent
 
-Alternatively, download from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
+Or use it directly via `uvx augent`, if you have [uv](https://docs.astral.sh/uv/) installed.
+
+Alternatively, you can download a [GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system and put the binary in your PATH.
+
+## Quick Start
 
 To install a set of resources (bundles) for your AI coding platforms:
 
