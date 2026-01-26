@@ -108,7 +108,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --compatibility pypi
-          manylinux: auto
+          manylinux: 2_28
           before-script-linux: |
             case "${{ matrix.target }}" in
               *aarch64* | *armv7* | *s390x* | *ppc64le*)
@@ -119,7 +119,7 @@ jobs:
               *x86_64* | *i686*)
                 # NOTE: rust-cross/manylinux docker images are CentOS based
                 yum update -y
-                yum install -y openssl openssl-devel
+                yum install -y openssl openssl-devel perl perl-core
                 ;;
             esac
 
