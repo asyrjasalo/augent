@@ -660,16 +660,20 @@ impl<'a> Installer<'a> {
         // Apply extension transformation after all wildcards are replaced
         if let Some(ref ext) = rule.extension {
             // Replace extension only in the filename part, preserving directory structure
-            let target_path = PathBuf::from(&target);
+            // Use PathBuf with forward-slash target so parent/file_stem work on Windows
+            let target_path = PathBuf::from(target.replace('\\', "/"));
             if let Some(parent) = target_path.parent() {
                 if let Some(file_stem) = target_path.file_stem() {
                     let new_target = parent.join(file_stem).with_extension(ext);
-                    target = new_target.to_string_lossy().to_string().to_string();
+                    // Normalize to forward slashes for consistent join (Windows to_string_lossy uses \)
+                    target = new_target.to_string_lossy().replace('\\', "/");
                 }
             }
         }
 
-        self.workspace_root.join(&target)
+        // Normalize target to forward slashes so join yields correct path on all platforms
+        let target_normalized = target.replace('\\', "/");
+        self.workspace_root.join(&target_normalized)
     }
 
     /// Apply merge strategy and copy file
