@@ -660,13 +660,28 @@ impl<'a> Installer<'a> {
         // Apply extension transformation after all wildcards are replaced
         if let Some(ref ext) = rule.extension {
             // Replace extension only in the filename part, preserving directory structure
-            // Use PathBuf with forward-slash target so parent/file_stem work on Windows
-            let target_path = PathBuf::from(target.replace('\\', "/"));
+            // Normalize to forward slashes first for consistent processing on all platforms
+            let target_normalized = target.replace('\\', "/");
+            let target_path = PathBuf::from(&target_normalized);
             if let Some(parent) = target_path.parent() {
                 if let Some(file_stem) = target_path.file_stem() {
                     let new_target = parent.join(file_stem).with_extension(ext);
                     // Normalize to forward slashes for consistent join (Windows to_string_lossy uses \)
                     target = new_target.to_string_lossy().replace('\\', "/");
+                } else {
+                    // Fallback: if file_stem is None, try to replace extension in string directly
+                    if let Some(pos) = target_normalized.rfind('.') {
+                        target = format!("{}.{}", &target_normalized[..pos], ext);
+                    } else {
+                        target = format!("{}.{}", target_normalized, ext);
+                    }
+                }
+            } else {
+                // Fallback: if parent is None, try to replace extension in string directly
+                if let Some(pos) = target_normalized.rfind('.') {
+                    target = format!("{}.{}", &target_normalized[..pos], ext);
+                } else {
+                    target = format!("{}.{}", target_normalized, ext);
                 }
             }
         }
