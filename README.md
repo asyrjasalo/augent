@@ -1,7 +1,10 @@
 # Augent
 
-Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via packages (of skills, commands, rules, MCP servers...) in a reproducible,
-platform-independent, and intuitive manner.
+Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via bundles (of skills, commands, rules, MCP servers...) in a platform-independent, reproducible, and intuitive manner:
+
+- It frees you from the burden of using AI coding platform specific formats.
+- It ensures 100% reproducibility across the teams by locking bundle versions.
+- You get and share bundles via public or private Git repositories. That's it.
 
 ## Quick Start
 
@@ -10,8 +13,6 @@ Install it from [PyPI](https://pypi.org/project/augent/):
     pip install augent
 
 Alternatively, download from [GitHub Releases](https://github.com/asyrjasalo/augent/releases) for your OS and put the binary in your PATH.
-
-Your AI coding platforms are auto-detected in the workspace (Git repository).
 
 To install a set of resources (bundles) for your AI coding platforms:
 
@@ -29,26 +30,24 @@ To install a set of resources (bundles) for your AI coding platforms:
 
 ## Usage
 
-Augent stores AI coding platform resources in universal format as **bundles**.
+Augent stores AI coding platform resources in universal format in **bundles**.
 
-- **Bundle**: A directory containing the platform-independent resources
+- **Bundle**: A path in a Git repository, optionally referencing other bundles
 - **Workspace**: Your project's Git repository where you and your team work
 - **Resources**: Universal resources transformed and installed for specific AI coding platforms
-
-Bundles are local directories within the same workspace,
-or remote Git repositories via https (or ssh).
 
 When you install a bundle from a remote Git repository, Augent:
 
 1. Fetches the bundle(s) and adds it to `.augent/augent.yaml` in your workspace
-2. Resolves and locks the Git ref on first install (and creates a lockfile)
-3. Transforms the bundle's resources to match your AI coding platform's format
-4. Installs resources to the platforms (and creates an index of what came where)
+2. Resolves and locks the Git ref on first install (by creating a lockfile)
+3. By default, your AI coding platforms are auto-detected in the workspace.
+4. Transforms the bundle's resources to match your AI coding platform's format
+5. Installs resources to the platforms (and creates an index of what came where)
 
 To ensure a coherent Augent setup across your team, store all three
 created files in `.augent/` (yaml, index, and lock) in your Git repository.
 
-### Install bundles
+### Install Bundles
 
 Install from local directory within workspace:
 
@@ -77,7 +76,7 @@ you can select those from the menu (or pass `--select-all`).
 
 Most commands will display an interactive menu if used without arguments.
 
-### Lean package management
+### Workspace Scope
 
 All commands operate in your current workspace
 (you can pass `-w, --workspace <PATH>` to use different workspace).
@@ -115,25 +114,11 @@ A bundle contains resources in platform-independent format, e.g.:
     ├── AGENTS.md
     └── mcp.jsonc
 
-## Why Augent?
-
-What it does:
-
-- Distributes bundles via public or private Git repositories.
-- Implements locking to ensure 100% reproducibility across teams.
-- Frees you from the burden of converting between AI coding platform specific formats.
-
-What it does NOT:
-
-- Rely on a central package registry.
-- Cargo cult existing package managers.
-- Require a PhD in dependency management.
-
 ## Documentation
 
 - [Commands Reference](docs/commands.md) - Detailed command documentation
 - [Bundle Format](docs/bundles.md) - Bundle structure and configuration
-- [Platform Support](docs/platforms.md) - Supported platforms and adding new ones
+- [Platform Support](docs/platforms.md) - Known platforms and adding new ones
 - [Workspace Configuration](docs/workspace.md) - Workspace setup and management
 
 ## License
@@ -142,4 +127,4 @@ AGPL v3 - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- Platform conversion approach inspired by [OpenPackage](https://github.com/enulus/OpenPackage).
+Platform conversion approach inspired by [OpenPackage](https://github.com/enulus/OpenPackage) and [rulesync](https://github.com/dyoshikawa/rulesync).
