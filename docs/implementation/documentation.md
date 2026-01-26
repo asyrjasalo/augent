@@ -108,9 +108,9 @@ AI package manager for managing AI coding platform resources.
 
 ## Documentation
 
-- [Commands Reference](../../commands.md)
-- [Bundle Format](../../bundles.md)
-- [Platform Support](../../platforms.md)
+- [Commands Reference](docs/commands.md)
+- [Bundle Format](docs/bundles.md)
+- [Platform Support](docs/platforms.md)
 
 ## License
 

@@ -35,7 +35,7 @@ The `platforms.jsonc` file defines how Augent detects and transforms resources f
           "from": "commands/*.md",
 
           // Target pattern in platform-specific format
-          "to": ".claude/prompts/*.md",
+          "to": ".claude/commands/*.md",
 
           // Merge strategy for conflicts
           // Options: "replace", "shallow", "deep", "composite"
@@ -232,7 +232,7 @@ Merge text files using delimiters. Preserves content from both files.
       "transforms": [
         {
           "from": "commands/*.md",
-          "to": ".claude/prompts/{name}.md",
+          "to": ".claude/commands/{name}.md",
           "merge": "replace",
           "extension": "md"
         },
@@ -277,7 +277,7 @@ Merge text files using delimiters. Preserves content from both files.
       "transforms": [
         {
           "from": "commands/*.md",
-          "to": ".cursor/rules/{name}.mdc",
+          "to": ".cursor/commands/{name}.mdc",
           "merge": "replace",
           "extension": "mdc"
         },
@@ -366,4 +366,4 @@ Merge text files using delimiters. Preserves content from both files.
 - **Glob Patterns:** Support `*` (any characters), `**` (recursive), `{name}` (variable extraction)
 - **Variable Extraction:** `{name}` in `to` pattern extracts the filename (without extension) from `from` path
 - **Merging Order:** Later bundles override earlier bundles in dependency order
-- **Built-in Platforms:** Augent includes built-in definitions for common platforms. Custom `platforms.jsonc` can extend or override these
+- **Built-in Platforms:** Augent includes built-in definitions for common platforms. Custom `platforms.jsonc` files can extend or override these

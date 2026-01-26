@@ -106,7 +106,7 @@ Dependencies are preserved when:
 
 ### ❌ Another Non-Removed Bundle Depends on Them
 
-As shown above, if bundle-b and bundle-c share a common dependency (bundle-c), and you uninstall bundle-b, then bundle-c is preserved because bundle-a still needs it.
+As shown above, if bundle-a and bundle-b share a common dependency (bundle-c), and you uninstall bundle-a, then bundle-c is preserved because bundle-b still needs it.
 
 ### ❌ The Dependency Appears Later in Lockfile
 
@@ -114,7 +114,7 @@ In rare cases, if a bundle appears LATER in the lockfile than a remaining bundle
 
 ## Important Gotchas
 
-### 🚨 Gotcha 1: Transitive Dependencies NOT in workspace.yaml
+### 🚨 Gotcha 1: Transitive Dependencies NOT in augent.yaml
 
 **Issue**: When you install a bundle with dependencies, only the root bundle appears in `augent.yaml`, NOT the transitive dependencies.
 
@@ -167,9 +167,9 @@ The `augent uninstall` command makes changes immediately:
 
 ```bash
 git status                           # See what will change
-augent uninstall bundle-a -y        # Make changes
+augent uninstall bundle-a -y         # Make changes
 git diff .augent/                    # See what changed
-git checkout .augent/ ...            # Revert if needed
+# To revert: manually restore .augent/ from your editor or git history
 ```
 
 ### 🚨 Gotcha 4: Modified Files Are Preserved
@@ -251,7 +251,7 @@ augent uninstall bundle-a -y
 **Mitigation**: Be aware of what other bundles provide the same files:
 
 ```bash
-augent show --all  # See all bundles and their files
+augent list --detailed  # See all bundles and their files
 # or check augent.lock manually
 ```
 
@@ -342,11 +342,7 @@ If an error occurs during uninstall:
 
 1. **Transaction system tracks changes**: A backup of configuration files is made before uninstall
 2. **Automatic rollback**: If any error occurs, the backup is restored
-3. **Manual recovery**: If rollback fails, use git to restore:
-
-```bash
-git checkout .augent/augent.yaml .augent/augent.lock .augent/augent.workspace.yaml
-```
+3. **Manual recovery**: If rollback fails, restore the config files from your editor or from a previous git commit (e.g. `git show HEAD:.augent/augent.yaml` and write the output back to the files).
 
 ## Examples
 

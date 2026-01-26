@@ -592,7 +592,9 @@ impl<'a> Installer<'a> {
 
     /// Apply a transform rule to get the target path for a resource
     fn apply_transform_rule(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
-        let path_str = resource_path.to_string_lossy();
+        // Normalize to forward slashes so strip_prefix and path logic work on Windows
+        // where Path::to_string_lossy() yields backslashes
+        let path_str = resource_path.to_string_lossy().replace('\\', "/");
 
         // Build target path by substituting variables
         let mut target = rule.to.clone();

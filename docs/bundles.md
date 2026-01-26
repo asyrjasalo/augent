@@ -149,7 +149,7 @@ skills/
 
 - `.cursor/skills/analyze.mdc`
 - `.claude/skills/analyze.md`
-- `.opencode/agents/analyze.md`
+- `.opencode/skills/analyze.md`
 
 ### Commands (`commands/`)
 

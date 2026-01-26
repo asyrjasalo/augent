@@ -145,6 +145,16 @@ Augent supports 14 AI coding platforms through a flexible platform system.
   - Rules: `.windsurf/rules/**/*.md`
   - Skills: `.windsurf/skills/**/*`
 
+### Gemini CLI
+
+- **Platform ID:** `gemini`
+- **Directory:** `.gemini/`
+- **Detection:** `.gemini` directory or `GEMINI.md` file
+- **Resource Locations:**
+  - Skills: `.gemini/skills/**/*`
+  - MCP Config: `.gemini/settings.json`
+  - Root File: `GEMINI.md`
+
 ## Platform Detection
 
 Augent automatically detects which platforms are present in your workspace:

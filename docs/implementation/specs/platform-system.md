@@ -218,7 +218,7 @@ impl TransformEngine {
 
 | Universal Path | Platform | Target Path |
 |---------------|----------|-------------|
-| `commands/deploy.md` | Claude | `.claude/prompts/deploy.md` |
+| `commands/deploy.md` | Claude | `.claude/commands/deploy.md` |
 | `rules/debug.md` | Cursor | `.cursor/rules/debug.mdc` |
 | `skills/analyze.md` | OpenCode | `.opencode/skills/analyze.md` |
 | `mcp.jsonc` | Any | `.platform/mcp.json` |
@@ -311,7 +311,7 @@ impl PlatformLoader {
                     transforms: vec![
                         TransformRule {
                             from: "commands/*.md".to_string(),
-                            to: ".claude/prompts/{name}.md".to_string(),
+                            to: ".claude/commands/{name}.md".to_string(),
                             merge: MergeStrategy::Replace,
                             extension: Some("md".to_string()),
                         },

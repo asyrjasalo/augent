@@ -3,6 +3,9 @@
 //! These tests verify that interactive bundle selection menu works correctly.
 //! Since inquire's MultiSelect reads from terminal (not stdin),
 //! we use PTY (pseudo-terminal) to simulate real user interaction.
+//!
+//! These tests are ignored on Linux aarch64 (e.g. cross Docker) because PTY spawn
+//! runs the binary via /bin/sh, which interprets the ELF as a script.
 
 mod common;
 
@@ -14,6 +17,10 @@ fn augent_bin_path() -> PathBuf {
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_selects_all_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -92,6 +99,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_selects_subset() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -162,6 +173,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_cancels_on_empty_selection() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -206,6 +221,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_cancels_with_escape() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -250,6 +269,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_shows_descriptions() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -301,6 +324,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_single_bundle_no_menu() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -347,6 +374,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_with_bundles_lacking_descriptions() {
     // Test that bundles without descriptions display correctly in menu
     let workspace = common::TestWorkspace::new();
@@ -400,6 +431,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_shows_prompt_and_instructions() {
     // Test that the menu shows the correct prompt and navigation instructions
     let workspace = common::TestWorkspace::new();
@@ -449,6 +484,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_handles_large_bundle_list() {
     // Test that the menu can handle scrolling through many bundles
     let workspace = common::TestWorkspace::new();
@@ -505,6 +544,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_navigation_with_arrow_keys() {
     // Test that arrow keys properly navigate through the menu
     let workspace = common::TestWorkspace::new();
@@ -568,6 +611,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_interactive_menu_selection_toggle() {
     // Test that we can toggle selections on and off
     let workspace = common::TestWorkspace::new();

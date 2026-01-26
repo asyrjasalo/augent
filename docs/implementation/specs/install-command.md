@@ -169,7 +169,7 @@ impl TransformEngine {
 
 **Transformation rules:**
 
-- `commands/*.md` → `.claude/prompts/{name}.md`
+- `commands/*.md` → `.claude/commands/{name}.md`
 - `rules/*.md` → `.claude/rules/{name}.md`
 - `skills/*.md` → `.claude/skills/{name}.md`
 - Platform-specific rules defined in platform configuration

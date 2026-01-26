@@ -1,7 +1,7 @@
 # Augent
 
 Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via packages (of skills, commands, rules, MCP servers...) in a reproducible,
-platform independent, and intuitive manner.
+platform-independent, and intuitive manner.
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ To install a set of resources (bundles) for your AI coding platforms:
 Augent stores AI coding platform resources in universal format as **bundles**.
 
 - **Bundle**: A directory containing the platform-independent resources
-- **Workspace**: Your project's Git repository where you and your team work in
+- **Workspace**: Your project's Git repository where you and your team work
 - **Resources**: Universal resources transformed and installed for specific AI coding platforms
 
 Bundles are local directories within the same workspace,
@@ -43,9 +43,9 @@ When you install a bundle from a remote Git repository, Augent:
 1. Fetches the bundle(s) and adds it to `.augent/augent.yaml` in your workspace
 2. Resolves and locks the Git ref on first install (and creates a lockfile)
 3. Transforms the bundle's resources to match your AI coding platform's format
-4. Installs resources to the platforms (and creates an index what came where)
+4. Installs resources to the platforms (and creates an index of what came where)
 
-To ensure a coherent Augent setup across your team, store all the three
+To ensure a coherent Augent setup across your team, store all three
 created files in `.augent/` (yaml, index, and lock) in your Git repository.
 
 ### Install bundles
@@ -70,7 +70,7 @@ Install from a Git repository over SSH:
 
     augent install git@yourcompany.com:author/bundled
 
-Install understands different repo formats, such as Claude Marketplace plugins.
+The install command understands different repo formats, such as Claude Marketplace plugins.
 
 If repository has many bundles (or Claude Marketplace plugins),
 you can select those from the menu (or pass `--select-all`).
@@ -100,7 +100,7 @@ Uninstall the bundle and remove its resources:
 
 Resources that came from the bundle are removed, unless you modified them first.
 
-It also uninstalls the bundles dependencies, unless used by other bundles.
+It also uninstalls the bundle's dependencies, unless used by other bundles.
 
 ## Bundle Format
 
@@ -121,7 +121,7 @@ What it does:
 
 - Distributes bundles via public or private Git repositories.
 - Implements locking to ensure 100% reproducibility across teams.
-- Frees you from burden of converting between AI coding platform specific formats.
+- Frees you from the burden of converting between AI coding platform specific formats.
 
 What it does NOT:
 

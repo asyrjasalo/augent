@@ -231,9 +231,9 @@ fn cleanup_configuration(
 
 **Order matters:**
 
-1. Update `augent.workspace.yaml` first (removes file mappings)
-2. Update `augent.lock` (removes locked entry)
-3. Update `augent.yaml` (removes user configuration)
+1. Update `augent.yaml` (remove from user bundle list / dependencies)
+2. Update `augent.lock` (remove locked entry)
+3. Update `augent.workspace.yaml` (remove file mappings)
 
 All updates use atomic writes (temp file + rename).
 
