@@ -103,7 +103,6 @@ dependencies = [
  "inquire",
  "miette",
  "predicates",
- "regex",
  "serde",
  "serde_json",
  "serde_yaml",

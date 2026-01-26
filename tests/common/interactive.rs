@@ -160,6 +160,9 @@ impl InteractiveTest {
         let mut output = String::new();
         let mut buffer = [0u8; 4096];
 
+        // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
+        thread::sleep(Duration::from_millis(50));
+
         loop {
             if start.elapsed() > timeout {
                 return Err(std::io::Error::new(
@@ -178,8 +181,8 @@ impl InteractiveTest {
                         return Ok(output);
                     }
                 }
-                Ok(_) | Err(_) => {
-                    // No data (n=0) or error: check if process has exited
+                Ok(_) => {
+                    // No data available (n == 0): check if process has exited
                     if self.session.check(Eof).is_ok() {
                         let preview = if output.len() > 500 {
                             format!("{}...", &output[..500])
@@ -195,6 +198,64 @@ impl InteractiveTest {
                         ));
                     }
                     thread::sleep(Duration::from_millis(50));
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    // WouldBlock is normal on Windows conpty when no data is available
+                    // Check if process has exited
+                    if self.session.check(Eof).is_ok() {
+                        let preview = if output.len() > 500 {
+                            format!("{}...", &output[..500])
+                        } else {
+                            output.clone()
+                        };
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            format!(
+                                "EOF before finding text: {}. Output so far: {:?}",
+                                expected, preview
+                            ),
+                        ));
+                    }
+                    thread::sleep(Duration::from_millis(50));
+                }
+                Err(e) => {
+                    // Other errors: check if process exited (e.g., EIO on Linux)
+                    #[cfg(unix)]
+                    if e.raw_os_error() == Some(5) {
+                        // EIO (code 5 on Linux) can occur when process closes PTY slave
+                        // Check if we already have the text before returning error
+                        if output.contains(expected) {
+                            return Ok(output);
+                        }
+                        let preview = if output.len() > 500 {
+                            format!("{}...", &output[..500])
+                        } else {
+                            output.clone()
+                        };
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            format!(
+                                "EIO before finding text: {}. Output so far: {:?}",
+                                expected, preview
+                            ),
+                        ));
+                    }
+                    // For Windows or other errors, check if process exited
+                    if self.session.check(Eof).is_ok() {
+                        let preview = if output.len() > 500 {
+                            format!("{}...", &output[..500])
+                        } else {
+                            output.clone()
+                        };
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            format!(
+                                "EOF before finding text: {}. Output so far: {:?}",
+                                expected, preview
+                            ),
+                        ));
+                    }
+                    return Err(e);
                 }
             }
         }

@@ -18,6 +18,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use wax::{CandidatePath, Glob, Pattern};
+
 use crate::config::{BundleConfig, Lockfile, WorkspaceConfig};
 use crate::error::{AugentError, Result};
 use crate::hash;
@@ -492,66 +494,21 @@ impl Workspace {
     }
 
     /// Check if a glob pattern matches a file path
+    ///
+    /// Uses wax for platform-independent glob matching.
+    /// Paths are normalized to forward slashes for consistent matching across platforms.
     fn matches_glob(&self, pattern: &str, file_path: &str) -> bool {
-        // Simple glob matching: * matches any sequence, ** matches any depth
-        let pattern_parts: Vec<&str> = pattern.split('/').collect();
-        let file_parts: Vec<&str> = file_path.split('/').collect();
+        // Normalize path to forward slashes for platform-independent matching
+        let normalized_path = file_path.replace('\\', "/");
+        let candidate = CandidatePath::from(normalized_path.as_str());
 
-        self.matches_glob_parts(&pattern_parts, &file_parts)
-    }
-
-    /// Recursive helper for glob matching
-    #[allow(clippy::only_used_in_recursion)]
-    fn matches_glob_parts(&self, pattern_parts: &[&str], file_parts: &[&str]) -> bool {
-        // Base cases
-        if pattern_parts.is_empty() && file_parts.is_empty() {
-            return true;
+        // Use wax for proper glob pattern matching
+        if let Ok(glob) = Glob::new(pattern) {
+            glob.matched(&candidate).is_some()
+        } else {
+            // Fallback to exact match if pattern is invalid
+            pattern == normalized_path
         }
-        if pattern_parts.is_empty() || file_parts.is_empty() {
-            return pattern_parts.is_empty() && file_parts.is_empty();
-        }
-
-        let pattern = pattern_parts[0];
-        let file = file_parts[0];
-
-        if pattern == "**" {
-            // ** matches zero or more directories
-            if pattern_parts.len() == 1 {
-                return true; // ** at end matches everything
-            }
-
-            // Try matching with ** consuming zero directories
-            if self.matches_glob_parts(&pattern_parts[1..], file_parts) {
-                return true;
-            }
-
-            // Try matching with ** consuming one or more directories
-            if self.matches_glob_parts(pattern_parts, &file_parts[1..]) {
-                return true;
-            }
-
-            return false;
-        }
-
-        if pattern == "*" || pattern.contains('*') {
-            // Simple wildcard matching
-            let pattern_re = pattern
-                .replace(".", "\\.")
-                .replace("*", ".*")
-                .replace("?", ".");
-            if let Ok(re) = regex::Regex::new(&format!("^{}$", pattern_re)) {
-                if re.is_match(file) {
-                    return self.matches_glob_parts(&pattern_parts[1..], &file_parts[1..]);
-                }
-            }
-            return false;
-        }
-
-        if pattern == file {
-            return self.matches_glob_parts(&pattern_parts[1..], &file_parts[1..]);
-        }
-
-        false
     }
 
     /// Apply a transformation pattern to a bundle file path

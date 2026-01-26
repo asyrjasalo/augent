@@ -3,6 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
+use wax::{CandidatePath, Glob, Pattern};
+
 use super::{Platform, TransformRule};
 
 pub struct TransformEngine {
@@ -34,18 +36,16 @@ impl TransformEngine {
     }
 
     pub fn matches_pattern(&self, pattern: &str, path: &Path) -> bool {
-        let path_str = path.to_string_lossy();
+        // Normalize path to forward slashes for platform-independent matching
+        let path_str = path.to_string_lossy().replace('\\', "/");
+        let candidate = CandidatePath::from(path_str.as_str());
 
-        if pattern.contains('*') {
-            let parts: Vec<&str> = pattern.split('*').collect();
-
-            if parts.len() == 2 && path_str.starts_with(parts[0]) && path_str.ends_with(parts[1]) {
-                return true;
-            }
-
-            false
+        // Use wax for proper glob pattern matching
+        if let Ok(glob) = Glob::new(pattern) {
+            glob.matched(&candidate).is_some()
         } else {
-            path_str == pattern
+            // Fallback to exact match if pattern is invalid
+            pattern == path_str
         }
     }
 
@@ -148,8 +148,11 @@ mod tests {
         let platform = Platform::new("test", "Test", ".test");
         let engine = TransformEngine::new(platform);
 
+        // * matches within a single path component only
         assert!(engine.matches_pattern("commands/*.md", Path::new("commands/test.md")));
-        assert!(engine.matches_pattern("commands/*.md", Path::new("commands/sub/test.md")));
+        assert!(!engine.matches_pattern("commands/*.md", Path::new("commands/sub/test.md")));
+        // ** matches across directories
+        assert!(engine.matches_pattern("commands/**/*.md", Path::new("commands/sub/test.md")));
         assert!(!engine.matches_pattern("commands/test.md", Path::new("rules/test.md")));
 
         assert!(engine.matches_pattern("*.md", Path::new("test.md")));
@@ -299,8 +302,11 @@ mod tests {
         let platform = Platform::new("test", "Test", ".test");
         let engine = TransformEngine::new(platform);
 
+        // * matches within a single path component only
         assert!(engine.matches_pattern("commands/*", Path::new("commands/test.md")));
-        assert!(engine.matches_pattern("commands/*", Path::new("commands/subdir/test.md")));
+        assert!(!engine.matches_pattern("commands/*", Path::new("commands/subdir/test.md")));
+        // ** matches across directories
+        assert!(engine.matches_pattern("commands/**/*", Path::new("commands/subdir/test.md")));
         assert!(engine.matches_pattern("*.md", Path::new("test.md")));
         assert!(engine.matches_pattern("*", Path::new("test.md")));
         assert!(!engine.matches_pattern("commands/*.md", Path::new("rules/test.md")));

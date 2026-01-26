@@ -52,9 +52,6 @@ dirs = "5"
 # Hashing
 blake3 = "1"
 
-# Regex for pattern matching
-regex = "1"
-
 # Glob pattern matching
 wax = "0.6"
 
