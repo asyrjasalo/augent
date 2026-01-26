@@ -8,10 +8,10 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
+use wax::{CandidatePath, Glob, Pattern};
 
 use crate::config::WorkspaceBundle;
 use crate::error::{AugentError, Result};
@@ -243,7 +243,7 @@ impl<'a> Installer<'a> {
                             source_path: resource.absolute_path.clone(),
                             target_path: target,
                             merge_strategy: rule.merge,
-                            bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                            bundle_path: resource.bundle_path.to_string_lossy().replace('\\', "/"),
                             resource_type: resource.resource_type.clone(),
                         });
                         found_rule = true;
@@ -257,7 +257,7 @@ impl<'a> Installer<'a> {
                         source_path: resource.absolute_path.clone(),
                         target_path: target,
                         merge_strategy: MergeStrategy::Replace,
-                        bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                        bundle_path: resource.bundle_path.to_string_lossy().replace('\\', "/"),
                         resource_type: resource.resource_type.clone(),
                     });
                 }
@@ -270,7 +270,7 @@ impl<'a> Installer<'a> {
                             source_path: resource.absolute_path.clone(),
                             target_path,
                             merge_strategy,
-                            bundle_path: resource.bundle_path.to_string_lossy().to_string(),
+                            bundle_path: resource.bundle_path.to_string_lossy().replace('\\', "/"),
                             resource_type: resource.resource_type.clone(),
                         });
                     }
@@ -573,102 +573,27 @@ impl<'a> Installer<'a> {
         platform: &'b Platform,
         resource_path: &Path,
     ) -> Option<&'b TransformRule> {
-        let path_str = resource_path.to_string_lossy();
+        // Normalize path to forward slashes for consistent matching across platforms
+        let path_str = resource_path.to_string_lossy().replace('\\', "/");
+        let candidate = CandidatePath::from(path_str.as_str());
 
-        platform
-            .transforms
-            .iter()
-            .find(|rule| self.pattern_matches(&rule.from, &path_str))
-    }
-
-    /// Check if a glob-like pattern matches a path
-    fn pattern_matches(&self, pattern: &str, path: &str) -> bool {
-        // Glob patterns:
-        // * = any characters except /
-        // ** = any characters including / (for matching paths across directories)
-
-        // Strategy: convert glob pattern to regex
-        // When we have **, the surrounding / characters are important:
-        // - "**" matches any path segments
-        // - "dir/**" matches dir and everything under it
-        // - "**/file" matches file at any depth
-        // - "dir/**/file" matches file anywhere under dir
-
-        let mut regex_pattern = String::new();
-        let mut chars = pattern.chars().peekable();
-
-        while let Some(ch) = chars.next() {
-            if ch == '*' {
-                if chars.peek() == Some(&'*') {
-                    // This is ** - consume the second *
-                    chars.next();
-
-                    // Check what comes after **
-                    // If there's a '/', we want (.*?)? to handle optional nested dirs
-                    // and we should consume the slash too so we don't double-slash
-                    if chars.peek() == Some(&'/') {
-                        chars.next(); // Consume the slash
-                        regex_pattern.push_str("(.*?/)?");
-                    } else {
-                        // No slash after, so ** can match anything including paths
-                        regex_pattern.push_str(".*");
-                    }
-                } else {
-                    // This is * - matches any characters except /
-                    regex_pattern.push_str("[^/]*");
-                }
-            } else if ch == '.'
-                || ch == '+'
-                || ch == '?'
-                || ch == '['
-                || ch == ']'
-                || ch == '('
-                || ch == ')'
-                || ch == '{'
-                || ch == '}'
-                || ch == '^'
-                || ch == '$'
-            {
-                // Escape regex special characters
-                regex_pattern.push('\\');
-                regex_pattern.push(ch);
+        platform.transforms.iter().find(|rule| {
+            // Use wax for proper glob pattern matching
+            if let Ok(glob) = Glob::new(&rule.from) {
+                glob.matched(&candidate).is_some()
             } else {
-                regex_pattern.push(ch);
+                // Fallback to exact match if pattern is invalid
+                rule.from == path_str
             }
-        }
-
-        // Handle exact match first
-        if regex_pattern == path {
-            return true;
-        }
-
-        // Try regex matching
-        if let Ok(re) = regex::Regex::new(&format!("^{}$", regex_pattern)) {
-            return re.is_match(path);
-        }
-
-        // Fallback: prefix matching
-        path.starts_with(pattern.trim_end_matches('*'))
+        })
     }
 
     /// Apply a transform rule to get the target path for a resource
     fn apply_transform_rule(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
-        // Debug: Log initial inputs
-        eprintln!(
-            "[AUGENT DEBUG] apply_transform_rule: rule.from={:?}, rule.to={:?}, rule.extension={:?}, resource_path={:?}",
-            rule.from, rule.to, rule.extension, resource_path
-        );
-        let _ = std::io::stderr().flush(); // Ensure output is flushed immediately
-
-        // Normalize to forward slashes so strip_prefix and path logic work on Windows
-        // where Path::to_string_lossy() yields backslashes
+        // Normalize path to forward slashes for consistent processing
         let path_str = resource_path.to_string_lossy().replace('\\', "/");
-        eprintln!(
-            "[AUGENT DEBUG] After normalization: path_str={:?}",
-            path_str
-        );
 
-        // Build target path by substituting variables
+        // Build target path by substituting variables and wildcards
         let mut target = rule.to.clone();
 
         // Handle {name} placeholder - extract filename without extension
@@ -678,199 +603,116 @@ impl<'a> Installer<'a> {
             }
         }
 
-        // Handle ** wildcard - preserve subdirectory structure
-        // Must be done BEFORE extension transformation
-        #[allow(clippy::needless_borrow)]
-        if rule.from.contains("**") && rule.to.contains("**") {
-            // Everything before ** in source pattern
-            let source_prefix = if let Some(pos) = rule.from.find("**") {
-                &rule.from[..pos]
-            } else {
-                ""
-            };
+        // Extract the relative part that matches wildcards in the source pattern
+        // This handles both * and ** wildcards
+        let relative_part = self.extract_relative_part(&rule.from, &path_str);
 
-            // Get the part after the source prefix (e.g., "test.md" from "commands/test.md")
-            let relative_part = path_str
-                .strip_prefix(source_prefix)
-                .unwrap_or(&path_str)
-                .trim_start_matches('/');
-
-            // Split target around ** to get prefix and suffix
+        // Replace wildcards in target pattern with the extracted relative part
+        if target.contains("**") {
+            // Handle ** wildcard - replace with full relative path
             if let Some(pos) = target.find("**") {
-                let target_prefix = &target[..pos];
-                let suffix_start = pos + 2; // Skip "**"
-
-                // Get everything after ** in target
-                let suffix = if suffix_start < target.len() {
-                    target[suffix_start..].to_string()
+                let prefix = &target[..pos];
+                let suffix = if pos + 2 < target.len() {
+                    &target[pos + 2..]
                 } else {
-                    String::new()
+                    ""
                 };
 
-                // If suffix starts with '/', it's meant to be part of path structure
-                // Don't append it - relative_part already contains the full path
-                if let Some(suffix_without_slash) = suffix.strip_prefix('/') {
-                    // If suffix contains '.' or '*', it's a filename pattern extension
-                    // Only extract the stem if we have an extension transformation to apply
-                    // Otherwise, use relative_part as-is (preserves original extension)
-                    if (suffix_without_slash.contains('.') || suffix_without_slash.contains('*'))
-                        && rule.extension.is_some()
-                    {
-                        // Extract the directory part and filename stem from relative_part
-                        // e.g., "subdir/lint.md" -> "subdir/lint" (stem without extension)
-                        // The extension transformation will add the correct extension
-                        let relative_path = PathBuf::from(relative_part);
-                        if let Some(stem) = relative_path.file_stem() {
-                            if let Some(parent) = relative_path.parent() {
+                // If we have extension transformation and suffix has extension pattern,
+                // remove extension from relative_part before substitution
+                let relative_to_use =
+                    if rule.extension.is_some() && (suffix.contains('.') || suffix.contains('*')) {
+                        // Remove extension from relative part - use PathBuf for reliable extraction
+                        let rel_path = PathBuf::from(&relative_part);
+                        if let Some(stem) = rel_path.file_stem() {
+                            if let Some(parent) = rel_path.parent() {
                                 if parent.as_os_str().is_empty() {
-                                    // No parent directory, just the filename
-                                    target = format!("{}{}", target_prefix, stem.to_string_lossy());
+                                    stem.to_string_lossy().to_string()
                                 } else {
-                                    // Has parent directory, preserve it
-                                    target = format!(
-                                        "{}{}/{}",
-                                        target_prefix,
+                                    format!(
+                                        "{}/{}",
                                         parent.to_string_lossy().replace('\\', "/"),
                                         stem.to_string_lossy()
-                                    );
+                                    )
                                 }
                             } else {
-                                target = format!("{}{}", target_prefix, stem.to_string_lossy());
+                                stem.to_string_lossy().to_string()
                             }
                         } else {
-                            // Fallback: manually remove extension from relative_part
-                            // This handles edge cases where file_stem() might not work as expected
-                            let relative_normalized = relative_part.replace('\\', "/");
-                            if let Some(last_dot_pos) = relative_normalized.rfind('.') {
-                                if let Some(last_slash_pos) = relative_normalized.rfind('/') {
-                                    if last_dot_pos > last_slash_pos {
-                                        // Dot is in filename, remove extension
-                                        let without_ext = &relative_normalized[..last_dot_pos];
-                                        target = format!("{}{}", target_prefix, without_ext);
-                                    } else {
-                                        // Dot is in directory name, use as-is
-                                        target = format!("{}{}", target_prefix, relative_part);
-                                    }
-                                } else {
-                                    // No slash, dot must be in filename
-                                    let without_ext = &relative_normalized[..last_dot_pos];
-                                    target = format!("{}{}", target_prefix, without_ext);
-                                }
-                            } else {
-                                // No extension found, use as-is
-                                target = format!("{}{}", target_prefix, relative_part);
-                            }
+                            relative_part.clone()
                         }
-                    } else if suffix_without_slash.contains('.')
-                        || suffix_without_slash.contains('*')
-                    {
-                        // Pattern has extension but no transformation - use relative_part as-is
-                        target = format!("{}{}", target_prefix, relative_part);
                     } else {
-                        target =
-                            format!("{}{}{}", target_prefix, relative_part, suffix_without_slash);
+                        relative_part.clone()
+                    };
+
+                // Reconstruct target path
+                if suffix.starts_with('/') {
+                    // Suffix is a path continuation
+                    let suffix_clean = suffix.strip_prefix('/').unwrap_or(suffix);
+                    if suffix_clean.contains('.') || suffix_clean.contains('*') {
+                        // Suffix has extension pattern, use relative without extension
+                        target = format!("{}{}", prefix, relative_to_use);
+                    } else {
+                        target = format!("{}{}/{}", prefix, relative_to_use, suffix_clean);
                     }
                 } else if !suffix.is_empty() {
-                    // Suffix doesn't start with '/', append it directly
-                    target = format!("{}{}{}", target_prefix, relative_part, suffix);
+                    target = format!("{}{}{}", prefix, relative_to_use, suffix);
                 } else {
-                    // No suffix, just replace ** with relative_part
-                    target = format!("{}{}", target_prefix, relative_part);
+                    target = format!("{}{}", prefix, relative_to_use);
                 }
-                eprintln!(
-                    "[AUGENT DEBUG] After ** wildcard replacement: target={:?}, source_prefix={:?}, relative_part={:?}, suffix={:?}",
-                    target, source_prefix, relative_part, suffix
-                );
-            } else {
-                eprintln!(
-                    "[AUGENT DEBUG] After ** wildcard replacement: No ** found in target, target={:?}, source_prefix={:?}, relative_part={:?}",
-                    target, source_prefix, relative_part
-                );
             }
-        }
-
-        // Handle * wildcard (single file) - must be done BEFORE extension transformation
-        // Only run if we haven't already extracted the stem in ** replacement above
-        // (which would have removed any * from the target)
-        if target.contains('*') && !target.contains("**") {
+        } else if target.contains('*') {
+            // Handle single * wildcard - replace with filename stem
             if let Some(stem) = resource_path.file_stem() {
-                let old_target = target.clone();
-                // Only replace * with stem (not full filename) to preserve extension transformation
                 target = target.replace('*', &stem.to_string_lossy());
-                eprintln!(
-                    "[AUGENT DEBUG] After * wildcard replacement: old={:?}, new={:?}, stem={:?}",
-                    old_target, target, stem
-                );
             }
         }
 
-        // Apply extension transformation after all wildcards are replaced
+        // Apply extension transformation using PathBuf for platform-independent handling
         if let Some(ref ext) = rule.extension {
-            // Replace extension only in the filename part, preserving directory structure
-            // Normalize to forward slashes first for consistent processing on all platforms
-            let target_normalized = target.replace('\\', "/");
-            eprintln!(
-                "[AUGENT DEBUG] Before extension transformation: target={:?}, target_normalized={:?}, ext={:?}",
-                target, target_normalized, ext
-            );
+            // Convert target string to PathBuf for reliable extension handling
+            let target_path = PathBuf::from(&target.replace('\\', "/"));
 
-            // Use PathBuf to properly identify the filename and extension
-            // This handles Windows path separators correctly
-            // Create PathBuf from normalized string to ensure consistent behavior across platforms
-            let target_path =
-                if target_normalized.starts_with('/') || target_normalized.starts_with('.') {
-                    // Absolute path or path starting with dot - use as-is
-                    PathBuf::from(&target_normalized)
+            // Get the filename and replace its extension
+            if let Some(file_stem) = target_path.file_stem() {
+                let new_filename = format!("{}.{}", file_stem.to_string_lossy(), ext);
+                if let Some(parent) = target_path.parent() {
+                    target = parent
+                        .join(&new_filename)
+                        .to_string_lossy()
+                        .replace('\\', "/");
                 } else {
-                    // Relative path - ensure it's treated as a path
-                    PathBuf::from(&target_normalized)
-                };
-
-            if let Some(file_name) = target_path.file_name() {
-                let file_name_str = file_name.to_string_lossy();
-                // Use PathBuf::file_stem() to get the stem (filename without extension)
-                // This is more reliable than rfind('.') which can match dots in directory names
-                let new_file_name = if let Some(stem) = target_path.file_stem() {
-                    // Has a stem, replace extension
-                    format!("{}.{}", stem.to_string_lossy(), ext)
-                } else {
-                    // No stem found, append extension to filename
-                    format!("{}.{}", file_name_str, ext)
-                };
-
-                let result_target = if let Some(parent) = target_path.parent() {
-                    // Reconstruct path with new filename
-                    let new_path = parent.join(&new_file_name);
-                    new_path.to_string_lossy().replace('\\', "/")
-                } else {
-                    // No parent, just use the new filename
-                    new_file_name.clone()
-                };
-
-                eprintln!(
-                    "[AUGENT DEBUG] Extension transformation: file_name={:?}, new_file_name={:?}, result={:?}",
-                    file_name_str, new_file_name, result_target
-                );
-
-                target = result_target;
+                    target = new_filename;
+                }
             } else {
-                // No filename found (shouldn't happen), append extension to entire path
-                target = format!("{}.{}", target_normalized, ext);
-                eprintln!(
-                    "[AUGENT DEBUG] Extension transformation (no filename, appended): result={:?}",
-                    target
-                );
+                // No filename found, append extension
+                target = format!("{}.{}", target, ext);
             }
         }
 
-        // Normalize target to forward slashes so join yields correct path on all platforms
-        let target_normalized = target.replace('\\', "/");
-        let final_path = self.workspace_root.join(&target_normalized);
-        eprintln!(
-            "[AUGENT DEBUG] Final path: target={:?}, target_normalized={:?}, workspace_root={:?}, final_path={:?}",
-            target, target_normalized, self.workspace_root, final_path
-        );
-        final_path
+        // Join with workspace root using PathBuf for platform-independent path construction
+        let target_path = PathBuf::from(&target.replace('\\', "/"));
+        self.workspace_root.join(target_path)
+    }
+
+    /// Extract the relative part of a path that matches wildcards in a pattern
+    fn extract_relative_part(&self, pattern: &str, path: &str) -> String {
+        // Find the prefix before the first wildcard in the pattern
+        let wildcard_pos = pattern.find('*').unwrap_or(pattern.len());
+        let pattern_prefix = &pattern[..wildcard_pos];
+
+        // Extract the part of the path after the prefix
+        if let Some(relative) = path.strip_prefix(pattern_prefix) {
+            relative.trim_start_matches('/').to_string()
+        } else {
+            // If prefix doesn't match, try to extract from the end
+            // This handles cases where the pattern might not have a clear prefix
+            if let Some(filename) = PathBuf::from(path).file_name() {
+                filename.to_string_lossy().to_string()
+            } else {
+                path.to_string()
+            }
+        }
     }
 
     /// Apply merge strategy and copy file
@@ -1619,12 +1461,33 @@ mod tests {
 
     #[test]
     fn test_pattern_matches() {
-        let installer = Installer::new(Path::new("/test"), vec![]);
+        // Test that wax glob patterns work correctly
+        use wax::{CandidatePath, Glob};
 
-        assert!(installer.pattern_matches("commands/*.md", "commands/debug.md"));
-        assert!(installer.pattern_matches("commands/**/*.md", "commands/sub/debug.md"));
-        assert!(installer.pattern_matches("AGENTS.md", "AGENTS.md"));
-        assert!(!installer.pattern_matches("commands/*.md", "rules/debug.md"));
+        assert!(
+            Glob::new("commands/*.md")
+                .unwrap()
+                .matched(&CandidatePath::from("commands/debug.md"))
+                .is_some()
+        );
+        assert!(
+            Glob::new("commands/**/*.md")
+                .unwrap()
+                .matched(&CandidatePath::from("commands/sub/debug.md"))
+                .is_some()
+        );
+        assert!(
+            Glob::new("AGENTS.md")
+                .unwrap()
+                .matched(&CandidatePath::from("AGENTS.md"))
+                .is_some()
+        );
+        assert!(
+            Glob::new("commands/*.md")
+                .unwrap()
+                .matched(&CandidatePath::from("rules/debug.md"))
+                .is_none()
+        );
     }
 
     #[test]

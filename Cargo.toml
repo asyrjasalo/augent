@@ -55,6 +55,9 @@ blake3 = "1"
 # Regex for pattern matching
 regex = "1"
 
+# Glob pattern matching
+wax = "0.6"
+
 # Terminal UI
 console = "0.15"
 inquire = "0.9"
