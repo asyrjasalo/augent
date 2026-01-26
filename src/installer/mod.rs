@@ -738,8 +738,28 @@ impl<'a> Installer<'a> {
                                 target = format!("{}{}", target_prefix, stem.to_string_lossy());
                             }
                         } else {
-                            // Fallback: use relative_part as-is
-                            target = format!("{}{}", target_prefix, relative_part);
+                            // Fallback: manually remove extension from relative_part
+                            // This handles edge cases where file_stem() might not work as expected
+                            let relative_normalized = relative_part.replace('\\', "/");
+                            if let Some(last_dot_pos) = relative_normalized.rfind('.') {
+                                if let Some(last_slash_pos) = relative_normalized.rfind('/') {
+                                    if last_dot_pos > last_slash_pos {
+                                        // Dot is in filename, remove extension
+                                        let without_ext = &relative_normalized[..last_dot_pos];
+                                        target = format!("{}{}", target_prefix, without_ext);
+                                    } else {
+                                        // Dot is in directory name, use as-is
+                                        target = format!("{}{}", target_prefix, relative_part);
+                                    }
+                                } else {
+                                    // No slash, dot must be in filename
+                                    let without_ext = &relative_normalized[..last_dot_pos];
+                                    target = format!("{}{}", target_prefix, without_ext);
+                                }
+                            } else {
+                                // No extension found, use as-is
+                                target = format!("{}{}", target_prefix, relative_part);
+                            }
                         }
                     } else if suffix_without_slash.contains('.')
                         || suffix_without_slash.contains('*')
@@ -770,9 +790,12 @@ impl<'a> Installer<'a> {
         }
 
         // Handle * wildcard (single file) - must be done BEFORE extension transformation
+        // Only run if we haven't already extracted the stem in ** replacement above
+        // (which would have removed any * from the target)
         if target.contains('*') && !target.contains("**") {
             if let Some(stem) = resource_path.file_stem() {
                 let old_target = target.clone();
+                // Only replace * with stem (not full filename) to preserve extension transformation
                 target = target.replace('*', &stem.to_string_lossy());
                 eprintln!(
                     "[AUGENT DEBUG] After * wildcard replacement: old={:?}, new={:?}, stem={:?}",
