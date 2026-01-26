@@ -73,13 +73,6 @@ pub fn bundle_cache_path(url: &str, sha: &str) -> Result<PathBuf> {
     Ok(bundles_cache_dir()?.join(&slug).join(sha))
 }
 
-/// Check if a bundle is already cached
-#[allow(dead_code)]
-pub fn is_cached(url: &str, sha: &str) -> Result<bool> {
-    let path = bundle_cache_path(url, sha)?;
-    Ok(path.is_dir())
-}
-
 /// Get a cached bundle if it exists
 ///
 /// Returns the path to the cached bundle directory, or None if not cached.
@@ -613,20 +606,6 @@ mod tests {
         };
         let content_path = get_bundle_content_path(&source_no_subdir, &cache_path);
         assert_eq!(content_path, PathBuf::from("/cache/repo/abc123"));
-    }
-
-    #[test]
-    fn test_is_cached() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let cache_base = temp_dir.path().join("cache");
-        std::fs::create_dir_all(&cache_base).unwrap();
-
-        assert!(is_cached("https://github.com/test/repo.git", "abc123").is_ok());
-
-        let bundle_path = cache_base.join("github.com-test-repo").join("abc123");
-        std::fs::create_dir_all(&bundle_path).unwrap();
-
-        assert!(is_cached("https://github.com/test/repo.git", "abc123").is_ok());
     }
 
     #[test]

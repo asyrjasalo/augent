@@ -89,12 +89,6 @@ impl Resource {
         ResourceType::from_path(&self.path)
     }
 
-    /// Get the file name without extension
-    #[allow(dead_code)]
-    pub fn stem(&self) -> Option<&str> {
-        self.path.file_stem().and_then(|s| s.to_str())
-    }
-
     /// Get the file extension
     pub fn extension(&self) -> Option<&str> {
         self.path.extension().and_then(|s| s.to_str())
@@ -160,12 +154,6 @@ impl ResourceType {
     pub fn is_mergeable(&self) -> bool {
         matches!(self, ResourceType::McpConfig | ResourceType::AgentDoc)
     }
-
-    /// Check if this resource type should be copied as-is to workspace root
-    #[allow(dead_code)]
-    pub fn is_root_file(&self) -> bool {
-        matches!(self, ResourceType::RootFile)
-    }
 }
 
 /// Collection of resources from a bundle
@@ -186,12 +174,6 @@ impl ResourceSet {
     /// Add a resource to the set
     pub fn add(&mut self, resource: Resource) {
         self.resources.push(resource);
-    }
-
-    /// Get all resources
-    #[allow(dead_code)]
-    pub fn resources(&self) -> &[Resource] {
-        &self.resources
     }
 
     /// Get resources by type

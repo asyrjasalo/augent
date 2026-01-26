@@ -287,30 +287,6 @@ pub fn checkout_commit(repo: &Repository, sha: &str) -> Result<()> {
     Ok(())
 }
 
-/// Fetch updates from a remote repository
-#[allow(dead_code)]
-pub fn fetch(repo: &Repository, remote_name: &str) -> Result<()> {
-    let mut remote = repo
-        .find_remote(remote_name)
-        .map_err(|e| AugentError::GitFetchFailed {
-            reason: e.message().to_string(),
-        })?;
-
-    let mut callbacks = RemoteCallbacks::new();
-    setup_auth_callbacks(&mut callbacks);
-
-    let mut fetch_options = FetchOptions::new();
-    fetch_options.remote_callbacks(callbacks);
-
-    remote
-        .fetch(&[] as &[&str], Some(&mut fetch_options), None)
-        .map_err(|e| AugentError::GitFetchFailed {
-            reason: e.message().to_string(),
-        })?;
-
-    Ok(())
-}
-
 /// Open an existing repository
 #[allow(dead_code)]
 pub fn open(path: &Path) -> Result<Repository> {
@@ -408,24 +384,6 @@ fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
             "authentication failed",
         ))
     });
-}
-
-/// Get the HEAD commit SHA of a repository
-#[allow(dead_code)]
-pub fn head_sha(repo: &Repository) -> Result<String> {
-    let head = repo.head().map_err(|e| AugentError::GitRefResolveFailed {
-        git_ref: "HEAD".to_string(),
-        reason: e.message().to_string(),
-    })?;
-
-    let commit = head
-        .peel_to_commit()
-        .map_err(|e| AugentError::GitRefResolveFailed {
-            git_ref: "HEAD".to_string(),
-            reason: e.message().to_string(),
-        })?;
-
-    Ok(commit.id().to_string())
 }
 
 /// Get the symbolic name of HEAD (e.g., "main", "master")
@@ -588,28 +546,6 @@ mod tests {
         // Checkout the commit
         let result = checkout_commit(&repo, &commit_oid.to_string());
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_head_sha() {
-        // Create a test repository
-        let temp = TempDir::new().unwrap();
-        let repo = Repository::init(temp.path()).unwrap();
-
-        // Create an initial commit
-        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
-        let tree_id = {
-            let mut index = repo.index().unwrap();
-            index.write_tree().unwrap()
-        };
-        let tree = repo.find_tree(tree_id).unwrap();
-        let commit_oid = repo
-            .commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
-            .unwrap();
-
-        // Get HEAD SHA
-        let sha = head_sha(&repo).unwrap();
-        assert_eq!(sha, commit_oid.to_string());
     }
 
     #[test]

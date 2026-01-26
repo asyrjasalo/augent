@@ -102,7 +102,6 @@ pub struct ResolvedBundle {
     pub name: String,
 
     /// Original dependency declaration (if from a dependency)
-    #[allow(dead_code)]
     pub dependency: Option<BundleDependency>,
 
     /// Resolved source location (local path or cached git path)
@@ -884,35 +883,6 @@ impl Resolver {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    /// Resolve a dependency declaration
-    fn resolve_dependency(&mut self, dep: &BundleDependency) -> Result<ResolvedBundle> {
-        let source = if let Some(ref git_url) = dep.git {
-            // Git dependency
-            let git_source = GitSource {
-                url: git_url.clone(),
-                path: dep.path.clone(),
-                git_ref: dep.git_ref.clone(),
-                resolved_sha: None,
-            };
-            BundleSource::Git(git_source)
-        } else if let Some(ref path_val) = dep.path {
-            // Local dependency
-            BundleSource::Dir {
-                path: std::path::PathBuf::from(path_val),
-            }
-        } else {
-            return Err(AugentError::BundleValidationFailed {
-                message: format!(
-                    "Dependency '{}' has neither 'git' nor 'subdirectory' specified",
-                    dep.name
-                ),
-            });
-        };
-
-        self.resolve_source(&source, Some(dep))
-    }
-
     /// Resolve a dependency with a specific context path
     fn resolve_dependency_with_context(
         &mut self,
@@ -1050,12 +1020,6 @@ impl Resolver {
         Ok(())
     }
 
-    /// Get all resolved bundles
-    #[allow(dead_code)]
-    pub fn resolved_bundles(&self) -> &HashMap<String, ResolvedBundle> {
-        &self.resolved
-    }
-
     /// Normalize a path by resolving . and .. components
     /// This does NOT resolve symlinks, only normalizes path separators and dot references
     /// Uses path-clean for robust cross-platform path normalization
@@ -1131,13 +1095,6 @@ impl Resolver {
 
         Ok(())
     }
-}
-
-/// Resolve a single bundle from a source string (convenience function)
-#[allow(dead_code)]
-pub fn resolve_bundle(workspace_root: &Path, source: &str) -> Result<Vec<ResolvedBundle>> {
-    let mut resolver = Resolver::new(workspace_root);
-    resolver.resolve(source)
 }
 
 #[cfg(test)]
