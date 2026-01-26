@@ -11,9 +11,16 @@ fn augent_bin_path() -> PathBuf {
 // In cross's aarch64 Linux Docker image, PTY spawn can run the binary via /bin/sh, which
 // then interprets the ELF as a script and prints "Syntax error: `(` unexpected". Skip
 // only on Linux aarch64; it passes on macOS aarch64.
+//
+// On Windows, PTY reads can block indefinitely in conpty, causing tests to hang.
+// This is a known issue with expectrl's Windows conpty implementation.
 #[cfg_attr(
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
 )]
 fn test_install_with_menu_selects_all_bundles() {
     // Wrap test in timeout to prevent CI from hanging indefinitely
