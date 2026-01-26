@@ -201,7 +201,19 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     // Determine the final cache path
     let cache_path = bundle_cache_path(&source.url, &sha)?;
 
-    // Create parent directories
+    // Ensure the base cache directory exists first
+    let base_cache_dir = cache_dir()?;
+    fs::create_dir_all(&base_cache_dir).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to create cache directory: {}", e),
+    })?;
+
+    // Ensure the bundles cache directory exists
+    let bundles_dir = bundles_cache_dir()?;
+    fs::create_dir_all(&bundles_dir).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to create bundles cache directory: {}", e),
+    })?;
+
+    // Create parent directories for the specific bundle
     if let Some(parent) = cache_path.parent() {
         fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
             message: format!("Failed to create cache directory: {}", e),
