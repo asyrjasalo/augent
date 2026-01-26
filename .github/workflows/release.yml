@@ -108,7 +108,7 @@ jobs:
 
   # Build standalone binaries for GitHub release
   build-binaries:
-    name: Build binaries on ${{ matrix.os }}
+    name: Build binary ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     needs: [verify-ci]
     strategy:
@@ -201,7 +201,7 @@ jobs:
 
   # Build Python wheels for PyPI (not for GitHub release)
   build-wheels:
-    name: Build wheels on ${{ matrix.os }}
+    name: Build wheel ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     needs: [build-binaries]
     strategy:
