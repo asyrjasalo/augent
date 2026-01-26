@@ -1,0 +1,12 @@
+.rumdl_cache/
+coverage
+target/
+
+*.bak
+
+build_rs_cov.profraw
+tarpaulin-report.json
+tarpaulin-report.html
+
+# testing
+.gemini/

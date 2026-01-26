@@ -8,6 +8,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
@@ -127,15 +128,51 @@ impl<'a> Installer<'a> {
 
     /// Install a single bundle
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
+        eprintln!(
+            "[AUGENT DEBUG] install_bundle: bundle={:?}, source_path={:?}",
+            bundle.name, bundle.source_path
+        );
         let resources = Self::discover_resources(&bundle.source_path)?;
+        eprintln!(
+            "[AUGENT DEBUG] install_bundle: discovered {} resources",
+            resources.len()
+        );
+        for (i, res) in resources.iter().enumerate() {
+            eprintln!(
+                "[AUGENT DEBUG]   resource[{}]: bundle_path={:?}, resource_type={:?}",
+                i, res.bundle_path, res.resource_type
+            );
+        }
+
         let pending_installations = self.collect_pending_installations(&resources, bundle)?;
+        eprintln!(
+            "[AUGENT DEBUG] install_bundle: {} pending installations",
+            pending_installations.len()
+        );
 
         let grouped_by_target = self.group_by_target(&pending_installations);
+        eprintln!(
+            "[AUGENT DEBUG] install_bundle: {} unique target paths",
+            grouped_by_target.len()
+        );
 
         let mut workspace_bundle = WorkspaceBundle::new(&bundle.name);
 
         for (ref target_path, ref installations) in grouped_by_target {
             let _installed = self.execute_installations(target_path, installations)?;
+        }
+
+        // Debug: List all files in .cursor/rules/ after installation
+        let cursor_rules_dir = self.workspace_root.join(".cursor/rules");
+        if cursor_rules_dir.exists() {
+            eprintln!("[AUGENT DEBUG] install_bundle: Files in .cursor/rules/:");
+            if let Ok(entries) = std::fs::read_dir(&cursor_rules_dir) {
+                for entry in entries.flatten() {
+                    eprintln!("[AUGENT DEBUG]   - {:?}", entry.path());
+                }
+            }
+        } else {
+            eprintln!("[AUGENT DEBUG] install_bundle: .cursor/rules/ directory does not exist");
         }
 
         // Build source-to-targets mapping from newly installed files.
@@ -621,6 +658,7 @@ impl<'a> Installer<'a> {
             "[AUGENT DEBUG] apply_transform_rule: rule.from={:?}, rule.to={:?}, rule.extension={:?}, resource_path={:?}",
             rule.from, rule.to, rule.extension, resource_path
         );
+        let _ = std::io::stderr().flush(); // Ensure output is flushed immediately
 
         // Normalize to forward slashes so strip_prefix and path logic work on Windows
         // where Path::to_string_lossy() yields backslashes

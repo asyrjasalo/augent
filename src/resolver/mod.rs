@@ -428,11 +428,15 @@ impl Resolver {
         dependency: Option<&BundleDependency>,
     ) -> Result<ResolvedBundle> {
         // Make path absolute relative to current context
-        let full_path = if path.is_absolute() {
+        let mut full_path = if path.is_absolute() {
             path.to_path_buf()
         } else {
             self.current_context.join(path)
         };
+
+        // Normalize the path to resolve . and .. components
+        // This is important for cross-platform compatibility, especially on Windows
+        full_path = self.normalize_path(&full_path);
 
         // Validate that local bundle path doesn't escape the workspace root
         // This security check ensures all local bundles are contained within the workspace
@@ -1050,6 +1054,27 @@ impl Resolver {
         &self.resolved
     }
 
+    /// Normalize a path by resolving . and .. components
+    /// This does NOT resolve symlinks, only normalizes path separators and dot references
+    fn normalize_path(&self, path: &Path) -> std::path::PathBuf {
+        use std::path::Component;
+        let mut normalized = std::path::PathBuf::new();
+        for component in path.components() {
+            match component {
+                Component::ParentDir => {
+                    normalized.pop();
+                }
+                Component::CurDir => {
+                    // . means current directory, skip it
+                }
+                _ => {
+                    normalized.push(component);
+                }
+            }
+        }
+        normalized
+    }
+
     /// Validate that a local bundle path doesn't escape the workspace root
     ///
     /// This ensures that local bundles (with `type: dir` in the lockfile) are always
@@ -1064,8 +1089,6 @@ impl Resolver {
         user_path: &Path,
         is_dependency: bool,
     ) -> Result<()> {
-        use std::path::Component;
-
         // Reject absolute paths in dependencies - only relative paths are allowed for bundles in augent.yaml
         // Absolute paths break portability when the repo is cloned or moved to a different machine
         if is_dependency && user_path.is_absolute() {
@@ -1079,33 +1102,13 @@ impl Resolver {
             });
         }
 
-        // Helper function to normalize a path by resolving . and .. components
-        // This does NOT resolve symlinks, only normalizes path separators and dot references
-        fn normalize_path(path: &Path) -> std::path::PathBuf {
-            let mut normalized = std::path::PathBuf::new();
-            for component in path.components() {
-                match component {
-                    Component::ParentDir => {
-                        normalized.pop();
-                    }
-                    Component::CurDir => {
-                        // . means current directory, skip it
-                    }
-                    _ => {
-                        normalized.push(component);
-                    }
-                }
-            }
-            normalized
-        }
-
         // Also try to canonicalize (resolve symlinks) for a secondary check
         let full_path_canonical = std::fs::canonicalize(full_path).ok();
         let workspace_root_canonical = std::fs::canonicalize(&self.workspace_root).ok();
 
         // Normalize both paths to handle `.` and `..` components
-        let normalized_full = normalize_path(full_path);
-        let normalized_workspace = normalize_path(&self.workspace_root);
+        let normalized_full = self.normalize_path(full_path);
+        let normalized_workspace = self.normalize_path(&self.workspace_root);
 
         // Check if the bundle path is within the workspace using the primary check
         let is_within_normalized = normalized_full.starts_with(&normalized_workspace);
