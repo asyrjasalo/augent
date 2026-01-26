@@ -487,7 +487,11 @@ mod tests {
 
     #[test]
     fn test_parse_local_absolute() {
-        let source = BundleSource::parse("/home/user/bundles/my-bundle").unwrap();
+        #[cfg(unix)]
+        let absolute_path = "/home/user/bundles/my-bundle";
+        #[cfg(windows)]
+        let absolute_path = "C:\\Users\\user\\bundles\\my-bundle";
+        let source = BundleSource::parse(absolute_path).unwrap();
         assert!(source.is_local());
     }
 
