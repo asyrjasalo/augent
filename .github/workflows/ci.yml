@@ -103,6 +103,13 @@ jobs:
             cargo install cross
           fi
 
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --compatibility pypi
+          manylinux: auto
+
       - name: Run tests
         if: matrix.build_only != true
         shell: bash
