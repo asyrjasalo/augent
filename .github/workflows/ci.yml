@@ -14,7 +14,7 @@ env:
 jobs:
   # Linting and formatting - runs in parallel with build jobs
   lint:
-    name: Lint and format check
+    name: Lint codebase
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -25,7 +25,7 @@ jobs:
         with:
           cache-on-failure: true
 
-      - name: Install Rust toolchain
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -41,7 +41,7 @@ jobs:
     name: Build (${{ matrix.os }} - ${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           # Linux
@@ -91,7 +91,7 @@ jobs:
           key: ${{ matrix.target }}
           cache-on-failure: true
 
-      - name: Install Rust toolchain
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
@@ -117,7 +117,7 @@ jobs:
             cargo test --release --target ${{ matrix.target }}
           fi
 
-      - name: Build release binary
+      - name: Build binary
         if: matrix.build_only == true
         shell: bash
         run: |

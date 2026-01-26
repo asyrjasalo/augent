@@ -14,9 +14,8 @@ permissions:
 
 jobs:
 
-  # Verify tag is on main branch
-  verify-tag:
-    name: Verify tag is on main branch
+  verify:
+    name: Verify version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -24,31 +23,6 @@ jobs:
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
-
-      - name: Verify version matches Cargo.toml and pyproject.toml
-        run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          CARGO_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml)
-          PYPROJECT_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject.toml)
-
-          if [ -z "$CARGO_VERSION" ]; then
-            echo "Error: Could not read version from Cargo.toml"
-            exit 1
-          fi
-          if [ -z "$PYPROJECT_VERSION" ]; then
-            echo "Error: Could not read version from pyproject.toml"
-            exit 1
-          fi
-          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "Error: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
-            exit 1
-          fi
-          if [ "$TAG_VERSION" != "$PYPROJECT_VERSION" ]; then
-            echo "Error: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PYPROJECT_VERSION)"
-            exit 1
-          fi
-
-          echo "✓ Version $TAG_VERSION matches Cargo.toml and pyproject.toml"
 
       - name: Verify tag is on main branch
         run: |
@@ -64,11 +38,66 @@ jobs:
 
           echo "✓ Tag is on main branch"
 
+      - name: Verify version matches Cargo.toml, Cargo.lock, and pyproject.toml
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          CARGO_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml)
+
+          if [ -z "$CARGO_VERSION" ]; then
+            echo "Error: Could not read version from Cargo.toml"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
+
+          if [ ! -f Cargo.lock ]; then
+            echo "Error: Cargo.lock is missing"
+            exit 1
+          fi
+
+          # Extract version from augent package in Cargo.lock
+          CARGO_LOCK_VERSION=$(awk '/^name = "augent"$/{getline; if (/^version = /) {gsub(/"/, "", $3); print $3}}' Cargo.lock)
+
+          if [ -z "$CARGO_LOCK_VERSION" ]; then
+            echo "Error: Could not read version from Cargo.lock (augent package not found)"
+            exit 1
+          fi
+
+          if [ "$TAG_VERSION" != "$CARGO_LOCK_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match Cargo.lock version ($CARGO_LOCK_VERSION)"
+            exit 1
+          fi
+
+          PYPROJECT_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject.toml)
+          if [ -z "$PYPROJECT_VERSION" ]; then
+            echo "Error: Could not read version from pyproject.toml"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PYPROJECT_VERSION)"
+            exit 1
+          fi
+
+          echo "✓ Version $TAG_VERSION matches Cargo.toml, Cargo.lock, and pyproject.toml"
+
+      - name: Verify changelog has version
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+
+          if ! grep -qF "## [$TAG_VERSION]" CHANGELOG.md; then
+            echo "Error: CHANGELOG.md has no '## [$TAG_VERSION]' section"
+            exit 1
+          fi
+
+          echo "✓ CHANGELOG.md has version $TAG_VERSION"
+
   # Build standalone binaries for GitHub release
   build-binaries:
     name: Build binary ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    needs: [verify-tag]
+    needs: [verify]
     strategy:
       fail-fast: true
       matrix:
@@ -154,14 +183,104 @@ jobs:
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: augent-${{ matrix.target }}
+          name: binary-${{ matrix.target }}
           path: ${{ env.ARCHIVE_PATH }}
 
-  # Build Python wheels for PyPI (not for GitHub release)
+  # Publish to crates.io
+  publish-crates:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: [build-binaries]
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Authenticate with crates.io via OIDC
+        uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
+      - name: Publish to crates.io
+        run: |
+          set +e
+          cargo publish 2>&1 | tee /tmp/cargo-publish.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            if grep -q "already exists" /tmp/cargo-publish.log; then
+              echo "Package already exists on crates.io, skipping publish"
+              exit 0
+            else
+              echo "cargo publish failed."
+              cat /tmp/cargo-publish.log
+              exit $EXIT_CODE
+            fi
+          fi
+        env:
+            CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+  # Create GitHub release from binaries
+  publish-github:
+    name: Publish to GitHub
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum augent-* > checksums.txt
+
+      - name: Extract release notes
+        id: extract-release-notes
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Escape dots in version for regex (e.g. 0.5.0 -> 0\.5\.0)
+          VERSION_ERE=$(printf '%s' "$VERSION" | sed 's/\./\\./g')
+
+          # Extract release notes from CHANGELOG.md
+          awk -v ver_ere="$VERSION_ERE" '
+            $0 ~ "^## \\[" ver_ere "\\]" {flag=1; next}
+            /^## \[/ {flag=0}
+            flag {print}
+          ' CHANGELOG.md > release-notes.md
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/augent-*.tar.gz
+            dist/augent-*.zip
+            dist/checksums.txt
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build Python wheels for PyPI
   build-wheels:
     name: Build wheel ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    needs: [build-binaries]
+    needs: [verify]
     strategy:
       fail-fast: true
       matrix:
@@ -219,108 +338,13 @@ jobs:
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.platform }}-${{ matrix.target }}
+          name: wheel-${{ matrix.platform }}-${{ matrix.target }}
           path: dist/*.whl
 
-  # Publish to crates.io (first)
-  publish-crates:
-    name: Publish to crates.io
-    runs-on: ubuntu-latest
-    needs: [build-binaries]
-    permissions:
-      id-token: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Authenticate with crates.io via OIDC
-        uses: rust-lang/crates-io-auth-action@v1
-        id: auth
-
-      - name: Publish to crates.io
-        run: |
-          set +e
-          cargo publish 2>&1 | tee /tmp/cargo-publish.log
-          EXIT_CODE=${PIPESTATUS[0]}
-          if [ $EXIT_CODE -ne 0 ]; then
-            if grep -q "already exists" /tmp/cargo-publish.log; then
-              echo "Package already exists on crates.io, skipping publish"
-              exit 0
-            else
-              echo "cargo publish failed."
-              cat /tmp/cargo-publish.log
-              exit $EXIT_CODE
-            fi
-          fi
-        env:
-            CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-
-  # Create GitHub release with binaries (second, after crates.io succeeds)
-  github-release:
-    name: Create GitHub release
-    needs: [build-binaries, build-wheels]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Download all binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: augent-*
-          path: dist
-          merge-multiple: true
-
-      - name: Create checksums
-        run: |
-          cd dist
-          sha256sum augent-* > checksums.txt
-
-      - name: Extract release notes
-        id: extract-release-notes
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
-            echo "Error: CHANGELOG.md has no '## [$VERSION]' section"
-            exit 1
-          fi
-
-          # Escape dots in version for regex (e.g. 0.5.0 -> 0\.5\.0)
-          VERSION_ERE=$(printf '%s' "$VERSION" | sed 's/\./\\./g')
-
-          # Extract release notes from CHANGELOG.md
-          awk -v ver_ere="$VERSION_ERE" '
-            $0 ~ "^## \\[" ver_ere "\\]" {flag=1; next}
-            /^## \[/ {flag=0}
-            flag {print}
-          ' CHANGELOG.md > release-notes.md
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/augent-*.tar.gz
-            dist/augent-*.zip
-            dist/checksums.txt
-          body_path: release-notes.md
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Publish to PyPI (last, after GitHub release succeeds)
+  # Publish to PyPI
   publish-pypi:
     name: Publish to PyPI
-    needs: [build-wheels, github-release]
+    needs: [build-wheels]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -332,7 +356,7 @@ jobs:
       - name: Download all wheels
         uses: actions/download-artifact@v4
         with:
-          pattern: wheels-*
+          pattern: wheel-*
           path: dist
           merge-multiple: true
 
