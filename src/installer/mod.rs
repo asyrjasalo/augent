@@ -814,39 +814,49 @@ impl<'a> Installer<'a> {
                 target, target_normalized, ext
             );
 
-            // Find the last dot to identify the extension
-            if let Some(last_dot_pos) = target_normalized.rfind('.') {
-                // Check if this dot is part of the filename (not a directory)
-                // Find the last slash before the dot
-                if let Some(last_slash_pos) = target_normalized.rfind('/') {
-                    if last_dot_pos > last_slash_pos {
-                        // The dot is in the filename, replace the extension
-                        target = format!("{}.{}", &target_normalized[..last_dot_pos], ext);
-                        eprintln!(
-                            "[AUGENT DEBUG] Extension transformation (filename): last_dot_pos={}, last_slash_pos={}, result={:?}",
-                            last_dot_pos, last_slash_pos, target
-                        );
+            // Use PathBuf to properly identify the filename and extension
+            // This handles Windows path separators correctly
+            let target_path = PathBuf::from(&target_normalized);
+            if let Some(file_name) = target_path.file_name() {
+                let file_name_str = file_name.to_string_lossy();
+                // Check if filename has an extension
+                if let Some(dot_pos) = file_name_str.rfind('.') {
+                    // Filename has extension, replace it
+                    let stem = &file_name_str[..dot_pos];
+                    let new_file_name = format!("{}.{}", stem, ext);
+                    if let Some(parent) = target_path.parent() {
+                        target = parent
+                            .join(&new_file_name)
+                            .to_string_lossy()
+                            .replace('\\', "/");
                     } else {
-                        // The dot is in a directory name, append extension
-                        target = format!("{}.{}", target_normalized, ext);
-                        eprintln!(
-                            "[AUGENT DEBUG] Extension transformation (directory): last_dot_pos={}, last_slash_pos={}, result={:?}",
-                            last_dot_pos, last_slash_pos, target
-                        );
+                        target = new_file_name;
                     }
-                } else {
-                    // No slash found, the dot must be in the filename
-                    target = format!("{}.{}", &target_normalized[..last_dot_pos], ext);
                     eprintln!(
-                        "[AUGENT DEBUG] Extension transformation (no slash): last_dot_pos={}, result={:?}",
-                        last_dot_pos, target
+                        "[AUGENT DEBUG] Extension transformation (replaced): file_name={:?}, stem={:?}, new_file_name={:?}, result={:?}",
+                        file_name_str, stem, new_file_name, target
+                    );
+                } else {
+                    // Filename has no extension, append it
+                    let new_file_name = format!("{}.{}", file_name_str, ext);
+                    if let Some(parent) = target_path.parent() {
+                        target = parent
+                            .join(&new_file_name)
+                            .to_string_lossy()
+                            .replace('\\', "/");
+                    } else {
+                        target = new_file_name;
+                    }
+                    eprintln!(
+                        "[AUGENT DEBUG] Extension transformation (appended): file_name={:?}, new_file_name={:?}, result={:?}",
+                        file_name_str, new_file_name, target
                     );
                 }
             } else {
-                // No extension found, append it
+                // No filename found (shouldn't happen), append extension to entire path
                 target = format!("{}.{}", target_normalized, ext);
                 eprintln!(
-                    "[AUGENT DEBUG] Extension transformation (no dot): result={:?}",
+                    "[AUGENT DEBUG] Extension transformation (no filename, appended): result={:?}",
                     target
                 );
             }
