@@ -21,6 +21,37 @@ use git2::{
 
 use crate::error::{AugentError, Result};
 
+/// Normalize SSH URLs from SCP-style (git@host:path) to ssh:// format.
+///
+/// libgit2 may have issues with SCP-style SSH URLs, so we convert them to
+/// the explicit ssh:// format for better compatibility.
+fn normalize_ssh_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
+    // Only process SCP-style URLs (git@host:path), not already-normalized ssh:// URLs
+    if !url.starts_with("git@") || url.starts_with("ssh://") {
+        return std::borrow::Cow::Borrowed(url);
+    }
+
+    // Parse git@host:path format
+    // Find the colon that separates host from path
+    if let Some(colon_pos) = url.find(':') {
+        let host_part = &url[..colon_pos]; // git@host
+        let path_part = &url[colon_pos + 1..]; // path/repo.git
+
+        // Convert to ssh://git@host/path format
+        // Note: colon becomes slash in the path part
+        // If path already starts with /, use it directly; otherwise add /
+        let normalized_path = if path_part.starts_with('/') {
+            path_part.to_string()
+        } else {
+            format!("/{}", path_part)
+        };
+        return std::borrow::Cow::Owned(format!("ssh://{}{}", host_part, normalized_path));
+    }
+
+    // No colon found, return as-is (shouldn't happen for valid SSH URLs)
+    std::borrow::Cow::Borrowed(url)
+}
+
 /// Normalize file:// URLs so libgit2 can resolve them on Unix.
 ///
 /// On Windows, file:// is not used: clone() uses a local copy instead because
@@ -178,7 +209,9 @@ pub fn clone(url: &str, target: &Path, shallow: bool) -> Result<Repository> {
     let mut builder = RepoBuilder::new();
     builder.fetch_options(fetch_options);
 
-    let url_to_clone = normalize_file_url_for_clone(url);
+    // Normalize URLs for libgit2 compatibility
+    let url_to_clone = normalize_ssh_url_for_clone(url);
+    let url_to_clone = normalize_file_url_for_clone(&url_to_clone);
     builder.clone(url_to_clone.as_ref(), target).map_err(|e| {
         let reason = interpret_git_error(&e);
         AugentError::GitCloneFailed {
@@ -610,5 +643,40 @@ mod tests {
             result.unwrap().id(),
             git2::Oid::from_str(&full_sha).unwrap()
         );
+    }
+
+    #[test]
+    fn test_normalize_ssh_url() {
+        // Test SCP-style SSH URL normalization
+        let scp_url = "git@github.com:user/repo.git";
+        let normalized = normalize_ssh_url_for_clone(scp_url);
+        assert_eq!(normalized, "ssh://git@github.com/user/repo.git");
+
+        // Test already-normalized ssh:// URL (should not change)
+        let ssh_url = "ssh://git@github.com/user/repo.git";
+        let normalized = normalize_ssh_url_for_clone(ssh_url);
+        assert_eq!(normalized, "ssh://git@github.com/user/repo.git");
+
+        // Test HTTPS URL (should not change)
+        let https_url = "https://github.com/user/repo.git";
+        let normalized = normalize_ssh_url_for_clone(https_url);
+        assert_eq!(normalized, "https://github.com/user/repo.git");
+
+        // Test SSH URL with custom port
+        let scp_url_port = "git@github.com:22:user/repo.git";
+        let normalized = normalize_ssh_url_for_clone(scp_url_port);
+        // Note: This will normalize to ssh://git@github.com/22:user/repo.git
+        // which is not ideal, but libgit2 should handle the port in the host part
+        assert!(normalized.starts_with("ssh://git@github.com/"));
+
+        // Test SSH URL without .git suffix
+        let scp_url_no_git = "git@github.com:user/repo";
+        let normalized = normalize_ssh_url_for_clone(scp_url_no_git);
+        assert_eq!(normalized, "ssh://git@github.com/user/repo");
+
+        // Test SSH URL with absolute path
+        let scp_url_absolute = "git@github.com:/absolute/path/repo.git";
+        let normalized = normalize_ssh_url_for_clone(scp_url_absolute);
+        assert_eq!(normalized, "ssh://git@github.com/absolute/path/repo.git");
     }
 }

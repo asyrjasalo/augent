@@ -1,4 +1,23 @@
 {
   "name": "@asyrjasalo/augent",
-  "bundles": []
+  "bundles": [
+    {
+      "name": "@wshobson/agents/plugins/api-scaffolding",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/wshobson/agents.git",
+        "path": "plugins/api-scaffolding",
+        "ref": "main",
+        "sha": "1135ac606247648d9e4724f027280d4114282858",
+        "hash": "blake3:690cacfc5c018d6af3e6d4e6a87835f24e9046534922acaaedad45d7fa209365"
+      },
+      "files": [
+        "agents/backend-architect.md",
+        "agents/django-pro.md",
+        "agents/fastapi-pro.md",
+        "agents/graphql-architect.md",
+        "skills/fastapi-templates/SKILL.md"
+      ]
+    }
+  ]
 }

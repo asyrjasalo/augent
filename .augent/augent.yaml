@@ -1,3 +1,7 @@
 name: '@asyrjasalo/augent'
 
-bundles: []
+bundles:
+- name: '@wshobson/agents/plugins/api-scaffolding'
+  git: https://github.com/wshobson/agents.git
+  path: plugins/api-scaffolding
+  ref: main
