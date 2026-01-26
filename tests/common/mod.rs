@@ -3,7 +3,7 @@
 mod interactive;
 
 #[allow(unused_imports)]
-pub use interactive::{InteractiveTest, MenuAction, send_menu_actions};
+pub use interactive::{InteractiveTest, MenuAction, run_with_timeout, send_menu_actions};
 
 use assert_cmd::Command;
 use std::path::PathBuf;

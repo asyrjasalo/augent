@@ -16,7 +16,7 @@
 //!
 #![allow(dead_code)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -103,11 +103,10 @@ impl BundleSource {
         }
 
         // Check for local paths first
-        if input.starts_with("./")
-            || input.starts_with("../")
-            || input.starts_with('/')
-            || (cfg!(windows) && input.chars().nth(1) == Some(':'))
-        {
+        // Use Path::is_absolute() for cross-platform absolute path detection
+        // This handles Windows drive letters (C:\), Unix absolute paths (/), etc.
+        let path = Path::new(input);
+        if input.starts_with("./") || input.starts_with("../") || path.is_absolute() {
             return Ok(BundleSource::Dir {
                 path: PathBuf::from(input),
             });

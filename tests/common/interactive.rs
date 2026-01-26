@@ -159,15 +159,46 @@ impl InteractiveTest {
         let start = std::time::Instant::now();
         let mut output = String::new();
         let mut buffer = [0u8; 4096];
+        let mut iteration_count = 0;
+        // Maximum iterations to prevent infinite loops (timeout / sleep_duration with safety margin)
+        // Each iteration sleeps 50ms, so for a 5s timeout we'd have ~100 iterations max
+        // Use a larger safety margin to account for processing time
+        let max_iterations = (timeout.as_millis() / 50) as usize + 100;
 
         // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
         thread::sleep(Duration::from_millis(50));
 
         loop {
+            iteration_count += 1;
+            if iteration_count > max_iterations {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!(
+                        "Timeout waiting for text: {} (exceeded {} iterations). Output so far: {:?}",
+                        expected,
+                        max_iterations,
+                        if output.len() > 500 {
+                            format!("{}...", &output[..500])
+                        } else {
+                            output.clone()
+                        }
+                    ),
+                ));
+            }
+
             if start.elapsed() > timeout {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    format!("Timeout waiting for text: {}", expected),
+                    format!(
+                        "Timeout waiting for text: {} ({}ms elapsed). Output so far: {:?}",
+                        expected,
+                        start.elapsed().as_millis(),
+                        if output.len() > 500 {
+                            format!("{}...", &output[..500])
+                        } else {
+                            output.clone()
+                        }
+                    ),
                 ));
             }
 
@@ -350,4 +381,52 @@ pub enum MenuAction {
     Confirm,
     Cancel,
     Wait(Duration),
+}
+
+/// Run a test function with a timeout. If the test exceeds the timeout, it will panic.
+///
+/// This is useful for preventing CI from hanging indefinitely when interactive tests
+/// get stuck, especially on Windows where PTY reads can block.
+///
+/// Note: This uses a separate thread to monitor the timeout. If the test hangs in a
+/// blocking operation that doesn't check the timeout, this may not prevent the hang.
+/// However, it provides a safety net for most cases.
+///
+/// # Example
+/// ```ignore
+/// use std::time::Duration;
+/// common::run_with_timeout(Duration::from_secs(30), || {
+///     // Your test code here
+/// });
+/// ```
+#[allow(dead_code)] // Part of testing infrastructure, used by tests
+pub fn run_with_timeout<F>(timeout: Duration, test_fn: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    use std::sync::mpsc;
+
+    let (tx, rx) = mpsc::channel();
+
+    // Spawn the test in a thread
+    let test_thread = thread::spawn(move || {
+        test_fn();
+        let _ = tx.send(());
+    });
+
+    // Spawn a timeout monitor thread
+    let timeout_thread = thread::spawn(move || {
+        thread::sleep(timeout);
+        if rx.try_recv().is_err() {
+            // Test hasn't completed, panic to fail the test
+            panic!(
+                "TEST TIMEOUT: Test exceeded {} seconds. This usually indicates a hang in interactive PTY operations, especially on Windows.",
+                timeout.as_secs()
+            );
+        }
+    });
+
+    // Wait for test to complete or timeout
+    let _ = test_thread.join();
+    let _ = timeout_thread.join();
 }

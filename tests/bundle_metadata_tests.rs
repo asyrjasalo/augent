@@ -56,7 +56,6 @@ bundles: []
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
 fn test_bundle_with_semantic_versioning() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -213,7 +212,6 @@ bundles: []
 // ============================================================================
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
 fn test_bundle_with_simple_dependency() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -264,7 +262,6 @@ bundles:
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)]
 fn test_bundle_with_multiple_dependencies() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

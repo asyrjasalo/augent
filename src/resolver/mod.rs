@@ -9,6 +9,8 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use path_clean::PathClean;
+
 use crate::cache;
 use crate::config::{BundleConfig, BundleDependency, MarketplaceBundle, MarketplaceConfig};
 use crate::error::{AugentError, Result};
@@ -1056,23 +1058,9 @@ impl Resolver {
 
     /// Normalize a path by resolving . and .. components
     /// This does NOT resolve symlinks, only normalizes path separators and dot references
+    /// Uses path-clean for robust cross-platform path normalization
     fn normalize_path(&self, path: &Path) -> std::path::PathBuf {
-        use std::path::Component;
-        let mut normalized = std::path::PathBuf::new();
-        for component in path.components() {
-            match component {
-                Component::ParentDir => {
-                    normalized.pop();
-                }
-                Component::CurDir => {
-                    // . means current directory, skip it
-                }
-                _ => {
-                    normalized.push(component);
-                }
-            }
-        }
-        normalized
+        path.to_path_buf().clean()
     }
 
     /// Validate that a local bundle path doesn't escape the workspace root
