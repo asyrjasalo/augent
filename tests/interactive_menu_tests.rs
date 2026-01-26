@@ -23,6 +23,10 @@ fn augent_bin_path() -> PathBuf {
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
 )]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
+)]
 fn test_interactive_menu_selects_all_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -104,6 +108,10 @@ bundles: []
 #[cfg_attr(
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
 )]
 fn test_interactive_menu_selects_subset() {
     let workspace = common::TestWorkspace::new();
@@ -283,6 +291,10 @@ bundles: []
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
 )]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
+)]
 fn test_interactive_menu_shows_descriptions() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -338,6 +350,10 @@ bundles: []
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
 )]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
+)]
 fn test_interactive_menu_single_bundle_no_menu() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -387,6 +403,10 @@ bundles: []
 #[cfg_attr(
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
 )]
 fn test_interactive_menu_with_bundles_lacking_descriptions() {
     // Test that bundles without descriptions display correctly in menu
@@ -444,6 +464,10 @@ bundles: []
 #[cfg_attr(
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
 )]
 fn test_interactive_menu_shows_prompt_and_instructions() {
     // Test that the menu shows the correct prompt and navigation instructions
@@ -632,6 +656,10 @@ bundles: []
 #[cfg_attr(
     all(target_arch = "aarch64", target_os = "linux"),
     ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
+#[cfg_attr(
+    target_os = "windows",
+    ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
 )]
 fn test_interactive_menu_selection_toggle() {
     // Test that we can toggle selections on and off
