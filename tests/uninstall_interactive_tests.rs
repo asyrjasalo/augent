@@ -1,4 +1,7 @@
 //! Uninstall command interactive tests
+//!
+//! Tests that use `InteractiveTest` (PTY) are ignored on Linux aarch64 (e.g. cross Docker)
+//! because PTY spawn runs the binary via /bin/sh, which interprets the ELF as a script.
 
 mod common;
 
@@ -13,6 +16,10 @@ fn augent_cmd() -> Command {
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_uninstall_without_args_single_bundle_shows_menu() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -72,6 +79,10 @@ fn augent_bin_path() -> PathBuf {
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_uninstall_without_args_shows_menu() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -190,6 +201,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_uninstall_without_args_shows_menu_select_first() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -410,6 +425,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_uninstall_without_args_selects_second_bundle() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -490,6 +509,10 @@ bundles: []
 }
 
 #[test]
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_uninstall_without_args_selects_multiple_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

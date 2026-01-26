@@ -77,6 +77,7 @@ fn clean_specific_bundle(slug: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use tempfile::TempDir;
 
     #[test]
@@ -94,16 +95,26 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_clean_cache_all() {
-        let _args = CleanCacheArgs {
-            bundle: None,
-            show_size: false,
-            all: true,
-            list: false,
-        };
+        let temp = TempDir::new().unwrap();
+        std::fs::create_dir_all(temp.path().join("bundles")).unwrap();
+
+        let original = std::env::var("AUGENT_CACHE_DIR").ok();
+        unsafe {
+            std::env::set_var("AUGENT_CACHE_DIR", temp.path());
+        }
 
         let result = clean_all_cache();
         assert!(result.is_ok());
+
+        unsafe {
+            if let Some(o) = original {
+                std::env::set_var("AUGENT_CACHE_DIR", o);
+            } else {
+                std::env::remove_var("AUGENT_CACHE_DIR");
+            }
+        }
     }
 
     #[test]
