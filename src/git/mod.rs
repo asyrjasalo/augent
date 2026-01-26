@@ -288,7 +288,6 @@ pub fn checkout_commit(repo: &Repository, sha: &str) -> Result<()> {
 }
 
 /// Open an existing repository
-#[allow(dead_code)]
 pub fn open(path: &Path) -> Result<Repository> {
     Repository::open(path).map_err(|e| AugentError::GitOpenFailed {
         path: path.display().to_string(),

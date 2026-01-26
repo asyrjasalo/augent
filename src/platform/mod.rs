@@ -16,7 +16,6 @@ pub use merge::MergeStrategy;
 pub mod detection;
 pub mod loader;
 pub mod merge;
-pub mod transform;
 
 /// A supported AI coding platform
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

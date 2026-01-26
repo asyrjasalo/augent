@@ -1,8 +1,5 @@
 //! BLAKE3 hashing utilities for bundle integrity
 
-// Infrastructure code - functions defined but not yet used in Phase 1
-#![allow(dead_code)]
-
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
@@ -111,12 +108,6 @@ pub fn hash_directory(path: &Path) -> Result<String> {
     Ok(format!("{}{}", HASH_PREFIX, hasher.finalize().to_hex()))
 }
 
-/// Calculate BLAKE3 hash of bytes
-pub fn hash_bytes(data: &[u8]) -> String {
-    let hash = blake3::hash(data);
-    format!("{}{}", HASH_PREFIX, hash.to_hex())
-}
-
 /// Verify a hash matches the expected value
 pub fn verify_hash(expected: &str, actual: &str) -> bool {
     // Normalize both hashes (ensure prefix)
@@ -131,36 +122,10 @@ pub fn verify_hash(expected: &str, actual: &str) -> bool {
     normalize(expected) == normalize(actual)
 }
 
-/// Extract the hash value without the prefix
-pub fn strip_prefix(hash: &str) -> &str {
-    hash.strip_prefix(HASH_PREFIX).unwrap_or(hash)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::TempDir;
-
-    #[test]
-    fn test_hash_bytes() {
-        let hash = hash_bytes(b"hello world");
-        assert!(hash.starts_with(HASH_PREFIX));
-        assert_eq!(hash.len(), HASH_PREFIX.len() + 64); // BLAKE3 produces 64 hex chars
-    }
-
-    #[test]
-    fn test_hash_bytes_deterministic() {
-        let hash1 = hash_bytes(b"test data");
-        let hash2 = hash_bytes(b"test data");
-        assert_eq!(hash1, hash2);
-    }
-
-    #[test]
-    fn test_hash_bytes_different() {
-        let hash1 = hash_bytes(b"data1");
-        let hash2 = hash_bytes(b"data2");
-        assert_ne!(hash1, hash2);
-    }
 
     #[test]
     fn test_hash_file() {
@@ -219,20 +184,18 @@ mod tests {
 
     #[test]
     fn test_verify_hash() {
-        let hash = hash_bytes(b"test");
-        assert!(verify_hash(&hash, &hash));
+        // Test with same hash
+        let hash1 = format!("{}abc123", HASH_PREFIX);
+        let hash2 = hash1.clone();
+        assert!(verify_hash(&hash1, &hash2));
 
-        // Without prefix should still match
-        let stripped = strip_prefix(&hash);
-        assert!(verify_hash(&hash, &format!("{}{}", HASH_PREFIX, stripped)));
-    }
+        // Test with and without prefix
+        let hash_with_prefix = format!("{}abc123", HASH_PREFIX);
+        let hash_without_prefix = "abc123";
+        assert!(verify_hash(&hash_with_prefix, hash_without_prefix));
 
-    #[test]
-    fn test_strip_prefix() {
-        let hash = "blake3:abc123";
-        assert_eq!(strip_prefix(hash), "abc123");
-
-        let no_prefix = "abc123";
-        assert_eq!(strip_prefix(no_prefix), "abc123");
+        // Test different hashes don't match
+        let hash3 = format!("{}def456", HASH_PREFIX);
+        assert!(!verify_hash(&hash1, &hash3));
     }
 }

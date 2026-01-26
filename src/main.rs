@@ -15,7 +15,6 @@ mod hash;
 mod installer;
 mod platform;
 mod resolver;
-mod resource;
 mod source;
 mod transaction;
 mod workspace;

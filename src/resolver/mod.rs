@@ -96,7 +96,6 @@ fn count_files_in_dir(dir: PathBuf) -> usize {
 
 /// A resolved bundle with all information needed for installation
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct ResolvedBundle {
     /// Bundle name
     pub name: String,

@@ -127,7 +127,6 @@ pub enum AugentError {
         code(augent::lockfile::hash_mismatch),
         help("The bundle contents have changed. Run 'augent install' to update the lockfile")
     )]
-    #[allow(dead_code)]
     HashMismatch { name: String },
 
     // Dependency errors
@@ -136,7 +135,6 @@ pub enum AugentError {
         code(augent::deps::circular),
         help("Remove the circular dependency from your bundle configuration")
     )]
-    #[allow(dead_code)]
     CircularDependency { chain: String },
 
     #[error("Dependency not found: {name}")]
@@ -149,7 +147,6 @@ pub enum AugentError {
         code(augent::platform::not_supported),
         help("Supported platforms: claude, cursor, opencode")
     )]
-    #[allow(dead_code)]
     PlatformNotSupported { platform: String },
 
     #[error("No platforms detected in workspace")]
@@ -161,7 +158,6 @@ pub enum AugentError {
 
     #[error("Failed to load platform configuration: {message}")]
     #[diagnostic(code(augent::platform::config_failed))]
-    #[allow(dead_code)]
     PlatformConfigFailed { message: String },
 
     // File system errors

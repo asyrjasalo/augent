@@ -192,9 +192,13 @@ mod tests {
         let augent_dir = workspace_root.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
 
-        // Create initial config files
-        fs::write(augent_dir.join("augent.yaml"), "name: test").unwrap();
-        fs::write(augent_dir.join("augent.lock"), "{}").unwrap();
+        // Create initial config files with valid bundle name (must contain '/')
+        fs::write(augent_dir.join("augent.yaml"), "name: \"@test/workspace\"").unwrap();
+        fs::write(
+            augent_dir.join("augent.lock"),
+            "{\"name\":\"@test/workspace\",\"bundles\":[]}",
+        )
+        .unwrap();
 
         (temp, workspace_root, augent_dir)
     }

@@ -266,7 +266,6 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
 }
 
 /// Clear the entire bundle cache
-#[allow(dead_code)]
 pub fn clear_cache() -> Result<()> {
     let path = bundles_cache_dir()?;
     if path.exists() {
