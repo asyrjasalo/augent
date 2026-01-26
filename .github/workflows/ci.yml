@@ -48,13 +48,15 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             use_cross: false
-            use_system_openssl: false
+            use_system_openssl: true
+            manylinux_version: 2_28
             artifact_name: augent
             archive_name: augent-x86_64-linux.tar.gz
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             use_cross: true
             use_system_openssl: true
+            manylinux_version: auto
             artifact_name: augent
             archive_name: augent-aarch64-linux.tar.gz
 
@@ -121,7 +123,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --compatibility pypi
-          manylinux: auto
+          manylinux: ${{ matrix.manylinux_version || 'auto' }}
 
       - name: Run tests
         if: matrix.build_only != true
