@@ -29,9 +29,9 @@ fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     if !url.starts_with("file://") {
         return std::borrow::Cow::Borrowed(url);
     }
-    let after = &url[7..]; // after "file://"
     #[cfg(not(windows))]
     {
+        let after = &url[7..]; // after "file://"
         if after.contains('\\') {
             let path = after.replace('\\', "/");
             return std::borrow::Cow::Owned(format!("file:///{}", path));

@@ -286,8 +286,10 @@ impl GitSource {
                     // SSH URL - the colon is part of the URL format, not a path separator
                     (None, None, main_part)
                 } else {
-                    // For github:author/repo:path, we want to find the SECOND colon
-                    // Skip protocol prefixes when looking for path separator
+                    // For github:author/repo:path, we want to find the path colon.
+                    // Skip protocol prefixes when looking for path separator.
+                    // For file:// on Windows, also skip the drive letter (e.g. C: or /C:)
+                    // so "file://C:\path:sub" splits at "path:sub" not at "C:".
                     let search_start = if main_part.starts_with("github:") {
                         "github:".len()
                     } else if main_part.starts_with("https://") {
@@ -300,8 +302,31 @@ impl GitSource {
                         0
                     };
 
-                    if let Some(relative_pos) = main_part[search_start..].find(':') {
-                        let colon_pos = search_start + relative_pos;
+                    let rest = &main_part[search_start..];
+                    let (drive_skip, search_in) = if main_part.starts_with("file://") {
+                        // Windows "C:\" or "C:/" : skip 2
+                        if rest.len() >= 2
+                            && rest.chars().next().map(|c| c.is_ascii_alphabetic()) == Some(true)
+                            && rest.chars().nth(1) == Some(':')
+                        {
+                            (2, &rest[2..])
+                        }
+                        // Windows "/C:\" or "/C:/" : skip 3
+                        else if rest.len() >= 3
+                            && rest.starts_with('/')
+                            && rest.chars().nth(1).map(|c| c.is_ascii_alphabetic()) == Some(true)
+                            && rest.chars().nth(2) == Some(':')
+                        {
+                            (3, &rest[3..])
+                        } else {
+                            (0, rest)
+                        }
+                    } else {
+                        (0, rest)
+                    };
+
+                    if let Some(relative_pos) = search_in.find(':') {
+                        let colon_pos = search_start + drive_skip + relative_pos;
                         let (before_colon, after_colon) =
                             (&main_part[..colon_pos], &main_part[colon_pos + 1..]);
                         // Only treat as path if before_colon is a valid repo URL/shorthand

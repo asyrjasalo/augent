@@ -8,6 +8,13 @@ fn augent_bin_path() -> PathBuf {
 }
 
 #[test]
+// In cross's aarch64 Linux Docker image, PTY spawn can run the binary via /bin/sh, which
+// then interprets the ELF as a script and prints "Syntax error: `(` unexpected". Skip
+// only on Linux aarch64; it passes on macOS aarch64.
+#[cfg_attr(
+    all(target_arch = "aarch64", target_os = "linux"),
+    ignore = "PTY spawn runs binary via /bin/sh in cross aarch64 Linux Docker"
+)]
 fn test_install_with_menu_selects_all_bundles() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
