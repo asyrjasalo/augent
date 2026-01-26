@@ -427,10 +427,55 @@ fn test_install_from_real_github_repository_discovers_all_bundles() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    let github_url = "https://github.com/wshobson/agents:plugins/python-development";
+    // Use a local mock git repo instead of real GitHub to avoid network access
+    let repo_path = workspace.create_mock_git_repo("test-repo");
+
+    // Create a subdirectory structure to simulate the GitHub repo structure
+    let plugins_dir = repo_path.join("plugins");
+    let python_dev_dir = plugins_dir.join("python-development");
+    std::fs::create_dir_all(&python_dev_dir).expect("Failed to create plugins directory");
+
+    // Create an augent.yaml in the subdirectory
+    std::fs::write(
+        python_dev_dir.join("augent.yaml"),
+        "name: \"@test/python-development\"\nbundles: []\n",
+    )
+    .expect("Failed to write augent.yaml");
+
+    // Create a command file
+    std::fs::create_dir_all(python_dev_dir.join("commands")).unwrap();
+    std::fs::write(
+        python_dev_dir.join("commands").join("test.md"),
+        "# Test command",
+    )
+    .expect("Failed to write command");
+
+    // Commit the changes
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to add files");
+
+    std::process::Command::new("git")
+        .args(["commit", "-m", "Add python-development plugin"])
+        .current_dir(&repo_path)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("Failed to commit");
+
+    // Use file:// URL with subdirectory path
+    let git_url = format!(
+        "file://{}:plugins/python-development",
+        repo_path.to_str().expect("Path is not valid UTF-8")
+    );
+
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", github_url])
+        .args(["install", &git_url])
         .assert()
         .success();
 

@@ -19,6 +19,7 @@ exclude = [
     "docs/implementation/",
     ".codespellrc",
     ".pre-commit-config.yaml",
+    "Cross.toml",
     "CLAUDE.md",
     "pyproject.toml"
 ]
