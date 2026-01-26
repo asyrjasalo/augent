@@ -711,8 +711,40 @@ impl<'a> Installer<'a> {
                 // Don't append it - relative_part already contains the full path
                 if let Some(suffix_without_slash) = suffix.strip_prefix('/') {
                     // If suffix contains '.' or '*', it's a filename pattern extension
-                    // In that case, relative_part already has the filename
-                    if suffix_without_slash.contains('.') || suffix_without_slash.contains('*') {
+                    // Only extract the stem if we have an extension transformation to apply
+                    // Otherwise, use relative_part as-is (preserves original extension)
+                    if (suffix_without_slash.contains('.') || suffix_without_slash.contains('*'))
+                        && rule.extension.is_some()
+                    {
+                        // Extract the directory part and filename stem from relative_part
+                        // e.g., "subdir/lint.md" -> "subdir/lint" (stem without extension)
+                        // The extension transformation will add the correct extension
+                        let relative_path = PathBuf::from(relative_part);
+                        if let Some(stem) = relative_path.file_stem() {
+                            if let Some(parent) = relative_path.parent() {
+                                if parent.as_os_str().is_empty() {
+                                    // No parent directory, just the filename
+                                    target = format!("{}{}", target_prefix, stem.to_string_lossy());
+                                } else {
+                                    // Has parent directory, preserve it
+                                    target = format!(
+                                        "{}{}/{}",
+                                        target_prefix,
+                                        parent.to_string_lossy().replace('\\', "/"),
+                                        stem.to_string_lossy()
+                                    );
+                                }
+                            } else {
+                                target = format!("{}{}", target_prefix, stem.to_string_lossy());
+                            }
+                        } else {
+                            // Fallback: use relative_part as-is
+                            target = format!("{}{}", target_prefix, relative_part);
+                        }
+                    } else if suffix_without_slash.contains('.')
+                        || suffix_without_slash.contains('*')
+                    {
+                        // Pattern has extension but no transformation - use relative_part as-is
                         target = format!("{}{}", target_prefix, relative_part);
                     } else {
                         target =
