@@ -58,6 +58,9 @@ pub struct Installer<'a> {
 
     /// Installed files tracking
     installed_files: HashMap<String, InstalledFile>,
+
+    /// Whether to perform a dry run (skip actual file operations)
+    dry_run: bool,
 }
 
 /// A pending file installation with merge strategy
@@ -72,11 +75,27 @@ struct PendingInstallation {
 
 impl<'a> Installer<'a> {
     /// Create a new installer
+    #[allow(dead_code)] // Used in tests
     pub fn new(workspace_root: &'a Path, platforms: Vec<Platform>) -> Self {
         Self {
             workspace_root,
             platforms,
             installed_files: HashMap::new(),
+            dry_run: false,
+        }
+    }
+
+    /// Create a new installer with dry-run mode
+    pub fn new_with_dry_run(
+        workspace_root: &'a Path,
+        platforms: Vec<Platform>,
+        dry_run: bool,
+    ) -> Self {
+        Self {
+            workspace_root,
+            platforms,
+            installed_files: HashMap::new(),
+            dry_run,
         }
     }
 
@@ -300,15 +319,39 @@ impl<'a> Installer<'a> {
             });
         }
 
-        if installations.len() == 1 {
-            let installation = &installations[0];
-            self.apply_merge_and_copy(
-                &installation.source_path,
-                target_path,
-                &installation.merge_strategy,
-            )?;
+        if !self.dry_run {
+            if installations.len() == 1 {
+                let installation = &installations[0];
+                self.apply_merge_and_copy(
+                    &installation.source_path,
+                    target_path,
+                    &installation.merge_strategy,
+                )?;
+            } else {
+                self.merge_multiple_installations(target_path, installations)?;
+            }
         } else {
-            self.merge_multiple_installations(target_path, installations)?;
+            // In dry-run mode, just print what would be installed
+            if installations.len() == 1 {
+                let installation = &installations[0];
+                let relative = target_path
+                    .strip_prefix(self.workspace_root)
+                    .unwrap_or(target_path);
+                println!(
+                    "  Would install: {} -> {}",
+                    installation.bundle_path,
+                    relative.display()
+                );
+            } else {
+                let relative = target_path
+                    .strip_prefix(self.workspace_root)
+                    .unwrap_or(target_path);
+                println!(
+                    "  Would merge {} files -> {}",
+                    installations.len(),
+                    relative.display()
+                );
+            }
         }
 
         // For gemini command files, the actual file is written with .toml extension
@@ -360,6 +403,11 @@ impl<'a> Installer<'a> {
         installations: &[PendingInstallation],
     ) -> Result<()> {
         if installations.is_empty() {
+            return Ok(());
+        }
+
+        if self.dry_run {
+            // In dry-run mode, we already printed the info in execute_installations
             return Ok(());
         }
 
@@ -664,6 +712,11 @@ impl<'a> Installer<'a> {
         target: &Path,
         strategy: &MergeStrategy,
     ) -> Result<()> {
+        if self.dry_run {
+            // In dry-run mode, skip actual file operations
+            return Ok(());
+        }
+
         // Ensure parent directory exists
         if let Some(parent) = target.parent() {
             fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {

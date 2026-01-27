@@ -97,6 +97,10 @@ pub struct InstallArgs {
     /// Update bundles to latest versions from refs (resolves new SHAs and updates lockfile)
     #[arg(long)]
     pub update: bool,
+
+    /// Show what would be installed without actually installing
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 /// Arguments for the uninstall command
@@ -120,6 +124,10 @@ pub struct UninstallArgs {
     /// Select all bundles matching the scope without prompting
     #[arg(long)]
     pub select_all: bool,
+
+    /// Show what would be uninstalled without actually uninstalling
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 /// Arguments for the list command
@@ -230,6 +238,20 @@ mod tests {
                 assert_eq!(args.source, Some("./local-bundle".to_string()));
                 assert_eq!(args.platforms, vec!["cursor", "opencode"]);
                 assert!(args.frozen);
+                assert!(!args.dry_run);
+            }
+            _ => panic!("Expected Install command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_install_with_dry_run() {
+        let cli =
+            Cli::try_parse_from(["augent", "install", "./local-bundle", "--dry-run"]).unwrap();
+        match cli.command {
+            Commands::Install(args) => {
+                assert_eq!(args.source, Some("./local-bundle".to_string()));
+                assert!(args.dry_run);
             }
             _ => panic!("Expected Install command"),
         }
@@ -243,6 +265,19 @@ mod tests {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
                 assert!(!args.yes);
                 assert!(!args.select_all);
+                assert!(!args.dry_run);
+            }
+            _ => panic!("Expected Uninstall command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parsing_uninstall_with_dry_run() {
+        let cli = Cli::try_parse_from(["augent", "uninstall", "my-bundle", "--dry-run"]).unwrap();
+        match cli.command {
+            Commands::Uninstall(args) => {
+                assert_eq!(args.name, Some("my-bundle".to_string()));
+                assert!(args.dry_run);
             }
             _ => panic!("Expected Uninstall command"),
         }

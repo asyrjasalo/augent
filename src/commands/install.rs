@@ -277,15 +277,27 @@ fn do_install_from_yaml(
         return Err(AugentError::NoPlatformsDetected);
     }
 
-    println!(
-        "Installing for {} platform(s): {}",
-        platforms.len(),
-        platforms
-            .iter()
-            .map(|p| p.id.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    if args.dry_run {
+        println!(
+            "[DRY RUN] Would install for {} platform(s): {}",
+            platforms.len(),
+            platforms
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    } else {
+        println!(
+            "Installing for {} platform(s): {}",
+            platforms.len(),
+            platforms
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
 
     // Check --frozen flag
     if args.frozen {
@@ -297,9 +309,14 @@ fn do_install_from_yaml(
     }
 
     // Install files
-    println!("Installing files...");
+    if args.dry_run {
+        println!("[DRY RUN] Would install files...");
+    } else {
+        println!("Installing files...");
+    }
     let workspace_root = workspace.root.clone();
-    let mut installer = Installer::new(&workspace_root, platforms.clone());
+    let mut installer =
+        Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run);
     let workspace_bundles = installer.install_bundles(&resolved_bundles)?;
 
     // Track created files in transaction
@@ -311,7 +328,11 @@ fn do_install_from_yaml(
     }
 
     // Update configuration files
-    println!("Updating configuration files...");
+    if args.dry_run {
+        println!("[DRY RUN] Would update configuration files...");
+    } else {
+        println!("Updating configuration files...");
+    }
 
     // Filter out workspace bundles that have no files (nothing actually installed for them)
     let workspace_bundles_with_files: Vec<_> = workspace_bundles
@@ -329,7 +350,7 @@ fn do_install_from_yaml(
     // Check if lockfile name needs fixing (before potential move)
     let original_name_needs_fixing = original_lockfile.name != workspace.bundle_config.name;
 
-    if configs_updated {
+    if configs_updated && !args.dry_run {
         update_configs_from_yaml(
             workspace,
             &resolved_bundles,
@@ -368,9 +389,11 @@ fn do_install_from_yaml(
 
     // Save workspace if configurations were updated or if lockfile name needed fixing
     let needs_save = configs_updated || original_name_needs_fixing;
-    if needs_save {
+    if needs_save && !args.dry_run {
         println!("Saving workspace...");
         workspace.save()?;
+    } else if needs_save && args.dry_run {
+        println!("[DRY RUN] Would save workspace...");
     }
 
     // After saving, if workspace config was empty, rebuild it by scanning the filesystem
@@ -514,15 +537,27 @@ fn do_install(
         return Err(AugentError::NoPlatformsDetected);
     }
 
-    println!(
-        "Installing for {} platform(s): {}",
-        platforms.len(),
-        platforms
-            .iter()
-            .map(|p| p.id.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    if args.dry_run {
+        println!(
+            "[DRY RUN] Would install for {} platform(s): {}",
+            platforms.len(),
+            platforms
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    } else {
+        println!(
+            "Installing for {} platform(s): {}",
+            platforms.len(),
+            platforms
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
 
     // Check --frozen flag
     if args.frozen {
@@ -534,8 +569,14 @@ fn do_install(
     }
 
     // Install files
+    if args.dry_run {
+        println!("[DRY RUN] Would install files...");
+    } else {
+        println!("Installing files...");
+    }
     let workspace_root = workspace.root.clone();
-    let mut installer = Installer::new(&workspace_root, platforms.clone());
+    let mut installer =
+        Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run);
     let workspace_bundles = installer.install_bundles(&resolved_bundles)?;
 
     // Track created files in transaction
@@ -547,11 +588,22 @@ fn do_install(
     }
 
     // Update configuration files
+    if args.dry_run {
+        println!("[DRY RUN] Would update configuration files...");
+    } else {
+        println!("Updating configuration files...");
+    }
     let source_str = args.source.as_deref().unwrap_or("");
-    update_configs(workspace, source_str, &resolved_bundles, workspace_bundles)?;
+    if !args.dry_run {
+        update_configs(workspace, source_str, &resolved_bundles, workspace_bundles)?;
+    }
 
     // Save workspace
-    workspace.save()?;
+    if args.dry_run {
+        println!("[DRY RUN] Would save workspace...");
+    } else {
+        workspace.save()?;
+    }
 
     // Print summary
     let total_files: usize = installer
@@ -560,11 +612,19 @@ fn do_install(
         .map(|f| f.target_paths.len())
         .sum();
 
-    println!(
-        "Installed {} bundle(s), {} file(s)",
-        resolved_bundles.len(),
-        total_files
-    );
+    if args.dry_run {
+        println!(
+            "[DRY RUN] Would install {} bundle(s), {} file(s)",
+            resolved_bundles.len(),
+            total_files
+        );
+    } else {
+        println!(
+            "Installed {} bundle(s), {} file(s)",
+            resolved_bundles.len(),
+            total_files
+        );
+    }
 
     for bundle in &resolved_bundles {
         println!("  - {}", bundle.name);

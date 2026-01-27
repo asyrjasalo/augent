@@ -389,10 +389,17 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         .collect();
 
     if ordered_bundles.len() > bundle_names.len() {
-        println!(
-            "\nUninstalling {} dependent bundle(s) that are no longer needed:",
-            ordered_bundles.len() - bundle_names.len()
-        );
+        if args.dry_run {
+            println!(
+                "\n[DRY RUN] Would uninstall {} dependent bundle(s) that are no longer needed:",
+                ordered_bundles.len() - bundle_names.len()
+            );
+        } else {
+            println!(
+                "\nUninstalling {} dependent bundle(s) that are no longer needed:",
+                ordered_bundles.len() - bundle_names.len()
+            );
+        }
         for name in &ordered_bundles {
             if !bundle_names.contains(name) {
                 println!("  - {}", name);
@@ -420,6 +427,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
             &mut workspace,
             &mut transaction,
             &locked_bundle,
+            args.dry_run,
         ) {
             Ok(()) => {}
             Err(e) => {
@@ -429,8 +437,10 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         }
     }
 
-    if !failed {
+    if !failed && !args.dry_run {
         transaction.commit();
+    } else if !failed && args.dry_run {
+        println!("\n[DRY RUN] No changes were made");
     }
 
     Ok(())
@@ -442,8 +452,13 @@ fn do_uninstall(
     workspace: &mut Workspace,
     transaction: &mut Transaction,
     locked_bundle: &crate::config::LockedBundle,
+    dry_run: bool,
 ) -> Result<()> {
-    println!("Uninstalling bundle: {}", name);
+    if dry_run {
+        println!("[DRY RUN] Would uninstall bundle: {}", name);
+    } else {
+        println!("Uninstalling bundle: {}", name);
+    }
 
     let bundle_files = &locked_bundle.files;
 
@@ -461,11 +476,17 @@ fn do_uninstall(
                 for location in locations {
                     let full_path = workspace.root.join(location);
                     if full_path.exists() {
-                        fs::remove_file(&full_path).map_err(|e| AugentError::FileWriteFailed {
-                            path: full_path.display().to_string(),
-                            reason: e.to_string(),
-                        })?;
-                        transaction.track_file_created(&full_path);
+                        if dry_run {
+                            println!("  Would remove: {}", location);
+                        } else {
+                            fs::remove_file(&full_path).map_err(|e| {
+                                AugentError::FileWriteFailed {
+                                    path: full_path.display().to_string(),
+                                    reason: e.to_string(),
+                                }
+                            })?;
+                            transaction.track_file_created(&full_path);
+                        }
                         removed_count += 1;
                     }
                 }
@@ -476,23 +497,44 @@ fn do_uninstall(
         // Fallback: try universal path directly (for root files)
         let full_path = workspace.root.join(file_path);
         if full_path.exists() {
-            fs::remove_file(&full_path).map_err(|e| AugentError::FileWriteFailed {
-                path: full_path.display().to_string(),
-                reason: e.to_string(),
-            })?;
-            transaction.track_file_created(&full_path);
+            if dry_run {
+                println!("  Would remove: {}", file_path);
+            } else {
+                fs::remove_file(&full_path).map_err(|e| AugentError::FileWriteFailed {
+                    path: full_path.display().to_string(),
+                    reason: e.to_string(),
+                })?;
+                transaction.track_file_created(&full_path);
+            }
             removed_count += 1;
         }
     }
 
-    cleanup_empty_platform_dirs(workspace, transaction)?;
+    if !dry_run {
+        cleanup_empty_platform_dirs(workspace, transaction)?;
+    } else {
+        println!("  Would clean up empty platform directories");
+    }
 
-    update_configs(workspace, name)?;
+    if !dry_run {
+        update_configs(workspace, name)?;
+    } else {
+        println!("  Would update configuration files");
+    }
 
-    workspace.save()?;
+    if !dry_run {
+        workspace.save()?;
+    } else {
+        println!("  Would save workspace");
+    }
 
-    println!("Removed {} file(s)", removed_count);
-    println!("Bundle '{}' uninstalled successfully", name);
+    if dry_run {
+        println!("[DRY RUN] Would remove {} file(s)", removed_count);
+        println!("[DRY RUN] Bundle '{}' would be uninstalled", name);
+    } else {
+        println!("Removed {} file(s)", removed_count);
+        println!("Bundle '{}' uninstalled successfully", name);
+    }
 
     Ok(())
 }
