@@ -11,25 +11,23 @@ lockfile = true
 
 ### Tasks ######################################################################
 #
-# Run dev binary:
+# Usage: mise <task-name> [task-args]
+#
+# Run development binary with ./tmp as workspace:
 #
 #   mise augent [args]
 #
-# Run test task:
-#
-#   mise test
-#
-# Run pre-commit, lint and test in parallel:
+# Run pre-commit, lint and test in parallel, and fail on first error:
 #
 #   mise all
 
 [tasks.augent]
-description = "Run augent in dev mode (with AUGENT_WORKSPACE=./tmp)"
-alias = "dev"
+description = "Run augent in development mode"
+alias = "a"
 env = { AUGENT_WORKSPACE = "{{ [config_root] | concat(with='tmp') | join_path }}" }
 run = "cargo run --"
 
-[tasks.prek]
+[tasks.hooks]
 description = "Run pre-commit hooks"
 run = "prek run --all-files --verbose"
 
@@ -43,4 +41,4 @@ run = "cargo test"
 
 [tasks.all]
 description = "Run all checks in parallel (fail on first error)"
-depends = ["prek", "lint", "test"]
+depends = ["hooks", "lint", "test"]
