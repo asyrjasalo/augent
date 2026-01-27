@@ -223,10 +223,10 @@ bundles:
         .assert()
         .success();
 
-    // Uninstall with bundle name will uninstall without prompting
+    // Uninstall with bundle name requires confirmation, use -y to skip
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/dep-bundle"])
+        .args(["uninstall", "@test/dep-bundle", "-y"])
         .assert()
         .success();
 }
@@ -256,10 +256,10 @@ bundles: []
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
-    // Uninstall will uninstall the bundle without prompting
+    // Uninstall requires confirmation, use -y to skip
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle"])
+        .args(["uninstall", "@test/test-bundle", "-y"])
         .assert()
         .success();
 
