@@ -1,11 +1,14 @@
 # built binaries
 target/
 
+# npm distribution
+bin/
+
 # pre-commit hooks: rumdl
 .rumdl_cache/
 
 # cargo-tarpaulin
-coverage
+coverage/
 build_rs_cov.profraw
 tarpaulin-report.json
 tarpaulin-report.html
@@ -14,8 +17,3 @@ tarpaulin-report.html
 tmp/
 TODO.md
 *.bak
-
-# npm
-bin/
-package/
-augent-*.tgz

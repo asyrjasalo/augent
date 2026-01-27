@@ -286,6 +286,115 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Publish to npm
+  publish-npm:
+    name: Publish to npm
+    needs: [build-binaries, publish-github]
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/augent
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download binaries from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+
+      - name: Extract binaries to bin directory
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          mkdir -p bin
+
+          # Extract binaries for all platforms
+          for archive in dist/augent-v${VERSION}-*.tar.gz dist/augent-v${VERSION}-*.zip; do
+            if [ ! -f "$archive" ]; then
+              continue
+            fi
+
+            # Extract target from filename
+            ARCHIVE_BASENAME=$(basename "$archive")
+            # Remove extension (.tar.gz or .zip)
+            if [[ "$ARCHIVE_BASENAME" == *.tar.gz ]]; then
+              ARCHIVE_BASENAME="${ARCHIVE_BASENAME%.tar.gz}"
+            elif [[ "$ARCHIVE_BASENAME" == *.zip ]]; then
+              ARCHIVE_BASENAME="${ARCHIVE_BASENAME%.zip}"
+            fi
+            TARGET=${ARCHIVE_BASENAME#augent-v${VERSION}-}
+
+            # Determine platform directory name
+            case $TARGET in
+              x86_64-unknown-linux-gnu)
+                PLATFORM_DIR="linux-x64"
+                ARCHIVE_EXT="tar.gz"
+                BIN_NAME="augent"
+                ;;
+              aarch64-unknown-linux-gnu)
+                PLATFORM_DIR="linux-arm64"
+                ARCHIVE_EXT="tar.gz"
+                BIN_NAME="augent"
+                ;;
+              x86_64-apple-darwin)
+                PLATFORM_DIR="darwin-x64"
+                ARCHIVE_EXT="tar.gz"
+                BIN_NAME="augent"
+                ;;
+              aarch64-apple-darwin)
+                PLATFORM_DIR="darwin-arm64"
+                ARCHIVE_EXT="tar.gz"
+                BIN_NAME="augent"
+                ;;
+              x86_64-pc-windows-msvc)
+                PLATFORM_DIR="win32-x64"
+                ARCHIVE_EXT="zip"
+                BIN_NAME="augent.exe"
+                ;;
+              aarch64-pc-windows-msvc)
+                PLATFORM_DIR="win32-arm64"
+                ARCHIVE_EXT="zip"
+                BIN_NAME="augent.exe"
+                ;;
+              *)
+                echo "Unknown target: $TARGET"
+                continue
+                ;;
+            esac
+
+            # Extract binary
+            mkdir -p "bin/${PLATFORM_DIR}"
+            if [ "${ARCHIVE_EXT}" = "tar.gz" ]; then
+              tar -xzf "$archive" -C "/tmp"
+              cp "/tmp/augent-v${VERSION}-${TARGET}/${BIN_NAME}" "bin/${PLATFORM_DIR}/${BIN_NAME}"
+              chmod +x "bin/${PLATFORM_DIR}/${BIN_NAME}"
+              rm -rf "/tmp/augent-v${VERSION}-${TARGET}"
+            else
+              unzip -q "$archive" -d "/tmp"
+              cp "/tmp/augent-v${VERSION}-${TARGET}/${BIN_NAME}" "bin/${PLATFORM_DIR}/${BIN_NAME}"
+              rm -rf "/tmp/augent-v${VERSION}-${TARGET}"
+            fi
+          done
+
+          # Make wrapper script executable
+          chmod +x scripts/augent-wrapper.js
+
+      - name: Publish to npm
+        run: npm publish
+
   # Build Python wheels for PyPI
   build-wheels:
     name: Build wheel ${{ matrix.target }}
@@ -375,28 +484,3 @@ jobs:
         with:
           skip-existing: true
           print-hash: true
-
-  # Publish to npm
-  publish-npm:
-    name: Publish to npm
-    needs: [publish-github]
-    runs-on: ubuntu-latest
-    environment:
-      name: npm
-      url: https://www.npmjs.com/package/augent
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: lts/*
-
-      - name: Publish to npm
-        run: npm publish

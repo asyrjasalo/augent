@@ -14,26 +14,14 @@
     "package-manager"
   ],
   "bin": {
-    "augent": "./bin/augent"
+    "augent": "./scripts/augent-wrapper.js"
   },
   "files": [
-    "scripts",
-    "README.md",
-    "LICENSE"
+    "bin",
+    "scripts"
   ],
-  "scripts": {
-    "postinstall": "node scripts/postinstall.js"
-  },
   "engines": {
-    "node": ">=14.0.0"
-  },
-  "os": [
-    "darwin",
-    "linux",
-    "win32"
-  ],
-  "cpu": [
-    "x64",
-    "arm64"
-  ]
+    "node": ">=14.0.0",
+    "bun": ">=1.0.0"
+  }
 }
