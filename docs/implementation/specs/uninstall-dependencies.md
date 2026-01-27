@@ -15,17 +15,39 @@ This document describes:
 
 ### Dependency Detection
 
-The uninstall command uses the **lockfile installation order** to detect dependencies:
+The uninstall command now treats dependency cleanup as a **graph reachability** problem, using both the workspace config and each bundle’s own `augent.yaml`:
 
-1. **Lockfile Order**: Bundles are stored in the lockfile in dependency order. Dependencies come BEFORE the bundles that depend on them.
-   - Example: If Bundle A depends on Bundle B, the lockfile order is: `[B, A]`
-   - For multi-level dependencies: `[C, B, A]` means A→B→C
+1. **Workspace roots (direct installs)**:
+   - The workspace’s `.augent/augent.yaml` lists only the bundles you explicitly installed.
+   - These are treated as **root nodes** in the dependency graph. They are never auto-removed; they are only uninstalled if you explicitly name them on the command line.
 
-2. **Detection Algorithm**: When uninstalling a bundle, the command:
-   - Identifies which bundles come BEFORE it in the lockfile
-   - Checks if any remaining (non-uninstalled) bundle needs them
-   - If no remaining bundle needs a dependency, marks it for removal
-   - Repeats until no more dependencies can be removed
+2. **Per-bundle dependency graph**:
+   - For each bundle in `augent.lock` that comes from a local directory, Augent reads that bundle’s own `augent.yaml` (in the bundle directory) and collects its `bundles:` section.
+   - This builds a mapping:
+     \[
+     \text{bundle-name} \rightarrow [\text{its direct dependency names}]
+     \]
+   - This graph represents the same dependency structure the installer used when it originally resolved and locked the bundles.
+
+3. **Remaining bundles vs. explicitly removed bundles**:
+   - Let **B<sub>all</sub>** be all bundles in `augent.lock`.
+   - Let **B<sub>remove</sub>** be the set of bundles you explicitly asked to uninstall (CLI arguments, including scope patterns).
+   - Let **B<sub>remain</sub> = B<sub>all</sub> − B<sub>remove</sub>** be the bundles that would stay if we only removed the explicit ones.
+
+4. **Compute “needed” bundles by reachability**:
+   - Let **R** be the set of **remaining roots**: bundles that are both in `.augent/augent.yaml` and in **B<sub>remain</sub>**.
+   - Starting from every bundle in **R**, Augent walks the dependency graph (following `bundles:` edges) and marks every reachable bundle as **needed**.
+   - Intuitively: if some bundle is still a direct install, all of its dependencies (and their dependencies, recursively) are considered needed and must not be auto-removed.
+
+5. **Determine which bundles can be auto-removed**:
+   - Any bundle in **B<sub>remain</sub>** that is **not** marked as needed, and is not the special workspace bundle, is now an **orphan dependency**:
+     - No remaining root depends on it.
+     - It exists only because it was (directly or indirectly) required by bundles you are now uninstalling.
+   - These orphan bundles are added to the uninstall set so that their files and lockfile/index entries are removed together with the roots that required them.
+
+6. **Uninstall order**:
+   - Once the final set of bundles to uninstall is known (explicit roots + all newly discovered orphans), Augent still uses the lockfile’s dependency order to determine a safe **reverse topological order**:
+     - Dependencies are uninstalled **after** their dependents, so that override/fallback semantics remain correct during removal.
 
 ### File Removal Safety
 
@@ -104,13 +126,15 @@ bundles:
 
 Dependencies are preserved when:
 
-### ❌ Another Non-Removed Bundle Depends on Them
+### ❌ Another Non-Removed Root (or its deps) Depends on Them
 
-As shown above, if bundle-a and bundle-b share a common dependency (bundle-c), and you uninstall bundle-a, then bundle-c is preserved because bundle-b still needs it.
+If bundle-a and bundle-b share a common dependency (bundle-c), and you uninstall bundle-a:
 
-### ❌ The Dependency Appears Later in Lockfile
+- bundle-b remains a **root** in `.augent/augent.yaml`
+- the dependency graph shows `bundle-b → bundle-c`
+- bundle-c is reachable from a remaining root
 
-In rare cases, if a bundle appears LATER in the lockfile than a remaining bundle, the dependency is preserved because it may be an override or optional component.
+Because bundle-c is still **needed** by a remaining root, it is preserved and **not** auto-removed.
 
 ## Important Gotchas
 
