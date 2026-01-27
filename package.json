@@ -17,7 +17,6 @@
     "augent": "./bin/augent"
   },
   "files": [
-    "bin",
     "scripts",
     "README.md",
     "LICENSE"
