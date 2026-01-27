@@ -675,9 +675,9 @@ pub mod modified {
             } => {
                 // For marketplace plugins, use the marketplace cache directory
                 if let Some(subdir_str) = subdir {
-                    if subdir_str.starts_with("$plugin/") {
-                        // Extract plugin name from $plugin/plugin-name
-                        if let Some(plugin_name) = subdir_str.strip_prefix("$plugin/") {
+                    if subdir_str.starts_with("$claudeplugin/") {
+                        // Extract plugin name from $claudeplugin/plugin-name
+                        if let Some(plugin_name) = subdir_str.strip_prefix("$claudeplugin/") {
                             // cache_dir is already the bundles directory (e.g., ~/.cache/augent/bundles)
                             // So we just add marketplace/plugin-name
                             let marketplace_cache = cache_dir.join("marketplace").join(plugin_name);

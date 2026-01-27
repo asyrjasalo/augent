@@ -345,7 +345,7 @@ impl Resolver {
                 // If path == content_path (empty subdirectory) and we have marketplace.json,
                 // this is a marketplace plugin - use bundle name as subdirectory marker
                 if stripped.is_none() && has_marketplace {
-                    Some(format!("$plugin/{}", bundle.name))
+                    Some(format!("$claudeplugin/{}", bundle.name))
                 } else {
                     stripped
                 }
@@ -544,9 +544,9 @@ impl Resolver {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
         let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
 
-        // Check if this is a marketplace plugin (path starts with $plugin/)
+        // Check if this is a marketplace plugin (path starts with $claudeplugin/)
         let content_path = if let Some(ref path_val) = source.path {
-            if let Some(bundle_name) = path_val.strip_prefix("$plugin/") {
+            if let Some(bundle_name) = path_val.strip_prefix("$claudeplugin/") {
                 // This is a marketplace plugin - create synthetic directory
                 let marketplace_json = cache_path.join(".claude-plugin/marketplace.json");
                 if !marketplace_json.is_file() {
@@ -623,11 +623,12 @@ impl Resolver {
 
                     // Check if this is a marketplace plugin
                     if let Some(ref path_val) = source.path {
-                        if let Some(bundle_name) = path_val.strip_prefix("$plugin/") {
+                        if let Some(bundle_name) = path_val.strip_prefix("$claudeplugin/") {
                             // Include the specific bundle name from marketplace in full path
                             // Format: @author/repo/bundle-name
                             format!("{}/{}", base_name, bundle_name)
-                        } else if let Some(remaining_path) = path_val.strip_prefix("$plugin/") {
+                        } else if let Some(remaining_path) = path_val.strip_prefix("$claudeplugin/")
+                        {
                             // Handle old format for backwards compatibility
                             format!("{}/{}", base_name, remaining_path)
                         } else {
@@ -1418,14 +1419,14 @@ bundles:
         let source1 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
-            path: Some("$plugin/bundle-one".to_string()),
+            path: Some("$claudeplugin/bundle-one".to_string()),
             resolved_sha: None,
         };
 
         let source2 = GitSource {
             url: "https://github.com/test/repo.git".to_string(),
             git_ref: Some("main".to_string()),
-            path: Some("$plugin/bundle-two".to_string()),
+            path: Some("$claudeplugin/bundle-two".to_string()),
             resolved_sha: None,
         };
 
@@ -1433,22 +1434,22 @@ bundles:
         // Note: We can't easily test resolve_git directly without setting up mock git repos,
         // but we can verify the logic by checking that the naming logic is correct
 
-        // The fix ensures that when subdirectory starts with "$plugin/",
+        // The fix ensures that when subdirectory starts with "$claudeplugin/",
         // the bundle name is derived from that subdirectory, not from the URL
-        assert!(source1.path.as_ref().unwrap().starts_with("$plugin/"));
-        assert!(source2.path.as_ref().unwrap().starts_with("$plugin/"));
+        assert!(source1.path.as_ref().unwrap().starts_with("$claudeplugin/"));
+        assert!(source2.path.as_ref().unwrap().starts_with("$claudeplugin/"));
 
         let name1 = source1
             .path
             .as_ref()
             .unwrap()
-            .strip_prefix("$plugin/")
+            .strip_prefix("$claudeplugin/")
             .unwrap();
         let name2 = source2
             .path
             .as_ref()
             .unwrap()
-            .strip_prefix("$plugin/")
+            .strip_prefix("$claudeplugin/")
             .unwrap();
 
         // Verify they have different names even though they share the same URL

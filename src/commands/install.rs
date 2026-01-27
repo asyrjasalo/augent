@@ -1161,12 +1161,14 @@ fn locked_bundles_to_resolved(
                 let bundle_cache = bundles_cache.join(&url_slug).join(sha);
 
                 // For marketplace plugins, check if synthetic bundle exists
-                let is_marketplace = path.as_ref().is_some_and(|p| p.starts_with("$plugin/"));
+                let is_marketplace = path
+                    .as_ref()
+                    .is_some_and(|p| p.starts_with("$claudeplugin/"));
                 let is_cached = if is_marketplace {
                     // For marketplace plugins, check the synthetic bundle location
                     let marketplace_cache = bundles_cache.join("marketplace");
                     if let Some(plugin_name) =
-                        path.as_ref().and_then(|p| p.strip_prefix("$plugin/"))
+                        path.as_ref().and_then(|p| p.strip_prefix("$claudeplugin/"))
                     {
                         marketplace_cache.join(plugin_name).is_dir()
                     } else {
@@ -1207,7 +1209,7 @@ fn locked_bundles_to_resolved(
                     // For marketplace plugins, use the synthetic bundle path
                     let final_path = if is_marketplace {
                         if let Some(plugin_name) =
-                            path.as_ref().and_then(|p| p.strip_prefix("$plugin/"))
+                            path.as_ref().and_then(|p| p.strip_prefix("$claudeplugin/"))
                         {
                             bundles_cache.join("marketplace").join(plugin_name)
                         } else {
