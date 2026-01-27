@@ -33,7 +33,6 @@ use std::path::PathBuf;
 )]
 pub struct Cli {
     /// Workspace directory (defaults to current directory)
-    /// Can be set via AUGENT_WORKSPACE environment variable
     #[arg(long, short = 'w', global = true, env = "AUGENT_WORKSPACE")]
     pub workspace: Option<PathBuf>,
 
