@@ -18,3 +18,30 @@ bundles:
     skills/fastapi-templates/SKILL.md:
     - .claude/skills/fastapi-templates/SKILL.md
     - .opencode/skills/SKILL/SKILL.md
+
+- name: '@davila7/claude-code-templates/ai-ml-toolkit'
+  enabled:
+    agents/ai-engineer.md:
+    - .gemini/agents/ai-engineer.md
+    agents/computer-vision-engineer.md:
+    - .gemini/agents/computer-vision-engineer.md
+    agents/ml-engineer.md:
+    - .gemini/agents/ml-engineer.md
+    agents/mlops-engineer.md:
+    - .gemini/agents/mlops-engineer.md
+    agents/nlp-engineer.md:
+    - .gemini/agents/nlp-engineer.md
+
+- name: '@davila7/claude-code-templates/devops-automation'
+  enabled:
+    agents/cloud-architect.md:
+    - .gemini/agents/cloud-architect.md
+
+- name: '@davila7/claude-code-templates/documentation-generator'
+  enabled:
+    agents/docusaurus-expert.md:
+    - .gemini/agents/docusaurus-expert.md
+    agents/technical-writer.md:
+    - .gemini/agents/technical-writer.md
+    commands/update-docs.md:
+    - .gemini/commands/update-docs.toml
