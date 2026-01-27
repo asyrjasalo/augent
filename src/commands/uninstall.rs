@@ -188,7 +188,10 @@ fn select_bundles_from_list(
 }
 
 /// Confirm uninstallation with user, showing what would be done
-fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String]) -> Result<bool> {
+pub(crate) fn confirm_uninstall(
+    workspace: &Workspace,
+    bundles_to_uninstall: &[String],
+) -> Result<bool> {
     println!("\nThe following bundle(s) will be uninstalled:");
     for bundle_name in bundles_to_uninstall {
         println!("  - {}", bundle_name);
@@ -509,7 +512,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
 }
 
 /// Perform actual uninstallation
-fn do_uninstall(
+pub(crate) fn do_uninstall(
     name: &str,
     workspace: &mut Workspace,
     transaction: &mut Transaction,

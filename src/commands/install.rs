@@ -14,6 +14,7 @@
 //! 6. Update configuration files
 //! 7. Commit transaction (or rollback on error)
 
+use std::collections::HashSet;
 use std::path::Path;
 
 use crate::cache;
@@ -81,15 +82,64 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         let resolver = Resolver::new(&current_dir);
         let discovered = resolver.discover_bundles(source_str)?;
 
+        // Check if workspace exists to get installed bundle names for menu display
+        use std::collections::HashSet;
+        let installed_bundle_names: Option<HashSet<String>> =
+            if let Some(workspace_root) = Workspace::find_from(&current_dir) {
+                if let Ok(workspace) = Workspace::open(&workspace_root) {
+                    // Build a set of discovered bundle names that are already installed
+                    // Match by comparing names: installed bundle names are like "@author/repo/bundle-name"
+                    // while discovered bundle names are just "bundle-name" (from augent.yaml)
+                    let mut installed_names = HashSet::new();
+
+                    // Get all installed bundle names from lockfile as a HashSet for efficient lookup
+                    let lockfile_bundle_names: HashSet<String> = workspace
+                        .lockfile
+                        .bundles
+                        .iter()
+                        .map(|b| b.name.clone())
+                        .collect();
+
+                    // For each discovered bundle, check if it matches any installed bundle by name
+                    for discovered in &discovered {
+                        // Check direct name match first
+                        if lockfile_bundle_names.contains(&discovered.name) {
+                            installed_names.insert(discovered.name.clone());
+                            continue;
+                        }
+
+                        // Check if any installed bundle name ends with the discovered bundle name
+                        // This handles cases like:
+                        // - Installed: "@wshobson/agents/agent-orchestration"
+                        // - Discovered: "agent-orchestration"
+                        if lockfile_bundle_names.iter().any(|installed_name| {
+                            installed_name.ends_with(&format!("/{}", discovered.name))
+                                || installed_name == &discovered.name
+                        }) {
+                            installed_names.insert(discovered.name.clone());
+                        }
+                    }
+
+                    Some(installed_names)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
         // Show interactive menu if multiple bundles, auto-select if one
         let discovered_count = discovered.len();
-        let selected_bundles = if discovered_count > 1 && !args.all_bundles {
-            select_bundles_interactively(&discovered)?
-        } else if discovered_count >= 1 {
-            discovered
-        } else {
-            vec![] // No bundles discovered - will be handled in do_install
-        };
+        let (selected_bundles, deselected_bundle_names) =
+            if discovered_count > 1 && !args.all_bundles {
+                let selection =
+                    select_bundles_interactively(&discovered, installed_bundle_names.as_ref())?;
+                (selection.selected, selection.deselected)
+            } else if discovered_count >= 1 {
+                (discovered, vec![])
+            } else {
+                (vec![], vec![]) // No bundles discovered - will be handled in do_install
+            };
 
         // If user selected nothing from menu (and there were multiple), exit without creating workspace
         if selected_bundles.is_empty() && discovered_count > 1 {
@@ -106,7 +156,70 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // Perform installation
         match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
             Ok(()) => {
+                // Commit installation first
                 transaction.commit();
+
+                // Uninstall bundles that were deselected (in a separate transaction)
+                if !deselected_bundle_names.is_empty() {
+                    use crate::commands::uninstall;
+
+                    // Find installed bundle names for deselected bundles
+                    let mut bundles_to_uninstall: Vec<String> = Vec::new();
+                    for bundle_name in &deselected_bundle_names {
+                        // Find the installed bundle name (might be full path like @author/repo/bundle-name)
+                        if let Some(installed_name) = workspace
+                            .lockfile
+                            .bundles
+                            .iter()
+                            .find(|b| {
+                                b.name == *bundle_name
+                                    || b.name.ends_with(&format!("/{}", bundle_name))
+                            })
+                            .map(|b| b.name.clone())
+                        {
+                            bundles_to_uninstall.push(installed_name);
+                        }
+                    }
+
+                    if !bundles_to_uninstall.is_empty() {
+                        // Show confirmation prompt unless --dry-run or -y/--yes is given
+                        if !args.dry_run
+                            && !args.yes
+                            && !uninstall::confirm_uninstall(&workspace, &bundles_to_uninstall)?
+                        {
+                            println!("Uninstall cancelled. Installation completed successfully.");
+                            return Ok(());
+                        }
+
+                        // Create a new transaction for uninstall operations
+                        let mut uninstall_transaction = Transaction::new(&workspace);
+                        uninstall_transaction.backup_configs()?;
+
+                        // Perform uninstallation
+                        let mut failed = false;
+                        for name in &bundles_to_uninstall {
+                            if let Some(locked_bundle) = workspace.lockfile.find_bundle(name) {
+                                // Clone the locked bundle to avoid borrow checker issues
+                                let locked_bundle_clone = locked_bundle.clone();
+                                if let Err(e) = uninstall::do_uninstall(
+                                    name,
+                                    &mut workspace,
+                                    &mut uninstall_transaction,
+                                    &locked_bundle_clone,
+                                    args.dry_run,
+                                ) {
+                                    eprintln!("Warning: Failed to uninstall '{}': {}", name, e);
+                                    failed = true;
+                                    // Continue with other uninstalls even if one fails
+                                }
+                            }
+                        }
+
+                        if !failed && !args.dry_run {
+                            uninstall_transaction.commit();
+                        }
+                    }
+                }
                 Ok(())
             }
             Err(e) => Err(e),
@@ -919,11 +1032,38 @@ fn update_configs(
         // workspace's own augent.yaml.
     }
 
-    // Update lockfile - merge new bundles with existing ones (in topological order)
+    // Update lockfile - merge new bundles with existing ones
+    // Process bundles in order: already-installed bundles first (to move to end),
+    // then new bundles (to add at end), preserving installation order
+    // Get list of already-installed bundle names
+    let installed_names: HashSet<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    // Separate bundles into already-installed and new
+    let mut already_installed = Vec::new();
+    let mut new_bundles = Vec::new();
+
     for bundle in resolved_bundles {
         let locked_bundle = create_locked_bundle(bundle, Some(&workspace.root))?;
-        // Remove existing entry if present (to update it)
+        if installed_names.contains(&locked_bundle.name) {
+            already_installed.push(locked_bundle);
+        } else {
+            new_bundles.push(locked_bundle);
+        }
+    }
+
+    // Process already-installed bundles first (remove and re-add to move to end)
+    for locked_bundle in already_installed {
         workspace.lockfile.remove_bundle(&locked_bundle.name);
+        workspace.lockfile.add_bundle(locked_bundle);
+    }
+
+    // Then process new bundles (add at end)
+    for locked_bundle in new_bundles {
         workspace.lockfile.add_bundle(locked_bundle);
     }
 

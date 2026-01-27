@@ -102,6 +102,10 @@ pub struct InstallArgs {
     /// Show what would be installed without actually installing
     #[arg(long)]
     pub dry_run: bool,
+
+    /// Skip confirmation prompt when uninstalling deselected bundles
+    #[arg(long, short = 'y')]
+    pub yes: bool,
 }
 
 /// Arguments for the uninstall command

@@ -196,8 +196,11 @@ impl Lockfile {
     /// Maintains order: Git-based bundles first (in installation order), then local (dir-based) bundles last.
     /// This ensures local bundles override external dependencies while preserving git bundle order.
     ///
-    /// IMPORTANT: Git bundles are NEVER reordered. They maintain their exact installation order.
-    /// New git bundles are always added immediately before any dir bundles.
+    /// IMPORTANT: Git bundles maintain their installation order. If a bundle already exists,
+    /// it's removed and re-added at the end of git bundles (before dir bundles) to maintain
+    /// "latest comes last" ordering.
+    ///
+    /// New git bundles are always added at the end of git bundles (before any dir bundles).
     pub fn add_bundle(&mut self, bundle: LockedBundle) {
         let is_dir_bundle = matches!(bundle.source, LockedSource::Dir { .. });
 
@@ -205,17 +208,18 @@ impl Lockfile {
             // Dir bundles go at the end (preserves all existing git bundle order)
             self.bundles.push(bundle);
         } else {
-            // Git bundles go before any dir bundles
+            // Git bundles go at the end of git bundles (before any dir bundles)
             // Find the first dir bundle and insert before it
-            // This preserves the order of existing git bundles
+            // This ensures "latest comes last" - new bundles are always added at the end of git bundles
             if let Some(pos) = self
                 .bundles
                 .iter()
                 .position(|b| matches!(b.source, LockedSource::Dir { .. }))
             {
+                // Insert at the position of the first dir bundle (end of git bundles)
                 self.bundles.insert(pos, bundle);
             } else {
-                // No dir bundles yet, just append
+                // No dir bundles yet, append at the end
                 self.bundles.push(bundle);
             }
         }
