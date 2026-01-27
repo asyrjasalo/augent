@@ -1,3 +1,11 @@
+[[tools."cargo:cargo-machete"]]
+version = "0.9.1"
+backend = "cargo:cargo-machete"
+
+[[tools."cargo:cargo-tarpaulin"]]
+version = "0.35.1"
+backend = "cargo:cargo-tarpaulin"
+
 [[tools.prek]]
 version = "0.3.0"
 backend = "aqua:j178/prek"

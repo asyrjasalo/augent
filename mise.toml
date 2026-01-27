@@ -5,6 +5,7 @@
 [tools]
 rust = "1.93"
 prek = "latest"
+'cargo:cargo-tarpaulin' = "latest"
 
 [settings]
 lockfile = true
@@ -36,6 +37,10 @@ run = "cargo clippy --all-targets --all-features -- -D warnings"
 [tasks.test]
 description = "Run tests"
 run = "cargo test"
+
+[tasks.coverage]
+description = "Run tests with coverage"
+run = "cargo tarpaulin"
 
 [tasks.check]
 description = "Run all checks"
