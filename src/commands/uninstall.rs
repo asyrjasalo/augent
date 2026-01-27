@@ -272,6 +272,37 @@ fn filter_bundles_by_scope(workspace: &Workspace, scope: &str) -> Vec<String> {
         .collect()
 }
 
+/// Build a mapping from bundle name to the names of bundles it depends on,
+/// by reading each bundle's own `augent.yaml` (if present).
+fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<String>>> {
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+
+    for locked in &workspace.lockfile.bundles {
+        // Only local directory bundles have an accessible augent.yaml in the workspace
+        let bundle_dir = match &locked.source {
+            crate::config::LockedSource::Dir { path, .. } => workspace.root.join(path),
+            _ => continue,
+        };
+
+        let config_path = bundle_dir.join("augent.yaml");
+        if !config_path.is_file() {
+            continue;
+        }
+
+        let yaml =
+            std::fs::read_to_string(&config_path).map_err(|e| AugentError::ConfigReadFailed {
+                path: config_path.display().to_string(),
+                reason: e.to_string(),
+            })?;
+
+        let cfg = crate::config::BundleConfig::from_yaml(&yaml)?;
+        let deps: Vec<String> = cfg.bundles.iter().map(|d| d.name.clone()).collect();
+        map.insert(locked.name.clone(), deps);
+    }
+
+    Ok(map)
+}
+
 /// Run uninstall command
 pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
     let current_dir = match workspace {
@@ -363,114 +394,57 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         .map(|d| d.name.clone())
         .collect();
 
-    // Find transitive dependencies that can be removed
-    // A bundle should be removed if:
-    // 1. It's being explicitly uninstalled, OR
-    // 2. It was NOT explicitly installed AND it comes before an uninstalled bundle AND it's not needed by other bundles
-    let mut bundles_to_uninstall = bundle_names
+    // Build a dependency graph from bundle augent.yaml files
+    let dependency_map = build_dependency_map(&workspace)?;
+
+    // Start with bundles explicitly requested for uninstall
+    let mut bundles_to_uninstall: std::collections::HashSet<String> =
+        bundle_names.iter().cloned().collect();
+
+    // All bundles known in the lockfile
+    let all_bundle_names: std::collections::HashSet<String> = workspace
+        .lockfile
+        .bundles
         .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    // Bundles that would remain if we only removed the explicitly requested ones
+    let remaining_bundles: std::collections::HashSet<String> = all_bundle_names
+        .difference(&bundles_to_uninstall)
         .cloned()
-        .collect::<std::collections::HashSet<_>>();
+        .collect();
 
-    // Iterate until no more bundles are added
-    let mut changed = true;
-    while changed {
-        changed = false;
+    // Roots that remain after explicit uninstall (bundles declared in augent.yaml)
+    let remaining_roots: std::collections::HashSet<String> = explicitly_installed
+        .intersection(&remaining_bundles)
+        .cloned()
+        .collect();
 
-        // Get indices of uninstalled bundles
-        let uninstall_indices: std::collections::HashSet<usize> = workspace
-            .lockfile
-            .bundles
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, b)| {
-                if bundles_to_uninstall.contains(&b.name) {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
-            .collect();
+    // Traverse dependency graph from remaining roots to find all bundles that are still needed
+    let mut needed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut queue: std::collections::VecDeque<String> = remaining_roots.iter().cloned().collect();
 
-        if uninstall_indices.is_empty() {
-            break;
+    while let Some(current) = queue.pop_front() {
+        if !needed.insert(current.clone()) {
+            continue;
         }
 
-        let max_uninstall_idx = uninstall_indices.iter().max().copied().unwrap();
-
-        // Check each bundle that comes before any uninstalled bundle
-        // Process in reverse order (from highest to lowest index) so that when we check
-        // a dependency, any bundles that depend on it have already been processed
-        let bundles_with_indices: Vec<(usize, &crate::config::LockedBundle)> =
-            workspace.lockfile.bundles.iter().enumerate().collect();
-
-        for (idx, bundle) in bundles_with_indices.iter().rev() {
-            let idx = *idx;
-            if bundles_to_uninstall.contains(&bundle.name) {
-                continue; // Already marked for uninstall
-            }
-
-            // Skip the workspace bundle - it never depends on other bundles
-            if bundle.name == workspace.bundle_config.name {
-                continue;
-            }
-
-            // Check if this bundle comes before any uninstalled bundle
-            if idx < max_uninstall_idx {
-                // This might be a transitive dependency
-                // Check if any non-uninstalled bundle needs it
-                // We check bundles that come AFTER this one (since dependencies come first)
-                let workspace_bundle_name = &workspace.bundle_config.name;
-                let is_needed_by_remaining = workspace.lockfile.bundles.iter().enumerate().any(
-                    |(other_idx, other_bundle)| {
-                        // Skip if this bundle is being uninstalled
-                        if bundles_to_uninstall.contains(&other_bundle.name) {
-                            return false;
-                        }
-
-                        // Skip if it's the same bundle or workspace bundle
-                        if other_bundle.name == bundle.name
-                            || other_bundle.name == *workspace_bundle_name
-                        {
-                            return false;
-                        }
-
-                        // If the other bundle comes AFTER this one in the lockfile,
-                        // assume it might depend on it (since dependencies come first in lockfile order)
-                        other_idx > idx
-                    },
-                );
-
-                // Remove if not needed by remaining bundles
-                // For explicitly installed bundles, we're more conservative: only remove if
-                // ALL bundles that come after it (and might depend on it) are being uninstalled
-                let should_remove = if explicitly_installed.contains(&bundle.name) {
-                    // Check if ALL bundles after this one (excluding workspace) are being uninstalled
-                    let all_after_are_uninstalled =
-                        workspace.lockfile.bundles.iter().enumerate().all(
-                            |(other_idx, other_bundle)| {
-                                if other_idx <= idx {
-                                    return true; // Before or same - doesn't matter
-                                }
-                                if other_bundle.name == *workspace_bundle_name {
-                                    return true; // Workspace bundle doesn't depend on others
-                                }
-                                // This bundle comes after - check if it's being uninstalled
-                                bundles_to_uninstall.contains(&other_bundle.name)
-                            },
-                        );
-                    // Only remove if nothing needs it AND all bundles after it are being uninstalled
-                    !is_needed_by_remaining && all_after_are_uninstalled
-                } else {
-                    // For non-explicitly installed bundles, remove if not needed
-                    !is_needed_by_remaining
-                };
-
-                if should_remove {
-                    bundles_to_uninstall.insert(bundle.name.clone());
-                    changed = true;
+        if let Some(deps) = dependency_map.get(&current) {
+            for dep in deps {
+                if remaining_bundles.contains(dep) && !needed.contains(dep) {
+                    queue.push_back(dep.clone());
                 }
             }
+        }
+    }
+
+    // Any remaining bundle that is not reachable from remaining roots is now an orphan
+    // and can be safely removed (including transitive dependencies of the bundles
+    // being explicitly uninstalled).
+    for name in &remaining_bundles {
+        if !needed.contains(name) && name != &workspace.bundle_config.name {
+            bundles_to_uninstall.insert(name.clone());
         }
     }
 
