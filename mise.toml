@@ -1,0 +1,46 @@
+# https://mise.jdx.dev/
+
+### Development dependencies ###################################################
+
+[tools]
+rust = "1.93"
+prek = "latest"
+
+[settings]
+lockfile = true
+
+### Tasks ######################################################################
+#
+# Run dev binary:
+#
+#   mise augent [args]
+#
+# Run test task:
+#
+#   mise test
+#
+# Run pre-commit, lint and test in parallel:
+#
+#   mise all
+
+[tasks.augent]
+description = "Run augent in dev mode (with AUGENT_WORKSPACE=./tmp)"
+alias = "dev"
+env = { AUGENT_WORKSPACE = "{{ [config_root] | concat(with='tmp') | join_path }}" }
+run = "cargo run --"
+
+[tasks.prek]
+description = "Run pre-commit hooks"
+run = "prek run --all-files --verbose"
+
+[tasks.lint]
+description = "Run clippy"
+run = "cargo clippy --all-targets --all-features -- -D warnings"
+
+[tasks.test]
+description = "Run tests"
+run = "cargo test"
+
+[tasks.all]
+description = "Run all checks in parallel (fail on first error)"
+depends = ["prek", "lint", "test"]
