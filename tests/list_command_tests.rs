@@ -309,6 +309,40 @@ bundles: []
 }
 
 #[test]
+fn test_list_basic_shows_version_when_available() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("versioned-bundle");
+    workspace.write_file(
+        "bundles/versioned-bundle/augent.yaml",
+        r#"
+name: "@test/versioned-bundle"
+description: "Bundle with version metadata"
+version: "1.2.3"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/versioned-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/versioned-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("versioned-bundle"))
+        .stdout(predicate::str::contains("Version: 1.2.3"));
+}
+
+#[test]
 fn test_list_detailed_format_readability() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
@@ -361,5 +395,251 @@ bundles: []
     assert!(
         output_str.contains("commands/test1.md"),
         "File list should show individual files"
+    );
+}
+
+#[test]
+fn test_list_detailed_source_layout_matches_basic_list() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("layout-bundle");
+    workspace.write_file(
+        "bundles/layout-bundle/augent.yaml",
+        r#"
+name: "@test/layout-bundle"
+description: "Bundle for testing list layout consistency"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/layout-bundle/commands/test.md", "# Test layout\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/layout-bundle", "--for", "cursor"])
+        .assert()
+        .success();
+
+    let basic_output = augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let detailed_output = augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let basic_str = String::from_utf8(basic_output).unwrap();
+    let detailed_str = String::from_utf8(detailed_output).unwrap();
+
+    let basic_source_line = basic_str
+        .lines()
+        .find(|line| line.contains("Source:"))
+        .expect("Basic list output should contain a Source line");
+
+    let detailed_source_line = detailed_str
+        .lines()
+        .find(|line| line.contains("Source:"))
+        .expect("Detailed list output should contain a Source line");
+
+    assert_eq!(
+        basic_source_line, detailed_source_line,
+        "`augent list --detailed` Source line should match basic `augent list` layout"
+    );
+}
+
+#[test]
+fn test_list_detailed_resources_layout_matches_basic_list() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    workspace.create_bundle("resources-layout-bundle");
+    workspace.write_file(
+        "bundles/resources-layout-bundle/augent.yaml",
+        r#"
+name: "@test/resources-layout-bundle"
+description: "Bundle for testing resources layout consistency"
+bundles: []
+"#,
+    );
+
+    workspace.write_file(
+        "bundles/resources-layout-bundle/commands/test1.md",
+        "# Test 1\n",
+    );
+    workspace.write_file(
+        "bundles/resources-layout-bundle/commands/test2.md",
+        "# Test 2\n",
+    );
+    workspace.write_file("bundles/resources-layout-bundle/rules/rule.md", "# Rule\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args([
+            "install",
+            "./bundles/resources-layout-bundle",
+            "--for",
+            "cursor",
+        ])
+        .assert()
+        .success();
+
+    let basic_output = augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let detailed_output = augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let basic_str = String::from_utf8(basic_output).unwrap();
+    let detailed_str = String::from_utf8(detailed_output).unwrap();
+
+    fn extract_resources_block(output: &str) -> Vec<String> {
+        let lines: Vec<&str> = output.lines().collect();
+        let start = match lines.iter().position(|line| line.contains("Resources:")) {
+            Some(idx) => idx,
+            None => return Vec::new(),
+        };
+
+        let mut block = Vec::new();
+        for &line in &lines[start..] {
+            if line.trim().is_empty() || line.contains("Provided files:") {
+                break;
+            }
+            block.push(line.to_string());
+        }
+        block
+    }
+
+    let basic_resources = extract_resources_block(&basic_str);
+    let detailed_resources = extract_resources_block(&detailed_str);
+
+    assert!(
+        !basic_resources.is_empty(),
+        "Basic list output should contain a Resources section"
+    );
+    assert!(
+        !detailed_resources.is_empty(),
+        "Detailed list output should contain a Resources section"
+    );
+
+    assert_eq!(
+        basic_resources, detailed_resources,
+        "`augent list --detailed` Resources section should match basic `augent list` layout"
+    );
+}
+
+#[test]
+fn test_list_detailed_provided_files_grouped_by_platform() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+
+    workspace.create_bundle("multi-platform-bundle");
+    workspace.write_file(
+        "bundles/multi-platform-bundle/augent.yaml",
+        r#"
+name: "@test/multi-platform-bundle"
+description: "Bundle installed to multiple platforms"
+bundles: []
+"#,
+    );
+
+    workspace.write_file("bundles/multi-platform-bundle/commands/test.md", "# Test\n");
+
+    workspace.create_agent_dir("cursor");
+    workspace.create_agent_dir("claude");
+    workspace.create_agent_dir("opencode");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args([
+            "install",
+            "./bundles/multi-platform-bundle",
+            "--for",
+            "cursor",
+            "claude",
+            "opencode",
+        ])
+        .assert()
+        .success();
+
+    let output = augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8(output).unwrap();
+
+    // Verify "Provided files:" section exists
+    assert!(
+        output_str.contains("Provided files:"),
+        "Detailed output should contain Provided files section"
+    );
+
+    // Verify platforms are grouped
+    let lines: Vec<&str> = output_str.lines().collect();
+    let provided_files_start = lines
+        .iter()
+        .position(|line| line.contains("Provided files:"))
+        .expect("Should find Provided files section");
+
+    // Check that platform names appear as headers (capitalized)
+    let section_lines = &lines[provided_files_start..];
+    assert!(
+        section_lines.iter().any(|line| line.contains("Cursor")),
+        "Should show Cursor platform grouping"
+    );
+    assert!(
+        section_lines.iter().any(|line| line.contains("Claude")),
+        "Should show Claude platform grouping"
+    );
+    assert!(
+        section_lines.iter().any(|line| line.contains("Opencode")),
+        "Should show Opencode platform grouping"
+    );
+
+    // Verify file mappings are shown
+    assert!(
+        output_str.contains("commands/test.md"),
+        "Should show the bundle file"
+    );
+    assert!(
+        output_str.contains(".cursor/"),
+        "Should show cursor location"
+    );
+    assert!(
+        output_str.contains(".claude/"),
+        "Should show claude location"
+    );
+    assert!(
+        output_str.contains(".opencode/"),
+        "Should show opencode location"
     );
 }

@@ -67,56 +67,17 @@ fn display_bundle_simple(
     _workspace_config: &crate::config::WorkspaceConfig,
     _detailed: bool,
 ) {
-    let resource_counts = count_resources_by_type(&bundle.files);
-
     println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
+    if let Some(ref version) = bundle.version {
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Version:"),
+            version
+        );
+    }
     println!("    {}", Style::new().bold().apply_to("Source:"));
     display_source_detailed_with_indent(&bundle.source, "      ");
-    if !resource_counts.is_empty() {
-        println!("    {}", Style::new().bold().apply_to("Resources:"));
-
-        // Group by resource type
-        let mut resource_by_type: std::collections::HashMap<&str, Vec<String>> =
-            std::collections::HashMap::new();
-        for file in &bundle.files {
-            let resource_type = extract_resource_type(file);
-            resource_by_type
-                .entry(resource_type)
-                .or_default()
-                .push(file.clone());
-        }
-
-        // Sort resource types
-        let mut sorted_types: Vec<_> = resource_by_type.keys().copied().collect();
-        sorted_types.sort();
-
-        // Display each resource type with simple file list
-        for resource_type in sorted_types.iter() {
-            let type_display = capitalize_word(resource_type);
-            println!("      {}", Style::new().cyan().apply_to(type_display));
-
-            // File rows
-            let files = resource_by_type.get(resource_type).unwrap();
-            for file in files {
-                println!("        {}", Style::new().dim().apply_to(file),);
-            }
-        }
-    }
-}
-
-/// Count resources by type (commands, rules, skills, agents, etc.)
-fn count_resources_by_type(files: &[String]) -> Vec<(&str, usize)> {
-    use std::collections::HashMap;
-    let mut counts: HashMap<&str, usize> = HashMap::new();
-
-    for file in files {
-        let resource_type = extract_resource_type(file);
-        *counts.entry(resource_type).or_insert(0) += 1;
-    }
-
-    let mut result: Vec<_> = counts.into_iter().collect();
-    result.sort_by(|a, b| a.0.cmp(b.0));
-    result
+    display_resources_grouped(&bundle.files);
 }
 
 /// Extract resource type from file path
@@ -147,6 +108,129 @@ fn capitalize_word(word: &str) -> String {
     word.chars().next().unwrap().to_uppercase().to_string() + &word[1..]
 }
 
+/// Display resources grouped by type with consistent layout
+fn display_resources_grouped(files: &[String]) {
+    use std::collections::HashMap;
+
+    if files.is_empty() {
+        return;
+    }
+
+    println!("    {}", Style::new().bold().apply_to("Resources:"));
+
+    // Group by resource type
+    let mut resource_by_type: HashMap<&str, Vec<String>> = HashMap::new();
+    for file in files {
+        let resource_type = extract_resource_type(file);
+        resource_by_type
+            .entry(resource_type)
+            .or_default()
+            .push(file.clone());
+    }
+
+    // Sort resource types
+    let mut sorted_types: Vec<_> = resource_by_type.keys().copied().collect();
+    sorted_types.sort();
+
+    // Display each resource type with simple file list
+    for resource_type in sorted_types.iter() {
+        let type_display = capitalize_word(resource_type);
+        println!("      {}", Style::new().cyan().apply_to(type_display));
+
+        // File rows
+        let files_for_type = resource_by_type.get(resource_type).unwrap();
+        for file in files_for_type {
+            println!("        {}", Style::new().dim().apply_to(file));
+        }
+    }
+}
+
+/// Extract platform name from location path (e.g., ".cursor/commands/file.md" -> "cursor")
+fn extract_platform_from_location(location: &str) -> String {
+    if let Some(first_slash) = location.find('/') {
+        let platform_dir = &location[..first_slash];
+        // Remove leading dot if present (e.g., ".cursor" -> "cursor")
+        platform_dir.trim_start_matches('.').to_string()
+    } else {
+        // Fallback: try to extract from the whole path
+        location
+            .split('/')
+            .next()
+            .unwrap_or(location)
+            .trim_start_matches('.')
+            .to_string()
+    }
+}
+
+/// Display provided files grouped by platform
+fn display_provided_files_grouped_by_platform(
+    files: &[String],
+    workspace_bundle: Option<&crate::config::WorkspaceBundle>,
+) {
+    use std::collections::HashMap;
+
+    println!("    {}", Style::new().bold().apply_to("Provided files:"));
+
+    if let Some(ws_bundle) = workspace_bundle {
+        // Group files by platform
+        let mut files_by_platform: HashMap<String, Vec<(String, String)>> = HashMap::new();
+        let mut uninstalled_files = Vec::new();
+
+        for file in files {
+            if let Some(locations) = ws_bundle.get_locations(file) {
+                if locations.is_empty() {
+                    uninstalled_files.push(file.clone());
+                } else {
+                    for location in locations {
+                        let platform = extract_platform_from_location(location);
+                        files_by_platform
+                            .entry(platform)
+                            .or_default()
+                            .push((file.clone(), location.clone()));
+                    }
+                }
+            } else {
+                uninstalled_files.push(file.clone());
+            }
+        }
+
+        // Sort platforms
+        let mut sorted_platforms: Vec<_> = files_by_platform.keys().collect();
+        sorted_platforms.sort();
+
+        // Display each platform with file mappings
+        for platform in sorted_platforms {
+            let platform_display = capitalize_word(platform);
+            println!("      {}", Style::new().cyan().apply_to(platform_display));
+
+            let file_mappings = files_by_platform.get(platform).unwrap();
+            for (file, location) in file_mappings {
+                println!(
+                    "        {} → {}",
+                    Style::new().dim().apply_to(file),
+                    location
+                );
+            }
+        }
+
+        // Display uninstalled files if any
+        if !uninstalled_files.is_empty() {
+            println!("      {}", Style::new().cyan().apply_to("Not installed"));
+            for file in &uninstalled_files {
+                println!(
+                    "        {} (not installed)",
+                    Style::new().dim().apply_to(file)
+                );
+            }
+        }
+    } else {
+        // No workspace bundle info, just list files
+        for file in files {
+            println!("      {}", Style::new().dim().apply_to(file));
+        }
+    }
+}
+
 /// Display bundle in detailed format
 fn display_bundle_detailed(
     bundle: &crate::config::LockedBundle,
@@ -154,7 +238,6 @@ fn display_bundle_detailed(
     detailed: bool,
 ) {
     let workspace_bundle = workspace_config.find_bundle(&bundle.name);
-    let resource_counts = count_resources_by_type(&bundle.files);
 
     println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
 
@@ -191,49 +274,20 @@ fn display_bundle_detailed(
         );
     }
 
-    println!();
-    println!("{}", Style::new().bold().apply_to("Source:"));
-    display_source_detailed(&bundle.source);
+    println!("    {}", Style::new().bold().apply_to("Source:"));
+    display_source_detailed_with_indent(&bundle.source, "      ");
 
-    println!();
     println!(
         "    {} {}",
         Style::new().bold().apply_to("Files:"),
         bundle.files.len()
     );
 
-    if !resource_counts.is_empty() {
-        println!("    {}", Style::new().bold().apply_to("Resources:"));
-        for (resource_type, count) in resource_counts {
-            println!(
-                "      {}: {}",
-                Style::new().cyan().apply_to(resource_type),
-                count
-            );
-        }
-    }
+    display_resources_grouped(&bundle.files);
 
     if detailed && !bundle.files.is_empty() {
-        println!("    Provided files:");
-        for file in &bundle.files {
-            if let Some(ws_bundle) = workspace_bundle {
-                if let Some(locations) = ws_bundle.get_locations(file) {
-                    for location in locations {
-                        println!("      {} → {}", file, location);
-                    }
-                } else {
-                    println!("      {} (not installed)", file);
-                }
-            } else {
-                println!("      {}", file);
-            }
-        }
+        display_provided_files_grouped_by_platform(&bundle.files, workspace_bundle);
     }
-}
-
-/// Display source information in detailed format (same as show command)
-fn display_source_detailed(source: &LockedSource) {
-    display_source_detailed_with_indent(source, "  ");
 }
 
 /// Display source information with custom indentation

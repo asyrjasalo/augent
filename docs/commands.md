@@ -178,15 +178,9 @@ augent list -v
 
 ### Output Format
 
-**Basic output:**
+**Basic output:** Shows bundle name, version (when available), source, and resource summary.
 
-```text
-NAME          SOURCE           AGENTS
-my-bundle     github:author...  cursor, opencode
-debug-tools   ./local         all
-```
-
-**Detailed output:** Includes file counts, dependencies, and resolved SHAs.
+**Detailed output:** Includes metadata fields, file counts, dependencies, and resolved SHAs.
 
 ---
 

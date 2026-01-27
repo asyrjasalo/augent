@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `augent clean-cache` command to `augent cache` for a shorter, clearer interface
 - Restructured cache command: `augent cache clear` replaces `augent cache --all`, and `augent cache clear --only <slug>` replaces positional bundle argument
 - Removed `--list` flag from `augent cache` command; listing bundles is now the default behavior
+- Aligned `augent list --detailed` layout with basic `augent list` output and show bundle version in both views when available
 
 ## [0.5.1] - 2026-01-26
 
