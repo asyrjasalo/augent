@@ -16,6 +16,7 @@ use wax::{CandidatePath, Glob, Pattern};
 use crate::config::WorkspaceBundle;
 use crate::error::{AugentError, Result};
 use crate::platform::{MergeStrategy, Platform, TransformRule};
+use crate::progress::ProgressDisplay;
 use crate::resolver::ResolvedBundle;
 
 /// Known resource directories in bundles
@@ -61,6 +62,9 @@ pub struct Installer<'a> {
 
     /// Whether to perform a dry run (skip actual file operations)
     dry_run: bool,
+
+    /// Optional progress display for showing installation progress
+    progress: Option<&'a mut ProgressDisplay>,
 }
 
 /// A pending file installation with merge strategy
@@ -82,6 +86,7 @@ impl<'a> Installer<'a> {
             platforms,
             installed_files: HashMap::new(),
             dry_run: false,
+            progress: None,
         }
     }
 
@@ -96,6 +101,23 @@ impl<'a> Installer<'a> {
             platforms,
             installed_files: HashMap::new(),
             dry_run,
+            progress: None,
+        }
+    }
+
+    /// Create a new installer with progress display
+    pub fn new_with_progress(
+        workspace_root: &'a Path,
+        platforms: Vec<Platform>,
+        dry_run: bool,
+        progress: Option<&'a mut ProgressDisplay>,
+    ) -> Self {
+        Self {
+            workspace_root,
+            platforms,
+            installed_files: HashMap::new(),
+            dry_run,
+            progress,
         }
     }
 
@@ -156,6 +178,14 @@ impl<'a> Installer<'a> {
         let mut workspace_bundle = WorkspaceBundle::new(&bundle.name);
 
         for (ref target_path, ref installations) in grouped_by_target {
+            // Update file progress
+            if let Some(ref mut progress) = self.progress {
+                let relative = target_path
+                    .strip_prefix(self.workspace_root)
+                    .unwrap_or(target_path);
+                progress.update_file(&relative.to_string_lossy());
+            }
+
             let _installed = self.execute_installations(target_path, installations)?;
         }
 
@@ -191,9 +221,45 @@ impl<'a> Installer<'a> {
     /// Install all bundles in order
     pub fn install_bundles(&mut self, bundles: &[ResolvedBundle]) -> Result<Vec<WorkspaceBundle>> {
         let mut workspace_bundles = Vec::new();
+        let total_bundles = bundles.len();
 
-        for bundle in bundles {
+        // Count total files for progress display
+        let total_files = if self.progress.is_some() {
+            bundles
+                .iter()
+                .map(|b| {
+                    Self::discover_resources(&b.source_path)
+                        .map(|resources| {
+                            // Count files per platform
+                            resources.len() * self.platforms.len()
+                        })
+                        .unwrap_or(0)
+                })
+                .sum()
+        } else {
+            0
+        };
+
+        // Initialize file progress if we have progress display
+        if let Some(ref mut progress) = self.progress {
+            if total_files > 0 {
+                progress.init_file_progress(total_files as u64);
+            }
+        }
+
+        for (idx, bundle) in bundles.iter().enumerate() {
+            // Update bundle progress
+            if let Some(ref mut progress) = self.progress {
+                progress.update_bundle(&bundle.name, idx + 1, total_bundles);
+            }
+
             let workspace_bundle = self.install_bundle(bundle)?;
+
+            // Increment bundle progress
+            if let Some(ref mut progress) = self.progress {
+                progress.inc_bundle();
+            }
+
             workspace_bundles.push(workspace_bundle);
         }
 

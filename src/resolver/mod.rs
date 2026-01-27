@@ -9,6 +9,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use indicatif::{ProgressBar, ProgressStyle};
 use path_clean::PathClean;
 
 use crate::cache;
@@ -319,7 +320,21 @@ impl Resolver {
 
     /// Discover bundles in a cached git repository
     fn discover_git_bundles(&self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
-        let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
+        // Show a spinner while cloning/fetching the git repository
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner} Fetching {msg}")
+                .unwrap()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+        pb.set_message(source.url.clone());
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+
+        let cache_result = cache::cache_bundle(source);
+        pb.finish_and_clear();
+
+        let (cache_path, sha, resolved_ref) = cache_result?;
         let content_path = cache::get_bundle_content_path(source, &cache_path);
 
         let mut discovered = self.discover_local_bundles(&content_path)?;
@@ -542,7 +557,21 @@ impl Resolver {
         dependency: Option<&BundleDependency>,
     ) -> Result<ResolvedBundle> {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
-        let (cache_path, sha, resolved_ref) = cache::cache_bundle(source)?;
+        // Show a spinner while cloning/fetching the git repository
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner} Fetching {msg}")
+                .unwrap()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+        pb.set_message(source.url.clone());
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+
+        let cache_result = cache::cache_bundle(source);
+        pb.finish_and_clear();
+
+        let (cache_path, sha, resolved_ref) = cache_result?;
 
         // Check if this is a marketplace plugin (path starts with $claudeplugin/)
         let content_path = if let Some(ref path_val) = source.path {

@@ -14,6 +14,7 @@ mod git;
 mod hash;
 mod installer;
 mod platform;
+mod progress;
 mod resolver;
 mod source;
 mod transaction;

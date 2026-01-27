@@ -2,51 +2,81 @@
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-/// Simple progress display for installations
+/// Progress display for installations
 pub struct ProgressDisplay {
     /// Main progress bar for bundle installation
-    main_pb: ProgressBar,
+    bundle_pb: ProgressBar,
+    /// Optional file progress bar (shown when installing files)
+    file_pb: Option<ProgressBar>,
 }
 
 impl ProgressDisplay {
     /// Create a new progress display with total bundle count
     pub fn new(total_bundles: u64) -> Self {
-        let style = ProgressStyle::default_bar()
-            .template("{prefix}: [{bar:40.cyan/blue}] {pos}/{len} ({msg})")
+        let bundle_style = ProgressStyle::default_bar()
+            .template("[{bar:40.cyan/blue}] {pos}/{len} {msg}")
             .unwrap()
             .progress_chars("#>-");
 
-        let main_pb = ProgressBar::new(total_bundles);
-        main_pb.set_style(style.clone());
-        main_pb.set_prefix("Installing");
-        main_pb.set_message("initializing...");
+        let bundle_pb = ProgressBar::new(total_bundles);
+        bundle_pb.set_style(bundle_style);
 
-        Self { main_pb }
+        Self {
+            bundle_pb,
+            file_pb: None,
+        }
+    }
+
+    /// Initialize file progress bar with total file count
+    pub fn init_file_progress(&mut self, total_files: u64) {
+        let file_style = ProgressStyle::default_bar()
+            .template("  [{bar:40.green/yellow}] {pos}/{len} files {msg}")
+            .unwrap()
+            .progress_chars("█▉▊▋▌▍▎▏  ");
+
+        let file_pb = ProgressBar::new(total_files);
+        file_pb.set_style(file_style);
+        self.file_pb = Some(file_pb);
     }
 
     /// Update to show current bundle being installed
-    pub fn update_bundle(&self, bundle_name: String, current: usize, total: usize) {
-        let msg = format!("Bundle {}/{}: {}", current, total, bundle_name);
-        self.main_pb.set_message(msg);
+    pub fn update_bundle(&self, bundle_name: &str, current: usize, total: usize) {
+        let msg = format!("({}/{}) {}", current, total, bundle_name);
+        self.bundle_pb.set_message(msg);
     }
 
     /// Increment bundle progress
     pub fn inc_bundle(&self) {
-        self.main_pb.inc(1);
+        self.bundle_pb.inc(1);
     }
 
-    /// Show file being copied
-    pub fn show_file(&self, file_path: &str) {
-        self.main_pb.set_prefix(file_path.to_string());
+    /// Update file progress
+    pub fn update_file(&self, file_path: &str) {
+        if let Some(ref file_pb) = self.file_pb {
+            // Truncate long paths for display
+            let display_path = if file_path.len() > 50 {
+                format!("...{}", &file_path[file_path.len() - 47..])
+            } else {
+                file_path.to_string()
+            };
+            file_pb.set_message(display_path);
+            file_pb.inc(1);
+        }
     }
 
-    /// Finish with success message
-    pub fn finish(&self, message: String) {
-        self.main_pb.finish_with_message(message);
+    /// Finish file progress
+    pub fn finish_files(&self) {
+        if let Some(ref file_pb) = self.file_pb {
+            file_pb.finish();
+        }
+        self.bundle_pb.finish();
     }
 
     /// Abandon on error
     pub fn abandon(&self) {
-        self.main_pb.abandon();
+        if let Some(ref file_pb) = self.file_pb {
+            file_pb.abandon();
+        }
+        self.bundle_pb.abandon();
     }
 }

@@ -25,11 +25,13 @@ use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
 use crate::platform::{self, Platform, detection};
+use crate::progress::ProgressDisplay;
 use crate::resolver::Resolver;
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use crate::workspace::modified;
+use indicatif::{ProgressBar, ProgressStyle};
 
 /// Run the install command
 pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
@@ -144,8 +146,14 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // NOW initialize or open workspace (after user has selected bundles)
         let mut workspace = Workspace::init_or_open(&current_dir)?;
 
-        // If user selected nothing from menu (and there were multiple), exit without creating workspace
-        if selected_bundles.is_empty() && discovered_count > 1 {
+        // If user selected nothing from menu (and there were multiple) AND there are
+        // no deselected installed bundles, exit without creating/updating workspace.
+        //
+        // When there ARE deselected bundles (all were preselected and user toggled
+        // them off), we treat this as an "uninstall-only" operation that should
+        // proceed to uninstall the deselected bundles.
+        if selected_bundles.is_empty() && discovered_count > 1 && deselected_bundle_names.is_empty()
+        {
             return Ok(());
         }
 
@@ -412,8 +420,27 @@ fn do_install_from_yaml(
 
         println!("Resolving workspace bundle and its dependencies...");
 
+        // Show progress while resolving dependencies
+        let pb = if !args.dry_run {
+            let pb = ProgressBar::new_spinner();
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner} Resolving dependencies...")
+                    .unwrap()
+                    .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+            );
+            pb.enable_steady_tick(std::time::Duration::from_millis(80));
+            Some(pb)
+        } else {
+            None
+        };
+
         // Resolve all bundles uniformly through the resolver
         let resolved = resolver.resolve_multiple(&bundle_sources)?;
+
+        if let Some(pb) = pb {
+            pb.finish_and_clear();
+        }
 
         if resolved.is_empty() {
             return Err(AugentError::BundleNotFound {
@@ -454,8 +481,27 @@ fn do_install_from_yaml(
 
             println!("Resolving workspace bundle and its dependencies...");
 
+            // Show progress while resolving dependencies
+            let pb = if !args.dry_run {
+                let pb = ProgressBar::new_spinner();
+                pb.set_style(
+                    ProgressStyle::default_spinner()
+                        .template("{spinner} Resolving dependencies...")
+                        .unwrap()
+                        .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+                );
+                pb.enable_steady_tick(std::time::Duration::from_millis(80));
+                Some(pb)
+            } else {
+                None
+            };
+
             // Resolve all bundles uniformly through the resolver
             let resolved = resolver.resolve_multiple(&bundle_sources)?;
+
+            if let Some(pb) = pb {
+                pb.finish_and_clear();
+            }
 
             if resolved.is_empty() {
                 return Err(AugentError::BundleNotFound {
@@ -597,16 +643,49 @@ fn do_install_from_yaml(
     // Install files
     if args.dry_run {
         println!("[DRY RUN] Would install files...");
-    } else {
-        println!("Installing files...");
     }
     let workspace_root = workspace.root.clone();
-    let mut installer =
-        Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run);
-    let workspace_bundles = installer.install_bundles(&resolved_bundles)?;
+
+    // Create progress display if not in dry-run mode
+    let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
+        Some(ProgressDisplay::new(resolved_bundles.len() as u64))
+    } else {
+        None
+    };
+
+    let (workspace_bundles_result, installed_files_map) = {
+        let mut installer = if let Some(ref mut progress) = progress_display {
+            Installer::new_with_progress(
+                &workspace_root,
+                platforms.clone(),
+                args.dry_run,
+                Some(progress),
+            )
+        } else {
+            Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run)
+        };
+
+        let result = installer.install_bundles(&resolved_bundles);
+        let installed_files = installer.installed_files().clone();
+        (result, installed_files)
+    };
+
+    // Handle progress display completion (after installer is dropped)
+    if let Some(ref mut progress) = progress_display {
+        match &workspace_bundles_result {
+            Ok(_) => {
+                progress.finish_files();
+            }
+            Err(_) => {
+                progress.abandon();
+            }
+        }
+    }
+
+    let workspace_bundles = workspace_bundles_result?;
 
     // Track created files in transaction
-    for installed in installer.installed_files().values() {
+    for installed in installed_files_map.values() {
         for target in &installed.target_paths {
             let full_path = workspace_root.join(target);
             transaction.track_file_created(full_path);
@@ -689,8 +768,7 @@ fn do_install_from_yaml(
     }
 
     // Print summary
-    let total_files: usize = installer
-        .installed_files()
+    let total_files: usize = installed_files_map
         .values()
         .map(|f| f.target_paths.len())
         .sum();
@@ -705,7 +783,7 @@ fn do_install_from_yaml(
         println!("  - {}", bundle.name);
 
         // Show files installed for this bundle
-        for (bundle_path, installed) in installer.installed_files() {
+        for (bundle_path, installed) in &installed_files_map {
             // Group by resource type for cleaner display
             if bundle_path.starts_with(&bundle.name)
                 || bundle_path.contains(&bundle.name.replace('@', ""))
@@ -744,52 +822,73 @@ fn do_install(
 
     let mut resolver = Resolver::new(&workspace.root);
 
-    let mut resolved_bundles = if selected_bundles.is_empty() {
-        // No bundles discovered - resolve source directly (might be a bundle itself)
-        let source_str = args.source.as_ref().unwrap().as_str();
-        resolver.resolve(source_str)?
-    } else if selected_bundles.len() == 1 {
-        // Single bundle found
-        // Check if discovered bundle has git source info
-        if let Some(ref git_source) = selected_bundles[0].git_source {
-            // Use GitSource directly (already has resolved_sha from discovery)
-            // This avoids re-cloning the repository
-            vec![resolver.resolve_git(git_source, None)?]
-        } else {
-            // Local directory, use discovered path
-            let bundle_path = selected_bundles[0].path.to_string_lossy().to_string();
-            resolver.resolve_multiple(&[bundle_path])?
-        }
+    // Show progress while resolving bundles and their dependencies
+    let pb = if !args.dry_run {
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner} Resolving bundles and dependencies...")
+                .unwrap()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+        Some(pb)
     } else {
-        // Multiple bundles selected - check if any have git source
-        let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
-
-        if has_git_source {
-            // For git sources, resolve each bundle with its specific subdirectory
-            let mut all_bundles = Vec::new();
-            for discovered in selected_bundles {
-                if let Some(ref git_source) = discovered.git_source {
-                    // Use GitSource directly (already has resolved_sha from discovery)
-                    // This avoids re-cloning the repository
-                    let bundle = resolver.resolve_git(git_source, None)?;
-                    all_bundles.push(bundle);
-                } else {
-                    // Local directory
-                    let bundle_path = discovered.path.to_string_lossy().to_string();
-                    let bundles = resolver.resolve_multiple(&[bundle_path])?;
-                    all_bundles.extend(bundles);
-                }
-            }
-            all_bundles
-        } else {
-            // All local directories
-            let selected_paths: Vec<String> = selected_bundles
-                .iter()
-                .map(|b| b.path.to_string_lossy().to_string())
-                .collect();
-            resolver.resolve_multiple(&selected_paths)?
-        }
+        None
     };
+
+    let mut resolved_bundles = (|| -> Result<Vec<crate::resolver::ResolvedBundle>> {
+        if selected_bundles.is_empty() {
+            // No bundles discovered - resolve source directly (might be a bundle itself)
+            let source_str = args.source.as_ref().unwrap().as_str();
+            resolver.resolve(source_str)
+        } else if selected_bundles.len() == 1 {
+            // Single bundle found
+            // Check if discovered bundle has git source info
+            if let Some(ref git_source) = selected_bundles[0].git_source {
+                // Use GitSource directly (already has resolved_sha from discovery)
+                // This avoids re-cloning the repository
+                Ok(vec![resolver.resolve_git(git_source, None)?])
+            } else {
+                // Local directory, use discovered path
+                let bundle_path = selected_bundles[0].path.to_string_lossy().to_string();
+                resolver.resolve_multiple(&[bundle_path])
+            }
+        } else {
+            // Multiple bundles selected - check if any have git source
+            let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
+
+            if has_git_source {
+                // For git sources, resolve each bundle with its specific subdirectory
+                let mut all_bundles = Vec::new();
+                for discovered in selected_bundles {
+                    if let Some(ref git_source) = discovered.git_source {
+                        // Use GitSource directly (already has resolved_sha from discovery)
+                        // This avoids re-cloning the repository
+                        let bundle = resolver.resolve_git(git_source, None)?;
+                        all_bundles.push(bundle);
+                    } else {
+                        // Local directory
+                        let bundle_path = discovered.path.to_string_lossy().to_string();
+                        let bundles = resolver.resolve_multiple(&[bundle_path])?;
+                        all_bundles.extend(bundles);
+                    }
+                }
+                Ok(all_bundles)
+            } else {
+                // All local directories
+                let selected_paths: Vec<String> = selected_bundles
+                    .iter()
+                    .map(|b| b.path.to_string_lossy().to_string())
+                    .collect();
+                resolver.resolve_multiple(&selected_paths)
+            }
+        }
+    })()?;
+
+    if let Some(pb) = pb {
+        pb.finish_and_clear();
+    }
 
     // If we detected modified files, ensure workspace bundle is in the resolved list
     let workspace_bundle_name = workspace.bundle_config.name.clone();
@@ -857,16 +956,49 @@ fn do_install(
     // Install files
     if args.dry_run {
         println!("[DRY RUN] Would install files...");
-    } else {
-        println!("Installing files...");
     }
     let workspace_root = workspace.root.clone();
-    let mut installer =
-        Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run);
-    let workspace_bundles = installer.install_bundles(&resolved_bundles)?;
+
+    // Create progress display if not in dry-run mode
+    let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
+        Some(ProgressDisplay::new(resolved_bundles.len() as u64))
+    } else {
+        None
+    };
+
+    let (workspace_bundles_result, installed_files_map) = {
+        let mut installer = if let Some(ref mut progress) = progress_display {
+            Installer::new_with_progress(
+                &workspace_root,
+                platforms.clone(),
+                args.dry_run,
+                Some(progress),
+            )
+        } else {
+            Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run)
+        };
+
+        let result = installer.install_bundles(&resolved_bundles);
+        let installed_files = installer.installed_files().clone();
+        (result, installed_files)
+    };
+
+    // Handle progress display completion (after installer is dropped)
+    if let Some(ref mut progress) = progress_display {
+        match &workspace_bundles_result {
+            Ok(_) => {
+                progress.finish_files();
+            }
+            Err(_) => {
+                progress.abandon();
+            }
+        }
+    }
+
+    let workspace_bundles = workspace_bundles_result?;
 
     // Track created files in transaction
-    for installed in installer.installed_files().values() {
+    for installed in installed_files_map.values() {
         for target in &installed.target_paths {
             let full_path = workspace_root.join(target);
             transaction.track_file_created(full_path);
@@ -892,8 +1024,7 @@ fn do_install(
     }
 
     // Print summary
-    let total_files: usize = installer
-        .installed_files()
+    let total_files: usize = installed_files_map
         .values()
         .map(|f| f.target_paths.len())
         .sum();
@@ -916,7 +1047,7 @@ fn do_install(
         println!("  - {}", bundle.name);
 
         // Show files installed for this bundle
-        for (bundle_path, installed) in installer.installed_files() {
+        for (bundle_path, installed) in &installed_files_map {
             // Group by resource type for cleaner display
             // Note: installed_files contains all bundles, so we check if this bundle_path
             // belongs to the current bundle's source_path

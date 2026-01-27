@@ -61,6 +61,7 @@ wax = "0.6"
 # Terminal UI
 console = "0.15"
 inquire = "0.9"
+indicatif = "0.17"
 
 [dev-dependencies]
 # Integration testing
