@@ -8,6 +8,7 @@ prek = "latest"
 
 [settings]
 lockfile = true
+task_output = "interleave"
 
 ### Tasks ######################################################################
 #
@@ -17,12 +18,12 @@ lockfile = true
 #
 #   mise augent [args]
 #
-# Run pre-commit, lint and test in parallel, and fail on first error:
+# Run pre-commit hooks, lint and test in parallel, and fail on first error:
 #
 #   mise all
 
 [tasks.augent]
-description = "Run augent in development mode"
+description = "Run augent in dev"
 alias = "a"
 env = { AUGENT_WORKSPACE = "{{ [config_root] | concat(with='tmp') | join_path }}" }
 run = "cargo run --"
