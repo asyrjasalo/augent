@@ -54,18 +54,45 @@ function getArchiveExtension() {
   return process.platform === "win32" ? "zip" : "tar.gz";
 }
 
-function downloadFile(url, dest) {
+function downloadFile(url, dest, redirectCount = 0) {
   return new Promise((resolve, reject) => {
+    // Prevent infinite redirect loops
+    if (redirectCount > 10) {
+      reject(new Error("Too many redirects"));
+      return;
+    }
+
+    // Handle relative redirect URLs
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+      method: "GET",
+      timeout: 30000, // 30 second timeout
+    };
+
     const file = fs.createWriteStream(dest);
-    https
-      .get(url, (response) => {
+    const request = https
+      .get(options, (response) => {
         if (response.statusCode === 302 || response.statusCode === 301) {
           // Follow redirect
-          return downloadFile(response.headers.location, dest)
+          request.destroy();
+          file.destroy();
+          fs.unlink(dest, () => {});
+          const redirectUrl = response.headers.location;
+          // Handle relative redirects
+          const absoluteUrl = redirectUrl.startsWith("http")
+            ? redirectUrl
+            : `${urlObj.protocol}//${urlObj.host}${redirectUrl}`;
+          return downloadFile(absoluteUrl, dest, redirectCount + 1)
             .then(resolve)
             .catch(reject);
         }
         if (response.statusCode !== 200) {
+          request.destroy();
+          file.destroy();
+          fs.unlink(dest, () => {});
           reject(
             new Error(
               `Failed to download: ${response.statusCode} ${response.statusMessage}`,
@@ -76,26 +103,59 @@ function downloadFile(url, dest) {
         response.pipe(file);
         file.on("finish", () => {
           file.close();
+          response.destroy();
+          request.destroy();
           resolve();
         });
       })
       .on("error", (err) => {
+        request.destroy();
+        file.destroy();
         fs.unlink(dest, () => {});
         reject(err);
+      })
+      .on("timeout", () => {
+        request.destroy();
+        file.destroy();
+        fs.unlink(dest, () => {});
+        reject(new Error("Request timeout"));
       });
   });
 }
 
-function downloadText(url) {
+function downloadText(url, redirectCount = 0) {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, (response) => {
+    // Prevent infinite redirect loops
+    if (redirectCount > 10) {
+      reject(new Error("Too many redirects"));
+      return;
+    }
+
+    // Handle relative redirect URLs
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+      method: "GET",
+      timeout: 30000, // 30 second timeout
+    };
+
+    const request = https
+      .get(options, (response) => {
         if (response.statusCode === 302 || response.statusCode === 301) {
-          return downloadText(response.headers.location)
+          request.destroy();
+          const redirectUrl = response.headers.location;
+          // Handle relative redirects
+          const absoluteUrl = redirectUrl.startsWith("http")
+            ? redirectUrl
+            : `${urlObj.protocol}//${urlObj.host}${redirectUrl}`;
+          return downloadText(absoluteUrl, redirectCount + 1)
             .then(resolve)
             .catch(reject);
         }
         if (response.statusCode !== 200) {
+          request.destroy();
           reject(
             new Error(
               `Failed to download: ${response.statusCode} ${response.statusMessage}`,
@@ -107,9 +167,20 @@ function downloadText(url) {
         response.on("data", (chunk) => {
           data += chunk;
         });
-        response.on("end", () => resolve(data));
+        response.on("end", () => {
+          response.destroy();
+          request.destroy();
+          resolve(data);
+        });
       })
-      .on("error", reject);
+      .on("error", (err) => {
+        request.destroy();
+        reject(err);
+      })
+      .on("timeout", () => {
+        request.destroy();
+        reject(new Error("Request timeout"));
+      });
   });
 }
 
@@ -145,23 +216,44 @@ function extractArchive(archivePath, target) {
       });
     } else {
       // Extract zip (Windows) using PowerShell
-      const archivePathEscaped = archivePath.replace(/'/g, "''"); // Escape single quotes for PowerShell
-      const binDirEscaped = BIN_DIR.replace(/'/g, "''");
+      // Use double quotes and escape them properly for PowerShell
+      const archivePathEscaped = archivePath.replace(/"/g, '""');
+      const binDirEscaped = BIN_DIR.replace(/"/g, '""');
       execSync(
-        `powershell -Command "Expand-Archive -Path '${archivePathEscaped}' -DestinationPath '${binDirEscaped}' -Force"`,
+        `powershell -Command "Expand-Archive -Path \"${archivePathEscaped}\" -DestinationPath \"${binDirEscaped}\" -Force"`,
         { stdio: "inherit" },
       );
     }
 
     // Move binary from extracted directory to bin directory
+    // Try the expected directory name first
     const extractedDir = path.join(BIN_DIR, `augent-v${VERSION}-${target}`);
-    const extractedBin = path.join(extractedDir, binName);
+    let extractedBin = path.join(extractedDir, binName);
+
+    // If not found, search for the binary in the bin directory
+    if (!fs.existsSync(extractedBin)) {
+      // Look for any directory that might contain the binary
+      const entries = fs.readdirSync(BIN_DIR, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && entry.name.startsWith("augent-")) {
+          const candidateBin = path.join(BIN_DIR, entry.name, binName);
+          if (fs.existsSync(candidateBin)) {
+            extractedBin = candidateBin;
+            break;
+          }
+        }
+      }
+    }
 
     if (fs.existsSync(extractedBin)) {
       fs.renameSync(extractedBin, BIN_PATH);
-      fs.rmSync(extractedDir, { recursive: true, force: true });
+      // Clean up the extracted directory
+      const extractedDirToRemove = path.dirname(extractedBin);
+      if (extractedDirToRemove !== BIN_DIR) {
+        fs.rmSync(extractedDirToRemove, { recursive: true, force: true });
+      }
     } else {
-      throw new Error(`Binary not found in extracted archive: ${extractedBin}`);
+      throw new Error(`Binary not found in extracted archive: ${binName}`);
     }
   } catch (error) {
     throw new Error(`Failed to extract archive: ${error.message}`);
@@ -222,7 +314,7 @@ async function main() {
     verifyChecksum(archivePath, expectedChecksum);
 
     // Extract archive
-    await extractArchive(archivePath, target);
+    extractArchive(archivePath, target);
 
     // Clean up archive and checksums
     fs.unlinkSync(archivePath);
@@ -233,7 +325,23 @@ async function main() {
       fs.chmodSync(BIN_PATH, 0o755);
     }
 
+    // Verify binary exists and is accessible
+    if (!fs.existsSync(BIN_PATH)) {
+      throw new Error("Binary was not created successfully");
+    }
+
+    // Try to execute the binary to verify it works (non-Windows)
+    if (process.platform !== "win32") {
+      try {
+        execSync(`"${BIN_PATH}" --version`, { stdio: "pipe", timeout: 5000 });
+      } catch (error) {
+        // If version check fails, log warning but don't fail installation
+        console.warn("Warning: Could not verify binary execution");
+      }
+    }
+
     console.log("augent installed successfully");
+    process.exit(0);
   } catch (error) {
     console.error(`Failed to install augent: ${error.message}`);
     console.error(`\nYou can manually download from: ${archiveUrl}`);
