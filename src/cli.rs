@@ -354,11 +354,16 @@ mod tests {
 
     #[test]
     fn test_cli_workspace_from_env() {
+        let env_path = if cfg!(windows) {
+            r"C:\temp\env-workspace"
+        } else {
+            "/tmp/env-workspace"
+        };
         unsafe {
-            std::env::set_var("AUGENT_WORKSPACE", "/tmp/env-workspace");
+            std::env::set_var("AUGENT_WORKSPACE", env_path);
         }
         let cli = Cli::try_parse_from(["augent", "list"]).unwrap();
-        assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/env-workspace")));
+        assert_eq!(cli.workspace, Some(PathBuf::from(env_path)));
         unsafe {
             std::env::remove_var("AUGENT_WORKSPACE");
         }
@@ -366,12 +371,22 @@ mod tests {
 
     #[test]
     fn test_cli_workspace_flag_overrides_env() {
+        let env_path = if cfg!(windows) {
+            r"C:\temp\env-workspace"
+        } else {
+            "/tmp/env-workspace"
+        };
+        let flag_path = if cfg!(windows) {
+            r"C:\temp\flag-workspace"
+        } else {
+            "/tmp/flag-workspace"
+        };
         unsafe {
-            std::env::set_var("AUGENT_WORKSPACE", "/tmp/env-workspace");
+            std::env::set_var("AUGENT_WORKSPACE", env_path);
         }
-        let cli = Cli::try_parse_from(["augent", "-w", "/tmp/flag-workspace", "list"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "-w", flag_path, "list"]).unwrap();
         // Flag should override environment variable
-        assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/flag-workspace")));
+        assert_eq!(cli.workspace, Some(PathBuf::from(flag_path)));
         unsafe {
             std::env::remove_var("AUGENT_WORKSPACE");
         }
