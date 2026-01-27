@@ -10,7 +10,7 @@ Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via bundles
 
 You can install it from [PyPI](https://pypi.org/project/augent/) (recommended):
 
-    pip install augent
+    pip install --user augent
 
 Or you can install it from [npm](https://www.npmjs.com/package/augent):
 
