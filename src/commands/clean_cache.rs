@@ -1,16 +1,25 @@
 use crate::cache;
-use crate::cli::CleanCacheArgs;
+use crate::cli::{CacheArgs, CacheSubcommand};
 use crate::error::Result;
 
-pub fn run(args: CleanCacheArgs) -> Result<()> {
+pub fn run(args: CacheArgs) -> Result<()> {
+    // Handle subcommand first
+    if let Some(command) = args.command {
+        match command {
+            CacheSubcommand::Clear(clear_args) => {
+                if let Some(slug) = clear_args.only {
+                    clean_specific_bundle(&slug)?;
+                } else {
+                    clean_all_cache()?;
+                }
+                return Ok(());
+            }
+        }
+    }
+
+    // Handle flags
     if args.show_size {
         show_cache_stats()?;
-    } else if args.list {
-        list_cached_bundles()?;
-    } else if args.all {
-        clean_all_cache()?;
-    } else if let Some(bundle) = args.bundle {
-        clean_specific_bundle(&bundle)?;
     } else {
         // Default: show stats and list bundles
         show_cache_stats()?;
@@ -32,8 +41,8 @@ fn show_cache_stats() -> Result<()> {
     if stats.repositories == 0 {
         println!("\nCache is empty.");
     } else {
-        println!("\nRun 'augent clean-cache --all' to remove everything from cache.");
-        println!("Run 'augent clean-cache <slug>' to remove a specific bundle.");
+        println!("\nRun 'augent cache clear' to remove everything from cache.");
+        println!("Run 'augent cache clear --only <slug>' to remove a specific bundle.");
     }
 
     Ok(())

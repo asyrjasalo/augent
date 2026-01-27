@@ -244,37 +244,51 @@ When no bundle name is provided, `augent show` displays an interactive menu show
 
 ---
 
-## clean-cache
+## cache
 
 Manage the bundle cache directory.
 
 ### Syntax
 
 ```bash
-augent clean-cache [OPTIONS]
+augent cache [OPTIONS] [SUBCOMMAND]
 ```
 
 ### Options
 
 | Option | Description |
 |--------|-------------|
-| `-s, --show-size` | Show cache size without cleaning |
-| `-a, --all` | Remove all cached bundles |
+| `-s, --show-size` | Show cache size without listing bundles |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
 | `-h, --help` | Print help |
 
+### Subcommands
+
+| Subcommand | Description |
+|------------|-------------|
+| `clear` | Clear cached bundles |
+
+### Clear Options
+
+| Option | Description |
+|--------|-------------|
+| `--only <SLUG>` | Remove only specific bundle slug (e.g., `github.com-author-repo`) |
+
 ### Examples
 
 ```bash
-# Show cache size
-augent clean-cache --show-size
+# Default: show stats and list bundles
+augent cache
 
-# Remove all cached bundles
-augent clean-cache --all
+# Show cache size only (without listing)
+augent cache --show-size
 
-# Show size and clean
-augent clean-cache -s -a
+# Clear all cached bundles
+augent cache clear
+
+# Remove specific bundle
+augent cache clear --only github.com-author-repo
 ```
 
 ### Cache Location

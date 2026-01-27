@@ -59,8 +59,9 @@ pub enum Commands {
     /// Show bundle information
     Show(ShowArgs),
 
-    /// Clean cache directory
-    CleanCache(CleanCacheArgs),
+    /// Manage cache directory
+    #[command(name = "cache")]
+    Cache(CacheArgs),
 
     /// Show version information
     #[command(hide = true)]
@@ -174,25 +175,34 @@ pub struct CompletionsArgs {
     pub shell: String,
 }
 
-/// Arguments for clean-cache command
+/// Arguments for cache command
 #[derive(Parser, Debug)]
 #[command(after_help = "EXAMPLES:\n  \
-                  Show cache size:\n    augent clean-cache --show-size\n\n\
-                  Remove all cached bundles:\n    augent clean-cache --all\n\n\
-                  Remove specific bundle:\n    augent clean-cache github.com-author-repo\n\n\
-                  List cached bundles:\n    augent clean-cache --list")]
-pub struct CleanCacheArgs {
-    /// Bundle slug to remove (e.g., github.com-author-repo)
-    pub bundle: Option<String>,
+                  Show cache size:\n    augent cache --show-size\n\n\
+                  List cached bundles (default):\n    augent cache\n\n\
+                  Clear all cached bundles:\n    augent cache clear\n\n\
+                  Remove specific bundle:\n    augent cache clear --only github.com-author-repo")]
+pub struct CacheArgs {
+    #[command(subcommand)]
+    pub command: Option<CacheSubcommand>,
 
-    #[arg(long, short = 's', help = "Show cache size without cleaning")]
+    #[arg(long, short = 's', help = "Show cache size without listing bundles")]
     pub show_size: bool,
+}
 
-    #[arg(long, short = 'a', help = "Remove all cached bundles")]
-    pub all: bool,
+/// Cache subcommands
+#[derive(Subcommand, Debug)]
+pub enum CacheSubcommand {
+    /// Clear cached bundles
+    Clear(ClearCacheArgs),
+}
 
-    #[arg(long, short = 'l', help = "List cached bundles")]
-    pub list: bool,
+/// Arguments for cache clear command
+#[derive(Parser, Debug)]
+pub struct ClearCacheArgs {
+    /// Remove only specific bundle slug (e.g., github.com-author-repo)
+    #[arg(long)]
+    pub only: Option<String>,
 }
 
 #[cfg(test)]

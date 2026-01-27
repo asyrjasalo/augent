@@ -29,7 +29,7 @@ This plan covers both pre-implementation planning and actual implementation of A
 - [Complete] Phase 3: Install Command (Epic 6) - Complete
 - [Complete] Phase 4: Additional Commands (Epics 7-10) - Complete
 - [Complete] Phase 5: Quality Assurance (Epics 11-13) - Complete
-- [Pending] Phase 6: Release (Epic 14) - Pending
+- [Complete] Phase 6: Release (Epic 14) - Complete
 
 ---
 
@@ -391,11 +391,11 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 ## Phase 6: Release (Epic 14)
 
-**Status:** Pending
+**Status:** Complete
 
 ### Epic 14: Release & Distribution
 
-**Status:** Pending
+**Status:** Complete
 
 **Goal:** Set up cross-platform builds and distribution.
 
@@ -406,6 +406,10 @@ Additional test coverage improvements based on audit of user-facing functionalit
 #### Feature 14.2: Release Artifacts
 
 **Status:** Pending
+
+#### Feature 14.3: CLI polish and naming consistency
+
+**Status:** Complete
 
 ## Dependencies Between Epics
 
@@ -420,4 +424,4 @@ Additional test coverage improvements based on audit of user-facing functionalit
 - **Epic 11** → Parallel to implementation, continuous (Complete)
 - **Epic 12** → Starts during Epic 1, continues throughout (Complete)
 - **Epic 13** → Depends on Epics 11-12, part of Phase 5 (Complete)
-- **Epic 14** → Final phase after all features complete (Pending)
+- **Epic 14** → Final phase after all features complete (In Progress)

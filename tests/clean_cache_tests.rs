@@ -71,7 +71,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--show-size"])
+        .args(["cache", "--show-size"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Size"));
@@ -99,7 +99,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--all"])
+        .args(["cache", "clear"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache cleared"));
@@ -127,9 +127,9 @@ bundles: []
 
     let output = augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--show-size", "--all"])
+        .args(["cache", "--show-size"])
         .output()
-        .expect("Failed to run clean-cache");
+        .expect("Failed to run cache");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -160,7 +160,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--all"])
+        .args(["cache", "clear"])
         .assert()
         .success();
 
@@ -192,8 +192,8 @@ bundles: []
     augent_cmd()
         .current_dir(&temp.path)
         .args([
-            "clean-cache",
-            "--all",
+            "cache",
+            "clear",
             "--workspace",
             workspace.path.to_str().unwrap(),
         ])
@@ -223,7 +223,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--all", "-v"])
+        .args(["cache", "clear", "-v"])
         .assert()
         .success();
 }
@@ -250,13 +250,13 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--all"])
+        .args(["cache", "clear"])
         .assert()
         .success();
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--show-size"])
+        .args(["cache", "--show-size"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
@@ -269,14 +269,14 @@ fn test_clean_cache_truly_non_existent_cache_dir() {
 
     augent_cmd()
         .env("AUGENT_CACHE_DIR", cache_base)
-        .args(["clean-cache", "--show-size"])
+        .args(["cache", "--show-size"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
 
     augent_cmd()
         .env("AUGENT_CACHE_DIR", cache_base)
-        .args(["clean-cache", "--all"])
+        .args(["cache", "clear"])
         .assert()
         .success();
 }
@@ -327,13 +327,13 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--all"])
+        .args(["cache", "clear"])
         .assert()
         .success();
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["clean-cache", "--show-size"])
+        .args(["cache", "--show-size"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
@@ -350,4 +350,47 @@ bundles: []
             "All bundles should be removed from cache directory"
         );
     }
+}
+
+#[test]
+fn test_cache_clear_with_only_option() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    workspace.create_bundle("test-bundle2");
+    workspace.write_file(
+        "bundles/test-bundle2/augent.yaml",
+        r#"name: "@test/test-bundle2"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle2/commands/test2.md", "# Test2\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle2", "--for", "claude"])
+        .assert()
+        .success();
+
+    // Test that clear --only requires a slug
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["cache", "clear", "--only"])
+        .assert()
+        .failure();
 }

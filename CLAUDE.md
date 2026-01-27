@@ -151,7 +151,7 @@ See PRD for complete command specifications:
 - `augent uninstall` - Remove bundles
 - `augent list` - List installed bundles
 - `augent show` - Show bundle information
-- `augent clean-cache` - Clean cached bundles
+- `augent cache` - Manage cached bundles
 - `augent completions` - Generate shell completions
 - `augent help` - Show brief help (fits on one screen)
 - `augent version` - Show version and build info

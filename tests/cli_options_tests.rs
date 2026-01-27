@@ -295,7 +295,7 @@ fn test_help_shows_all_commands() {
         .stdout(predicate::str::contains("uninstall"))
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("show"))
-        .stdout(predicate::str::contains("clean-cache"))
+        .stdout(predicate::str::contains("cache"))
         .stdout(predicate::str::contains("completions"))
         .stdout(predicate::str::contains("version"));
 }

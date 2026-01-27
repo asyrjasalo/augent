@@ -339,14 +339,20 @@ rm -rf .claude .cursor .opencode
 augent install github:author/bundle
 ```
 
-### Clean Cache
+### Cache Management
 
 ```bash
-# Show cache size
-augent clean-cache --show-size
+# Default: show stats and list bundles
+augent cache
 
-# Remove all cached bundles
-augent clean-cache --all
+# Show cache size only (without listing)
+augent cache --show-size
+
+# Clear all cached bundles
+augent cache clear
+
+# Remove specific bundle
+augent cache clear --only github.com-author-repo
 ```
 
 ---

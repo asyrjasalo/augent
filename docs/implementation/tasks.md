@@ -22,8 +22,8 @@ Update when you have started a feature and completed a feature (in **Status:** a
 ## Task Statistics
 
 - **Total Tasks:** 447
-- **Completed:** 441 (Phase 0-5 complete including Epic 13.16, Phase 6 Feature 14.1 complete - 441 tasks)
-- **Pending:** 6 (Phase 6 Feature 14.2 - 6 tasks)
+- **Completed:** 447 (All phases complete)
+- **Pending:** 0
 
 ---
 
@@ -860,11 +860,11 @@ Comprehensive test coverage for all user-facing functionality including integrat
 
 ## Phase 6: Release (Epic 14)
 
-**Status:** Pending
+**Status:** Complete
 
 ### Epic 14: Release & Distribution
 
-**Status:** Pending
+**Status:** Complete
 
 ### Goal
 
@@ -883,13 +883,22 @@ Set up cross-platform builds and distribution.
 
 #### Feature 14.2: Release Artifacts
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Set up GitHub Releases with release notes from CHANGELOG
-- [ ] Make release pipeline publish to crates.io
-- [ ] Make release pipeline publish binaries as release artifacts
-- [ ] Make release pipeline publish Python packages to PyPI
-- [ ] Prepare release 0.5.0
-- [ ] Document release process in @CLAUDE.md
+- [x] Set up GitHub Releases with release notes from CHANGELOG
+- [x] Make release pipeline publish to crates.io
+- [x] Make release pipeline publish binaries as release artifacts
+- [x] Make release pipeline publish Python packages to PyPI
+- [x] Prepare release 0.5.0
+- [x] Document release process in @CLAUDE.md
+
+#### Feature 14.3: CLI polish and naming consistency
+
+**Status:** Complete
+
+- [x] Align cache management command name with `augent cache` across CLI, tests, and documentation
+- [x] Add `augent cache clear` subcommand to replace `--all` flag
+- [x] Add `augent cache clear --only <slug>` option for removing specific bundles
+- [x] Remove `--list` flag and make listing bundles the default behavior for `augent cache`
 
 ---
