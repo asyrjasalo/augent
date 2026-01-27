@@ -14,13 +14,10 @@ task_output = "interleave"
 #
 # Usage: mise <task-name> [task-args]
 #
-# Run development binary with ./tmp as workspace:
+# E.g. run development binary with ./tmp as workspace:
 #
 #   mise augent [args]
 #
-# Run pre-commit hooks, lint and test in parallel, and fail on first error:
-#
-#   mise all
 
 [tasks.augent]
 description = "Run augent in dev"
@@ -30,7 +27,7 @@ run = "cargo run --"
 
 [tasks.hooks]
 description = "Run pre-commit hooks"
-run = "prek run --all-files --verbose"
+run = "prek run --all-files"
 
 [tasks.lint]
 description = "Run clippy"
@@ -40,6 +37,7 @@ run = "cargo clippy --all-targets --all-features -- -D warnings"
 description = "Run tests"
 run = "cargo test"
 
-[tasks.all]
-description = "Run all checks in parallel (fail on first error)"
-depends = ["hooks", "lint", "test"]
+[tasks.check]
+description = "Run all checks"
+alias = "c"
+run = [{ task = "hooks" }, { task = "lint" }, { task = "test" }]
