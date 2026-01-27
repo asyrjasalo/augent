@@ -64,13 +64,12 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         })
         .collect();
 
-    // Sort bundles alphabetically by name
-    let mut sorted_bundles: Vec<_> = workspace.lockfile.bundles.iter().collect();
-    sorted_bundles.sort_by(|a, b| a.name.cmp(&b.name));
-
+    // Use bundles in lockfile order (as they appear in .augent files)
     // Single-line items: "name" or "name (cursor, opencode)". Multi-line content
     // breaks inquire's list layout and causes the filter to match descriptions.
-    let items: Vec<String> = sorted_bundles
+    let items: Vec<String> = workspace
+        .lockfile
+        .bundles
         .iter()
         .map(|b| {
             if let Some(platforms) = workspace_bundle_map.get(&b.name) {
@@ -111,7 +110,7 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
 /// Select bundles from a predefined list
 fn select_bundles_from_list(
     workspace: &Workspace,
-    mut bundle_names: Vec<String>,
+    bundle_names: Vec<String>,
 ) -> Result<Vec<String>> {
     if bundle_names.is_empty() {
         println!("No bundles to select from.");
@@ -145,8 +144,7 @@ fn select_bundles_from_list(
         })
         .collect();
 
-    // Sort bundles alphabetically by name
-    bundle_names.sort();
+    // Preserve order from lockfile (don't sort alphabetically)
 
     // Single-line items: "name" or "name (cursor, opencode)".
     let items: Vec<String> = bundle_names
@@ -401,13 +399,19 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         let max_uninstall_idx = uninstall_indices.iter().max().copied().unwrap();
 
         // Check each bundle that comes before any uninstalled bundle
-        for (idx, bundle) in workspace.lockfile.bundles.iter().enumerate() {
+        // Process in reverse order (from highest to lowest index) so that when we check
+        // a dependency, any bundles that depend on it have already been processed
+        let bundles_with_indices: Vec<(usize, &crate::config::LockedBundle)> =
+            workspace.lockfile.bundles.iter().enumerate().collect();
+
+        for (idx, bundle) in bundles_with_indices.iter().rev() {
+            let idx = *idx;
             if bundles_to_uninstall.contains(&bundle.name) {
                 continue; // Already marked for uninstall
             }
 
-            // Skip if this bundle was explicitly installed
-            if explicitly_installed.contains(&bundle.name) {
+            // Skip the workspace bundle - it never depends on other bundles
+            if bundle.name == workspace.bundle_config.name {
                 continue;
             }
 
@@ -415,21 +419,54 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
             if idx < max_uninstall_idx {
                 // This might be a transitive dependency
                 // Check if any non-uninstalled bundle needs it
+                // We check bundles that come AFTER this one (since dependencies come first)
+                let workspace_bundle_name = &workspace.bundle_config.name;
                 let is_needed_by_remaining = workspace.lockfile.bundles.iter().enumerate().any(
                     |(other_idx, other_bundle)| {
-                        if bundles_to_uninstall.contains(&other_bundle.name)
-                            || other_bundle.name == bundle.name
+                        // Skip if this bundle is being uninstalled
+                        if bundles_to_uninstall.contains(&other_bundle.name) {
+                            return false;
+                        }
+
+                        // Skip if it's the same bundle or workspace bundle
+                        if other_bundle.name == bundle.name
+                            || other_bundle.name == *workspace_bundle_name
                         {
                             return false;
                         }
 
-                        // Very conservative: if the other bundle comes AFTER this one in the lockfile,
-                        // assume it might depend on it (since dependencies come first)
+                        // If the other bundle comes AFTER this one in the lockfile,
+                        // assume it might depend on it (since dependencies come first in lockfile order)
                         other_idx > idx
                     },
                 );
 
-                if !is_needed_by_remaining {
+                // Remove if not needed by remaining bundles
+                // For explicitly installed bundles, we're more conservative: only remove if
+                // ALL bundles that come after it (and might depend on it) are being uninstalled
+                let should_remove = if explicitly_installed.contains(&bundle.name) {
+                    // Check if ALL bundles after this one (excluding workspace) are being uninstalled
+                    let all_after_are_uninstalled =
+                        workspace.lockfile.bundles.iter().enumerate().all(
+                            |(other_idx, other_bundle)| {
+                                if other_idx <= idx {
+                                    return true; // Before or same - doesn't matter
+                                }
+                                if other_bundle.name == *workspace_bundle_name {
+                                    return true; // Workspace bundle doesn't depend on others
+                                }
+                                // This bundle comes after - check if it's being uninstalled
+                                bundles_to_uninstall.contains(&other_bundle.name)
+                            },
+                        );
+                    // Only remove if nothing needs it AND all bundles after it are being uninstalled
+                    !is_needed_by_remaining && all_after_are_uninstalled
+                } else {
+                    // For non-explicitly installed bundles, remove if not needed
+                    !is_needed_by_remaining
+                };
+
+                if should_remove {
                     bundles_to_uninstall.insert(bundle.name.clone());
                     changed = true;
                 }
