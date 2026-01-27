@@ -8,13 +8,17 @@ Augments AI coding platforms (such as Claude Code, OpenCode, Cursor) via bundles
 
 ## Setup
 
-You can install it from [PyPI](https://pypi.org/project/augent/):
+You can install it from [PyPI](https://pypi.org/project/augent/) (recommended):
 
     pip install augent
 
-Or use it directly via `uvx augent`, if you have [uv](https://docs.astral.sh/uv/) installed.
+Or you can install it from [npm](https://www.npmjs.com/package/augent):
 
-Alternatively, you can download a [GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system and put the binary in your PATH.
+    npm install -g augent
+
+If you have neither Python nor Node.js available, you can download a
+[GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system
+and put the binary in your PATH.
 
 ## Quick Start
 

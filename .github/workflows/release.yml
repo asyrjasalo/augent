@@ -38,7 +38,7 @@ jobs:
 
           echo "✓ Tag is on main branch"
 
-      - name: Verify version matches Cargo.toml, Cargo.lock, and pyproject.toml
+      - name: Verify version matches package files
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
           CARGO_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml)
@@ -80,9 +80,19 @@ jobs:
             exit 1
           fi
 
-          echo "✓ Version $TAG_VERSION matches Cargo.toml, Cargo.lock, and pyproject.toml"
+          PACKAGE_JSON_VERSION=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json)
+          if [ -z "$PACKAGE_JSON_VERSION" ]; then
+            echo "Error: Could not read version from package.json"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PACKAGE_JSON_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_JSON_VERSION)"
+            exit 1
+          fi
 
-      - name: Verify changelog has version
+          echo "✓ Version $TAG_VERSION matches Cargo.toml, Cargo.lock, pyproject.toml, and package.json"
+
+      - name: Verify version matches changelog
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
 
@@ -365,3 +375,28 @@ jobs:
         with:
           skip-existing: true
           print-hash: true
+
+  # Publish to npm
+  publish-npm:
+    name: Publish to npm
+    needs: [publish-github]
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/augent
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Publish to npm
+        run: npm publish
