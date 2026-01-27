@@ -208,6 +208,7 @@ pub struct ClearCacheArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{CommandFactory, FromArgMatches};
 
     #[test]
     fn test_cli_parsing_install() {
@@ -362,7 +363,11 @@ mod tests {
         unsafe {
             std::env::set_var("AUGENT_WORKSPACE", env_path);
         }
-        let cli = Cli::try_parse_from(["augent", "list"]).unwrap();
+        // Use CommandFactory to build command and parse with environment variables
+        // This ensures environment variables are read correctly on all platforms
+        let mut cmd = Cli::command();
+        let matches = cmd.try_get_matches_from_mut(["augent", "list"]).unwrap();
+        let cli = Cli::from_arg_matches(&matches).unwrap();
         assert_eq!(cli.workspace, Some(PathBuf::from(env_path)));
         unsafe {
             std::env::remove_var("AUGENT_WORKSPACE");
