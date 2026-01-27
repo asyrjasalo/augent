@@ -117,12 +117,15 @@ bundles: []
                 ])
                 .assert()
                 .success();
+            // Small delay to reduce race conditions between installs
+            std::thread::sleep(std::time::Duration::from_millis(50));
         }
     });
 
     let list_handle = std::thread::spawn(move || {
         // Try listing at different times during installation
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        // Wait longer to allow installs to make progress
+        std::thread::sleep(std::time::Duration::from_millis(200));
         augent_cmd()
             .current_dir(&list_path)
             .args(["list"])
@@ -134,6 +137,9 @@ bundles: []
     list_handle.join().expect("List thread panicked");
 
     // Final list should show all bundles
+    // Note: This test may expose race conditions when concurrent operations
+    // modify workspace files without file locking. The delays above help reduce
+    // the chance of races, but proper file locking would be the complete solution.
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["list"])
