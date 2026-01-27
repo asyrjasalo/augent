@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -82,7 +82,7 @@ jobs:
             use_cross: false
             artifact_name: augent.exe
             archive_name: augent-aarch64-windows.zip
-            build_only: true  # No ARM64 Windows runner available to run tests
+            build_only: true # No ARM64 Windows runner available to run tests
 
     steps:
       - name: Checkout code
