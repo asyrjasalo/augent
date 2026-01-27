@@ -5,6 +5,8 @@
 
 #![allow(dead_code)]
 
+use std::collections::HashMap;
+
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
@@ -223,6 +225,39 @@ impl Lockfile {
                 self.bundles.push(bundle);
             }
         }
+    }
+
+    /// Reorder bundles to match the order in augent.yaml dependencies
+    /// This ensures lockfile order matches the user's intended order in augent.yaml
+    pub fn reorder_from_bundle_config(
+        &mut self,
+        bundle_config_deps: &[crate::config::BundleDependency],
+        workspace_bundle_name: Option<&str>,
+    ) {
+        // Create a map of name to bundle for quick lookup
+        let mut bundle_map: HashMap<String, LockedBundle> = self
+            .bundles
+            .drain(..)
+            .map(|b| (b.name.clone(), b))
+            .collect();
+
+        // Extract workspace bundle if it exists
+        let workspace_bundle = workspace_bundle_name.and_then(|name| bundle_map.remove(name));
+
+        // Rebuild bundles vector in augent.yaml order
+        let mut reordered = Vec::new();
+        for dep in bundle_config_deps {
+            if let Some(bundle) = bundle_map.remove(&dep.name) {
+                reordered.push(bundle);
+            }
+        }
+        // Add any remaining bundles that weren't in augent.yaml (shouldn't happen, but be safe)
+        reordered.extend(bundle_map.into_values());
+        // Add workspace bundle at the end if it exists
+        if let Some(ws_bundle) = workspace_bundle {
+            reordered.push(ws_bundle);
+        }
+        self.bundles = reordered;
     }
 
     /// Find a bundle by name

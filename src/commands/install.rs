@@ -141,13 +141,97 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                 (vec![], vec![]) // No bundles discovered - will be handled in do_install
             };
 
+        // NOW initialize or open workspace (after user has selected bundles)
+        let mut workspace = Workspace::init_or_open(&current_dir)?;
+
+        // Handle case where user deselected all bundles - uninstall them all
+        if selected_bundles.is_empty()
+            && discovered_count > 1
+            && !deselected_bundle_names.is_empty()
+        {
+            use crate::commands::uninstall;
+
+            // Find installed bundle names for deselected bundles
+            let mut bundles_to_uninstall: Vec<String> = Vec::new();
+            for bundle_name in &deselected_bundle_names {
+                // Find the installed bundle name (might be full path like @author/repo/bundle-name)
+                if let Some(installed_name) = workspace
+                    .lockfile
+                    .bundles
+                    .iter()
+                    .find(|b| {
+                        b.name == *bundle_name || b.name.ends_with(&format!("/{}", bundle_name))
+                    })
+                    .map(|b| b.name.clone())
+                {
+                    bundles_to_uninstall.push(installed_name);
+                }
+            }
+
+            if !bundles_to_uninstall.is_empty() {
+                // Show confirmation prompt unless --dry-run or -y/--yes is given
+                if !args.dry_run
+                    && !args.yes
+                    && !uninstall::confirm_uninstall(&workspace, &bundles_to_uninstall)?
+                {
+                    println!("Uninstall cancelled.");
+                    return Ok(());
+                }
+
+                // Create a transaction for uninstall operations
+                let mut uninstall_transaction = Transaction::new(&workspace);
+                uninstall_transaction.backup_configs()?;
+
+                // Perform uninstallation
+                let mut failed = false;
+                for name in &bundles_to_uninstall {
+                    if let Some(locked_bundle) = workspace.lockfile.find_bundle(name) {
+                        // Clone the locked bundle to avoid borrow checker issues
+                        let locked_bundle_clone = locked_bundle.clone();
+                        if let Err(e) = uninstall::do_uninstall(
+                            name,
+                            &mut workspace,
+                            &mut uninstall_transaction,
+                            &locked_bundle_clone,
+                            args.dry_run,
+                        ) {
+                            eprintln!("Failed to uninstall {}: {}", name, e);
+                            failed = true;
+                        }
+                    }
+                }
+
+                if failed {
+                    let _ = uninstall_transaction.rollback();
+                    eprintln!("Some bundles failed to uninstall. Changes rolled back.");
+                    return Ok(()); // Don't fail the entire operation, just report the issue
+                }
+
+                // Save workspace after uninstall
+                if !args.dry_run {
+                    workspace.save()?;
+                }
+
+                // Commit uninstall transaction
+                uninstall_transaction.commit();
+
+                if args.dry_run {
+                    println!(
+                        "[DRY RUN] Would uninstall {} bundle(s)",
+                        bundles_to_uninstall.len()
+                    );
+                } else {
+                    println!("Uninstalled {} bundle(s)", bundles_to_uninstall.len());
+                }
+
+                return Ok(());
+            }
+        }
+
         // If user selected nothing from menu (and there were multiple), exit without creating workspace
         if selected_bundles.is_empty() && discovered_count > 1 {
             return Ok(());
         }
-
-        // NOW initialize or open workspace (after user has selected bundles)
-        let mut workspace = Workspace::init_or_open(&current_dir)?;
 
         // Create transaction for atomic operations
         let mut transaction = Transaction::new(&workspace);
@@ -1056,15 +1140,35 @@ fn update_configs(
         }
     }
 
-    // Process already-installed bundles first (remove and re-add to move to end)
-    for locked_bundle in already_installed {
-        workspace.lockfile.remove_bundle(&locked_bundle.name);
-        workspace.lockfile.add_bundle(locked_bundle);
-    }
+    if !new_bundles.is_empty() {
+        // There are new bundles - process already-installed bundles first (remove and re-add to move to end)
+        for locked_bundle in already_installed {
+            workspace.lockfile.remove_bundle(&locked_bundle.name);
+            workspace.lockfile.add_bundle(locked_bundle);
+        }
 
-    // Then process new bundles (add at end)
-    for locked_bundle in new_bundles {
-        workspace.lockfile.add_bundle(locked_bundle);
+        // Then process new bundles (add at end)
+        for locked_bundle in new_bundles {
+            workspace.lockfile.add_bundle(locked_bundle);
+        }
+    } else {
+        // No new bundles - update existing ones in place to preserve order
+        for locked_bundle in already_installed {
+            // Find the position of the existing bundle
+            if let Some(pos) = workspace
+                .lockfile
+                .bundles
+                .iter()
+                .position(|b| b.name == locked_bundle.name)
+            {
+                // Remove and re-insert at the same position to update without changing order
+                workspace.lockfile.bundles.remove(pos);
+                workspace.lockfile.bundles.insert(pos, locked_bundle);
+            } else {
+                // Bundle not found (shouldn't happen), add it normally
+                workspace.lockfile.add_bundle(locked_bundle);
+            }
+        }
     }
 
     // Reorganize lockfile to ensure correct ordering
@@ -1075,6 +1179,18 @@ fn update_configs(
 
     // Ensure lockfile name matches workspace bundle config
     workspace.lockfile.name = workspace.bundle_config.name.clone();
+
+    // Reorder augent.yaml dependencies to match lockfile order (excluding workspace bundle)
+    let lockfile_bundle_names: Vec<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .filter(|b| b.name != workspace.bundle_config.name)
+        .map(|b| b.name.clone())
+        .collect();
+    workspace
+        .bundle_config
+        .reorder_dependencies(&lockfile_bundle_names);
 
     // Update workspace config
     for bundle in workspace_bundles {

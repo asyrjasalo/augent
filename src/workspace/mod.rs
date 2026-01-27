@@ -114,7 +114,7 @@ impl Workspace {
 
         // Load configuration files from the config directory
         let mut bundle_config = Self::load_bundle_config(&config_dir)?;
-        let lockfile = Self::load_lockfile(&config_dir)?;
+        let mut lockfile = Self::load_lockfile(&config_dir)?;
         let mut workspace_config = Self::load_workspace_config(&config_dir)?;
 
         // If bundle config name is empty, infer it
@@ -122,6 +122,15 @@ impl Workspace {
             let name = Self::infer_workspace_name(root);
             bundle_config.name = name.clone();
             workspace_config.name = name;
+        }
+
+        // Reorder lockfile to match augent.yaml order (if augent.yaml has dependencies)
+        if !bundle_config.bundles.is_empty() {
+            lockfile.reorder_from_bundle_config(&bundle_config.bundles, Some(&bundle_config.name));
+            // Reorganize to ensure correct type ordering (git -> dir -> workspace)
+            lockfile.reorganize(Some(&bundle_config.name));
+            // Save the reordered lockfile to disk to keep it in sync
+            Self::save_lockfile(&config_dir, &lockfile)?;
         }
 
         Ok(Self {

@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};
@@ -207,6 +209,28 @@ impl BundleConfig {
     /// Get dependency by name
     pub fn get_dependency(&self, name: &str) -> Option<&BundleDependency> {
         self.bundles.iter().find(|dep| dep.name == name)
+    }
+
+    /// Reorder dependencies to match the order in the lockfile
+    /// This ensures augent.yaml dependencies are in the same order as augent.lock bundles
+    pub fn reorder_dependencies(&mut self, lockfile_bundle_names: &[String]) {
+        // Create a map of name to dependency for quick lookup
+        let mut dep_map: HashMap<String, BundleDependency> = self
+            .bundles
+            .drain(..)
+            .map(|dep| (dep.name.clone(), dep))
+            .collect();
+
+        // Rebuild bundles vector in lockfile order
+        let mut reordered = Vec::new();
+        for name in lockfile_bundle_names {
+            if let Some(dep) = dep_map.remove(name) {
+                reordered.push(dep);
+            }
+        }
+        // Add any remaining dependencies that weren't in lockfile (shouldn't happen, but be safe)
+        reordered.extend(dep_map.into_values());
+        self.bundles = reordered;
     }
 
     /// Remove dependency by name
