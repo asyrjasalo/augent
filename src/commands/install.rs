@@ -144,11 +144,14 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // NOW initialize or open workspace (after user has selected bundles)
         let mut workspace = Workspace::init_or_open(&current_dir)?;
 
-        // Handle case where user deselected all bundles - uninstall them all
-        if selected_bundles.is_empty()
-            && discovered_count > 1
-            && !deselected_bundle_names.is_empty()
-        {
+        // If user selected nothing from menu (and there were multiple), exit without creating workspace
+        if selected_bundles.is_empty() && discovered_count > 1 {
+            return Ok(());
+        }
+
+        // If some bundles were deselected that are already installed, handle uninstall FIRST.
+        // Only if the uninstall succeeds (or is confirmed) do we proceed to install.
+        if !deselected_bundle_names.is_empty() {
             use crate::commands::uninstall;
 
             // Find installed bundle names for deselected bundles
@@ -169,68 +172,114 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             }
 
             if !bundles_to_uninstall.is_empty() {
-                // Show confirmation prompt unless --dry-run or -y/--yes is given
+                // Show confirmation prompt unless --dry-run or -y/--yes is given.
+                // If the user cancels, abort the entire operation before making ANY changes.
                 if !args.dry_run
                     && !args.yes
                     && !uninstall::confirm_uninstall(&workspace, &bundles_to_uninstall)?
                 {
-                    println!("Uninstall cancelled.");
+                    println!("Uninstall cancelled. No changes were made.");
                     return Ok(());
                 }
 
-                // Create a transaction for uninstall operations
-                let mut uninstall_transaction = Transaction::new(&workspace);
-                uninstall_transaction.backup_configs()?;
+                // If there are no bundles selected to install and we're only uninstalling,
+                // it's clearer to perform uninstall and return without running install logic.
+                if selected_bundles.is_empty() {
+                    // Create a transaction for uninstall operations
+                    let mut uninstall_transaction = Transaction::new(&workspace);
+                    uninstall_transaction.backup_configs()?;
 
-                // Perform uninstallation
-                let mut failed = false;
-                for name in &bundles_to_uninstall {
-                    if let Some(locked_bundle) = workspace.lockfile.find_bundle(name) {
-                        // Clone the locked bundle to avoid borrow checker issues
-                        let locked_bundle_clone = locked_bundle.clone();
-                        if let Err(e) = uninstall::do_uninstall(
-                            name,
-                            &mut workspace,
-                            &mut uninstall_transaction,
-                            &locked_bundle_clone,
-                            args.dry_run,
-                        ) {
-                            eprintln!("Failed to uninstall {}: {}", name, e);
-                            failed = true;
+                    // Perform uninstallation
+                    let mut failed = false;
+                    for name in &bundles_to_uninstall {
+                        if let Some(locked_bundle) = workspace.lockfile.find_bundle(name) {
+                            // Clone the locked bundle to avoid borrow checker issues
+                            let locked_bundle_clone = locked_bundle.clone();
+                            if let Err(e) = uninstall::do_uninstall(
+                                name,
+                                &mut workspace,
+                                &mut uninstall_transaction,
+                                &locked_bundle_clone,
+                                args.dry_run,
+                            ) {
+                                eprintln!("Failed to uninstall {}: {}", name, e);
+                                failed = true;
+                            }
                         }
                     }
-                }
 
-                if failed {
-                    let _ = uninstall_transaction.rollback();
-                    eprintln!("Some bundles failed to uninstall. Changes rolled back.");
-                    return Ok(()); // Don't fail the entire operation, just report the issue
-                }
+                    if failed {
+                        let _ = uninstall_transaction.rollback();
+                        eprintln!("Some bundles failed to uninstall. Changes rolled back.");
+                        return Ok(()); // Don't fail the entire operation, just report the issue
+                    }
 
-                // Save workspace after uninstall
-                if !args.dry_run {
-                    workspace.save()?;
-                }
+                    // Save workspace after uninstall
+                    if !args.dry_run {
+                        workspace.save()?;
+                    }
 
-                // Commit uninstall transaction
-                uninstall_transaction.commit();
+                    // Commit uninstall transaction
+                    uninstall_transaction.commit();
 
-                if args.dry_run {
-                    println!(
-                        "[DRY RUN] Would uninstall {} bundle(s)",
-                        bundles_to_uninstall.len()
-                    );
+                    if args.dry_run {
+                        println!(
+                            "[DRY RUN] Would uninstall {} bundle(s)",
+                            bundles_to_uninstall.len()
+                        );
+                    } else {
+                        println!("Uninstalled {} bundle(s)", bundles_to_uninstall.len());
+                    }
+
+                    return Ok(());
                 } else {
-                    println!("Uninstalled {} bundle(s)", bundles_to_uninstall.len());
+                    // We have both deselected (to uninstall) and selected (to install) bundles.
+                    // Perform uninstall first, then continue to installation.
+                    let mut uninstall_transaction = Transaction::new(&workspace);
+                    uninstall_transaction.backup_configs()?;
+
+                    let mut failed = false;
+                    for name in &bundles_to_uninstall {
+                        if let Some(locked_bundle) = workspace.lockfile.find_bundle(name) {
+                            let locked_bundle_clone = locked_bundle.clone();
+                            if let Err(e) = uninstall::do_uninstall(
+                                name,
+                                &mut workspace,
+                                &mut uninstall_transaction,
+                                &locked_bundle_clone,
+                                args.dry_run,
+                            ) {
+                                eprintln!("Failed to uninstall {}: {}", name, e);
+                                failed = true;
+                            }
+                        }
+                    }
+
+                    if failed {
+                        let _ = uninstall_transaction.rollback();
+                        eprintln!("Some bundles failed to uninstall. Changes rolled back.");
+                        return Ok(()); // Don't proceed to install if uninstall failed
+                    }
+
+                    if !args.dry_run {
+                        workspace.save()?;
+                    }
+
+                    uninstall_transaction.commit();
+
+                    if args.dry_run {
+                        println!(
+                            "[DRY RUN] Would uninstall {} bundle(s) before installing new selection",
+                            bundles_to_uninstall.len()
+                        );
+                    } else {
+                        println!(
+                            "Uninstalled {} bundle(s) before installing new selection",
+                            bundles_to_uninstall.len()
+                        );
+                    }
                 }
-
-                return Ok(());
             }
-        }
-
-        // If user selected nothing from menu (and there were multiple), exit without creating workspace
-        if selected_bundles.is_empty() && discovered_count > 1 {
-            return Ok(());
         }
 
         // Create transaction for atomic operations
@@ -240,70 +289,8 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // Perform installation
         match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
             Ok(()) => {
-                // Commit installation first
+                // Commit installation
                 transaction.commit();
-
-                // Uninstall bundles that were deselected (in a separate transaction)
-                if !deselected_bundle_names.is_empty() {
-                    use crate::commands::uninstall;
-
-                    // Find installed bundle names for deselected bundles
-                    let mut bundles_to_uninstall: Vec<String> = Vec::new();
-                    for bundle_name in &deselected_bundle_names {
-                        // Find the installed bundle name (might be full path like @author/repo/bundle-name)
-                        if let Some(installed_name) = workspace
-                            .lockfile
-                            .bundles
-                            .iter()
-                            .find(|b| {
-                                b.name == *bundle_name
-                                    || b.name.ends_with(&format!("/{}", bundle_name))
-                            })
-                            .map(|b| b.name.clone())
-                        {
-                            bundles_to_uninstall.push(installed_name);
-                        }
-                    }
-
-                    if !bundles_to_uninstall.is_empty() {
-                        // Show confirmation prompt unless --dry-run or -y/--yes is given
-                        if !args.dry_run
-                            && !args.yes
-                            && !uninstall::confirm_uninstall(&workspace, &bundles_to_uninstall)?
-                        {
-                            println!("Uninstall cancelled. Installation completed successfully.");
-                            return Ok(());
-                        }
-
-                        // Create a new transaction for uninstall operations
-                        let mut uninstall_transaction = Transaction::new(&workspace);
-                        uninstall_transaction.backup_configs()?;
-
-                        // Perform uninstallation
-                        let mut failed = false;
-                        for name in &bundles_to_uninstall {
-                            if let Some(locked_bundle) = workspace.lockfile.find_bundle(name) {
-                                // Clone the locked bundle to avoid borrow checker issues
-                                let locked_bundle_clone = locked_bundle.clone();
-                                if let Err(e) = uninstall::do_uninstall(
-                                    name,
-                                    &mut workspace,
-                                    &mut uninstall_transaction,
-                                    &locked_bundle_clone,
-                                    args.dry_run,
-                                ) {
-                                    eprintln!("Warning: Failed to uninstall '{}': {}", name, e);
-                                    failed = true;
-                                    // Continue with other uninstalls even if one fails
-                                }
-                            }
-                        }
-
-                        if !failed && !args.dry_run {
-                            uninstall_transaction.commit();
-                        }
-                    }
-                }
                 Ok(())
             }
             Err(e) => Err(e),

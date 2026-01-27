@@ -14,7 +14,7 @@ You can install it from [PyPI](https://pypi.org/project/augent/):
 
 Or use it directly via `uvx augent`, if you have [uv](https://docs.astral.sh/uv/) installed.
 
-Alternatively, you can download a [GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system and put the binary in your PATH
+Alternatively, you can download a [GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system and put the binary in your PATH.
 
 ## Quick Start
 
