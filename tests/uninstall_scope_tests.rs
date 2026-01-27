@@ -1,7 +1,7 @@
 //! Tests for scope-based uninstall command
 //!
 //! Tests the ability to uninstall bundles by scope prefix (e.g., @wshobson/agents)
-//! with interactive prompts or --select-all flag.
+//! with interactive prompts or --all-bundles flag.
 
 mod common;
 
@@ -78,7 +78,7 @@ bundles: []
 }
 
 #[test]
-fn test_uninstall_scope_with_select_all_flag() {
+fn test_uninstall_scope_with_all_bundles_flag() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -115,10 +115,10 @@ bundles: []
         .assert()
         .success();
 
-    // Uninstall with --select-all flag (no prompt)
+    // Uninstall with --all-bundles flag (no prompt)
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/tools", "--select-all", "-y"])
+        .args(["uninstall", "@test/tools", "--all-bundles", "-y"])
         .assert()
         .success();
 

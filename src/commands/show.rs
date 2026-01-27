@@ -121,7 +121,7 @@ fn filter_bundles_by_scope(workspace: &workspace::Workspace, scope: &str) -> Vec
 }
 
 /// Select a single bundle from a list of bundle names
-fn select_bundles_from_list(bundle_names: Vec<String>) -> Result<String> {
+fn select_bundles_from_list(mut bundle_names: Vec<String>) -> Result<String> {
     if bundle_names.is_empty() {
         println!("No bundles to select from.");
         return Ok(String::new());
@@ -130,6 +130,9 @@ fn select_bundles_from_list(bundle_names: Vec<String>) -> Result<String> {
     if bundle_names.len() == 1 {
         return Ok(bundle_names[0].clone());
     }
+
+    // Sort bundles alphabetically by name
+    bundle_names.sort();
 
     let selection = match Select::new("Select bundle to show", bundle_names)
         .with_starting_cursor(0)
@@ -152,12 +155,11 @@ fn select_bundle_interactively(workspace: &workspace::Workspace) -> Result<Strin
         return Ok(String::new());
     }
 
-    let items: Vec<String> = workspace
-        .lockfile
-        .bundles
-        .iter()
-        .map(|b| b.name.clone())
-        .collect();
+    // Sort bundles alphabetically by name
+    let mut sorted_bundles: Vec<_> = workspace.lockfile.bundles.iter().collect();
+    sorted_bundles.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let items: Vec<String> = sorted_bundles.iter().map(|b| b.name.clone()).collect();
 
     let selection = match Select::new("Select bundle to show", items)
         .with_starting_cursor(0)

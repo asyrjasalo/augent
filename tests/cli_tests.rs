@@ -423,16 +423,14 @@ fn test_unknown_command() {
 #[test]
 fn test_install_missing_source() {
     let temp = common::TestWorkspace::new();
+    // Running install without source should auto-initialize workspace and exit if nothing to install
     augent_cmd()
         .current_dir(&temp.path)
         .arg("install")
         .assert()
-        .failure()
-        .stderr(
-            predicate::str::contains("Workspace not found")
-                .or(predicate::str::contains("WorkspaceNotFound"))
-                .or(predicate::str::contains("required")),
-        );
+        .success()
+        .stdout(predicate::str::contains("Initialized .augent/ directory"))
+        .stdout(predicate::str::contains("Nothing to install"));
 }
 
 #[test]

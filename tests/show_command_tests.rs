@@ -401,7 +401,7 @@ bundles: []
         .success();
 
     // Show with scope prefix should find all matching bundles
-    // (Note: without --select-all, this triggers interactive menu which we can't test easily with assert_cmd)
+    // (Note: without --all-bundles, this triggers interactive menu which we can't test easily with assert_cmd)
     // So we test with the full bundle name to verify they're all installed
     augent_cmd()
         .current_dir(&workspace.path)

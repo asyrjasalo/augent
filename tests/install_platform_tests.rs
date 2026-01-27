@@ -14,6 +14,9 @@ fn augent_cmd() -> Command {
 fn test_install_auto_detect_platforms() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("workspace-multiple-agents");
+    // Create platform directories so platforms can be auto-detected
+    workspace.create_agent_dir("cursor");
+    workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     augent_cmd()
@@ -76,6 +79,7 @@ fn test_install_invalid_agent_name() {
 fn test_install_empty_workspace_platforms() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     augent_cmd()
@@ -89,6 +93,7 @@ fn test_install_empty_workspace_platforms() {
 fn test_install_with_root_files() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("bundle-with-root-files", "test-bundle");
 
     augent_cmd()

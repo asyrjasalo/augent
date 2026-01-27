@@ -26,14 +26,15 @@ use std::path::PathBuf;
                   augent install @author/bundle          \x1b[90m# Install from GitHub shorthand\x1b[0m\n   \
                   augent install ./bundle --for claude   \x1b[90m# Install only for Claude Code\x1b[0m\n   \
                   augent uninstall @author/bundle        \x1b[90m# Uninstall bundle\x1b[0m\n   \
-                  augent uninstall @author --select-all  \x1b[90m# Uninstall scope without prompt\x1b[0m\n   \
+                  augent uninstall @author --all-bundles  \x1b[90m# Uninstall scope without prompt\x1b[0m\n   \
                   augent list                            \x1b[90m# List all installed bundles\x1b[0m\n   \
                   augent show local                      \x1b[90m# Show bundle information\x1b[0m\n\n\
 "
 )]
 pub struct Cli {
     /// Workspace directory (defaults to current directory)
-    #[arg(long, short = 'w', global = true)]
+    /// Can be set via AUGENT_WORKSPACE environment variable
+    #[arg(long, short = 'w', global = true, env = "AUGENT_WORKSPACE")]
     pub workspace: Option<PathBuf>,
 
     /// Enable verbose output
@@ -91,8 +92,8 @@ pub struct InstallArgs {
     pub frozen: bool,
 
     /// Select all discovered bundles without interactive menu
-    #[arg(long)]
-    pub select_all: bool,
+    #[arg(long = "all-bundles")]
+    pub all_bundles: bool,
 
     /// Update bundles to latest versions from refs (resolves new SHAs and updates lockfile)
     #[arg(long)]
@@ -110,7 +111,7 @@ pub struct InstallArgs {
                   Uninstall without confirmation:\n    augent uninstall my-bundle -y\n\n\
                   Uninstall a specific bundle name:\n    augent uninstall author/bundle\n\n\
                   Uninstall all bundles matching a scope:\n    augent uninstall @wshobson/agents\n\n\
-                  Uninstall scope without prompt:\n    augent uninstall @wshobson/agents --select-all\n\n\
+                  Uninstall scope without prompt:\n    augent uninstall @wshobson/agents --all-bundles\n\n\
                   Select bundle interactively:\n    augent uninstall")]
 pub struct UninstallArgs {
     /// Bundle name or scope to uninstall (if omitted, shows interactive menu)
@@ -122,8 +123,8 @@ pub struct UninstallArgs {
     pub yes: bool,
 
     /// Select all bundles matching the scope without prompting
-    #[arg(long)]
-    pub select_all: bool,
+    #[arg(long = "all-bundles")]
+    pub all_bundles: bool,
 
     /// Show what would be uninstalled without actually uninstalling
     #[arg(long)]
@@ -264,7 +265,7 @@ mod tests {
             Commands::Uninstall(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
                 assert!(!args.yes);
-                assert!(!args.select_all);
+                assert!(!args.all_bundles);
                 assert!(!args.dry_run);
             }
             _ => panic!("Expected Uninstall command"),
@@ -290,7 +291,7 @@ mod tests {
             Commands::Uninstall(args) => {
                 assert_eq!(args.name, None);
                 assert!(!args.yes);
-                assert!(!args.select_all);
+                assert!(!args.all_bundles);
             }
             _ => panic!("Expected Uninstall command"),
         }
@@ -335,6 +336,31 @@ mod tests {
         let cli = Cli::try_parse_from(["augent", "-v", "-w", "/tmp/workspace", "list"]).unwrap();
         assert!(cli.verbose);
         assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/workspace")));
+    }
+
+    #[test]
+    fn test_cli_workspace_from_env() {
+        unsafe {
+            std::env::set_var("AUGENT_WORKSPACE", "/tmp/env-workspace");
+        }
+        let cli = Cli::try_parse_from(["augent", "list"]).unwrap();
+        assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/env-workspace")));
+        unsafe {
+            std::env::remove_var("AUGENT_WORKSPACE");
+        }
+    }
+
+    #[test]
+    fn test_cli_workspace_flag_overrides_env() {
+        unsafe {
+            std::env::set_var("AUGENT_WORKSPACE", "/tmp/env-workspace");
+        }
+        let cli = Cli::try_parse_from(["augent", "-w", "/tmp/flag-workspace", "list"]).unwrap();
+        // Flag should override environment variable
+        assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/flag-workspace")));
+        unsafe {
+            std::env::remove_var("AUGENT_WORKSPACE");
+        }
     }
 
     #[test]

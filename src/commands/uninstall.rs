@@ -64,11 +64,13 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         })
         .collect();
 
+    // Sort bundles alphabetically by name
+    let mut sorted_bundles: Vec<_> = workspace.lockfile.bundles.iter().collect();
+    sorted_bundles.sort_by(|a, b| a.name.cmp(&b.name));
+
     // Single-line items: "name" or "name (cursor, opencode)". Multi-line content
     // breaks inquire's list layout and causes the filter to match descriptions.
-    let items: Vec<String> = workspace
-        .lockfile
-        .bundles
+    let items: Vec<String> = sorted_bundles
         .iter()
         .map(|b| {
             if let Some(platforms) = workspace_bundle_map.get(&b.name) {
@@ -109,7 +111,7 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
 /// Select bundles from a predefined list
 fn select_bundles_from_list(
     workspace: &Workspace,
-    bundle_names: Vec<String>,
+    mut bundle_names: Vec<String>,
 ) -> Result<Vec<String>> {
     if bundle_names.is_empty() {
         println!("No bundles to select from.");
@@ -142,6 +144,9 @@ fn select_bundles_from_list(
             (wb.name.clone(), sorted_platforms)
         })
         .collect();
+
+    // Sort bundles alphabetically by name
+    bundle_names.sort();
 
     // Single-line items: "name" or "name (cursor, opencode)".
     let items: Vec<String> = bundle_names
@@ -301,8 +306,8 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
                     return Ok(());
                 }
 
-                // If --select-all is given, use all matching bundles
-                if args.select_all {
+                // If --all-bundles is given, use all matching bundles
+                if args.all_bundles {
                     matching_bundles
                 } else if matching_bundles.len() == 1 {
                     // If only one bundle matches, use it directly

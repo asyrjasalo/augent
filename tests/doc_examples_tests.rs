@@ -16,6 +16,7 @@ fn augent_cmd() -> Command {
 fn test_readme_quick_start_install_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("debug-tools");
     workspace.write_file(
@@ -43,6 +44,7 @@ dependencies: []
 fn test_readme_quick_start_list_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
@@ -72,6 +74,7 @@ dependencies: []
 fn test_readme_quick_start_show_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
@@ -102,6 +105,7 @@ dependencies: []
 fn test_readme_quick_start_uninstall_example_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
@@ -155,6 +159,7 @@ dependencies: []
 fn test_commands_doc_list_examples_work() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("my-bundle");
     workspace.write_file(
@@ -184,6 +189,7 @@ dependencies: []
 #[test]
 fn test_bundles_doc_format_examples_are_valid() {
     let workspace = common::TestWorkspace::new();
+    workspace.create_agent_dir("opencode");
 
     let _minimal_bundle = workspace.create_bundle("minimal-bundle");
     workspace.write_file(
@@ -206,6 +212,7 @@ description: Minimal bundle
 fn test_workspace_doc_naming_examples_work() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("test-bundle");
     workspace.write_file(
@@ -228,6 +235,7 @@ dependencies: []
 fn test_completions_examples_work() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
 
     let _bundle = workspace.create_bundle("test-bundle");
     workspace.write_file(

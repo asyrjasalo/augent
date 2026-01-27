@@ -1,15 +1,16 @@
-.rumdl_cache/
-coverage
+# built binaries
 target/
 
-*.bak
+# pre-commit hooks: rumdl
+.rumdl_cache/
 
+# cargo-tarpaulin
+coverage
 build_rs_cov.profraw
 tarpaulin-report.json
 tarpaulin-report.html
 
-# testing
-.gemini/
-
-# notepad
+# development
+tmp/
 TODO.md
+*.bak

@@ -667,10 +667,11 @@ fn test_install_with_sha_ref() {
 fn test_install_with_invalid_url_format() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "not:a:valid:format:://url"])
+        .args(["install", "not:a:valid:format:://url", "--for", "cursor"])
         .assert()
         .failure()
         .stderr(
@@ -684,12 +685,15 @@ fn test_install_with_invalid_url_format() {
 fn test_install_with_nonexistent_repository() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
 
     augent_cmd()
         .current_dir(&workspace.path)
         .args([
             "install",
             "https://github.com/this-user-should-not-exist-12345/nonexistent-repo",
+            "--for",
+            "cursor",
         ])
         .assert()
         .failure()

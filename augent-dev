@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export AUGENT_WORKSPACE="${SCRIPT_DIR}/tmp"
+
+mkdir -p "${AUGENT_WORKSPACE}"
+
+cargo run -- "$@"

@@ -14,7 +14,7 @@ You can install it from [PyPI](https://pypi.org/project/augent/):
 
 Or use it directly via `uvx augent`, if you have [uv](https://docs.astral.sh/uv/) installed.
 
-Alternatively, you can download a [GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system and put the binary in your PATH.
+Alternatively, you can download a [GitHub Release](https://github.com/asyrjasalo/augent/releases) for your system and put the binary in your PATH
 
 ## Quick Start
 
@@ -76,7 +76,7 @@ Install from a Git repository over SSH:
 The install command understands different repo formats, such as Claude Marketplace plugins.
 
 If repository has many bundles (or Claude Marketplace plugins),
-you can select those from the menu (or pass `--select-all`).
+you can select those from the menu (or pass `--all-bundles`).
 
 Most commands will display an interactive menu if used without arguments.
 

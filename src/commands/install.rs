@@ -18,7 +18,7 @@ use std::path::Path;
 
 use crate::cache;
 use crate::cli::InstallArgs;
-use crate::commands::menu::select_bundles_interactively;
+use crate::commands::menu::{select_bundles_interactively, select_platforms_interactively};
 use crate::config::{BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
@@ -31,13 +31,44 @@ use crate::workspace::Workspace;
 use crate::workspace::modified;
 
 /// Run the install command
-pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<()> {
+pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
     let current_dir = match workspace {
         Some(path) => path,
         None => std::env::current_dir().map_err(|e| AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
         })?,
     };
+
+    // Detect platforms early (before bundle selection) - only when source is provided
+    // For "no source" path, platform detection happens later after checking for bundles
+    if args.platforms.is_empty() && args.source.is_some() {
+        let detected = detection::detect_platforms(&current_dir)?;
+        if detected.is_empty() {
+            // No platforms detected - show menu to select platforms
+            let loader = platform::loader::PlatformLoader::new(&current_dir);
+            let available_platforms = loader.load()?;
+
+            if available_platforms.is_empty() {
+                return Err(AugentError::NoPlatformsDetected);
+            }
+
+            println!("No platforms detected in workspace.");
+            match select_platforms_interactively(&available_platforms) {
+                Ok(selected_platforms) => {
+                    if selected_platforms.is_empty() {
+                        println!("No platforms selected. Exiting.");
+                        return Ok(());
+                    }
+                    // Convert selected platforms to IDs
+                    args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
+                }
+                Err(_) => {
+                    // Non-interactive environment - require --for flag instead of silently using all platforms
+                    return Err(AugentError::NoPlatformsDetected);
+                }
+            }
+        }
+    }
 
     // If source provided, discover and install
     if let Some(source_str) = &args.source {
@@ -52,7 +83,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
 
         // Show interactive menu if multiple bundles, auto-select if one
         let discovered_count = discovered.len();
-        let selected_bundles = if discovered_count > 1 && !args.select_all {
+        let selected_bundles = if discovered_count > 1 && !args.all_bundles {
             select_bundles_interactively(&discovered)?
         } else if discovered_count >= 1 {
             discovered
@@ -82,13 +113,36 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
         }
     } else {
         // No source provided, load from augent.yaml in workspace
-        // Find and open existing workspace
-        let workspace_root =
-            Workspace::find_from(&current_dir).ok_or(AugentError::WorkspaceNotFound {
-                path: current_dir.display().to_string(),
-            })?;
+        // Initialize or open workspace (auto-initialize if needed)
+        let (workspace_root, was_initialized) =
+            if let Some(root) = Workspace::find_from(&current_dir) {
+                (root, false)
+            } else {
+                // Workspace doesn't exist - initialize it
+                let workspace = Workspace::init_or_open(&current_dir)?;
+                println!("Initialized .augent/ directory.");
+                (workspace.root.clone(), true)
+            };
 
         let mut workspace = Workspace::open(&workspace_root)?;
+
+        // Check if there are any resources to install BEFORE printing messages or resolving
+        // Check both augent.yaml bundles and workspace bundle resources
+        let has_bundles_in_config =
+            !workspace.bundle_config.bundles.is_empty() || !workspace.lockfile.bundles.is_empty();
+        let has_workspace_resources = {
+            use crate::installer::Installer;
+            let workspace_bundle_path = workspace.get_bundle_source_path();
+            Installer::discover_resources(&workspace_bundle_path)
+                .map(|resources| !resources.is_empty())
+                .unwrap_or(false)
+        };
+
+        // If there's nothing to install, show a message and exit
+        if !has_bundles_in_config && !has_workspace_resources {
+            println!("Nothing to install.");
+            return Ok(());
+        }
 
         // Determine which augent.yaml file we're using
         let augent_yaml_path = if workspace_root.join("augent.yaml").exists() {
@@ -110,7 +164,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
         transaction.backup_configs()?;
 
         // Install all bundles from augent.yaml
-        match do_install_from_yaml(&args, &mut workspace, &mut transaction) {
+        match do_install_from_yaml(&mut args, &mut workspace, &mut transaction, was_initialized) {
             Ok(()) => {
                 transaction.commit();
                 Ok(())
@@ -122,9 +176,10 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: InstallArgs) -> Result<(
 
 /// Install bundles from augent.yaml
 fn do_install_from_yaml(
-    args: &InstallArgs,
+    args: &mut InstallArgs,
     workspace: &mut Workspace,
     transaction: &mut Transaction,
+    was_initialized: bool,
 ) -> Result<()> {
     // Detect and preserve any modified files before reinstalling bundles
     let cache_dir = cache::bundles_cache_dir()?;
@@ -271,7 +326,54 @@ fn do_install_from_yaml(
     }
     let resolved_bundles = final_resolved_bundles;
 
+    // Check if any resolved bundles have resources to install
+    // Only proceed with installation if there are actual resources to install
+    let has_resources_to_install = resolved_bundles.iter().any(|bundle| {
+        use crate::installer::Installer;
+        Installer::discover_resources(&bundle.source_path)
+            .map(|resources| !resources.is_empty())
+            .unwrap_or(false)
+    });
+
+    // If there are no resources to install, exit early (don't install for any platforms)
+    // This applies whether workspace was just initialized or not
+    if !has_resources_to_install {
+        // Don't print anything - user's requirement: "it should not say or do anything about the platforms"
+        return Ok(());
+    }
+
     // Detect target platforms
+    // If no platforms detected and no --for flag provided, show platform selection menu
+    // Skip platform prompt if workspace was just initialized (use all platforms)
+    if args.platforms.is_empty() && !was_initialized {
+        let detected = detection::detect_platforms(&workspace.root)?;
+        if detected.is_empty() {
+            // No platforms detected - show menu to select platforms
+            let loader = platform::loader::PlatformLoader::new(&workspace.root);
+            let available_platforms = loader.load()?;
+
+            if available_platforms.is_empty() {
+                return Err(AugentError::NoPlatformsDetected);
+            }
+
+            println!("No platforms detected in workspace.");
+            match select_platforms_interactively(&available_platforms) {
+                Ok(selected_platforms) => {
+                    if selected_platforms.is_empty() {
+                        println!("No platforms selected. Exiting.");
+                        return Ok(());
+                    }
+                    // Convert selected platforms to IDs
+                    args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
+                }
+                Err(_) => {
+                    // Non-interactive environment - require --for flag instead of silently using all platforms
+                    return Err(AugentError::NoPlatformsDetected);
+                }
+            }
+        }
+    }
+
     let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
     if platforms.is_empty() {
         return Err(AugentError::NoPlatformsDetected);
