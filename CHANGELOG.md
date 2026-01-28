@@ -5,14 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - YYYY-MM-DD
+## [0.6.0] - 2026-01-28
+
+### Added
+
+- Added progress reporting to `augent install` so you can see bundle download and installation status
+- Added automatic workspace initialization when running `augent install` in a repository without existing Augent configuration
+- Added confirmation prompt before uninstalling bundles to prevent accidental removals
+- Added automatic uninstallation of bundles that were deselected from the workspace configuration
 
 ### Changed
 
 - Renamed `augent clean-cache` command to `augent cache` for a shorter, clearer interface
-- Restructured cache command: `augent cache clear` replaces `augent cache --all`, and `augent cache clear --only <slug>` replaces positional bundle argument
 - Removed `--list` flag from `augent cache` command; listing bundles is now the default behavior
 - Aligned `augent list --detailed` layout with basic `augent list` output and show bundle version in both views when available
+
+### Fixed
+
+- Improved uninstall dependency handling to correctly remove bundles and their dependents
+- Preserved bundle order in the lockfile during uninstall operations
+- Ensured deselected bundles are handled consistently during install and uninstall flows
 
 ## [0.5.1] - 2026-01-26
 
