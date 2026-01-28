@@ -30,6 +30,7 @@ This plan covers both pre-implementation planning and actual implementation of A
 - [Complete] Phase 4: Additional Commands (Epics 7-10) - Complete
 - [Complete] Phase 5: Quality Assurance (Epics 11-13) - Complete
 - [Complete] Phase 6: Release (Epic 14) - Complete
+- [Complete] Phase 7: Post-Release Maintenance & Cleanup (Epic 15) - Complete
 
 ---
 
@@ -405,7 +406,7 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 #### Feature 14.2: Release Artifacts
 
-**Status:** Pending
+**Status:** Complete
 
 #### Feature 14.3: CLI polish and naming consistency
 
