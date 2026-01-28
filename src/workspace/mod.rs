@@ -320,11 +320,25 @@ impl Workspace {
     }
 
     /// Save lockfile to a directory
+    ///
+    /// Uses an atomic write (temp file + rename) so that readers never
+    /// observe a partially written `augent.lock`, which is especially
+    /// important under concurrent `install`/`list` operations.
     fn save_lockfile(config_dir: &Path, lockfile: &Lockfile) -> Result<()> {
         let path = config_dir.join(LOCKFILE_NAME);
         let content = lockfile.to_json()?;
 
-        fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
+        // Write to a temporary file in the same directory first, then
+        // atomically rename it into place. This avoids readers ever seeing
+        // a truncated or half-written lockfile.
+        let tmp_path = config_dir.join(format!("{}.tmp", LOCKFILE_NAME));
+
+        fs::write(&tmp_path, &content).map_err(|e| AugentError::FileWriteFailed {
+            path: tmp_path.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+        fs::rename(&tmp_path, &path).map_err(|e| AugentError::FileWriteFailed {
             path: path.display().to_string(),
             reason: e.to_string(),
         })

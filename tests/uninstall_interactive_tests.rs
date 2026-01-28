@@ -14,7 +14,10 @@ use std::path::PathBuf;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
-    Command::cargo_bin("augent").unwrap()
+    let mut cmd = Command::cargo_bin("augent").unwrap();
+    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
+    cmd.env_remove("AUGENT_WORKSPACE");
+    cmd
 }
 
 #[test]

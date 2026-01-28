@@ -1,4 +1,4 @@
-# https://mise.jdx.dev/
+# Uses https://mise.jdx.dev/
 
 ### Development dependencies ###################################################
 
@@ -11,20 +11,24 @@ prek = "latest"
 lockfile = true
 task_output = "interleave"
 
-### Tasks ######################################################################
-#
-# Usage: mise <task-name> [task-args]
-#
-# E.g. run development binary with ./tmp as workspace:
-#
-#   mise augent [args]
-#
+### Environment ################################################################
 
-[tasks.augent]
-description = "Run augent in dev"
-alias = "a"
-env = { AUGENT_WORKSPACE = "{{ [config_root] | concat(with='tmp') | join_path }}" }
-run = "cargo run --"
+# Use ./tmp as the development workspace directory
+[env]
+AUGENT_WORKSPACE = "{{ [config_root] | concat(with='tmp') | join_path }}"
+
+# Run augent by name (instead of cargo run --) in the project directory
+[shell_alias]
+augent = "{{ [config_root] | concat(with='target/debug/augent') | join_path }}"
+
+### Tasks ######################################################################
+
+# Usage: mise <task-name> [task-args]
+
+[tasks.check]
+description = "Run all checks"
+alias = "c"
+run = [{ task = "hooks" }, { task = "lint" }, { task = "test" }]
 
 [tasks.hooks]
 description = "Run pre-commit hooks"
@@ -38,11 +42,6 @@ run = "cargo clippy --all-targets --all-features -- -D warnings"
 description = "Run tests"
 run = "cargo test"
 
-[tasks.coverage]
+[tasks.cov]
 description = "Run tests with coverage"
 run = "cargo tarpaulin"
-
-[tasks.check]
-description = "Run all checks"
-alias = "c"
-run = [{ task = "hooks" }, { task = "lint" }, { task = "test" }]

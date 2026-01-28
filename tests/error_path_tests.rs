@@ -7,7 +7,10 @@ use predicates::prelude::*;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
-    Command::cargo_bin("augent").unwrap()
+    let mut cmd = Command::cargo_bin("augent").unwrap();
+    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
+    cmd.env_remove("AUGENT_WORKSPACE");
+    cmd
 }
 
 #[test]
@@ -280,17 +283,16 @@ bundles: []
         perms.set_readonly(true);
         std::fs::set_permissions(&augent_dir, perms).unwrap();
 
-        // NOTE: Setting .augent directory to read-only on Unix doesn't prevent
-        // writing to files inside it. The install still succeeds because:
-        // - Workspace.open() just reads existing configs (no write)
-        // - Transaction.backup_configs() just reads configs (no write)
-        // - Files can still be modified even when parent dir is read-only
-        // This test documents the current behavior rather than enforcing a failure
+        // With atomic lockfile writes, installs will now try to create a
+        // temporary lockfile next to augent.lock, which can legitimately
+        // fail when the directory is read-only. We only assert that the
+        // command fails with a clear error message, not on the exact path.
         augent_cmd()
             .current_dir(&workspace.path)
             .args(["install", "./bundles/test-bundle", "--for", "claude"])
             .assert()
-            .success();
+            .failure()
+            .stderr(predicate::str::contains("Failed to write file"));
 
         std::fs::set_permissions(&augent_dir, original_perms).unwrap();
     }

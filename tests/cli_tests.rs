@@ -13,6 +13,8 @@ fn augent_cmd() -> Command {
     // Use workspace-relative cache so it's writable in cross/Docker (env may not be passed through).
     // Callers that need cache set current_dir(workspace.path), so .augent-cache resolves there.
     let mut cmd = Command::cargo_bin("augent").unwrap();
+    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
+    cmd.env_remove("AUGENT_WORKSPACE");
     cmd.env("AUGENT_CACHE_DIR", ".augent-cache");
     cmd
 }
