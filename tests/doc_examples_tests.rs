@@ -27,7 +27,7 @@ fn test_readme_quick_start_install_example_works() {
         r#"
 name: "@test/debug-tools"
 description: Useful debugging tools
-dependencies: []
+bundles: []
 "#,
     );
     workspace.write_file("bundles/debug-tools/rules/debug.md", "# Debug rule\n");
@@ -54,7 +54,7 @@ fn test_readme_quick_start_list_example_works() {
         "bundles/my-bundle/augent.yaml",
         r#"
 name: "@test/my-bundle"
-dependencies: []
+bundles: []
 "#,
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
@@ -85,7 +85,7 @@ fn test_readme_quick_start_show_example_works() {
         r#"
 name: "@test/my-bundle"
 description: My test bundle
-dependencies: []
+bundles: []
 "#,
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
@@ -116,7 +116,7 @@ fn test_readme_quick_start_uninstall_example_works() {
         r#"
 name: "@test/my-bundle"
 description: My test bundle
-dependencies: []
+bundles: []
 "#,
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
@@ -146,7 +146,7 @@ fn test_commands_doc_install_examples_work() {
         r#"
 name: "@test/test-bundle"
 description: Test bundle
-dependencies: []
+bundles: []
 "#,
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
@@ -170,7 +170,7 @@ fn test_commands_doc_list_examples_work() {
         r#"
 name: "@test/my-bundle"
 description: Test bundle
-dependencies: []
+bundles: []
 "#,
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
@@ -223,7 +223,7 @@ fn test_workspace_doc_naming_examples_work() {
         r#"
 name: "@test/test-bundle"
 description: Test bundle
-dependencies: []
+bundles: []
 "#,
     );
 
@@ -246,7 +246,7 @@ fn test_completions_examples_work() {
         r#"
 name: "@test/test-bundle"
 description: Test bundle
-dependencies: []
+bundles: []
 "#,
     );
 

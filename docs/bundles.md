@@ -72,7 +72,7 @@ name: debug-tools
 version: 1.0.0
 description: Collection of debugging rules and skills
 source: github:author/debug-tools
-dependencies:
+bundles:
   - common-utilities
   - test-helpers
 metadata:
@@ -92,7 +92,7 @@ metadata:
 | `name` | string | Yes | Bundle name (used for uninstall/list/show) |
 | `description` | string | No | Human-readable description |
 | `version` | string | No | Semantic version (for reference only) |
-| `dependencies` | array | No | List of bundle names this bundle depends on |
+| `bundles` | array | No | List of bundle dependencies (other bundles this bundle depends on) |
 | `metadata.author` | string | No | Bundle author contact |
 | `metadata.license` | string | No | Bundle license |
 | `metadata.homepage` | string | No | Homepage URL |
@@ -103,7 +103,7 @@ metadata:
 Dependencies are installed before the bundle itself:
 
 ```yaml
-dependencies:
+bundles:
   - utils           # Simple name
   - author/bundle   # Full name if name conflicts
 ```
