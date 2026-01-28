@@ -9,12 +9,13 @@ use predicates::prelude::*;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
-    // Use workspace-relative cache so it's writable in cross/Docker (env may not be passed through).
-    // Callers set current_dir(workspace.path), so .augent-cache resolves to workspace/.augent-cache.
+    // Use a temporary cache directory in the OS's default temp location
+    // This ensures tests don't pollute the user's actual cache directory
+    let cache_dir = common::test_cache_dir();
     let mut cmd = Command::cargo_bin("augent").unwrap();
     // Always ignore any developer AUGENT_WORKSPACE overrides during tests
     cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", ".augent-cache");
+    cmd.env("AUGENT_CACHE_DIR", cache_dir);
     cmd
 }
 

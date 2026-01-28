@@ -8,6 +8,36 @@ pub use interactive::{InteractiveTest, MenuAction, run_with_timeout, send_menu_a
 use std::path::PathBuf;
 use tempfile::TempDir;
 
+/// Environment variable for test cache base directory (cross/Docker special case).
+/// When set (e.g. by CI when using cross), tests create unique subdirs under this path.
+/// When unset, tests use the OS temp directory. See Cross.toml and CI workflow.
+#[allow(dead_code)] // Used in env::var_os() call below
+pub const AUGENT_TEST_CACHE_DIR: &str = "AUGENT_TEST_CACHE_DIR";
+
+/// Get a temporary cache directory path for tests
+///
+/// Uses `AUGENT_TEST_CACHE_DIR` when set (e.g. in cross/Docker so the container has a
+/// writable base path). Otherwise uses the OS temp directory. Always creates a unique
+/// subdirectory per call for test isolation.
+#[allow(dead_code)] // Used by test files via common::test_cache_dir()
+pub fn test_cache_dir() -> PathBuf {
+    use std::env;
+    let base_temp = env::var_os(AUGENT_TEST_CACHE_DIR)
+        .map(PathBuf::from)
+        .unwrap_or_else(env::temp_dir);
+    let unique_name = format!(
+        "augent-test-cache-{}-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos(),
+        std::process::id()
+    );
+    let cache_path = base_temp.join(unique_name);
+    std::fs::create_dir_all(&cache_path).expect("Failed to create test cache directory");
+    cache_path
+}
+
 #[allow(dead_code)]
 pub struct TestWorkspace {
     #[allow(dead_code)]

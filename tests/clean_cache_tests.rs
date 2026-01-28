@@ -7,9 +7,13 @@ use predicates::prelude::*;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
+    // Use a temporary cache directory in the OS's default temp location
+    // This ensures tests don't pollute the user's actual cache directory
+    let cache_dir = common::test_cache_dir();
     let mut cmd = Command::cargo_bin("augent").unwrap();
     // Always ignore any developer AUGENT_WORKSPACE overrides during tests
     cmd.env_remove("AUGENT_WORKSPACE");
+    cmd.env("AUGENT_CACHE_DIR", cache_dir);
     cmd
 }
 
@@ -267,21 +271,15 @@ bundles: []
 
 #[test]
 fn test_clean_cache_truly_non_existent_cache_dir() {
-    let temp_dir = tempfile::TempDir::new().unwrap();
-    let cache_base = temp_dir.path();
-
+    // augent_cmd() already sets AUGENT_CACHE_DIR via test_cache_dir(),
+    // so we can use it directly without manual override
     augent_cmd()
-        .env("AUGENT_CACHE_DIR", cache_base)
         .args(["cache", "--show-size"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
 
-    augent_cmd()
-        .env("AUGENT_CACHE_DIR", cache_base)
-        .args(["cache", "clear"])
-        .assert()
-        .success();
+    augent_cmd().args(["cache", "clear"]).assert().success();
 }
 
 #[test]

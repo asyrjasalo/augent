@@ -2,6 +2,6 @@
 # https://github.com/cross-rs/cross/blob/main/docs/environment_variables.md
 
 [build.env]
-# Pass AUGENT_CACHE_DIR into the container so tests can create the cache.
-# CI sets AUGENT_CACHE_DIR=/tmp/augent-cache when using cross (runner.temp is not mounted).
-passthrough = ["AUGENT_CACHE_DIR"]
+# Pass test cache base into the container so tests have a writable path.
+# CI sets AUGENT_TEST_CACHE_DIR=/tmp/augent-cache when using cross (runner.temp is not mounted).
+passthrough = ["AUGENT_TEST_CACHE_DIR"]

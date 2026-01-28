@@ -112,11 +112,10 @@ jobs:
         run: |
           if [ "${{ matrix.use_cross }}" = "true" ]; then
             # Use /tmp for cross (Docker): runner.temp is not mounted in the container.
-            # Cross.toml [build.env] passthrough forwards AUGENT_CACHE_DIR into the container.
-            export AUGENT_CACHE_DIR=/tmp/augent-cache
+            # Cross.toml [build.env] passthrough forwards AUGENT_TEST_CACHE_DIR into the container.
+            export AUGENT_TEST_CACHE_DIR=/tmp/augent-cache
             cross test --release --target ${{ matrix.target }}
           else
-            export AUGENT_CACHE_DIR="${{ runner.temp }}/augent-cache"
             cargo test --release --target ${{ matrix.target }}
           fi
 

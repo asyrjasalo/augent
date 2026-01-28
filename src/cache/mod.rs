@@ -56,7 +56,8 @@ pub fn bundles_cache_dir() -> Result<PathBuf> {
 /// Normalizes the URL by removing protocol prefixes and replacing special characters.
 /// Example: "https://github.com/author/repo.git" -> "github.com-author-repo"
 pub fn url_to_slug(url: &str) -> String {
-    url.replace("https://", "")
+    url.replace("file://", "")
+        .replace("https://", "")
         .replace("http://", "")
         .replace("git@", "")
         .replace([':', '/'], "-")
@@ -364,15 +365,34 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
 
 /// Convert a URL slug back to an approximate URL
 fn slug_to_url(slug: &str) -> String {
-    // Try to reconstruct a readable URL from the slug
-    // github.com-author-repo -> https://github.com/author/repo
-    let parts: Vec<&str> = slug.splitn(2, '-').collect();
-    if parts.len() == 2 {
-        let host = parts[0];
-        let path = parts[1].replace('-', "/");
-        format!("https://{}/{}", host, path)
+    // Check if this looks like a file:// URL slug (starts with file- or has many dashes indicating a path)
+    // file----var-folders-... -> file:///var/folders/...
+    if slug.starts_with("file-") && slug.matches('-').count() > 3 {
+        // Reconstruct file:// URL by replacing dashes with slashes
+        // Remove "file-" prefix first
+        let path_part = slug.strip_prefix("file-").unwrap_or(slug);
+        // Replace dashes with slashes
+        let mut path = path_part.replace('-', "/");
+        // Normalize multiple leading slashes to a single slash
+        while path.starts_with("//") {
+            path = path.strip_prefix('/').unwrap_or(&path).to_string();
+        }
+        // Ensure we have a leading slash for file:// URLs
+        if !path.starts_with('/') {
+            path = format!("/{}", path);
+        }
+        format!("file://{}", path)
     } else {
-        slug.to_string()
+        // Try to reconstruct a readable URL from the slug
+        // github.com-author-repo -> https://github.com/author/repo
+        let parts: Vec<&str> = slug.splitn(2, '-').collect();
+        if parts.len() == 2 {
+            let host = parts[0];
+            let path = parts[1].replace('-', "/");
+            format!("https://{}/{}", host, path)
+        } else {
+            slug.to_string()
+        }
     }
 }
 
@@ -512,6 +532,27 @@ mod tests {
             url_to_slug("https://gitlab.com/org/project.git"),
             "gitlab.com-org-project"
         );
+        assert_eq!(
+            url_to_slug("file:///var/folders/test/repo.git"),
+            "var-folders-test-repo"
+        );
+    }
+
+    #[test]
+    fn test_slug_to_url() {
+        // Test file:// URL reconstruction
+        assert_eq!(
+            slug_to_url("file----var-folders-test-repo"),
+            "file:///var/folders/test/repo"
+        );
+        // Test regular URL reconstruction
+        assert_eq!(
+            slug_to_url("github.com-author-repo"),
+            "https://github.com/author/repo"
+        );
+        // Test slug that doesn't match host-path pattern (no dot in first part)
+        // Should be treated as a simple slug, not host-path
+        assert_eq!(slug_to_url("simple-slug"), "https://simple/slug");
     }
 
     #[test]

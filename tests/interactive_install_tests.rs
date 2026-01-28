@@ -6,7 +6,12 @@ use std::path::PathBuf;
 
 #[allow(deprecated)]
 fn augent_cmd() -> Command {
-    Command::cargo_bin("augent").unwrap()
+    // Use a temporary cache directory in the OS's default temp location
+    // This ensures tests don't pollute the user's actual cache directory
+    let cache_dir = common::test_cache_dir();
+    let mut cmd = Command::cargo_bin("augent").unwrap();
+    cmd.env("AUGENT_CACHE_DIR", cache_dir);
+    cmd
 }
 
 fn augent_bin_path() -> PathBuf {

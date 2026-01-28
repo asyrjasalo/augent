@@ -32,8 +32,10 @@ pub fn run(args: CacheArgs) -> Result<()> {
 
 fn show_cache_stats() -> Result<()> {
     let stats = cache::cache_stats()?;
+    let cache_dir = cache::cache_dir()?;
 
     println!("Cache Statistics:");
+    println!("  Location: {}", cache_dir.display());
     println!("  Repositories: {}", stats.repositories);
     println!("  Versions: {}", stats.versions);
     println!("  Size: {}", stats.formatted_size());
