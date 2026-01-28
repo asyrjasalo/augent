@@ -909,11 +909,11 @@ Set up cross-platform builds and distribution.
 
 #### Feature 15.1: Remove Early Implementation Backwards Compatibility
 
-**Status:** [-] In Progress
+**Status:** [x] Complete
 
-- [x] Remove historical `dependencies: []` compatibility path from bundle config parsing
-- [ ] Verify `$claudeplugin` marketplace path support remains fully functional and covered by tests
-- [ ] Update documentation if any examples or text still describe removed legacy behavior
-- [ ] Run full test suite and fix any regressions
+- [x] Remove early, unpublished configuration compatibility paths from bundle config parsing
+- [x] Verify `$claudeplugin` marketplace path support remains fully functional and covered by tests
+- [x] Update documentation if any examples or text still describe removed legacy behavior
+- [x] Run full test suite and fix any regressions
 
 ---
