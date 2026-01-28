@@ -14,8 +14,6 @@
 //! - `mod.rs`: Bundle source parsing and URL resolution
 //! - `bundle.rs`: Fully resolved bundle model with validation
 //!
-#![allow(dead_code)]
-
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -118,16 +116,19 @@ impl BundleSource {
     }
 
     /// Check if this is a local directory source
+    #[allow(dead_code)] // Used by tests
     pub fn is_local(&self) -> bool {
         matches!(self, BundleSource::Dir { .. })
     }
 
     /// Check if this is a git source
+    #[allow(dead_code)] // Used by tests
     pub fn is_git(&self) -> bool {
         matches!(self, BundleSource::Git(_))
     }
 
     /// Get the local path if this is a directory source
+    #[allow(dead_code)] // Used by tests
     pub fn as_local_path(&self) -> Option<&PathBuf> {
         match self {
             BundleSource::Dir { path } => Some(path),
@@ -136,6 +137,7 @@ impl BundleSource {
     }
 
     /// Get the git source if this is a git source
+    #[allow(dead_code)] // Used by tests
     pub fn as_git(&self) -> Option<&GitSource> {
         match self {
             BundleSource::Git(git) => Some(git),
@@ -204,6 +206,7 @@ impl BundleSource {
 
 impl GitSource {
     /// Create a new git source
+    #[allow(dead_code)] // Used by tests
     pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
@@ -214,12 +217,14 @@ impl GitSource {
     }
 
     /// Set the git ref
+    #[allow(dead_code)] // Used by tests
     pub fn with_ref(mut self, git_ref: impl Into<String>) -> Self {
         self.git_ref = Some(git_ref.into());
         self
     }
 
     /// Set the path
+    #[allow(dead_code)] // Used by tests
     pub fn with_path(mut self, path: impl Into<String>) -> Self {
         self.path = Some(path.into());
         self
@@ -446,6 +451,7 @@ impl GitSource {
     }
 
     /// Get a cache-friendly key for this source
+    #[allow(dead_code)] // Used by tests
     pub fn cache_key(&self) -> String {
         let url_slug = self
             .url

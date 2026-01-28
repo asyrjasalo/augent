@@ -1,7 +1,5 @@
 //! Bundle configuration (augent.yaml) data structures
 
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -193,22 +191,9 @@ impl BundleConfig {
         }
     }
 
-    /// Merge another bundle config into this one
-    ///
-    /// Dependencies from `other` are appended to this config.
-    /// The `other`'s name is ignored to preserve this config's identity.
-    pub fn merge(&mut self, other: BundleConfig) {
-        self.bundles.extend(other.bundles);
-    }
-
     /// Check if a dependency with given name exists
     pub fn has_dependency(&self, name: &str) -> bool {
         self.bundles.iter().any(|dep| dep.name == name)
-    }
-
-    /// Get dependency by name
-    pub fn get_dependency(&self, name: &str) -> Option<&BundleDependency> {
-        self.bundles.iter().find(|dep| dep.name == name)
     }
 
     /// Reorder dependencies to match the order in the lockfile

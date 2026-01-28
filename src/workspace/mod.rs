@@ -13,8 +13,6 @@
 //! └── augent.index.yaml # Per-agent file mappings
 //! ```
 //!
-#![allow(dead_code)]
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -617,12 +615,6 @@ pub mod modified {
 
         /// The source file path within the bundle (e.g., "commands/debug.md")
         pub source_path: String,
-
-        /// The hash of the original file
-        pub original_hash: String,
-
-        /// The hash of the current file
-        pub current_hash: String,
     }
 
     /// Detect modified files in the workspace
@@ -667,8 +659,6 @@ pub mod modified {
                                 installed_path: full_installed_path,
                                 source_bundle: bundle.name.clone(),
                                 source_path: source_path.clone(),
-                                original_hash: orig_hash,
-                                current_hash,
                             });
                         }
                     }
@@ -941,8 +931,6 @@ mod modified_tests {
             installed_path: src_file.clone(),
             source_bundle: "test-bundle".to_string(),
             source_path: "commands/test.md".to_string(),
-            original_hash: "blake3:original".to_string(),
-            current_hash: "blake3:modified".to_string(),
         }];
 
         let preserved = preserve_modified_files(&mut workspace, &modified).unwrap();

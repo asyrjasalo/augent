@@ -28,6 +28,7 @@ pub fn detect_platforms(workspace_root: &Path) -> Result<Vec<Platform>> {
 }
 
 /// Detect platforms or return an error if none found
+#[allow(dead_code)] // Used by tests
 pub fn detect_platforms_or_error(workspace_root: &Path) -> Result<Vec<Platform>> {
     let platforms = detect_platforms(workspace_root)?;
 
@@ -94,6 +95,7 @@ pub fn get_platforms(ids: &[String], workspace_root: Option<&Path>) -> Result<Ve
 }
 
 /// Detect platforms, or use specified platforms if provided
+#[allow(dead_code)] // Used by tests
 pub fn resolve_platforms(workspace_root: &Path, specified: &[String]) -> Result<Vec<Platform>> {
     if specified.is_empty() {
         detect_platforms_or_error(workspace_root)

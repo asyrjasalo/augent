@@ -38,9 +38,9 @@ pub fn test_cache_dir() -> PathBuf {
     cache_path
 }
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Used by test files via common::TestWorkspace
 pub struct TestWorkspace {
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Part of TestWorkspace struct used by tests
     pub temp: TempDir,
     pub path: PathBuf,
 }
@@ -54,7 +54,7 @@ impl TestWorkspace {
     }
 
     /// Create a bundle directory in workspace
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by test files
     pub fn create_bundle(&self, name: &str) -> PathBuf {
         let bundle_path = self.path.join("bundles").join(name);
         std::fs::create_dir_all(&bundle_path).expect("Failed to create bundle directory");
@@ -62,7 +62,7 @@ impl TestWorkspace {
     }
 
     /// Create .augent directory
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by test files
     pub fn create_augent_dir(&self) -> PathBuf {
         let augent_path = self.path.join(".augent");
         std::fs::create_dir_all(&augent_path).expect("Failed to create .augent directory");
@@ -167,7 +167,7 @@ impl TestWorkspace {
     }
 
     /// Initialize git repository for workspace
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by test files
     pub fn init_git(&self) {
         let git_dir = self.path.join(".git");
         if git_dir.exists() {
@@ -200,7 +200,7 @@ impl TestWorkspace {
     }
 
     /// Create a mock git repository for testing
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by test files
     pub fn create_mock_git_repo(&self, name: &str) -> PathBuf {
         let repo_path = self.path.join(name);
         std::fs::create_dir_all(&repo_path).expect("Failed to create repo directory");
@@ -256,7 +256,7 @@ impl TestWorkspace {
     }
 
     /// Modify a file in workspace
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by test files
     pub fn modify_file(&self, path: &str, new_content: &str) {
         self.write_file(path, new_content);
     }

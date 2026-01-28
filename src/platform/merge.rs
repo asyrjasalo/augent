@@ -1,7 +1,5 @@
 //! Merge strategies for combining resource files
 
-#![allow(dead_code)]
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -24,6 +22,7 @@ pub enum MergeStrategy {
 
 impl MergeStrategy {
     /// Merge two strings according to this strategy
+    #[allow(dead_code)] // Used by tests
     pub fn merge_strings(&self, existing: &str, new_content: &str) -> Result<String> {
         match self {
             MergeStrategy::Replace => Ok(new_content.to_string()),
@@ -59,6 +58,7 @@ impl MergeStrategy {
 
 /// Merge markdown content with composite strategy
 /// Appends new content with a separator
+#[allow(dead_code)] // Used internally by merge_strings which is used by tests
 fn merge_composite(existing: &str, new_content: &str) -> String {
     let existing = existing.trim();
     let new_content = new_content.trim();
@@ -79,6 +79,7 @@ fn merge_composite(existing: &str, new_content: &str) -> String {
 }
 
 /// Shallow merge: only top-level keys from new object override existing
+#[allow(dead_code)] // Used internally by merge_strings which is used by tests
 fn merge_json_shallow(mut existing: JsonValue, new: JsonValue) -> JsonValue {
     if let (JsonValue::Object(existing_map), JsonValue::Object(new_map)) = (&mut existing, new) {
         for (key, value) in new_map {
@@ -89,6 +90,7 @@ fn merge_json_shallow(mut existing: JsonValue, new: JsonValue) -> JsonValue {
 }
 
 /// Deep merge: recursively merge nested objects
+#[allow(dead_code)] // Used internally by merge_strings which is used by tests
 fn merge_json_deep(existing: JsonValue, new: JsonValue) -> JsonValue {
     match (existing, new) {
         (JsonValue::Object(mut existing_map), JsonValue::Object(new_map)) => {

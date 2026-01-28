@@ -343,7 +343,7 @@ impl Drop for InteractiveTest {
     }
 }
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Used by test files (part of testing infrastructure)
 pub fn run_interactive<P: AsRef<Path>>(
     program: &str,
     args: &[&str],
@@ -364,7 +364,7 @@ pub fn run_interactive<P: AsRef<Path>>(
 }
 
 /// Helper to send a sequence of menu actions with proper synchronization
-#[allow(dead_code)]
+#[allow(dead_code)] // Used by test files (part of testing infrastructure)
 pub fn send_menu_actions(
     test: &mut InteractiveTest,
     actions: &[MenuAction],
@@ -397,7 +397,7 @@ pub fn send_menu_actions(
     Ok(())
 }
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Used by test files (part of testing infrastructure)
 #[derive(Debug, Clone)]
 pub enum MenuAction {
     SelectCurrent,

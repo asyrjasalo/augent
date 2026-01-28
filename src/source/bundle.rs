@@ -1,7 +1,5 @@
 //! Bundle model
 
-#![allow(dead_code)]
-
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AugentError, Result};
@@ -28,6 +26,7 @@ pub struct Bundle {
 
 /// A bundle dependency (from augent.yaml)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)] // Used by tests (part of Bundle struct which is test-only)
 pub struct BundleDependency {
     /// Dependency name
     pub name: String,
@@ -47,6 +46,7 @@ pub struct BundleDependency {
 
 impl Bundle {
     /// Create a new bundle
+    #[allow(dead_code)] // Used by tests
     pub fn new(name: impl Into<String>, source: super::BundleSource) -> Self {
         Self {
             name: name.into(),
@@ -57,6 +57,7 @@ impl Bundle {
     }
 
     /// Validate this bundle
+    #[allow(dead_code)] // Used by tests
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
             return Err(AugentError::InvalidBundleName {
@@ -80,6 +81,7 @@ impl Bundle {
 
 impl BundleDependency {
     /// Validate this dependency
+    #[allow(dead_code)] // Used by tests (via Bundle::validate)
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
             return Err(AugentError::BundleValidationFailed {

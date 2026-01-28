@@ -3,8 +3,6 @@
 //! This file tracks which files are installed from which bundles
 //! to which AI coding platforms.
 
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize, Serializer};
@@ -166,19 +164,11 @@ impl WorkspaceConfig {
         }
     }
 
-    /// Get all installed locations for a file across all bundles
-    pub fn get_file_locations(&self, bundle_file: &str) -> Vec<(&str, &[String])> {
-        self.bundles
-            .iter()
-            .filter_map(|b| {
-                b.enabled
-                    .get(bundle_file)
-                    .map(|locs| (b.name.as_str(), locs.as_slice()))
-            })
-            .collect()
-    }
-
     /// Find which bundle provides a specific installed file
+    ///
+    /// # Note
+    /// This function is used by tests.
+    #[allow(dead_code)] // Used by tests
     pub fn find_provider(&self, installed_path: &str) -> Option<(&str, &str)> {
         for bundle in &self.bundles {
             for (source, locations) in &bundle.enabled {
@@ -191,6 +181,10 @@ impl WorkspaceConfig {
     }
 
     /// Validate the workspace configuration
+    ///
+    /// # Note
+    /// This function is used by tests.
+    #[allow(dead_code)] // Used by tests
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
             return Err(AugentError::ConfigInvalid {
@@ -219,37 +213,6 @@ impl WorkspaceBundle {
     /// Get installed locations for a file
     pub fn get_locations(&self, source: &str) -> Option<&Vec<String>> {
         self.enabled.get(source)
-    }
-
-    /// Remove a file mapping
-    pub fn remove_file(&mut self, source: &str) -> Option<Vec<String>> {
-        self.enabled.remove(source)
-    }
-
-    /// Check if this bundle has any file mappings
-    pub fn is_empty(&self) -> bool {
-        self.enabled.is_empty()
-    }
-
-    /// Find all file conflicts with another workspace bundle
-    ///
-    /// Returns a list of files that are provided by both bundles.
-    pub fn find_conflicts(&self, other: &WorkspaceBundle) -> Vec<&str> {
-        self.enabled
-            .keys()
-            .filter(|file| other.enabled.contains_key(*file))
-            .map(|s| s.as_str())
-            .collect()
-    }
-
-    /// Check if this bundle has any conflicts with a file-to-locations mapping
-    ///
-    /// Used when installing a new bundle to detect if it would conflict
-    /// with existing file mappings.
-    pub fn has_conflict(&self, file_to_locations: &HashMap<String, Vec<String>>) -> bool {
-        self.enabled
-            .keys()
-            .any(|file| file_to_locations.contains_key(file))
     }
 }
 
@@ -401,17 +364,13 @@ bundles:
     #[test]
     fn test_workspace_bundle_operations() {
         let mut bundle = WorkspaceBundle::new("test");
-        assert!(bundle.is_empty());
+        assert!(bundle.enabled.is_empty());
 
         bundle.add_file("file.md", vec!["loc1".to_string(), "loc2".to_string()]);
-        assert!(!bundle.is_empty());
+        assert!(!bundle.enabled.is_empty());
 
         let locations = bundle.get_locations("file.md").unwrap();
         assert_eq!(locations.len(), 2);
-
-        let removed = bundle.remove_file("file.md");
-        assert!(removed.is_some());
-        assert!(bundle.is_empty());
     }
 
     #[test]

@@ -79,7 +79,7 @@ struct PendingInstallation {
 
 impl<'a> Installer<'a> {
     /// Create a new installer
-    #[allow(dead_code)] // Used in tests
+    #[allow(dead_code)] // Used by tests
     pub fn new(workspace_root: &'a Path, platforms: Vec<Platform>) -> Self {
         Self {
             workspace_root,

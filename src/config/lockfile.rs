@@ -3,8 +3,6 @@
 //! The lockfile contains resolved dependency versions with exact git SHAs
 //! and BLAKE3 content hashes for reproducibility.
 
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
 use serde::ser::SerializeStruct;
@@ -265,11 +263,6 @@ impl Lockfile {
         self.bundles.iter().find(|b| b.name == name)
     }
 
-    /// Check if a bundle is in the lockfile
-    pub fn contains(&self, name: &str) -> bool {
-        self.bundles.iter().any(|b| b.name == name)
-    }
-
     /// Remove a bundle from the lockfile
     pub fn remove_bundle(&mut self, name: &str) -> Option<LockedBundle> {
         if let Some(pos) = self.bundles.iter().position(|b| b.name == name) {
@@ -277,14 +270,6 @@ impl Lockfile {
         } else {
             None
         }
-    }
-
-    /// Merge another lockfile into this one
-    ///
-    /// Bundles from `other` are appended to this lockfile.
-    /// The `other`'s name is ignored to preserve this lockfile's identity.
-    pub fn merge(&mut self, other: Lockfile) {
-        self.bundles.extend(other.bundles);
     }
 
     /// Compare this lockfile with another
@@ -322,25 +307,14 @@ impl Lockfile {
                 }
         })
     }
-
-    /// Validate lockfile integrity
-    pub fn validate(&self) -> Result<()> {
-        if self.name.is_empty() {
-            return Err(AugentError::ConfigInvalid {
-                message: "Lockfile name cannot be empty".to_string(),
-            });
-        }
-
-        for bundle in &self.bundles {
-            bundle.validate()?;
-        }
-
-        Ok(())
-    }
 }
 
 impl LockedBundle {
     /// Create a new locked bundle with a directory source
+    ///
+    /// # Note
+    /// This function is used by tests.
+    #[allow(dead_code)] // Used by tests
     pub fn dir(
         name: impl Into<String>,
         path: impl Into<String>,
@@ -363,6 +337,10 @@ impl LockedBundle {
     }
 
     /// Create a new locked bundle with a git source
+    ///
+    /// # Note
+    /// This function is used by tests.
+    #[allow(dead_code)] // Used by tests
     pub fn git(
         name: impl Into<String>,
         url: impl Into<String>,
@@ -389,6 +367,10 @@ impl LockedBundle {
     }
 
     /// Validate the locked bundle
+    ///
+    /// # Note
+    /// This function is used by tests.
+    #[allow(dead_code)] // Used by tests
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
             return Err(AugentError::ConfigInvalid {
@@ -432,6 +414,10 @@ impl LockedBundle {
     }
 
     /// Get the hash of this bundle
+    ///
+    /// # Note
+    /// This function is used by tests.
+    #[allow(dead_code)] // Used by tests
     pub fn hash(&self) -> &str {
         match &self.source {
             LockedSource::Dir { hash, .. } => hash,
@@ -510,15 +496,14 @@ mod tests {
     #[test]
     fn test_lockfile_operations() {
         let mut lockfile = Lockfile::new("@test/bundle");
-        assert!(!lockfile.contains("dep1"));
+        assert!(lockfile.find_bundle("dep1").is_none());
 
         lockfile.add_bundle(LockedBundle::dir("dep1", "path", "blake3:hash", vec![]));
-        assert!(lockfile.contains("dep1"));
         assert!(lockfile.find_bundle("dep1").is_some());
 
         let removed = lockfile.remove_bundle("dep1");
         assert!(removed.is_some());
-        assert!(!lockfile.contains("dep1"));
+        assert!(lockfile.find_bundle("dep1").is_none());
     }
 
     #[test]
@@ -545,20 +530,6 @@ mod tests {
         );
         assert_eq!(bundle.name, "test");
         assert_eq!(bundle.hash(), "blake3:abc123");
-    }
-
-    #[test]
-    fn test_lockfile_validation() {
-        // Valid lockfile
-        let lockfile = Lockfile::new("@test/bundle");
-        assert!(lockfile.validate().is_ok());
-
-        // Invalid: empty name
-        let lockfile = Lockfile {
-            name: String::new(),
-            bundles: vec![],
-        };
-        assert!(lockfile.validate().is_err());
     }
 
     #[test]
