@@ -428,8 +428,7 @@ Goal: Simplify configuration and marketplace handling by removing backwards comp
 Scope:
 
 - Remove historical `dependencies: []` compatibility behavior from bundle config parsing
-- Remove obsolete `$claudeplugin` naming compatibility branch in resolver
-- Keep current documented `augent.yaml` and marketplace behaviors intact
+- Keep current documented `augent.yaml`, marketplace behaviors, and `$claudeplugin` marketplace support intact
 
 ## Dependencies Between Epics
 

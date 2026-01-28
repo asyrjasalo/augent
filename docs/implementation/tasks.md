@@ -912,8 +912,8 @@ Set up cross-platform builds and distribution.
 **Status:** [-] In Progress
 
 - [x] Remove historical `dependencies: []` compatibility path from bundle config parsing
-- [ ] Remove obsolete `$claudeplugin` naming compatibility branch in resolver
-- [ ] Update documentation if any examples rely on removed legacy behavior
+- [ ] Verify `$claudeplugin` marketplace path support remains fully functional and covered by tests
+- [ ] Update documentation if any examples or text still describe removed legacy behavior
 - [ ] Run full test suite and fix any regressions
 
 ---
