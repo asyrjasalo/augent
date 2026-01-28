@@ -164,13 +164,12 @@ pub struct ShowArgs {
 /// Arguments for completions command
 #[derive(Parser, Debug)]
 #[command(after_help = "EXAMPLES:\n  \
-                  Generate bash completions:\n    augent completions --shell bash > ~/.bash_completion.d/augent\n\n\
-                  Generate zsh completions:\n    augent completions --shell zsh > ~/.zfunc/_augent\n\n\
-                  Generate fish completions:\n    augent completions --shell fish > ~/.config/fish/completions/augent.fish\n\n\
-                  Generate PowerShell completions:\n    augent completions --shell powershell")]
+                  Generate bash completions:\n    augent completions bash > ~/.bash_completion.d/augent\n\n\
+                  Generate zsh completions:\n    augent completions zsh > ~/.zfunc/_augent\n\n\
+                  Generate fish completions:\n    augent completions fish > ~/.config/fish/completions/augent.fish\n\n\
+                  Generate PowerShell completions:\n    augent completions powershell")]
 pub struct CompletionsArgs {
     /// Shell type (bash, elvish, fish, powershell, zsh)
-    #[arg(long)]
     pub shell: String,
 }
 
@@ -398,7 +397,7 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_completions() {
-        let cli = Cli::try_parse_from(["augent", "completions", "--shell", "bash"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "completions", "bash"]).unwrap();
         match cli.command {
             Commands::Completions(args) => {
                 assert_eq!(args.shell, "bash");

@@ -300,14 +300,19 @@ Generate shell completion scripts for better CLI experience.
 ### Syntax
 
 ```bash
-augent completions --shell <SHELL>
+augent completions <SHELL>
 ```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `<SHELL>` | Shell type (bash, elvish, fish, powershell, zsh) |
 
 ### Options
 
 | Option | Description |
 |--------|-------------|
-| `--shell <SHELL>` | Shell type (bash, elvish, fish, powershell, zsh) |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
 | `-h, --help` | Print help |
@@ -316,25 +321,25 @@ augent completions --shell <SHELL>
 
 | Shell | Installation Command |
 |-------|---------------------|
-| bash | `augent completions --shell bash > ~/.bash_completion.d/augent` |
-| zsh | `augent completions --shell zsh > ~/.zfunc/_augent` |
-| fish | `augent completions --shell fish > ~/.config/fish/completions/augent.fish` |
-| powershell | `augent completions --shell powershell` |
-| elvish | `augent completions --shell elvish` |
+| bash | `augent completions bash > ~/.bash_completion.d/augent` |
+| zsh | `augent completions zsh > ~/.zfunc/_augent` |
+| fish | `augent completions fish > ~/.config/fish/completions/augent.fish` |
+| powershell | `augent completions powershell` |
+| elvish | `augent completions elvish` |
 
 ### Examples
 
 ```bash
 # Generate bash completions
-augent completions --shell bash > ~/.bash_completion.d/augent
+augent completions bash > ~/.bash_completion.d/augent
 source ~/.bash_completion.d/augent
 
 # Generate zsh completions
-augent completions --shell zsh > ~/.zfunc/_augent
+augent completions zsh > ~/.zfunc/_augent
 # Add to ~/.zshrc: fpath=(~/.zfunc $fpath)
 
 # Generate fish completions
-augent completions --shell fish > ~/.config/fish/completions/augent.fish
+augent completions fish > ~/.config/fish/completions/augent.fish
 ```
 
 ---

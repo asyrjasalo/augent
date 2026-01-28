@@ -262,7 +262,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["completions", "--shell", "bash"])
+        .args(["completions", "bash"])
         .assert()
         .success()
         .stdout(predicates::str::contains("bash"));

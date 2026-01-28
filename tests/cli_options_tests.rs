@@ -24,7 +24,7 @@ fn augent_cmd() -> Command {
 #[test]
 fn test_completions_bash() {
     augent_cmd()
-        .args(["completions", "--shell", "bash"])
+        .args(["completions", "bash"])
         .assert()
         .success()
         .stdout(predicate::str::contains("_augent"));
@@ -33,7 +33,7 @@ fn test_completions_bash() {
 #[test]
 fn test_completions_zsh() {
     augent_cmd()
-        .args(["completions", "--shell", "zsh"])
+        .args(["completions", "zsh"])
         .assert()
         .success()
         .stdout(predicate::str::contains("#compdef"));
@@ -42,7 +42,7 @@ fn test_completions_zsh() {
 #[test]
 fn test_completions_fish() {
     augent_cmd()
-        .args(["completions", "--shell", "fish"])
+        .args(["completions", "fish"])
         .assert()
         .success()
         .stdout(predicate::str::contains("complete"));
@@ -51,7 +51,7 @@ fn test_completions_fish() {
 #[test]
 fn test_completions_powershell() {
     augent_cmd()
-        .args(["completions", "--shell", "powershell"])
+        .args(["completions", "powershell"])
         .assert()
         .success();
 }
@@ -59,7 +59,7 @@ fn test_completions_powershell() {
 #[test]
 fn test_completions_elvish() {
     augent_cmd()
-        .args(["completions", "--shell", "elvish"])
+        .args(["completions", "elvish"])
         .assert()
         .success()
         .stdout(predicate::str::contains("edit:"));
@@ -71,13 +71,13 @@ fn test_completions_missing_shell() {
         .args(["completions"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--shell"));
+        .stderr(predicate::str::contains("<SHELL>"));
 }
 
 #[test]
 fn test_completions_invalid_shell() {
     augent_cmd()
-        .args(["completions", "--shell", "invalid"])
+        .args(["completions", "invalid"])
         .assert()
         .failure();
 }
@@ -464,7 +464,7 @@ bundles: []
 #[test]
 fn test_bash_completion_script_valid() {
     let output = augent_cmd()
-        .args(["completions", "--shell", "bash"])
+        .args(["completions", "bash"])
         .output()
         .expect("Failed to generate bash completions");
 
@@ -482,7 +482,7 @@ fn test_bash_completion_script_valid() {
 #[test]
 fn test_zsh_completion_script_valid() {
     let output = augent_cmd()
-        .args(["completions", "--shell", "zsh"])
+        .args(["completions", "zsh"])
         .output()
         .expect("Failed to generate zsh completions");
 
@@ -499,7 +499,7 @@ fn test_zsh_completion_script_valid() {
 #[test]
 fn test_powershell_completion_script_valid() {
     let output = augent_cmd()
-        .args(["completions", "--shell", "powershell"])
+        .args(["completions", "powershell"])
         .output()
         .expect("Failed to generate powershell completions");
 
@@ -514,7 +514,7 @@ fn test_powershell_completion_script_valid() {
 #[test]
 fn test_fish_completion_script_valid() {
     let output = augent_cmd()
-        .args(["completions", "--shell", "fish"])
+        .args(["completions", "fish"])
         .output()
         .expect("Failed to generate fish completions");
 
@@ -531,7 +531,7 @@ fn test_fish_completion_script_valid() {
 #[test]
 fn test_elvish_completion_script_valid() {
     let output = augent_cmd()
-        .args(["completions", "--shell", "elvish"])
+        .args(["completions", "elvish"])
         .output()
         .expect("Failed to generate elvish completions");
 
@@ -721,7 +721,7 @@ fn test_completions_verbose() {
     // (completion scripts go to stdout and shouldn't be mixed with verbose messages)
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["completions", "--shell", "bash", "-v"])
+        .args(["completions", "bash", "-v"])
         .assert()
         .success()
         .stdout(predicate::str::contains("_augent"));
