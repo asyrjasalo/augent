@@ -342,11 +342,11 @@ augent install github:author/bundle
 ### Cache Management
 
 ```bash
-# Default: show stats and list bundles
+# Show cache statistics
 augent cache
 
-# Show cache size only (without listing)
-augent cache --show-size
+# List cached bundles
+augent cache list
 
 # Clear all cached bundles
 augent cache clear

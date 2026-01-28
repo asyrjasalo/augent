@@ -252,7 +252,6 @@ augent cache [OPTIONS] [SUBCOMMAND]
 
 | Option | Description |
 |--------|-------------|
-| `-s, --show-size` | Show cache size without listing bundles |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
 | `-h, --help` | Print help |
@@ -261,6 +260,7 @@ augent cache [OPTIONS] [SUBCOMMAND]
 
 | Subcommand | Description |
 |------------|-------------|
+| `list` | List cached bundles |
 | `clear` | Clear cached bundles |
 
 ### Clear Options
@@ -272,11 +272,11 @@ augent cache [OPTIONS] [SUBCOMMAND]
 ### Examples
 
 ```bash
-# Default: show stats and list bundles
+# Show cache statistics
 augent cache
 
-# Show cache size only (without listing)
-augent cache --show-size
+# List cached bundles
+augent cache list
 
 # Clear all cached bundles
 augent cache clear

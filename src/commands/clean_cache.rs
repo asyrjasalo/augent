@@ -3,9 +3,13 @@ use crate::cli::{CacheArgs, CacheSubcommand};
 use crate::error::Result;
 
 pub fn run(args: CacheArgs) -> Result<()> {
-    // Handle subcommand first
+    // Handle subcommands
     if let Some(command) = args.command {
         match command {
+            CacheSubcommand::List => {
+                list_cached_bundles()?;
+                return Ok(());
+            }
             CacheSubcommand::Clear(clear_args) => {
                 if let Some(slug) = clear_args.only {
                     clean_specific_bundle(&slug)?;
@@ -17,15 +21,8 @@ pub fn run(args: CacheArgs) -> Result<()> {
         }
     }
 
-    // Handle flags
-    if args.show_size {
-        show_cache_stats()?;
-    } else {
-        // Default: show stats and list bundles
-        show_cache_stats()?;
-        println!();
-        list_cached_bundles()?;
-    }
+    // Default: show only cache statistics
+    show_cache_stats()?;
 
     Ok(())
 }
@@ -43,7 +40,8 @@ fn show_cache_stats() -> Result<()> {
     if stats.repositories == 0 {
         println!("\nCache is empty.");
     } else {
-        println!("\nRun 'augent cache clear' to remove everything from cache.");
+        println!("\nRun 'augent cache list' to list cached bundles.");
+        println!("Run 'augent cache clear' to remove everything from cache.");
         println!("Run 'augent cache clear --only <slug>' to remove a specific bundle.");
     }
 
@@ -51,6 +49,17 @@ fn show_cache_stats() -> Result<()> {
 }
 
 fn list_cached_bundles() -> Result<()> {
+    // Show the same statistics header as `augent cache` before listing
+    let stats = cache::cache_stats()?;
+    let cache_dir = cache::cache_dir()?;
+
+    println!("Cache Statistics:");
+    println!("  Location: {}", cache_dir.display());
+    println!("  Repositories: {}", stats.repositories);
+    println!("  Versions: {}", stats.versions);
+    println!("  Size: {}", stats.formatted_size());
+    println!();
+
     let bundles = cache::list_cached_bundles()?;
 
     if bundles.is_empty() {

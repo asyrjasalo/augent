@@ -903,6 +903,20 @@ Set up cross-platform builds and distribution.
 
 ---
 
+## Phase 8: CLI Maintenance
+
+### Epic 16: Cache Command UX Tweaks
+
+#### Feature 16.1: Cache List Subcommand
+
+**Status:** [x] Complete
+
+- [x] Add `augent cache list` subcommand so that `augent cache` only shows cache statistics
+- [x] Update tests to reflect `augent cache` and `augent cache list` behavior
+- [x] Update cache command documentation to remove `--show-size` and describe `cache list`
+
+---
+
 ## Phase 7: Post-Release Maintenance & Cleanup
 
 ### Epic 15: Legacy Compatibility Cleanup

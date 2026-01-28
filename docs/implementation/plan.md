@@ -446,3 +446,17 @@ Scope:
 - **Epic 13** → Depends on Epics 11-12, part of Phase 5 (Complete)
 - **Epic 14** → Final phase after all features complete (Complete)
 - **Epic 15** → Maintenance-only cleanup; can be done after release
+
+---
+
+## Phase 8: CLI Maintenance
+
+### Epic 16: Cache Command UX Tweaks
+
+**Status:** Complete
+
+#### Feature 16.1: Cache List Subcommand
+
+**Status:** Complete
+
+Goal: Simplify cache command UX by making `augent cache` show only cache statistics and adding `augent cache list` to list cached bundles.

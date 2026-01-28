@@ -57,7 +57,7 @@ bundles: []
 }
 
 #[test]
-fn test_clean_cache_show_size() {
+fn test_cache_show_stats() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
@@ -78,7 +78,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["cache", "--show-size"])
+        .args(["cache"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Size"));
@@ -134,7 +134,7 @@ bundles: []
 
     let output = augent_cmd()
         .current_dir(&workspace.path)
-        .args(["cache", "--show-size"])
+        .args(["cache"])
         .output()
         .expect("Failed to run cache");
 
@@ -263,7 +263,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["cache", "--show-size"])
+        .args(["cache"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
@@ -274,7 +274,7 @@ fn test_clean_cache_truly_non_existent_cache_dir() {
     // augent_cmd() already sets AUGENT_CACHE_DIR via test_cache_dir(),
     // so we can use it directly without manual override
     augent_cmd()
-        .args(["cache", "--show-size"])
+        .args(["cache"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
@@ -320,9 +320,8 @@ bundles: []
     assert!(workspace.file_exists(".claude/commands/test.md"));
     assert!(workspace.file_exists(".claude/commands/test2.md"));
 
-    let cache_dir = dirs::cache_dir()
-        .map(|p| p.join("augent").join("bundles"))
-        .expect("Could not determine cache directory");
+    // Use the same test cache directory base that augent_cmd() configures
+    let cache_dir = common::test_cache_dir().join("bundles");
 
     let cache_existed_before = cache_dir.exists();
 
@@ -334,7 +333,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["cache", "--show-size"])
+        .args(["cache"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
@@ -394,4 +393,37 @@ bundles: []
         .args(["cache", "clear", "--only"])
         .assert()
         .failure();
+}
+
+#[test]
+fn test_cache_list_lists_bundles() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("claude");
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .assert()
+        .success();
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["cache", "list"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Cache Statistics:").and(
+                predicate::str::contains("Cached bundles")
+                    .or(predicate::str::contains("No cached bundles")),
+            ),
+        );
 }
