@@ -74,70 +74,7 @@ impl BundleConfig {
 
     /// Parse bundle configuration from YAML string
     pub fn from_yaml(yaml: &str) -> Result<Self> {
-        // First parse into a generic YAML value so we can support legacy
-        // `metadata` fields as documented in bundles.md:
-        //
-        // metadata:
-        //   author: ...
-        //   license: ...
-        //   homepage: ...
-        //
-        // Newer configs use top-level `author`, `license`, `homepage`
-        // fields instead. To remain backwards compatible (and keep the
-        // internal struct simple), we transparently lift known metadata
-        // fields to the top level before deserializing into BundleConfig.
-        let mut value: serde_yaml::Value = serde_yaml::from_str(yaml)?;
-
-        if let Some(root_map) = value.as_mapping_mut() {
-            // Take a snapshot of metadata fields we care about to avoid
-            // multiple mutable borrows of root_map at the same time.
-            let metadata_snapshot =
-                root_map
-                    .get(serde_yaml::Value::from("metadata"))
-                    .and_then(|metadata_value| {
-                        if let serde_yaml::Value::Mapping(meta_map) = metadata_value {
-                            let author = meta_map.get(serde_yaml::Value::from("author")).cloned();
-                            let license = meta_map.get(serde_yaml::Value::from("license")).cloned();
-                            let homepage =
-                                meta_map.get(serde_yaml::Value::from("homepage")).cloned();
-                            Some((author, license, homepage))
-                        } else {
-                            None
-                        }
-                    });
-
-            if let Some((author, license, homepage)) = metadata_snapshot {
-                let insert_if_missing =
-                    |key: &str, val: Option<serde_yaml::Value>, root: &mut serde_yaml::Mapping| {
-                        if let Some(v) = val {
-                            if !root.contains_key(serde_yaml::Value::from(key)) {
-                                root.insert(serde_yaml::Value::from(key), v);
-                            }
-                        }
-                    };
-
-                insert_if_missing("author", author, root_map);
-                insert_if_missing("license", license, root_map);
-                insert_if_missing("homepage", homepage, root_map);
-            }
-
-            // Backwards compatibility for historical `dependencies: []` field
-            // used in docs examples. New configs should use `bundles: []`
-            // with full dependency declarations. For the empty-array case
-            // we can safely drop the legacy `dependencies` key so configs
-            // still parse without changing behavior.
-            if !root_map.contains_key(serde_yaml::Value::from("bundles")) {
-                if let Some(serde_yaml::Value::Sequence(seq)) =
-                    root_map.get(serde_yaml::Value::from("dependencies"))
-                {
-                    if seq.is_empty() {
-                        root_map.remove(serde_yaml::Value::from("dependencies"));
-                    }
-                }
-            }
-        }
-
-        let config: Self = serde_yaml::from_value(value)?;
+        let config: Self = serde_yaml::from_str(yaml)?;
         config.validate()?;
         Ok(config)
     }

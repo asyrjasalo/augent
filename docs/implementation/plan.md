@@ -411,6 +411,26 @@ Additional test coverage improvements based on audit of user-facing functionalit
 
 **Status:** Complete
 
+---
+
+## Phase 7: Post-Release Maintenance & Cleanup
+
+### Epic 15: Legacy Compatibility Cleanup
+
+**Status:** In Progress
+
+#### Feature 15.1: Remove Early Implementation Backwards Compatibility
+
+**Status:** In Progress
+
+Goal: Simplify configuration and marketplace handling by removing backwards compatibility paths that only supported early, unpublished Augent formats.
+
+Scope:
+
+- Remove historical `dependencies: []` compatibility behavior from bundle config parsing
+- Remove obsolete `$claudeplugin` naming compatibility branch in resolver
+- Keep current documented `augent.yaml` and marketplace behaviors intact
+
 ## Dependencies Between Epics
 
 - **Epic 1** → Foundation for all other epics
@@ -424,4 +444,5 @@ Additional test coverage improvements based on audit of user-facing functionalit
 - **Epic 11** → Parallel to implementation, continuous (Complete)
 - **Epic 12** → Starts during Epic 1, continues throughout (Complete)
 - **Epic 13** → Depends on Epics 11-12, part of Phase 5 (Complete)
-- **Epic 14** → Final phase after all features complete (In Progress)
+- **Epic 14** → Final phase after all features complete (Complete)
+- **Epic 15** → Maintenance-only cleanup; can be done after release

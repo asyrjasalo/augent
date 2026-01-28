@@ -656,10 +656,6 @@ impl Resolver {
                             // Include the specific bundle name from marketplace in full path
                             // Format: @author/repo/bundle-name
                             format!("{}/{}", base_name, bundle_name)
-                        } else if let Some(remaining_path) = path_val.strip_prefix("$claudeplugin/")
-                        {
-                            // Handle old format for backwards compatibility
-                            format!("{}/{}", base_name, remaining_path)
                         } else {
                             // Regular path - include in name
                             format!("{}/{}", base_name, path_val)

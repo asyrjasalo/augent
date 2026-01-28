@@ -902,3 +902,18 @@ Set up cross-platform builds and distribution.
 - [x] Remove `--list` flag and make listing bundles the default behavior for `augent cache`
 
 ---
+
+## Phase 7: Post-Release Maintenance & Cleanup
+
+### Epic 15: Legacy Compatibility Cleanup
+
+#### Feature 15.1: Remove Early Implementation Backwards Compatibility
+
+**Status:** [-] In Progress
+
+- [ ] Remove historical `dependencies: []` compatibility path from bundle config parsing
+- [ ] Remove obsolete `$claudeplugin` naming compatibility branch in resolver
+- [ ] Update documentation if any examples rely on removed legacy behavior
+- [ ] Run full test suite and fix any regressions
+
+---
