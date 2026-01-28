@@ -127,13 +127,17 @@ impl Workspace {
             workspace_config.name = name;
         }
 
-        // Reorder lockfile to match augent.yaml order (if augent.yaml has dependencies)
+        // Reorder lockfile to match augent.yaml order in-memory (if augent.yaml has dependencies)
+        //
+        // IMPORTANT: This must remain read-only with respect to the on-disk lockfile so that
+        // commands like `augent list` (which only need to read workspace state) never perform
+        // writes. Writing here can cause spurious failures when other processes are concurrently
+        // updating `augent.lock` (for example, during `install`), violating our atomic
+        // operations guarantees.
         if !bundle_config.bundles.is_empty() {
             lockfile.reorder_from_bundle_config(&bundle_config.bundles, Some(&bundle_config.name));
             // Reorganize to ensure correct type ordering (git -> dir -> workspace)
             lockfile.reorganize(Some(&bundle_config.name));
-            // Save the reordered lockfile to disk to keep it in sync
-            Self::save_lockfile(&config_dir, &lockfile)?;
         }
 
         Ok(Self {
