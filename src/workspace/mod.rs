@@ -42,11 +42,16 @@ pub struct Workspace {
     /// Root directory of the workspace (where .augent is located)
     pub root: PathBuf,
 
-    /// Path to the .augent directory (legacy location, always present)
+    /// Path to the `.augent` directory (workspace metadata directory)
     pub augent_dir: PathBuf,
 
-    /// Path to the configuration directory (where augent.yaml/augent.lock/augent.index.yaml are)
-    /// This is either root (if augent.yaml is in root) or .augent (if augent.yaml is in .augent)
+    /// Path to the active configuration directory (where augent.yaml/augent.lock/augent.index.yaml are)
+    ///
+    /// Both layouts are first‑class and fully supported:
+    /// - Root layout: configuration files live next to the git root (augent.yaml in workspace root)
+    /// - `.augent` layout: configuration files live inside the `.augent` directory
+    ///
+    /// This field points to whichever location is currently authoritative for the workspace.
     pub config_dir: PathBuf,
 
     /// Bundle configuration (augent.yaml)
@@ -358,8 +363,8 @@ impl Workspace {
     /// Get the source path for the workspace bundle configuration
     ///
     /// Returns the path to use for resolving the workspace bundle:
-    /// - If root augent.yaml exists, returns "." (current directory)
-    /// - Otherwise, returns "./.augent" (legacy .augent directory)
+    /// - If root augent.yaml exists, returns "." (current directory / root layout)
+    /// - Otherwise, returns "./.augent" (`.augent` layout)
     pub fn get_config_source_path(&self) -> String {
         if self.root.join(BUNDLE_CONFIG_FILE).exists() {
             ".".to_string()
