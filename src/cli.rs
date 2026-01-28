@@ -26,9 +26,9 @@ use std::path::PathBuf;
                   augent install @author/bundle          \x1b[90m# Install from GitHub shorthand\x1b[0m\n   \
                   augent install ./bundle --for claude   \x1b[90m# Install only for Claude Code\x1b[0m\n   \
                   augent uninstall @author/bundle        \x1b[90m# Uninstall bundle\x1b[0m\n   \
-                  augent uninstall @author --all-bundles  \x1b[90m# Uninstall scope without prompt\x1b[0m\n   \
+                  augent uninstall @author --all-bundles \x1b[90m# Uninstall all bundles under scope\x1b[0m\n   \
                   augent list                            \x1b[90m# List all installed bundles\x1b[0m\n   \
-                  augent show local                      \x1b[90m# Show bundle information\x1b[0m\n\n\
+                  augent show @author/bundle             \x1b[90m# Show bundle information\x1b[0m\n\n\
 "
 )]
 pub struct Cli {
