@@ -213,7 +213,8 @@ pub fn list_cached_entries_for_url_sha(url: &str, sha: &str) -> Result<Vec<Cache
                 .map(|p| resources.join(p))
                 .unwrap_or_else(|| resources.clone())
         };
-        if content_path.is_dir() {
+        // Include entry if content exists, or if marketplace (synthetic created on demand when installed)
+        if content_path.is_dir() || marketplace_plugin_name(e.path.as_deref()).is_some() {
             result.push((
                 e.path.clone(),
                 e.bundle_name.clone(),
@@ -313,6 +314,24 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
         };
         if content_path.is_dir() {
             return Ok(Some((content_path, sha.to_string(), resolved_ref)));
+        }
+        // Marketplace: create synthetic dir on demand when this bundle is actually being used
+        if resources.is_dir() {
+            if let Some(name) = marketplace_plugin_name(path_opt) {
+                let repo_dst = entry_repository_path(&entry_path);
+                fs::create_dir_all(&content_path).map_err(|e| {
+                    AugentError::CacheOperationFailed {
+                        message: format!("Failed to create synthetic directory: {}", e),
+                    }
+                })?;
+                MarketplaceConfig::create_synthetic_bundle_to(
+                    &repo_dst,
+                    name,
+                    &content_path,
+                    Some(&source.url),
+                )?;
+                return Ok(Some((content_path, sha.to_string(), resolved_ref)));
+            }
         }
     }
     Ok(None)
@@ -441,19 +460,8 @@ pub fn ensure_bundle_cached(
     };
 
     if resources.is_dir() {
-        // Repo already cached: for marketplace ensure synthetic dir exists, then add index
-        if let Some(name) = plugin_name {
-            let synthetic_dir = resources.join(SYNTHETIC_DIR).join(name);
-            if !synthetic_dir.is_dir() {
-                let repo_dst = entry_repository_path(&entry_path);
-                MarketplaceConfig::create_synthetic_bundle_to(
-                    &repo_dst,
-                    name,
-                    &synthetic_dir,
-                    Some(url),
-                )?;
-            }
-        }
+        // Repo already cached: add index entry only. Marketplace synthetic dirs are created
+        // on demand in get_cached when a bundle is actually resolved (installed).
         add_index_entry(IndexEntry {
             url: url.to_string(),
             sha: sha.to_string(),
@@ -488,19 +496,7 @@ pub fn ensure_bundle_cached(
         message: format!("Failed to create resources directory: {}", e),
     })?;
     if is_marketplace {
-        // Marketplace: only resources/synthetic/<name>/ (no full repo copy; repo is in repository/)
-        if let Some(name) = plugin_name {
-            let synthetic_dir = resources.join(SYNTHETIC_DIR).join(name);
-            fs::create_dir_all(&synthetic_dir).map_err(|e| AugentError::CacheOperationFailed {
-                message: format!("Failed to create synthetic directory: {}", e),
-            })?;
-            MarketplaceConfig::create_synthetic_bundle_to(
-                &repo_dst,
-                name,
-                &synthetic_dir,
-                Some(url),
-            )?;
-        }
+        // Marketplace: empty resources/; synthetic dirs are created on demand in get_cached when a bundle is installed
     } else {
         // Normal multi-bundle repo: full repo content (without .git) in resources/
         copy_dir_recursive_exclude_git(repo_path, &resources)?;

@@ -5,11 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] - 2026-01-29
 
 ### Fixed
 
-- Git bundles are served from cache when possible—repeated installs of the same ref no longer refetch
+- Bundle naming: directory bundles use the directory name (e.g. `local-bundle` for `./local-bundle`); git bundles use `@owner/repo` from repo root, and `@owner/repo/bundle-name` or `@owner/repo:path/from/root` for subdirectories, matching the bundle spec
+- Bundle resolution: config and lockfile are found correctly (augent.lock in `.` or `./.augent`); names written to augent.yaml and augent.lock are consistent with the chosen source
+- Git bundles are served from cache when possible — repeated installs of the same ref no longer refetch
 - Cache stores one entry per repo+sha instead of per sub-bundle, so multi-bundle repos use a single copy instead of duplicates
 
 ## [0.6.0] - 2026-01-28
