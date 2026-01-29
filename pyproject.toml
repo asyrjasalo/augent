@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "augent"
-version = "0.6.0"
+version = "0.6.1"
 description = "Lean package manager for various AI coding platforms"
 authors = [{ name = "Anssi Syrjäsalo" }]
 readme = "README.md"

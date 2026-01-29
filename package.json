@@ -1,6 +1,6 @@
 {
   "name": "augent",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Lean package manager for various AI coding platforms",
   "author": "Anssi Syrjäsalo",
   "license": "AGPL-3.0",
@@ -8,6 +8,7 @@
     "type": "git",
     "url": "https://github.com/asyrjasalo/augent.git"
   },
+  "homepage": "https://crates.io/crates/augent",
   "keywords": [
     "ai",
     "agents",
