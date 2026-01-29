@@ -11,6 +11,7 @@ fn augent_cmd() -> Command {
     let cache_dir = common::test_cache_dir();
     let mut cmd = Command::cargo_bin("augent").unwrap();
     cmd.env("AUGENT_CACHE_DIR", cache_dir);
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
     cmd
 }
 

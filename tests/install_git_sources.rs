@@ -16,6 +16,8 @@ fn augent_cmd() -> Command {
     // Always ignore any developer AUGENT_WORKSPACE overrides during tests
     cmd.env_remove("AUGENT_WORKSPACE");
     cmd.env("AUGENT_CACHE_DIR", cache_dir);
+    // Prevent git from prompting for credentials (e.g. "Username for 'https://github.com':")
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
     cmd
 }
 

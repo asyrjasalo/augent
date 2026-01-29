@@ -6,14 +6,14 @@
 //!
 //! ```text
 //! AUGENT_CACHE_DIR/bundles/
-//! └── <bundle_name>/          (path-safe: @author/repo -> author-repo)
+//! └── <repo_key>/            (path-safe: @author/repo -> author-repo, one per repo)
 //!     └── <sha>/
-//!         ├── repository/     (shallow clone, a git repo)
-//!         └── resources/      (extracted bundle content, not a git repo)
+//!         ├── repository/    (shallow clone, full repo)
+//!         └── resources/     (full repo content without .git; sub-bundles under subdirs)
 //! ```
 //!
 //! The cache key is composed of:
-//! - Bundle name: from augent.yaml or derived (e.g. @author/repo)
+//! - Repo name from URL (e.g. @author/repo) so one entry per repo+sha, not per sub-bundle
 //! - Git SHA: exact commit SHA for reproducibility
 
 use std::fs;
@@ -37,6 +37,9 @@ const REPOSITORY_DIR: &str = "repository";
 
 /// Subdirectory for extracted resources (agents, commands, etc.)
 const RESOURCES_DIR: &str = "resources";
+
+/// Subdirectory for marketplace synthetic bundle content under repo-level resources
+const SYNTHETIC_DIR: &str = "synthetic";
 
 /// File name for storing the resolved ref (repository has detached HEAD after checkout)
 const REF_FILE: &str = ".augent_ref";
@@ -88,7 +91,33 @@ pub fn bundle_name_to_cache_key(name: &str) -> String {
         .to_string()
 }
 
-/// Get the cache entry path for a bundle: `bundles/<bundle_name_key>/<sha>`
+/// Derive repo name from URL (e.g. https://github.com/davila7/claude-code-templates.git -> @davila7/claude-code-templates)
+pub fn repo_name_from_url(url: &str) -> String {
+    let url_clean = url.trim_end_matches(".git");
+    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+        &url_clean[colon_idx + 1..]
+    } else {
+        url_clean
+    };
+    let parts: Vec<&str> = repo_path.split('/').filter(|s| !s.is_empty()).collect();
+    if parts.len() >= 2 {
+        let author = parts[parts.len() - 2];
+        let repo = parts[parts.len() - 1];
+        format!("@{}/{}", author, repo)
+    } else {
+        format!("@unknown/{}", repo_path.replace('/', "-"))
+    }
+}
+
+/// Get the cache entry path for a repo: `bundles/<repo_key>/<sha>`. One entry per repo+sha.
+pub fn repo_cache_entry_path(url: &str, sha: &str) -> Result<PathBuf> {
+    let repo_name = repo_name_from_url(url);
+    let key = bundle_name_to_cache_key(&repo_name);
+    Ok(bundles_cache_dir()?.join(&key).join(sha))
+}
+
+/// Get the cache entry path for a bundle (legacy / per-bundle key; kept for tests and API)
+#[allow(dead_code)]
 pub fn bundle_cache_entry_path(bundle_name: &str, sha: &str) -> Result<PathBuf> {
     let key = bundle_name_to_cache_key(bundle_name);
     Ok(bundles_cache_dir()?.join(&key).join(sha))
@@ -158,6 +187,43 @@ fn index_lookup(
     Ok(None)
 }
 
+/// One cache entry for (url, sha): path within repo, bundle name, resources dir, resolved ref.
+pub type CachedEntryForUrlSha = (Option<String>, String, PathBuf, Option<String>);
+
+/// List all cache index entries for a given (url, sha). Used to discover bundles from cache
+/// without cloning. Returns (path, bundle_name, content_path, resolved_ref) for each entry.
+pub fn list_cached_entries_for_url_sha(url: &str, sha: &str) -> Result<Vec<CachedEntryForUrlSha>> {
+    let entry_path = repo_cache_entry_path(url, sha)?;
+    let resources = entry_resources_path(&entry_path);
+    if !resources.is_dir() {
+        return Ok(Vec::new());
+    }
+    let entries = read_index()?;
+    let mut result = Vec::new();
+    for e in &entries {
+        if e.url != url || e.sha != sha {
+            continue;
+        }
+        let content_path = if let Some(name) = marketplace_plugin_name(e.path.as_deref()) {
+            resources.join(SYNTHETIC_DIR).join(name)
+        } else {
+            e.path
+                .as_ref()
+                .map(|p| resources.join(p))
+                .unwrap_or_else(|| resources.clone())
+        };
+        if content_path.is_dir() {
+            result.push((
+                e.path.clone(),
+                e.bundle_name.clone(),
+                content_path,
+                e.resolved_ref.clone(),
+            ));
+        }
+    }
+    Ok(result)
+}
+
 /// Get the content path within a repo (root or source.path subdir). Does not apply $claudeplugin.
 pub fn content_path_in_repo(repo_path: &Path, source: &GitSource) -> PathBuf {
     match &source.path {
@@ -224,7 +290,8 @@ fn write_ref_to_cache(repo_path: &Path, ref_name: &str) -> Result<()> {
 
 /// Get a cached bundle if it exists (lookup by url, sha, path in index).
 ///
-/// Returns (resources_path, sha, resolved_ref) or None if not cached.
+/// Returns (content_path, sha, resolved_ref) or None if not cached.
+/// Repo-level: content_path = resources/ or resources/<path>. $claudeplugin: per-bundle entry.
 pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<String>)>> {
     let sha = source
         .resolved_sha
@@ -233,11 +300,18 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
             message: "get_cached requires resolved_sha".to_string(),
         })?;
     let path_opt = source.path.as_deref();
-    if let Some((bundle_name, resolved_ref)) = index_lookup(&source.url, sha, path_opt)? {
-        let entry_path = bundle_cache_entry_path(&bundle_name, sha)?;
+    if let Some((_bundle_name, resolved_ref)) = index_lookup(&source.url, sha, path_opt)? {
+        let entry_path = repo_cache_entry_path(&source.url, sha)?;
         let resources = entry_resources_path(&entry_path);
-        if resources.is_dir() {
-            return Ok(Some((resources, sha.to_string(), resolved_ref)));
+        let content_path = if let Some(name) = marketplace_plugin_name(path_opt) {
+            resources.join(SYNTHETIC_DIR).join(name)
+        } else {
+            path_opt
+                .map(|p| resources.join(p))
+                .unwrap_or_else(|| resources.clone())
+        };
+        if content_path.is_dir() {
+            return Ok(Some((content_path, sha.to_string(), resolved_ref)));
         }
     }
     Ok(None)
@@ -335,21 +409,50 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Ensure a cache entry exists for this bundle: copy repo to repository/ and content to resources/.
-/// Returns the resources path. If entry already exists, returns it and adds index entry.
+/// Extract plugin name from $claudeplugin/path (e.g. "$claudeplugin/ai-ml-toolkit" -> "ai-ml-toolkit")
+fn marketplace_plugin_name(path: Option<&str>) -> Option<&str> {
+    path.and_then(|p| p.strip_prefix("$claudeplugin/"))
+}
+
+/// Ensure a cache entry exists for this bundle. One repo-level entry per url+sha: repository/ +
+/// resources/ (full repo). Marketplace plugins use resources/synthetic/<plugin_name>/.
+/// Returns the content path (resources/, resources/<path>, or resources/synthetic/<plugin_name>).
 pub fn ensure_bundle_cached(
     bundle_name: &str,
     sha: &str,
     url: &str,
     path: Option<&str>,
     repo_path: &Path,
-    content_path: &Path,
+    _content_path: &Path,
     resolved_ref: Option<&str>,
 ) -> Result<PathBuf> {
-    let entry_path = bundle_cache_entry_path(bundle_name, sha)?;
+    let is_marketplace = path.is_some_and(|p| p.starts_with("$claudeplugin/"));
+    let plugin_name = marketplace_plugin_name(path);
+
+    // Always use repo-level entry (one per url+sha)
+    let entry_path = repo_cache_entry_path(url, sha)?;
     let resources = entry_resources_path(&entry_path);
+    let content_result = if let Some(name) = plugin_name {
+        resources.join(SYNTHETIC_DIR).join(name)
+    } else {
+        path.map(|p| resources.join(p))
+            .unwrap_or_else(|| resources.clone())
+    };
 
     if resources.is_dir() {
+        // Repo already cached: for marketplace ensure synthetic dir exists, then add index
+        if let Some(name) = plugin_name {
+            let synthetic_dir = resources.join(SYNTHETIC_DIR).join(name);
+            if !synthetic_dir.is_dir() {
+                let repo_dst = entry_repository_path(&entry_path);
+                MarketplaceConfig::create_synthetic_bundle_to(
+                    &repo_dst,
+                    name,
+                    &synthetic_dir,
+                    Some(url),
+                )?;
+            }
+        }
         add_index_entry(IndexEntry {
             url: url.to_string(),
             sha: sha.to_string(),
@@ -357,7 +460,7 @@ pub fn ensure_bundle_cached(
             bundle_name: bundle_name.to_string(),
             resolved_ref: resolved_ref.map(String::from),
         })?;
-        return Ok(resources);
+        return Ok(content_result);
     }
 
     let base = cache_dir()?;
@@ -383,9 +486,26 @@ pub fn ensure_bundle_cached(
     fs::create_dir_all(&resources).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to create resources directory: {}", e),
     })?;
-    copy_dir_recursive_exclude_git(content_path, &resources)?;
+    if is_marketplace {
+        // Marketplace: only resources/synthetic/<name>/ (no full repo copy; repo is in repository/)
+        if let Some(name) = plugin_name {
+            let synthetic_dir = resources.join(SYNTHETIC_DIR).join(name);
+            fs::create_dir_all(&synthetic_dir).map_err(|e| AugentError::CacheOperationFailed {
+                message: format!("Failed to create synthetic directory: {}", e),
+            })?;
+            MarketplaceConfig::create_synthetic_bundle_to(
+                &repo_dst,
+                name,
+                &synthetic_dir,
+                Some(url),
+            )?;
+        }
+    } else {
+        // Normal multi-bundle repo: full repo content (without .git) in resources/
+        copy_dir_recursive_exclude_git(repo_path, &resources)?;
+    }
 
-    fs::write(entry_path.join(BUNDLE_NAME_FILE), bundle_name).map_err(|e| {
+    fs::write(entry_path.join(BUNDLE_NAME_FILE), repo_name_from_url(url)).map_err(|e| {
         AugentError::CacheOperationFailed {
             message: format!("Failed to write bundle name file: {}", e),
         }
@@ -399,16 +519,31 @@ pub fn ensure_bundle_cached(
         resolved_ref: resolved_ref.map(String::from),
     })?;
 
-    Ok(resources)
+    Ok(content_result)
 }
 
 /// Cache a bundle by cloning from a git source (or use existing cache).
 ///
 /// Returns (resources_path, sha, resolved_ref).
+/// When resolved_sha is None, resolves ref via ls-remote first so the cache can be checked without cloning.
 pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
+    // If we have resolved_sha, check cache first
     if let Some(sha) = &source.resolved_sha {
         if let Some((path, _, ref_name)) = get_cached(source)? {
             return Ok((path, sha.clone(), ref_name));
+        }
+    } else {
+        // Resolve ref to SHA via ls-remote (no clone) so we can check cache
+        if let Ok(sha) = crate::git::ls_remote(&source.url, source.git_ref.as_deref()) {
+            let source_with_sha = GitSource {
+                url: source.url.clone(),
+                path: source.path.clone(),
+                git_ref: source.git_ref.clone(),
+                resolved_sha: Some(sha.clone()),
+            };
+            if let Some((path, _, ref_name)) = get_cached(&source_with_sha)? {
+                return Ok((path, sha, ref_name));
+            }
         }
     }
 
@@ -442,10 +577,17 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         };
 
     if let Some((_, ref_name)) = index_lookup(&source.url, &sha, path_opt)? {
-        let entry_path = bundle_cache_entry_path(&bundle_name, &sha)?;
+        let entry_path = repo_cache_entry_path(&source.url, &sha)?;
         let resources = entry_resources_path(&entry_path);
-        if resources.is_dir() {
-            return Ok((resources, sha, ref_name));
+        let content = if let Some(name) = marketplace_plugin_name(path_opt) {
+            resources.join(SYNTHETIC_DIR).join(name)
+        } else {
+            path_opt
+                .map(|p| resources.join(p))
+                .unwrap_or_else(|| resources.clone())
+        };
+        if content.is_dir() {
+            return Ok((content, sha, ref_name));
         }
     }
 
@@ -577,7 +719,7 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
     Ok(bundles)
 }
 
-/// Remove a specific bundle from cache by its name (e.g. @author/repo)
+/// Remove a specific bundle (or repo) from cache by name (e.g. @author/repo removes the repo and all its sub-bundles)
 pub fn remove_cached_bundle(bundle_name: &str) -> Result<()> {
     let key = bundle_name_to_cache_key(bundle_name);
     let path = bundles_cache_dir()?.join(&key);
@@ -592,10 +734,13 @@ pub fn remove_cached_bundle(bundle_name: &str) -> Result<()> {
         message: format!("Failed to remove cached bundle: {}", e),
     })?;
 
-    // Remove index entries for this bundle name (any url/sha/path that pointed to it)
+    // Remove index entries: either by bundle name (per-bundle key) or by repo (repo-level key)
     let mut entries = read_index()?;
     let key_normalized = bundle_name_to_cache_key(bundle_name);
-    entries.retain(|e| bundle_name_to_cache_key(&e.bundle_name) != key_normalized);
+    entries.retain(|e| {
+        bundle_name_to_cache_key(&e.bundle_name) != key_normalized
+            && bundle_name_to_cache_key(&repo_name_from_url(&e.url)) != key_normalized
+    });
     write_index(&entries)?;
 
     Ok(())
@@ -747,6 +892,32 @@ mod tests {
     fn test_bundle_cache_entry_path() {
         let path = bundle_cache_entry_path("@author/repo", "abc123").unwrap();
         assert!(path.to_string_lossy().contains("author-repo"));
+        assert!(path.to_string_lossy().contains("abc123"));
+    }
+
+    #[test]
+    fn test_repo_name_from_url() {
+        assert_eq!(
+            repo_name_from_url("https://github.com/davila7/claude-code-templates.git"),
+            "@davila7/claude-code-templates"
+        );
+        assert_eq!(
+            repo_name_from_url("https://github.com/author/repo"),
+            "@author/repo"
+        );
+    }
+
+    #[test]
+    fn test_repo_cache_entry_path() {
+        let path = repo_cache_entry_path(
+            "https://github.com/davila7/claude-code-templates.git",
+            "abc123",
+        )
+        .unwrap();
+        assert!(
+            path.to_string_lossy()
+                .contains("davila7-claude-code-templates")
+        );
         assert!(path.to_string_lossy().contains("abc123"));
     }
 

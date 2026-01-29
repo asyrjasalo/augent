@@ -15,6 +15,7 @@ use path_clean::PathClean;
 use crate::cache;
 use crate::config::{BundleConfig, BundleDependency, MarketplaceBundle, MarketplaceConfig};
 use crate::error::{AugentError, Result};
+use crate::git;
 use crate::source::{BundleSource, GitSource};
 
 /// Count of resources by type for a bundle
@@ -320,6 +321,45 @@ impl Resolver {
 
     /// Discover bundles in a cached git repository
     fn discover_git_bundles(&self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
+        // When we don't have a SHA yet, resolve via ls-remote and check cache to avoid cloning
+        if source.resolved_sha.is_none() {
+            if let Ok(sha) = git::ls_remote(&source.url, source.git_ref.as_deref()) {
+                if let Ok(cached) = cache::list_cached_entries_for_url_sha(&source.url, &sha) {
+                    if !cached.is_empty() {
+                        let mut discovered = Vec::with_capacity(cached.len());
+                        for (path_opt, bundle_name, resources_path, resolved_ref) in cached {
+                            // Use short name for menu display (e.g. "ai-ml-toolkit"), matching
+                            // discover_local_bundles which uses path.file_name()
+                            let short_name = bundle_name
+                                .rsplit('/')
+                                .next()
+                                .unwrap_or(&bundle_name)
+                                .trim_start_matches('@')
+                                .to_string();
+                            let config = self.load_bundle_config(&resources_path).ok().flatten();
+                            let description = config.and_then(|c| c.description);
+                            let resource_counts = ResourceCounts::from_path(&resources_path);
+                            discovered.push(DiscoveredBundle {
+                                name: short_name,
+                                path: resources_path,
+                                description,
+                                git_source: Some(GitSource {
+                                    url: source.url.clone(),
+                                    path: path_opt.clone(),
+                                    git_ref: resolved_ref
+                                        .clone()
+                                        .or_else(|| source.git_ref.clone()),
+                                    resolved_sha: Some(sha.clone()),
+                                }),
+                                resource_counts,
+                            });
+                        }
+                        return Ok(discovered);
+                    }
+                }
+            }
+        }
+
         // Clone to temp and discover; then ensure cache entry per bundle
         let pb = ProgressBar::new_spinner();
         pb.set_style(

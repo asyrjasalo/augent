@@ -14,6 +14,7 @@
 #[cfg(windows)]
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use git2::{
     Cred, CredentialType, ErrorClass, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder,
@@ -219,6 +220,63 @@ pub fn clone(url: &str, target: &Path, shallow: bool) -> Result<Repository> {
             reason,
         }
     })
+}
+
+/// Resolve a ref to SHA via `git ls-remote` without cloning.
+///
+/// Use this to check the cache before cloning. For file:// URLs or when the
+/// git CLI is unavailable, returns an error (caller should fall back to clone).
+/// Ref defaults to "HEAD" when None.
+pub fn ls_remote(url: &str, git_ref: Option<&str>) -> Result<String> {
+    // file:// and local paths don't support ls-remote in a useful way
+    let is_local =
+        url.starts_with("file://") || url.starts_with('/') || Path::new(url).is_absolute();
+    if is_local {
+        return Err(AugentError::GitRefResolveFailed {
+            git_ref: git_ref.unwrap_or("HEAD").to_string(),
+            reason: "ls-remote not used for local URLs".to_string(),
+        });
+    }
+
+    let ref_arg = git_ref.unwrap_or("HEAD");
+    let output = Command::new("git")
+        .args(["ls-remote", "--exit-code", url, ref_arg])
+        .output()
+        .map_err(|e| AugentError::GitRefResolveFailed {
+            git_ref: ref_arg.to_string(),
+            reason: format!("git ls-remote failed: {}", e),
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AugentError::GitRefResolveFailed {
+            git_ref: ref_arg.to_string(),
+            reason: stderr.trim().to_string(),
+        });
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout
+        .lines()
+        .next()
+        .ok_or_else(|| AugentError::GitRefResolveFailed {
+            git_ref: ref_arg.to_string(),
+            reason: "git ls-remote returned no output".to_string(),
+        })?;
+    let sha = line
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| AugentError::GitRefResolveFailed {
+            git_ref: ref_arg.to_string(),
+            reason: "could not parse ls-remote output".to_string(),
+        })?;
+    if sha.len() != 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(AugentError::GitRefResolveFailed {
+            git_ref: ref_arg.to_string(),
+            reason: format!("invalid SHA from ls-remote: {}", sha),
+        });
+    }
+    Ok(sha.to_string())
 }
 
 /// Resolve a git ref (branch, tag, or partial SHA) to a full SHA
@@ -445,6 +503,15 @@ pub fn get_head_ref_name(repo: &Repository) -> Result<Option<String>> {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    #[test]
+    fn test_ls_remote_rejects_file_url() {
+        // ls-remote is not used for local URLs; we should get a clear error
+        let result = ls_remote("file:///tmp/repo", None);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("ls-remote not used"));
+    }
 
     #[test]
     fn test_clone_public_repo() {
