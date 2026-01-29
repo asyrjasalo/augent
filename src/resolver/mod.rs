@@ -326,6 +326,18 @@ impl Resolver {
             if let Ok(sha) = git::ls_remote(&source.url, source.git_ref.as_deref()) {
                 if let Ok(cached) = cache::list_cached_entries_for_url_sha(&source.url, &sha) {
                     if !cached.is_empty() {
+                        let entry_path = cache::repo_cache_entry_path(&source.url, &sha)?;
+                        let repo_path = cache::entry_repository_path(&entry_path);
+                        let marketplace_config = repo_path
+                            .join(".claude-plugin/marketplace.json")
+                            .exists()
+                            .then(|| {
+                                MarketplaceConfig::from_file(
+                                    &repo_path.join(".claude-plugin/marketplace.json"),
+                                )
+                            })
+                            .and_then(|r| r.ok());
+
                         let mut discovered = Vec::with_capacity(cached.len());
                         for (path_opt, bundle_name, resources_path, resolved_ref) in cached {
                             // Use short name for menu display (e.g. "ai-ml-toolkit"), matching
@@ -336,8 +348,28 @@ impl Resolver {
                                 .unwrap_or(&bundle_name)
                                 .trim_start_matches('@')
                                 .to_string();
-                            let config = self.load_bundle_config(&resources_path).ok().flatten();
-                            let description = config.and_then(|c| c.description);
+                            // Load description from cache repo (repository/), not resources dir,
+                            // so all bundles get description even if not yet installed.
+                            let description = if let Some(ref p) = path_opt {
+                                if p.starts_with("$claudeplugin/") {
+                                    marketplace_config.as_ref().and_then(|mc| {
+                                        mc.plugins
+                                            .iter()
+                                            .find(|b| b.name == short_name)
+                                            .map(|b| b.description.clone())
+                                    })
+                                } else {
+                                    self.load_bundle_config(&repo_path.join(p))
+                                        .ok()
+                                        .flatten()
+                                        .and_then(|c| c.description)
+                                }
+                            } else {
+                                self.load_bundle_config(&repo_path)
+                                    .ok()
+                                    .flatten()
+                                    .and_then(|c| c.description)
+                            };
                             let resource_counts = ResourceCounts::from_path(&resources_path);
                             discovered.push(DiscoveredBundle {
                                 name: short_name,
@@ -471,8 +503,11 @@ impl Resolver {
             })
     }
 
-    fn get_bundle_description(&self, _path: &Path) -> Option<String> {
-        None
+    fn get_bundle_description(&self, path: &Path) -> Option<String> {
+        self.load_bundle_config(path)
+            .ok()
+            .flatten()
+            .and_then(|c| c.description)
     }
 
     /// Resolve a bundle source to a ResolvedBundle
