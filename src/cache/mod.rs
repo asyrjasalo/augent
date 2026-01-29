@@ -18,8 +18,10 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
+use walkdir::WalkDir;
 
 use crate::config::{BundleConfig, MarketplaceConfig};
 use crate::error::{AugentError, Result};
@@ -50,6 +52,20 @@ const BUNDLE_NAME_FILE: &str = ".augent_bundle_name";
 
 /// Cache index file at cache root for (url, sha, path) -> bundle_name lookups
 const INDEX_FILE: &str = ".augent_cache_index.json";
+
+/// In-memory cache of the index to avoid repeated disk reads during a run.
+type IndexCacheState = Option<Vec<IndexEntry>>;
+static INDEX_CACHE: std::sync::OnceLock<Mutex<IndexCacheState>> = std::sync::OnceLock::new();
+
+fn index_cache() -> &'static Mutex<Option<Vec<IndexEntry>>> {
+    INDEX_CACHE.get_or_init(|| Mutex::new(None))
+}
+
+fn invalidate_index_cache() {
+    if let Some(cache) = INDEX_CACHE.get() {
+        let _ = cache.lock().map(|mut g| *g = None);
+    }
+}
 
 /// Single entry in the cache index
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,23 +152,41 @@ pub fn entry_resources_path(entry_path: &Path) -> PathBuf {
 
 fn read_index() -> Result<Vec<IndexEntry>> {
     let path = cache_dir()?.join(INDEX_FILE);
-    if !path.exists() {
-        return Ok(Vec::new());
+    let cache = index_cache();
+    {
+        let guard = cache
+            .lock()
+            .map_err(|e| AugentError::CacheOperationFailed {
+                message: format!("Cache index lock poisoned: {}", e),
+            })?;
+        if let Some(ref entries) = *guard {
+            return Ok(entries.clone());
+        }
     }
-    let data = fs::read_to_string(&path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read cache index: {}", e),
-    })?;
-    serde_json::from_str(&data).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Invalid cache index: {}", e),
-    })
+    let entries = if !path.exists() {
+        Vec::new()
+    } else {
+        let data = fs::read_to_string(&path).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read cache index: {}", e),
+        })?;
+        serde_json::from_str(&data).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Invalid cache index: {}", e),
+        })?
+    };
+    let mut guard = cache
+        .lock()
+        .map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Cache index lock poisoned: {}", e),
+        })?;
+    *guard = Some(entries.clone());
+    Ok(entries)
 }
 
 fn write_index(entries: &[IndexEntry]) -> Result<()> {
     let path = cache_dir()?.join(INDEX_FILE);
-    let data =
-        serde_json::to_string_pretty(entries).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to serialize cache index: {}", e),
-        })?;
+    let data = serde_json::to_string(entries).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to serialize cache index: {}", e),
+    })?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
             message: format!("Failed to create cache directory: {}", e),
@@ -160,7 +194,14 @@ fn write_index(entries: &[IndexEntry]) -> Result<()> {
     }
     fs::write(&path, data).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to write cache index: {}", e),
-    })
+    })?;
+    let mut guard = index_cache()
+        .lock()
+        .map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Cache index lock poisoned: {}", e),
+        })?;
+    *guard = Some(entries.to_vec());
+    Ok(())
 }
 
 fn add_index_entry(entry: IndexEntry) -> Result<()> {
@@ -622,6 +663,7 @@ pub fn clear_cache() -> Result<()> {
             message: format!("Failed to remove cache index: {}", e),
         })?;
     }
+    invalidate_index_cache();
     Ok(())
 }
 
@@ -787,19 +829,13 @@ pub fn cache_stats() -> Result<CacheStats> {
 }
 
 fn dir_size(path: &Path) -> Result<u64> {
-    let mut size = 0;
-
-    for entry in fs::read_dir(path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read directory {}: {}", path.display(), e),
-    })? {
-        let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read entry: {}", e),
-        })?;
-        let entry_path = entry.path();
-
-        if entry_path.is_dir() {
-            size += dir_size(&entry_path)?;
-        } else {
+    let mut size = 0u64;
+    for entry in WalkDir::new(path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.file_type().is_file() {
             size += entry
                 .metadata()
                 .map_err(|e| AugentError::CacheOperationFailed {
@@ -808,7 +844,6 @@ fn dir_size(path: &Path) -> Result<u64> {
                 .len();
         }
     }
-
     Ok(size)
 }
 
