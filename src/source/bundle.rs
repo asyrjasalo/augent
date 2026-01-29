@@ -40,7 +40,7 @@ pub struct BundleDependency {
     pub git_ref: Option<String>,
 
     /// Local path (for bundles in same repo)
-    #[serde(alias = "subdirectory", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
 }
 
