@@ -100,12 +100,36 @@ pub fn bundles_cache_dir() -> Result<PathBuf> {
     Ok(cache_dir()?.join(BUNDLES_DIR))
 }
 
-/// Convert bundle name to a path-safe cache key (e.g. @author/repo -> author-repo)
+/// Characters invalid in path segments on Windows (and problematic elsewhere).
+/// Replaced with `-` so cache keys work on all platforms.
+const PATH_UNSAFE_CHARS: &[char] = &['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+
+/// Convert bundle name to a path-safe cache key (e.g. @author/repo -> author-repo).
+/// Sanitizes characters invalid on Windows so file:// URLs and names with colons work.
 pub fn bundle_name_to_cache_key(name: &str) -> String {
-    name.trim_start_matches('@')
-        .replace('/', "-")
+    let key: String = name
+        .trim_start_matches('@')
+        .chars()
+        .map(|c| {
+            if PATH_UNSAFE_CHARS.contains(&c) {
+                '-'
+            } else {
+                c
+            }
+        })
+        .collect();
+    let key = key
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
         .trim_matches('-')
-        .to_string()
+        .to_string();
+    if key.is_empty() {
+        "unknown".to_string()
+    } else {
+        key
+    }
 }
 
 /// Derive repo name from URL (e.g. https://github.com/davila7/claude-code-templates.git -> @davila7/claude-code-templates)
@@ -884,6 +908,16 @@ mod tests {
         assert_eq!(bundle_name_to_cache_key("@author/repo"), "author-repo");
         assert_eq!(bundle_name_to_cache_key("author/repo"), "author-repo");
         assert_eq!(bundle_name_to_cache_key("@org/sub/repo"), "org-sub-repo");
+        // Windows path-unsafe chars (e.g. from file:// URLs) are sanitized
+        assert_eq!(
+            bundle_name_to_cache_key("@unknown/C:\\Users\\Temp\\single-bundle-repo"),
+            "unknown-C-Users-Temp-single-bundle-repo"
+        );
+        assert_eq!(
+            bundle_name_to_cache_key("nested-repo:packages/pkg-a"),
+            "nested-repo-packages-pkg-a"
+        );
+        assert_eq!(bundle_name_to_cache_key(":::"), "unknown");
     }
 
     #[test]
@@ -951,6 +985,24 @@ mod tests {
                 .contains("davila7-claude-code-templates")
         );
         assert!(path.to_string_lossy().contains("abc123"));
+    }
+
+    #[test]
+    fn test_repo_cache_entry_path_file_url_windows_safe() {
+        // file:// URLs on Windows can contain : and \ in the path; cache key must be path-safe
+        let path = repo_cache_entry_path(
+            "file://C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpKA5X3S\\single-bundle-repo",
+            "abc123",
+        )
+        .unwrap();
+        let key_segment = path.parent().and_then(|p| p.file_name()).unwrap();
+        let key = key_segment.to_string_lossy();
+        assert!(!key.contains('\\'), "cache key must not contain backslash");
+        assert!(!key.contains(':'), "cache key must not contain colon");
+        assert!(
+            key.contains("single-bundle-repo") || key.contains("unknown"),
+            "key should derive from path"
+        );
     }
 
     #[test]
