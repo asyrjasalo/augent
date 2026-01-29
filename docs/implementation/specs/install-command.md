@@ -111,7 +111,7 @@ fn resolve_dependencies(bundles: Vec<Bundle>) -> Result<Vec<Bundle>> {
 
 #### 4. Bundle Download & Caching
 
-Bundles are cached in `~/.cache/augent/bundles/<hash>` where `<hash>` is derived from the source URL.
+Bundles are cached under the augent cache directory (platform-specific) in `bundles/<hash>` where `<hash>` is derived from the source URL. Run `augent cache` to see the cache path.
 
 **Cache logic:**
 

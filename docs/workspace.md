@@ -122,7 +122,7 @@ Augent infers workspace name from git remote:
 
 ### How Resources Flow
 
-1. **Download**: Bundle fetched to cache (`~/.cache/augent/bundles/`)
+1. **Download**: Bundle fetched to the augent cache (run `augent cache` to see the path)
 2. **Transform**: Resources transformed to AI coding platform-specific format
 3. **Merge**: Merged into existing resources (if applicable)
 4. **Install**: Copied to AI coding platform directories

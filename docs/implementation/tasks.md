@@ -247,7 +247,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 4.3: Bundle Caching System
 
-- [x] Define cache directory structure (`~/.cache/augent/bundles/`)
+- [x] Define cache directory structure (platform-specific cache root + `augent/bundles/`)
 - [x] Implement cache key generation from URL
 - [x] Implement bundle download and caching logic
 - [x] Add cache hit/miss tracking

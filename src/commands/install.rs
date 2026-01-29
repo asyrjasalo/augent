@@ -1557,72 +1557,35 @@ fn locked_bundles_to_resolved(
                 path,
                 ..
             } => {
-                // Construct the cache path
-                let bundles_cache = cache::bundles_cache_dir()?;
-                let url_slug = cache::url_to_slug(url);
-                let bundle_cache = bundles_cache.join(&url_slug).join(sha);
-
-                // For marketplace plugins, check if synthetic bundle exists
-                let is_marketplace = path
-                    .as_ref()
-                    .is_some_and(|p| p.starts_with("$claudeplugin/"));
-                let is_cached = if is_marketplace {
-                    // For marketplace plugins, check the synthetic bundle location
-                    let marketplace_cache = bundles_cache.join("marketplace");
-                    if let Some(plugin_name) =
-                        path.as_ref().and_then(|p| p.strip_prefix("$claudeplugin/"))
-                    {
-                        marketplace_cache.join(plugin_name).is_dir()
-                    } else {
-                        false
-                    }
-                } else {
-                    // For normal bundles, check the git cache
-                    bundle_cache.is_dir()
+                let git_src = GitSource {
+                    url: url.clone(),
+                    path: path.clone(),
+                    git_ref: git_ref.clone(),
+                    resolved_sha: Some(sha.clone()),
                 };
 
-                // If not cached, resolve the bundle to fetch it
-                let (final_cache_path, final_source) = if !is_cached {
-                    // Reconstruct the source string for resolution
-                    let mut source_string = url.clone();
-                    if let Some(git_ref) = git_ref {
-                        source_string.push('#');
-                        source_string.push_str(git_ref);
-                    }
-                    if let Some(subdir) = path {
-                        source_string.push(':');
-                        source_string.push_str(subdir);
-                    }
-
-                    // Parse the source string and resolve (this will fetch from git and cache it)
-                    let bundle_source = BundleSource::parse(&source_string)?;
-                    let resolved_bundle = resolver.resolve_source(&bundle_source, None)?;
-
-                    (resolved_bundle.source_path, resolved_bundle.git_source)
-                } else {
-                    // Use the cached bundle path
-                    let git_src = GitSource {
-                        url: url.clone(),
-                        path: path.clone(),
-                        git_ref: git_ref.clone(),
-                        resolved_sha: Some(sha.clone()),
-                    };
-
-                    // For marketplace plugins, use the synthetic bundle path
-                    let final_path = if is_marketplace {
-                        if let Some(plugin_name) =
-                            path.as_ref().and_then(|p| p.strip_prefix("$claudeplugin/"))
-                        {
-                            bundles_cache.join("marketplace").join(plugin_name)
-                        } else {
-                            bundle_cache
+                // Check cache by (url, sha, path); cache returns resources path
+                let (final_cache_path, final_source) =
+                    if let Some((resources_path, _, _)) = cache::get_cached(&git_src)? {
+                        (resources_path, Some(git_src))
+                    } else {
+                        // Reconstruct the source string and resolve (will fetch and cache)
+                        let mut source_string = url.clone();
+                        if let Some(git_ref) = git_ref {
+                            source_string.push('#');
+                            source_string.push_str(git_ref);
                         }
-                    } else {
-                        bundle_cache
-                    };
+                        if let Some(subdir) = path {
+                            source_string.push(':');
+                            source_string.push_str(subdir);
+                        }
 
-                    (final_path, Some(git_src))
-                };
+                        // Parse the source string and resolve (this will fetch from git and cache it)
+                        let bundle_source = BundleSource::parse(&source_string)?;
+                        let resolved_bundle = resolver.resolve_source(&bundle_source, None)?;
+
+                        (resolved_bundle.source_path, resolved_bundle.git_source)
+                    };
 
                 (
                     final_cache_path,

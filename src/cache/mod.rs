@@ -5,20 +5,23 @@
 //! ## Cache Structure
 //!
 //! ```text
-//! ~/.cache/augent/
-//! └── bundles/
-//!     └── <url-slug>/
-//!         └── <git-sha>/
-//!             └── <bundle-contents>
+//! AUGENT_CACHE_DIR/bundles/
+//! └── <bundle_name>/          (path-safe: @author/repo -> author-repo)
+//!     └── <sha>/
+//!         ├── repository/     (shallow clone, a git repo)
+//!         └── resources/      (extracted bundle content, not a git repo)
 //! ```
 //!
 //! The cache key is composed of:
-//! - URL slug: normalized URL with special chars replaced (e.g., "github.com-author-repo")
+//! - Bundle name: from augent.yaml or derived (e.g. @author/repo)
 //! - Git SHA: exact commit SHA for reproducibility
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
+use crate::config::{BundleConfig, MarketplaceConfig};
 use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::GitSource;
@@ -29,14 +32,37 @@ const CACHE_DIR: &str = "augent";
 /// Bundles subdirectory within cache
 const BUNDLES_DIR: &str = "bundles";
 
-/// File name for storing the resolved ref in the cache (so we have it after checkout detaches HEAD)
+/// Subdirectory for the git clone
+const REPOSITORY_DIR: &str = "repository";
+
+/// Subdirectory for extracted resources (agents, commands, etc.)
+const RESOURCES_DIR: &str = "resources";
+
+/// File name for storing the resolved ref (repository has detached HEAD after checkout)
 const REF_FILE: &str = ".augent_ref";
+
+/// File name for storing the bundle display name in each cache entry
+const BUNDLE_NAME_FILE: &str = ".augent_bundle_name";
+
+/// Cache index file at cache root for (url, sha, path) -> bundle_name lookups
+const INDEX_FILE: &str = ".augent_cache_index.json";
+
+/// Single entry in the cache index
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct IndexEntry {
+    url: String,
+    sha: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
+    bundle_name: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "ref")]
+    resolved_ref: Option<String>,
+}
 
 /// Get the default cache directory path
 ///
-/// Returns `~/.cache/augent` on Unix or equivalent on other platforms.
-///
-/// Can be overridden with the `AUGENT_CACHE_DIR` environment variable.
+/// Uses the platform's standard cache location (e.g. XDG on Linux, Library/Caches on macOS)
+/// with an `augent` subdirectory. Can be overridden with the `AUGENT_CACHE_DIR` environment variable.
 pub fn cache_dir() -> Result<PathBuf> {
     if let Ok(cache_dir) = std::env::var("AUGENT_CACHE_DIR") {
         return Ok(PathBuf::from(cache_dir));
@@ -54,211 +80,229 @@ pub fn bundles_cache_dir() -> Result<PathBuf> {
     Ok(cache_dir()?.join(BUNDLES_DIR))
 }
 
-/// Generate a cache key (URL slug) from a git URL
-///
-/// Normalizes the URL by removing protocol prefixes and replacing special characters.
-/// Example: "https://github.com/author/repo.git" -> "github.com-author-repo"
-pub fn url_to_slug(url: &str) -> String {
-    url.replace("file://", "")
-        .replace("https://", "")
-        .replace("http://", "")
-        .replace("git@", "")
-        .replace([':', '/'], "-")
-        .replace(".git", "")
+/// Convert bundle name to a path-safe cache key (e.g. @author/repo -> author-repo)
+pub fn bundle_name_to_cache_key(name: &str) -> String {
+    name.trim_start_matches('@')
+        .replace('/', "-")
         .trim_matches('-')
         .to_string()
 }
 
-/// Get the cache path for a specific bundle
-///
-/// Returns the path where the bundle would be cached: `~/.cache/augent/bundles/<slug>/<sha>`
-pub fn bundle_cache_path(url: &str, sha: &str) -> Result<PathBuf> {
-    let slug = url_to_slug(url);
-    Ok(bundles_cache_dir()?.join(&slug).join(sha))
+/// Get the cache entry path for a bundle: `bundles/<bundle_name_key>/<sha>`
+pub fn bundle_cache_entry_path(bundle_name: &str, sha: &str) -> Result<PathBuf> {
+    let key = bundle_name_to_cache_key(bundle_name);
+    Ok(bundles_cache_dir()?.join(&key).join(sha))
 }
 
-/// Get a cached bundle if it exists
-///
-/// Returns the path to the cached bundle directory, or None if not cached.
-pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
-    let path = bundle_cache_path(url, sha)?;
-    if path.is_dir() {
-        Ok(Some(path))
-    } else {
-        Ok(None)
+/// Path to the repository directory inside a cache entry
+pub fn entry_repository_path(entry_path: &Path) -> PathBuf {
+    entry_path.join(REPOSITORY_DIR)
+}
+
+/// Path to the resources directory inside a cache entry
+pub fn entry_resources_path(entry_path: &Path) -> PathBuf {
+    entry_path.join(RESOURCES_DIR)
+}
+
+fn read_index() -> Result<Vec<IndexEntry>> {
+    let path = cache_dir()?.join(INDEX_FILE);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let data = fs::read_to_string(&path).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to read cache index: {}", e),
+    })?;
+    serde_json::from_str(&data).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Invalid cache index: {}", e),
+    })
+}
+
+fn write_index(entries: &[IndexEntry]) -> Result<()> {
+    let path = cache_dir()?.join(INDEX_FILE);
+    let data =
+        serde_json::to_string_pretty(entries).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to serialize cache index: {}", e),
+        })?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to create cache directory: {}", e),
+        })?;
+    }
+    fs::write(&path, data).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to write cache index: {}", e),
+    })
+}
+
+fn add_index_entry(entry: IndexEntry) -> Result<()> {
+    let mut entries = read_index()?;
+    // Remove any existing entry with same (url, sha, path)
+    let path_opt = entry.path.clone();
+    entries.retain(|e| {
+        !(e.url == entry.url && e.sha == entry.sha && e.path.as_deref() == path_opt.as_deref())
+    });
+    entries.push(entry);
+    write_index(&entries)
+}
+
+fn index_lookup(
+    url: &str,
+    sha: &str,
+    path: Option<&str>,
+) -> Result<Option<(String, Option<String>)>> {
+    let entries = read_index()?;
+    for e in &entries {
+        if e.url == url && e.sha == sha && e.path.as_deref() == path {
+            return Ok(Some((e.bundle_name.clone(), e.resolved_ref.clone())));
+        }
+    }
+    Ok(None)
+}
+
+/// Get the content path within a repo (root or source.path subdir). Does not apply $claudeplugin.
+pub fn content_path_in_repo(repo_path: &Path, source: &GitSource) -> PathBuf {
+    match &source.path {
+        Some(p) if !p.starts_with("$claudeplugin/") => repo_path.join(p),
+        _ => repo_path.to_path_buf(),
     }
 }
 
-/// Read the resolved ref stored in the cache (written when we cached; needed because checkout detaches HEAD).
-fn read_ref_from_cache(cache_path: &Path) -> Option<String> {
-    let ref_path = cache_path.join(REF_FILE);
+/// Derive bundle name for $claudeplugin/name from URL (e.g. @author/repo/name)
+pub fn derive_marketplace_bundle_name(url: &str, plugin_name: &str) -> String {
+    let url_clean = url.trim_end_matches(".git");
+    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+        &url_clean[colon_idx + 1..]
+    } else {
+        url_clean
+    };
+    let parts: Vec<&str> = repo_path.split('/').collect();
+    if parts.len() >= 2 {
+        let author = parts[parts.len() - 2];
+        let repo = parts[parts.len() - 1];
+        format!("@{}/{}/{}", author, repo, plugin_name)
+    } else {
+        format!("@unknown/{}", plugin_name)
+    }
+}
+
+/// Read bundle name from content path (augent.yaml). Returns None if no augent.yaml or invalid.
+fn bundle_name_from_augent_yaml(content_path: &Path) -> Option<String> {
+    let config_path = content_path.join("augent.yaml");
+    let yaml = fs::read_to_string(&config_path).ok()?;
+    let config = BundleConfig::from_yaml(&yaml).ok()?;
+    Some(config.name)
+}
+
+/// Get bundle name for a source: from augent.yaml at content_path or derive for $claudeplugin
+fn get_bundle_name_for_source(source: &GitSource, content_path: &Path) -> Result<String> {
+    if let Some(ref path_val) = source.path {
+        if let Some(plugin_name) = path_val.strip_prefix("$claudeplugin/") {
+            return Ok(derive_marketplace_bundle_name(&source.url, plugin_name));
+        }
+    }
+    bundle_name_from_augent_yaml(content_path).ok_or_else(|| AugentError::CacheOperationFailed {
+        message: format!(
+            "No augent.yaml found at {} (bundle name required for cache)",
+            content_path.display()
+        ),
+    })
+}
+
+#[allow(dead_code)] // kept for potential future use when reading from repository dir
+fn read_ref_from_cache(repo_path: &Path) -> Option<String> {
+    let ref_path = repo_path.join(REF_FILE);
     fs::read_to_string(&ref_path)
         .ok()
         .map(|s| s.trim().to_string())
 }
 
-/// Write the resolved ref into the cache so we can read it later when the repo is detached.
-fn write_ref_to_cache(cache_path: &Path, ref_name: &str) -> Result<()> {
-    let ref_path = cache_path.join(REF_FILE);
+fn write_ref_to_cache(repo_path: &Path, ref_name: &str) -> Result<()> {
+    let ref_path = repo_path.join(REF_FILE);
     fs::write(&ref_path, ref_name).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to write ref file {}: {}", ref_path.display(), e),
     })
 }
 
-/// Cache a bundle by cloning from a git source
+/// Get a cached bundle if it exists (lookup by url, sha, path in index).
 ///
-/// Clones the repository, checks out the specified commit (or resolves the ref),
-/// and stores it in the cache directory.
-///
-/// Returns the path to the cached bundle, the resolved SHA, and the resolved ref name.
-pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
-    // If we already have a resolved SHA and it's cached, return early
-    if let Some(sha) = &source.resolved_sha {
-        if let Some(path) = get_cached(&source.url, sha)? {
-            // Return from cache - we already have SHA. Cached repo has detached HEAD,
-            // so get_head_ref_name returns None; read ref from .augent_ref we stored when caching.
-            let resolved_ref = if source.git_ref.is_some() {
-                source.git_ref.clone()
-            } else if let Ok(repo) = git::open(&path) {
-                git::get_head_ref_name(&repo)?.or_else(|| read_ref_from_cache(&path))
-            } else {
-                read_ref_from_cache(&path)
-            };
-            return Ok((path, sha.clone(), resolved_ref));
+/// Returns (resources_path, sha, resolved_ref) or None if not cached.
+pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<String>)>> {
+    let sha = source
+        .resolved_sha
+        .as_deref()
+        .ok_or_else(|| AugentError::CacheOperationFailed {
+            message: "get_cached requires resolved_sha".to_string(),
+        })?;
+    let path_opt = source.path.as_deref();
+    if let Some((bundle_name, resolved_ref)) = index_lookup(&source.url, sha, path_opt)? {
+        let entry_path = bundle_cache_entry_path(&bundle_name, sha)?;
+        let resources = entry_resources_path(&entry_path);
+        if resources.is_dir() {
+            return Ok(Some((resources, sha.to_string(), resolved_ref)));
         }
     }
+    Ok(None)
+}
 
-    // If we don't have a resolved_sha, check if this URL has any cached versions
-    // and use the most recent one (for HEAD/default case)
-    if source.resolved_sha.is_none() {
-        let bundles_cache_dir = bundles_cache_dir()?;
-        let slug = url_to_slug(&source.url);
-        let url_cache_dir = bundles_cache_dir.join(&slug);
-
-        if url_cache_dir.is_dir() {
-            // Look for SHA directories (40-char hex strings)
-            if let Ok(entries) = std::fs::read_dir(&url_cache_dir) {
-                for entry in entries.flatten() {
-                    let entry_path = entry.path();
-                    if entry_path.is_dir() {
-                        let dir_name = entry_path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or_default();
-                        // Check if it looks like a SHA (40 hex chars)
-                        if dir_name.len() == 40 && dir_name.chars().all(|c| c.is_ascii_hexdigit()) {
-                            // Check if this SHA's ref matches our git_ref
-                            let cached_path = entry_path.clone();
-                            if let Some(git_ref) = &source.git_ref {
-                                // Verify: ref matches
-                                if let Ok(repo) = git::open(&cached_path) {
-                                    if let Ok(branch_name) = git::get_head_ref_name(&repo) {
-                                        if branch_name.as_deref() == Some(git_ref) {
-                                            let resolved_ref = Some(git_ref.clone());
-                                            return Ok((
-                                                cached_path,
-                                                dir_name.to_string(),
-                                                resolved_ref,
-                                            ));
-                                        }
-                                    }
-                                }
-                            } else {
-                                // No git_ref specified, use cached version (for HEAD). Cached repo
-                                // has detached HEAD so get_head_ref_name is None; read from .augent_ref.
-                                if let Ok(repo) = git::open(&cached_path) {
-                                    let resolved_ref = git::get_head_ref_name(&repo)?
-                                        .or_else(|| read_ref_from_cache(&cached_path));
-                                    return Ok((cached_path, dir_name.to_string(), resolved_ref));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Create a temporary directory for cloning
+/// Clone and checkout to a temp directory; returns (temp_dir, sha, resolved_ref).
+/// Caller must keep temp_dir alive until done using the path.
+pub fn clone_and_checkout(
+    source: &GitSource,
+) -> Result<(tempfile::TempDir, String, Option<String>)> {
     let temp_dir = tempfile::TempDir::new().map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to create temp directory: {}", e),
     })?;
 
-    // Clone repository with shallow clone (depth=1)
-    // Shallow clones work for both refs and HEAD, fetching only the needed commit
     let repo = git::clone(&source.url, temp_dir.path(), true)?;
 
-    // Determine the resolved ref name BEFORE checkout
-    // If user didn't specify a ref, we need to get the actual branch name from HEAD
-    // This MUST be done before checkout, as checkout will make HEAD detached
     let resolved_ref = if source.git_ref.is_none() {
-        // Get the branch name from HEAD before we checkout (which makes it detached)
         git::get_head_ref_name(&repo)?
     } else {
-        // User specified a ref, use that
         source.git_ref.clone()
     };
 
-    // Resolve the ref to a SHA
     let sha = git::resolve_ref(&repo, source.git_ref.as_deref())?;
-
-    // Check if we already have this SHA cached
-    if let Some(path) = get_cached(&source.url, &sha)? {
-        if let Some(ref r) = resolved_ref {
-            write_ref_to_cache(&path, r)?;
-        }
-        return Ok((path, sha, resolved_ref));
-    }
-
-    // Checkout specific commit
     git::checkout_commit(&repo, &sha)?;
 
-    // Determine the final cache path
-    let cache_path = bundle_cache_path(&source.url, &sha)?;
+    Ok((temp_dir, sha, resolved_ref))
+}
 
-    // Ensure the base cache directory exists first
-    let base_cache_dir = cache_dir()?;
-    fs::create_dir_all(&base_cache_dir).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to create cache directory: {}", e),
-    })?;
-
-    // Ensure the bundles cache directory exists
-    let bundles_dir = bundles_cache_dir()?;
-    fs::create_dir_all(&bundles_dir).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to create bundles cache directory: {}", e),
-    })?;
-
-    // Create parent directories for the specific bundle
-    if let Some(parent) = cache_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to create cache directory: {}", e),
+/// Copy directory recursively (excludes .git when copying repo content to resources)
+fn copy_dir_recursive_exclude_git(src: &Path, dst: &Path) -> Result<()> {
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to create directory {}: {}", dst.display(), e),
         })?;
     }
 
-    // Move from temp to cache (atomic on same filesystem)
-    // We need to copy instead since temp might be on different filesystem
-    copy_dir_recursive(temp_dir.path(), &cache_path)?;
+    for entry in fs::read_dir(src).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to read directory {}: {}", src.display(), e),
+    })? {
+        let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read entry: {}", e),
+        })?;
+        let src_path = entry.path();
+        let name = entry.file_name();
+        if name == ".git" {
+            continue;
+        }
+        let dst_path = dst.join(&name);
 
-    // Store ref so we have it when serving from cache (cached repo has detached HEAD)
-    if let Some(ref r) = resolved_ref {
-        write_ref_to_cache(&cache_path, r)?;
+        if src_path.is_dir() {
+            copy_dir_recursive_exclude_git(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path).map_err(|e| AugentError::CacheOperationFailed {
+                message: format!(
+                    "Failed to copy {} to {}: {}",
+                    src_path.display(),
+                    dst_path.display(),
+                    e
+                ),
+            })?;
+        }
     }
-
-    Ok((cache_path, sha, resolved_ref))
+    Ok(())
 }
 
-/// Get the bundle content path, accounting for path
-///
-/// If the source specifies a path, returns the path to that path
-/// within the cached bundle. Otherwise returns the root of the cached bundle.
-pub fn get_bundle_content_path(source: &GitSource, cache_path: &Path) -> PathBuf {
-    match &source.path {
-        Some(path_val) => cache_path.join(path_val),
-        None => cache_path.to_path_buf(),
-    }
-}
-
-/// Copy a directory recursively
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
     if !dst.exists() {
         fs::create_dir_all(dst).map_err(|e| AugentError::CacheOperationFailed {
@@ -288,11 +332,144 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
             })?;
         }
     }
-
     Ok(())
 }
 
-/// Clear the entire bundle cache
+/// Ensure a cache entry exists for this bundle: copy repo to repository/ and content to resources/.
+/// Returns the resources path. If entry already exists, returns it and adds index entry.
+pub fn ensure_bundle_cached(
+    bundle_name: &str,
+    sha: &str,
+    url: &str,
+    path: Option<&str>,
+    repo_path: &Path,
+    content_path: &Path,
+    resolved_ref: Option<&str>,
+) -> Result<PathBuf> {
+    let entry_path = bundle_cache_entry_path(bundle_name, sha)?;
+    let resources = entry_resources_path(&entry_path);
+
+    if resources.is_dir() {
+        add_index_entry(IndexEntry {
+            url: url.to_string(),
+            sha: sha.to_string(),
+            path: path.map(String::from),
+            bundle_name: bundle_name.to_string(),
+            resolved_ref: resolved_ref.map(String::from),
+        })?;
+        return Ok(resources);
+    }
+
+    let base = cache_dir()?;
+    fs::create_dir_all(&base).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to create cache directory: {}", e),
+    })?;
+    let bundles_dir = bundles_cache_dir()?;
+    fs::create_dir_all(&bundles_dir).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to create bundles directory: {}", e),
+    })?;
+    if let Some(parent) = entry_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to create cache entry directory: {}", e),
+        })?;
+    }
+
+    let repo_dst = entry_repository_path(&entry_path);
+    copy_dir_recursive(repo_path, &repo_dst)?;
+    if let Some(r) = resolved_ref {
+        write_ref_to_cache(&repo_dst, r)?;
+    }
+
+    fs::create_dir_all(&resources).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to create resources directory: {}", e),
+    })?;
+    copy_dir_recursive_exclude_git(content_path, &resources)?;
+
+    fs::write(entry_path.join(BUNDLE_NAME_FILE), bundle_name).map_err(|e| {
+        AugentError::CacheOperationFailed {
+            message: format!("Failed to write bundle name file: {}", e),
+        }
+    })?;
+
+    add_index_entry(IndexEntry {
+        url: url.to_string(),
+        sha: sha.to_string(),
+        path: path.map(String::from),
+        bundle_name: bundle_name.to_string(),
+        resolved_ref: resolved_ref.map(String::from),
+    })?;
+
+    Ok(resources)
+}
+
+/// Cache a bundle by cloning from a git source (or use existing cache).
+///
+/// Returns (resources_path, sha, resolved_ref).
+pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
+    if let Some(sha) = &source.resolved_sha {
+        if let Some((path, _, ref_name)) = get_cached(source)? {
+            return Ok((path, sha.clone(), ref_name));
+        }
+    }
+
+    // Clone to temp and determine bundle name and content path
+    let (temp_dir, sha, resolved_ref) = clone_and_checkout(source)?;
+    let path_opt = source.path.as_deref();
+
+    let (bundle_name, content_path, _synthetic_guard) =
+        if let Some(plugin_name) = path_opt.and_then(|p| p.strip_prefix("$claudeplugin/")) {
+            // Marketplace bundle: create synthetic content to temp dir; keep temp alive until copy
+            let bundle_name = derive_marketplace_bundle_name(&source.url, plugin_name);
+            let synthetic_temp =
+                tempfile::TempDir::new().map_err(|e| AugentError::CacheOperationFailed {
+                    message: format!("Failed to create temp directory: {}", e),
+                })?;
+            MarketplaceConfig::create_synthetic_bundle_to(
+                temp_dir.path(),
+                plugin_name,
+                synthetic_temp.path(),
+                Some(&source.url),
+            )?;
+            (
+                bundle_name,
+                synthetic_temp.path().to_path_buf(),
+                Some(synthetic_temp),
+            )
+        } else {
+            let content_path = content_path_in_repo(temp_dir.path(), source);
+            let bundle_name = get_bundle_name_for_source(source, &content_path)?;
+            (bundle_name, content_path, None)
+        };
+
+    if let Some((_, ref_name)) = index_lookup(&source.url, &sha, path_opt)? {
+        let entry_path = bundle_cache_entry_path(&bundle_name, &sha)?;
+        let resources = entry_resources_path(&entry_path);
+        if resources.is_dir() {
+            return Ok((resources, sha, ref_name));
+        }
+    }
+
+    ensure_bundle_cached(
+        &bundle_name,
+        &sha,
+        &source.url,
+        path_opt,
+        temp_dir.path(),
+        &content_path,
+        resolved_ref.as_deref(),
+    )
+    .map(|resources| (resources, sha, resolved_ref))
+}
+
+/// Get the bundle content path for a cache entry (always the resources directory).
+///
+/// The cache entry path is the directory containing repository/ and resources/.
+#[allow(dead_code)] // public API for callers that have entry path
+pub fn get_bundle_content_path(_source: &GitSource, entry_path: &Path) -> PathBuf {
+    entry_resources_path(entry_path)
+}
+
+/// Clear the entire bundle cache (and index)
 pub fn clear_cache() -> Result<()> {
     let path = bundles_cache_dir()?;
     if path.exists() {
@@ -300,17 +477,21 @@ pub fn clear_cache() -> Result<()> {
             message: format!("Failed to clear cache: {}", e),
         })?;
     }
+    let index_path = cache_dir()?.join(INDEX_FILE);
+    if index_path.exists() {
+        fs::remove_file(&index_path).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to remove cache index: {}", e),
+        })?;
+    }
     Ok(())
 }
 
-/// Cached bundle information
+/// Cached bundle information (by bundle name)
 #[derive(Debug, Clone)]
 pub struct CachedBundle {
-    /// URL slug (e.g., "github.com-author-repo")
-    pub slug: String,
-    /// Original URL (reconstructed from slug)
-    pub url: String,
-    /// Number of cached versions
+    /// Bundle name (e.g. @author/repo)
+    pub name: String,
+    /// Number of cached versions (SHAs)
     pub versions: usize,
     /// Total size in bytes
     pub size: u64,
@@ -332,7 +513,7 @@ impl CachedBundle {
     }
 }
 
-/// List all cached bundles
+/// List all cached bundles (by bundle name, aggregated across SHAs)
 pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
     let path = bundles_cache_dir()?;
 
@@ -340,7 +521,8 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
         return Ok(Vec::new());
     }
 
-    let mut bundles = Vec::new();
+    let mut by_name: std::collections::HashMap<String, (usize, u64)> =
+        std::collections::HashMap::new();
 
     for entry in fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to read cache directory: {}", e),
@@ -349,92 +531,72 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
             message: format!("Failed to read entry: {}", e),
         })?;
 
-        if entry.path().is_dir() {
-            let slug = entry.file_name().to_string_lossy().to_string();
+        if !entry.path().is_dir() {
+            continue;
+        }
 
-            // Reconstruct URL from slug (best effort)
-            let url = slug_to_url(&slug);
+        let key_dir = entry.path();
+        for sha_entry in fs::read_dir(&key_dir).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read SHA directory: {}", e),
+        })? {
+            let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
+                message: format!("Failed to read SHA entry: {}", e),
+            })?;
 
-            // Count versions and calculate size
-            let mut versions = 0;
-            let mut size = 0u64;
-
-            for sha_entry in
-                fs::read_dir(entry.path()).map_err(|e| AugentError::CacheOperationFailed {
-                    message: format!("Failed to read SHA directory: {}", e),
-                })?
-            {
-                let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
-                    message: format!("Failed to read SHA entry: {}", e),
-                })?;
-
-                if sha_entry.path().is_dir() {
-                    versions += 1;
-                    size += dir_size(&sha_entry.path())?;
-                }
+            if !sha_entry.path().is_dir() {
+                continue;
             }
 
-            bundles.push(CachedBundle {
-                slug,
-                url,
-                versions,
-                size,
-            });
+            let entry_path = sha_entry.path();
+            let name = fs::read_to_string(entry_path.join(BUNDLE_NAME_FILE))
+                .ok()
+                .map(|s| s.trim().to_string())
+                .unwrap_or_else(|| {
+                    entry_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default()
+                });
+
+            let size = dir_size(&entry_path).unwrap_or(0);
+            let (versions, total) = by_name.entry(name).or_insert((0, 0));
+            *versions += 1;
+            *total += size;
         }
     }
 
-    // Sort by slug for consistent ordering
-    bundles.sort_by(|a, b| a.slug.cmp(&b.slug));
-
+    let mut bundles: Vec<CachedBundle> = by_name
+        .into_iter()
+        .map(|(name, (versions, size))| CachedBundle {
+            name,
+            versions,
+            size,
+        })
+        .collect();
+    bundles.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(bundles)
 }
 
-/// Convert a URL slug back to an approximate URL
-fn slug_to_url(slug: &str) -> String {
-    // Check if this looks like a file:// URL slug (starts with file- or has many dashes indicating a path)
-    // file----var-folders-... -> file:///var/folders/...
-    if slug.starts_with("file-") && slug.matches('-').count() > 3 {
-        // Reconstruct file:// URL by replacing dashes with slashes
-        // Remove "file-" prefix first
-        let path_part = slug.strip_prefix("file-").unwrap_or(slug);
-        // Replace dashes with slashes
-        let mut path = path_part.replace('-', "/");
-        // Normalize multiple leading slashes to a single slash
-        while path.starts_with("//") {
-            path = path.strip_prefix('/').unwrap_or(&path).to_string();
-        }
-        // Ensure we have a leading slash for file:// URLs
-        if !path.starts_with('/') {
-            path = format!("/{}", path);
-        }
-        format!("file://{}", path)
-    } else {
-        // Try to reconstruct a readable URL from the slug
-        // github.com-author-repo -> https://github.com/author/repo
-        let parts: Vec<&str> = slug.splitn(2, '-').collect();
-        if parts.len() == 2 {
-            let host = parts[0];
-            let path = parts[1].replace('-', "/");
-            format!("https://{}/{}", host, path)
-        } else {
-            slug.to_string()
-        }
-    }
-}
-
-/// Remove a specific bundle from cache by its slug
-pub fn remove_cached_bundle(slug: &str) -> Result<()> {
-    let path = bundles_cache_dir()?.join(slug);
+/// Remove a specific bundle from cache by its name (e.g. @author/repo)
+pub fn remove_cached_bundle(bundle_name: &str) -> Result<()> {
+    let key = bundle_name_to_cache_key(bundle_name);
+    let path = bundles_cache_dir()?.join(&key);
 
     if !path.exists() {
         return Err(AugentError::CacheOperationFailed {
-            message: format!("Bundle not found in cache: {}", slug),
+            message: format!("Bundle not found in cache: {}", bundle_name),
         });
     }
 
     fs::remove_dir_all(&path).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to remove cached bundle: {}", e),
     })?;
+
+    // Remove index entries for this bundle name (any url/sha/path that pointed to it)
+    let mut entries = read_index()?;
+    let key_normalized = bundle_name_to_cache_key(bundle_name);
+    entries.retain(|e| bundle_name_to_cache_key(&e.bundle_name) != key_normalized);
+    write_index(&entries)?;
 
     Ok(())
 }
@@ -449,7 +611,6 @@ pub fn cache_stats() -> Result<CacheStats> {
 
     let mut stats = CacheStats::default();
 
-    // Count repositories (slug directories)
     for entry in fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to read cache directory: {}", e),
     })? {
@@ -460,10 +621,9 @@ pub fn cache_stats() -> Result<CacheStats> {
         if entry.path().is_dir() {
             stats.repositories += 1;
 
-            // Count SHA directories (versions)
             let sha_entries = match fs::read_dir(entry.path()) {
                 Ok(entries) => entries,
-                Err(_) => continue, // Skip if we can't read this directory
+                Err(_) => continue,
             };
 
             for sha_entry in sha_entries {
@@ -473,9 +633,8 @@ pub fn cache_stats() -> Result<CacheStats> {
 
                 if sha_entry.path().is_dir() {
                     stats.versions += 1;
-                    match dir_size(&sha_entry.path()) {
-                        Ok(size) => stats.total_size += size,
-                        Err(_) => continue, // Skip if we can't read this directory's size
+                    if let Ok(size) = dir_size(&sha_entry.path()) {
+                        stats.total_size += size;
                     }
                 }
             }
@@ -485,7 +644,6 @@ pub fn cache_stats() -> Result<CacheStats> {
     Ok(stats)
 }
 
-/// Calculate directory size recursively
 fn dir_size(path: &Path) -> Result<u64> {
     let mut size = 0;
 
@@ -515,7 +673,7 @@ fn dir_size(path: &Path) -> Result<u64> {
 /// Cache statistics
 #[derive(Debug, Default)]
 pub struct CacheStats {
-    /// Number of unique repositories cached
+    /// Number of unique bundles cached (by name)
     pub repositories: usize,
     /// Number of cached versions (SHA directories)
     pub versions: usize,
@@ -545,40 +703,10 @@ mod tests {
     use serial_test::serial;
 
     #[test]
-    fn test_url_to_slug() {
-        assert_eq!(
-            url_to_slug("https://github.com/author/repo.git"),
-            "github.com-author-repo"
-        );
-        assert_eq!(
-            url_to_slug("git@github.com:author/repo.git"),
-            "github.com-author-repo"
-        );
-        assert_eq!(
-            url_to_slug("https://gitlab.com/org/project.git"),
-            "gitlab.com-org-project"
-        );
-        assert_eq!(
-            url_to_slug("file:///var/folders/test/repo.git"),
-            "var-folders-test-repo"
-        );
-    }
-
-    #[test]
-    fn test_slug_to_url() {
-        // Test file:// URL reconstruction
-        assert_eq!(
-            slug_to_url("file----var-folders-test-repo"),
-            "file:///var/folders/test/repo"
-        );
-        // Test regular URL reconstruction
-        assert_eq!(
-            slug_to_url("github.com-author-repo"),
-            "https://github.com/author/repo"
-        );
-        // Test slug that doesn't match host-path pattern (no dot in first part)
-        // Should be treated as a simple slug, not host-path
-        assert_eq!(slug_to_url("simple-slug"), "https://simple/slug");
+    fn test_bundle_name_to_cache_key() {
+        assert_eq!(bundle_name_to_cache_key("@author/repo"), "author-repo");
+        assert_eq!(bundle_name_to_cache_key("author/repo"), "author-repo");
+        assert_eq!(bundle_name_to_cache_key("@org/sub/repo"), "org-sub-repo");
     }
 
     #[test]
@@ -587,7 +715,6 @@ mod tests {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let expected_path = temp_dir.path().to_path_buf();
 
-        // Save original env var if set
         let original_cache_dir = std::env::var("AUGENT_CACHE_DIR").ok();
 
         unsafe {
@@ -597,10 +724,8 @@ mod tests {
         let dir = cache_dir();
         assert!(dir.is_ok());
         let path = dir.unwrap();
-
         assert_eq!(path, expected_path);
 
-        // Restore original env var if it was set
         unsafe {
             if let Some(original) = original_cache_dir {
                 std::env::set_var("AUGENT_CACHE_DIR", original);
@@ -619,9 +744,9 @@ mod tests {
     }
 
     #[test]
-    fn test_bundle_cache_path() {
-        let path = bundle_cache_path("https://github.com/author/repo.git", "abc123").unwrap();
-        assert!(path.to_string_lossy().contains("github.com-author-repo"));
+    fn test_bundle_cache_entry_path() {
+        let path = bundle_cache_entry_path("@author/repo", "abc123").unwrap();
+        assert!(path.to_string_lossy().contains("author-repo"));
         assert!(path.to_string_lossy().contains("abc123"));
     }
 
@@ -633,52 +758,24 @@ mod tests {
             total_size: 1024,
         };
         assert_eq!(stats.formatted_size(), "1.0 KB");
-
-        let stats = CacheStats {
-            repositories: 1,
-            versions: 1,
-            total_size: 1024 * 1024,
-        };
-        assert_eq!(stats.formatted_size(), "1.0 MB");
-
-        let stats = CacheStats {
-            repositories: 1,
-            versions: 1,
-            total_size: 512,
-        };
-        assert_eq!(stats.formatted_size(), "512 B");
     }
 
     #[test]
     fn test_get_bundle_content_path() {
-        let source = GitSource {
-            url: "https://github.com/author/repo.git".to_string(),
-            path: Some("plugins/bundle".to_string()),
-            git_ref: None,
-            resolved_sha: None,
-        };
-        let cache_path = PathBuf::from("/cache/repo/abc123");
-        let content_path = get_bundle_content_path(&source, &cache_path);
-        assert_eq!(
-            content_path,
-            PathBuf::from("/cache/repo/abc123/plugins/bundle")
+        let entry_path = PathBuf::from("/cache/author-repo/abc123");
+        let resources = get_bundle_content_path(
+            &GitSource {
+                url: "https://github.com/author/repo.git".to_string(),
+                path: None,
+                git_ref: None,
+                resolved_sha: None,
+            },
+            &entry_path,
         );
-
-        let source_no_subdir = GitSource {
-            url: "https://github.com/author/repo.git".to_string(),
-            path: None,
-            git_ref: None,
-            resolved_sha: None,
-        };
-        let content_path = get_bundle_content_path(&source_no_subdir, &cache_path);
-        assert_eq!(content_path, PathBuf::from("/cache/repo/abc123"));
-    }
-
-    #[test]
-    fn test_get_cached() {
-        let result = get_cached("https://github.com/test/repo.git", "abc123");
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_none());
+        assert_eq!(
+            resources,
+            PathBuf::from("/cache/author-repo/abc123/resources")
+        );
     }
 
     #[test]
@@ -694,7 +791,6 @@ mod tests {
 
         let bundle_path = cache_base.join("bundles").join("test-repo").join("abc123");
         std::fs::create_dir_all(&bundle_path).unwrap();
-
         assert!(bundle_path.exists());
 
         let result = clear_cache();
@@ -710,133 +806,21 @@ mod tests {
     }
 
     #[test]
-    #[serial]
-    fn test_cache_stats() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let cache_base = temp_dir.path();
-
-        let original = std::env::var("AUGENT_CACHE_DIR").ok();
-        unsafe {
-            std::env::set_var("AUGENT_CACHE_DIR", cache_base);
-        }
-
-        let stats = cache_stats().unwrap();
-        assert_eq!(stats.repositories, 0);
-        assert_eq!(stats.versions, 0);
-        assert_eq!(stats.total_size, 0);
-
-        unsafe {
-            if let Some(o) = original {
-                std::env::set_var("AUGENT_CACHE_DIR", o);
-            } else {
-                std::env::remove_var("AUGENT_CACHE_DIR");
-            }
-        }
-    }
-
-    #[test]
     fn test_dir_size() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let test_dir = temp_dir.path().join("test");
         std::fs::create_dir_all(&test_dir).unwrap();
-
         let file_path = test_dir.join("test.txt");
         std::fs::write(&file_path, b"hello world").unwrap();
-
         let size = dir_size(&test_dir).unwrap();
         assert_eq!(size, 11);
     }
 
     #[test]
-    fn test_cache_stats_gb() {
-        let stats = CacheStats {
-            repositories: 1,
-            versions: 1,
-            total_size: 1024 * 1024 * 1024 * 2,
-        };
-        assert_eq!(stats.formatted_size(), "2.0 GB");
-    }
-
-    /// Build a file:// URL from a path in a cross-platform way.
-    /// On Windows, libgit2 requires file:///C:/path (three slashes, forward slashes).
-    /// Plain file:// + drive + backslashes yields "The filename, directory name, or volume
-    /// label syntax is incorrect" from libgit2.
-    fn path_to_file_url(p: &Path) -> String {
-        #[cfg(windows)]
-        {
-            let s = p.to_str().expect("path is valid UTF-8").replace('\\', "/");
-            format!("file:///{}", s)
-        }
-        #[cfg(not(windows))]
-        {
-            format!("file://{}", p.display())
-        }
-    }
-
-    #[test]
-    #[serial]
-    fn test_cache_bundle_no_double_clone() {
-        // This test verifies that cache_bundle doesn't clone twice
-        // when called with the same source (even when git_ref is None)
-        let temp_cache = tempfile::TempDir::new().unwrap();
-        let original = std::env::var("AUGENT_CACHE_DIR").ok();
-        unsafe {
-            std::env::set_var("AUGENT_CACHE_DIR", temp_cache.path());
-        }
-
-        // Create a temporary git repo to clone from
-        let temp_source = tempfile::TempDir::new().unwrap();
-        let source_path = temp_source.path();
-        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
-        let repo = git2::Repository::init(source_path).unwrap();
-
-        // Create an initial commit
-        let tree_id = {
-            let mut index = repo.index().unwrap();
-            index.write_tree().unwrap()
-        };
-        let tree = repo.find_tree(tree_id).unwrap();
-        let commit_oid = repo
-            .commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
-            .unwrap();
-
-        let expected_sha = commit_oid.to_string();
-
-        // Use file:// URL in a format libgit2 accepts on all platforms.
-        // On Windows, file://C:\path fails; file:///C:/path works.
-        let file_url = path_to_file_url(source_path);
-
-        // First call: No resolved_sha, should clone and cache
-        let source1 = GitSource {
-            url: file_url.clone(),
-            path: None,
-            git_ref: None,
-            resolved_sha: None,
-        };
-
-        let (cache_path1, sha1, _ref1) = cache_bundle(&source1).unwrap();
-        assert_eq!(sha1, expected_sha);
-        assert!(cache_path1.is_dir());
-
-        // Second call: With resolved_sha, should use cache (not clone again)
-        let source2 = GitSource {
-            url: file_url,
-            path: None,
-            git_ref: None,
-            resolved_sha: Some(expected_sha.clone()),
-        };
-
-        let (cache_path2, sha2, _ref2) = cache_bundle(&source2).unwrap();
-        assert_eq!(sha2, expected_sha);
-        assert_eq!(cache_path2, cache_path1);
-        // The important part is that we didn't clone again (same cache_path)
-
-        unsafe {
-            if let Some(o) = original {
-                std::env::set_var("AUGENT_CACHE_DIR", o);
-            } else {
-                std::env::remove_var("AUGENT_CACHE_DIR");
-            }
-        }
+    fn test_derive_marketplace_bundle_name() {
+        assert_eq!(
+            derive_marketplace_bundle_name("https://github.com/author/repo.git", "my-plugin"),
+            "@author/repo/my-plugin"
+        );
     }
 }

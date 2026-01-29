@@ -704,42 +704,13 @@ pub mod modified {
                 hash::hash_file(&file_path).ok()
             }
             LockedSource::Git {
-                url,
-                sha,
-                path: subdir,
-                ..
+                sha, path: _subdir, ..
             } => {
-                // For marketplace plugins, use the marketplace cache directory
-                if let Some(subdir_str) = subdir {
-                    if subdir_str.starts_with("$claudeplugin/") {
-                        // Extract plugin name from $claudeplugin/plugin-name
-                        if let Some(plugin_name) = subdir_str.strip_prefix("$claudeplugin/") {
-                            // cache_dir is already the bundles directory (e.g., ~/.cache/augent/bundles)
-                            // So we just add marketplace/plugin-name
-                            let marketplace_cache = cache_dir.join("marketplace").join(plugin_name);
-                            let file_path = marketplace_cache.join(source_path);
-                            return hash::hash_file(&file_path).ok();
-                        }
-                    }
-                }
-
-                // Construct cache path from URL and SHA for regular git bundles
-                let url_slug = url
-                    .replace("https://", "")
-                    .replace("git@", "")
-                    .replace([':', '/'], "-")
-                    .replace(".git", "");
-                let cache_key = format!("{}/{}", url_slug, sha);
-                let cached_bundle_path = cache_dir.join("bundles").join(&cache_key);
-
-                // Add subdirectory if present
-                let bundle_root = if let Some(subdir) = subdir {
-                    cached_bundle_path.join(subdir)
-                } else {
-                    cached_bundle_path
-                };
-
-                let file_path = bundle_root.join(source_path);
+                // Cache layout: bundles/<bundle_name_key>/<sha>/resources/
+                // cache_dir is the bundles directory under the augent cache root (platform-specific)
+                let bundle_key = crate::cache::bundle_name_to_cache_key(&locked.name);
+                let resources_path = cache_dir.join(&bundle_key).join(sha).join("resources");
+                let file_path = resources_path.join(source_path);
                 hash::hash_file(&file_path).ok()
             }
         }

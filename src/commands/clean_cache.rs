@@ -11,8 +11,8 @@ pub fn run(args: CacheArgs) -> Result<()> {
                 return Ok(());
             }
             CacheSubcommand::Clear(clear_args) => {
-                if let Some(slug) = clear_args.only {
-                    clean_specific_bundle(&slug)?;
+                if let Some(bundle_name) = clear_args.only {
+                    clean_specific_bundle(&bundle_name)?;
                 } else {
                     clean_all_cache()?;
                 }
@@ -42,7 +42,7 @@ fn show_cache_stats() -> Result<()> {
     } else {
         println!("\nRun 'augent cache list' to list cached bundles.");
         println!("Run 'augent cache clear' to remove everything from cache.");
-        println!("Run 'augent cache clear --only <slug>' to remove a specific bundle.");
+        println!("Run 'augent cache clear --only <bundle_name>' to remove a specific bundle.");
     }
 
     Ok(())
@@ -71,12 +71,11 @@ fn list_cached_bundles() -> Result<()> {
     for bundle in &bundles {
         println!(
             "  {} ({} version{}, {})",
-            bundle.slug,
+            bundle.name,
             bundle.versions,
             if bundle.versions == 1 { "" } else { "s" },
             bundle.formatted_size()
         );
-        println!("    URL: {}", bundle.url);
     }
 
     Ok(())
@@ -88,9 +87,9 @@ fn clean_all_cache() -> Result<()> {
     Ok(())
 }
 
-fn clean_specific_bundle(slug: &str) -> Result<()> {
-    cache::remove_cached_bundle(slug)?;
-    println!("Removed cached bundle: {}", slug);
+fn clean_specific_bundle(bundle_name: &str) -> Result<()> {
+    cache::remove_cached_bundle(bundle_name)?;
+    println!("Removed cached bundle: {}", bundle_name);
     Ok(())
 }
 

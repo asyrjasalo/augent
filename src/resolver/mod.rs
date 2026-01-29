@@ -320,7 +320,7 @@ impl Resolver {
 
     /// Discover bundles in a cached git repository
     fn discover_git_bundles(&self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
-        // Show a spinner while cloning/fetching the git repository
+        // Clone to temp and discover; then ensure cache entry per bundle
         let pb = ProgressBar::new_spinner();
         pb.set_style(
             ProgressStyle::default_spinner()
@@ -331,23 +331,18 @@ impl Resolver {
         pb.set_message(source.url.clone());
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-        let cache_result = cache::cache_bundle(source);
+        let (temp_dir, sha, resolved_ref) = cache::clone_and_checkout(source)?;
         pb.finish_and_clear();
 
-        let (cache_path, sha, resolved_ref) = cache_result?;
-        let content_path = cache::get_bundle_content_path(source, &cache_path);
-
+        let repo_path = temp_dir.path();
+        let content_path = cache::content_path_in_repo(repo_path, source);
         let mut discovered = self.discover_local_bundles(&content_path)?;
 
-        // Check if this repo has a marketplace.json (marketplace plugins)
         let has_marketplace = content_path
             .join(".claude-plugin/marketplace.json")
             .is_file();
 
-        // Add git source info to each discovered bundle
-        // Each bundle gets its own subdirectory path relative to content_path
         for bundle in &mut discovered {
-            // Calculate subdirectory path relative to content_path
             let subdirectory = if bundle.path.starts_with(&content_path) {
                 let stripped = bundle
                     .path
@@ -357,8 +352,6 @@ impl Resolver {
                     .map(|s| s.trim_start_matches('/').to_string())
                     .filter(|s| !s.is_empty());
 
-                // If path == content_path (empty subdirectory) and we have marketplace.json,
-                // this is a marketplace plugin - use bundle name as subdirectory marker
                 if stripped.is_none() && has_marketplace {
                     Some(format!("$claudeplugin/{}", bundle.name))
                 } else {
@@ -368,8 +361,45 @@ impl Resolver {
                 None
             };
 
-            // Create GitSource with this bundle's specific path
-            // Preserve resolved_sha and resolved_ref from cache so it's available when resolving
+            let path_for_cache = subdirectory.as_deref().or(source.path.as_deref());
+            let bundle_name_for_cache =
+                if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
+                    cache::derive_marketplace_bundle_name(&source.url, &bundle.name)
+                } else {
+                    self.load_bundle_config(&bundle.path)
+                        .ok()
+                        .flatten()
+                        .map(|c| c.name)
+                        .unwrap_or_else(|| bundle.name.clone())
+                };
+
+            let (bundle_content_path, _synthetic_guard) =
+                if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
+                    let synthetic_temp =
+                        tempfile::TempDir::new().map_err(|e| AugentError::IoError {
+                            message: format!("Failed to create temp dir: {}", e),
+                        })?;
+                    MarketplaceConfig::create_synthetic_bundle_to(
+                        repo_path,
+                        &bundle.name,
+                        synthetic_temp.path(),
+                        Some(&source.url),
+                    )?;
+                    (synthetic_temp.path().to_path_buf(), Some(synthetic_temp))
+                } else {
+                    (bundle.path.clone(), None)
+                };
+
+            cache::ensure_bundle_cached(
+                &bundle_name_for_cache,
+                &sha,
+                &source.url,
+                path_for_cache,
+                repo_path,
+                &bundle_content_path,
+                resolved_ref.as_deref(),
+            )?;
+
             bundle.git_source = Some(GitSource {
                 url: source.url.clone(),
                 path: subdirectory.or_else(|| source.path.clone()),
@@ -558,35 +588,8 @@ impl Resolver {
         let cache_result = cache::cache_bundle(source);
         pb.finish_and_clear();
 
-        let (cache_path, sha, resolved_ref) = cache_result?;
-
-        // Check if this is a marketplace plugin (path starts with $claudeplugin/)
-        let content_path = if let Some(ref path_val) = source.path {
-            if let Some(bundle_name) = path_val.strip_prefix("$claudeplugin/") {
-                // This is a marketplace plugin - create synthetic directory
-                let marketplace_json = cache_path.join(".claude-plugin/marketplace.json");
-                if !marketplace_json.is_file() {
-                    return Err(AugentError::BundleNotFound {
-                        name: format!(
-                            "Marketplace bundle '{}' not found - missing marketplace.json",
-                            bundle_name
-                        ),
-                    });
-                }
-                self.create_synthetic_bundle(
-                    &cache_path,
-                    bundle_name,
-                    &marketplace_json,
-                    Some(&source.url),
-                )?
-            } else {
-                // Normal path
-                cache::get_bundle_content_path(source, &cache_path)
-            }
-        } else {
-            // No subdirectory
-            cache::get_bundle_content_path(source, &cache_path)
-        };
+        // cache_bundle returns (resources_path, sha, resolved_ref); resources_path is the bundle content
+        let (content_path, sha, resolved_ref) = cache_result?;
 
         // Check if the content path exists
         if !content_path.is_dir() {
@@ -739,7 +742,7 @@ impl Resolver {
                 name: format!("Bundle '{}' not found in marketplace.json", bundle_name),
             })?;
 
-        // Use global cache directory: ~/.cache/augent/bundles/marketplace/{bundle_name}/
+        // Use augent bundles cache: .../bundles/marketplace/{bundle_name}/
         let cache_root = crate::cache::bundles_cache_dir()?.join("marketplace");
         std::fs::create_dir_all(&cache_root)?;
 

@@ -179,7 +179,7 @@ pub struct CompletionsArgs {
                   Show cache statistics:\n    augent cache\n\n\
                   List cached bundles:\n    augent cache list\n\n\
                   Clear all cached bundles:\n    augent cache clear\n\n\
-                  Remove specific bundle:\n    augent cache clear --only github.com-author-repo")]
+                  Remove specific bundle:\n    augent cache clear --only @author/repo")]
 pub struct CacheArgs {
     #[command(subcommand)]
     pub command: Option<CacheSubcommand>,
@@ -198,7 +198,7 @@ pub enum CacheSubcommand {
 /// Arguments for cache clear command
 #[derive(Parser, Debug)]
 pub struct ClearCacheArgs {
-    /// Remove only specific bundle slug (e.g., github.com-author-repo)
+    /// Remove only specific bundle by name (e.g., @author/repo)
     #[arg(long)]
     pub only: Option<String>,
 }

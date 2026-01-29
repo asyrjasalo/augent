@@ -68,7 +68,7 @@ augent install owner/repo/bundle-name
 
 ### Installation Process
 
-1. **Cache** → Bundle downloaded to `~/.cache/augent/bundles/`
+1. **Cache** → Bundle downloaded to the augent cache (run `augent cache` to see the path)
 2. **Resolve** → Git refs resolved to exact SHAs
 3. **Transform** → Resources converted to platform-specific format
 4. **Install** → Files installed to platform directories
@@ -279,7 +279,7 @@ augent cache clear --only github.com-author-repo
 
 ### Cache Location
 
-Bundles are cached in: `~/.cache/augent/bundles/`
+Bundles are cached under the augent cache directory (platform-specific; run `augent cache` to see the path), in a `bundles/` subdirectory.
 
 Each bundle is cached in its own directory based on the source URL hash.
 

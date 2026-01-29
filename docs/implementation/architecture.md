@@ -141,7 +141,7 @@ sequenceDiagram
     Augent->>Cache: Check cache for bundle
     alt Cache miss
         Augent->>Git: Clone repository
-        Git-->>Cache: Store in ~/.cache/augent/
+        Git-->>Cache: Store in augent cache
     end
     Cache-->>Augent: Bundle files
     Augent->>Augent: Calculate BLAKE3 hash
@@ -454,7 +454,7 @@ Export flow (universal → platform):
 ### Directory Structure
 
 ```text
-~/.cache/augent/
+<cache_dir>/augent/   (cache_dir is platform-specific; run `augent cache` to see it)
 └── bundles/
     └── <url-path-slug>/
         └── <git-sha>/
