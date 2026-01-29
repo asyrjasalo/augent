@@ -2,15 +2,16 @@
 
 Installing resources:
 
-- The bundles name is assumed universally unique
+- The bundle's name is assumed to be universally unique
 - What to install is not dictated by augent.yaml, it is dictated by augent.lock.
 - If augent.lock is present in the directory, the bundles in it are installed in order.
-- The bundles own resources are installed last
-- If there are resources in this bundle, the last entry in augent.lock is the bundle itself
+- If there are any resources in the bundle having augent.lock, the last entry in augent.lock is the bundle itself, and the same is for augent.yaml
+- This ensures that the bundle's own resources are installed last
 
 Always when installing a bundle:
 
-- Augent config files are updated (unless the bundle of same name is installed already). The installed bundle info is always stored regardless it that bundle has augent.lock itself or not (i.e. information on non-augent bundles, e.g. resource only bundles, or claude marketplace plugins, must be retained by exact git repo SHA to reproducible)
+- Augent config files are updated (unless the bundle of the same name is installed already).
+- The installed bundle info is always stored regardless it that bundle has augent.lock itself or not (i.e. information on non-augent bundles, e.g. resource only bundles, or claude marketplace plugins, must be retained by exact git repo SHA to reproducible)
 - The config files are assumed to be in the following locations in the repo where install is run (first match takes precedence):
   - this directory if it has augent.lock (.)
   - ./augent.lock (repo root)
@@ -18,12 +19,12 @@ Always when installing a bundle:
 - The lockfile is updated first, then `augent.yaml`, then `augent.index.yaml`
 - If user installs multiple bundles in the repo, each of those bundles gets its own entry in augent.yaml, augent.lock, augent.index.yaml (it is part of the bundle name). Note: depependencies of dependencies are not stored in augent.yaml, they are stored in augent.lock.
 
-Installation order:
+Important:
 
 - All of augent files retain order in which things were installed.
 - augent.yaml includes only direct dependencies of this bundle (as bundles: [])
 - The lockfile has all the dependencies, and dependencies of dependencies recursively, this is in installation order as well.
-- Similarly augent.index.yaml tracks in order in what came where (also from dependencies of dependencies)
+- Similarly augent.index.yaml tracks in order in what came where (also from dependencies of dependencies if still effective for platforms i.e. not overridden by later bundles)
 
 ## install bundle from directory (type: dir)
 
@@ -79,7 +80,9 @@ Git bundle's name is always in the following format in `augent.yaml`, `augent.lo
 
 Note: / is used to separate bundle names, and optional path (to subdirectory) is only given after :
 
-ref is never part of the name but it gets separate field in augent.yaml and augent.lock. Important: the `augent.lock` always has `ref` and THE EXACT `sha` of the commit. Otherwise the setup is not reproducible.
+ref is never part of the name but it gets an own field in augent.yaml (even if default) and augent.lock. Important: the `augent.lock` always has `ref` and also THE EXACT `sha` of the commit. Otherwise the setup is not reproducible per lockfile.
+
+If ref is not given, the git repo's default branch is read and used (usually either main or master).
 
 ref can be:
 
@@ -88,8 +91,6 @@ ref can be:
 - SHA of a commit
 
 We will not use #ref (or alternative form @ref) in the examples below, but the operations are done respectively in that ref.
-
-If ref is not given, the git repo's default branch is read and used (usually either main or master).
 
 ### from repo root
 
