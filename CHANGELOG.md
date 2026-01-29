@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Git bundles are now served from cache when possible: `augent install` uses `git ls-remote` to resolve the ref to a SHA and checks the cache before cloning, so repeated installs of the same bundle (e.g. `augent install @user/repo`) no longer refetch the repository every time
-- Cache now stores one entry per repo+sha instead of one per sub-bundle: multi-bundle repos (e.g. `@davila7/claude-code-templates` with 10 sub-bundles) use a single cache directory (`davila7-claude-code-templates/<sha>/`) with full repo in `repository/` and `resources/`, instead of 10 duplicate copies (~1 GB total)
+- Git bundles are served from cache when possible—repeated installs of the same ref no longer refetch
+- Cache stores one entry per repo+sha instead of per sub-bundle, so multi-bundle repos use a single copy instead of duplicates
 
 ## [0.6.0] - 2026-01-28
 

@@ -38,8 +38,9 @@ const REPOSITORY_DIR: &str = "repository";
 /// Subdirectory for extracted resources (agents, commands, etc.)
 const RESOURCES_DIR: &str = "resources";
 
-/// Subdirectory for marketplace synthetic bundle content under repo-level resources
-const SYNTHETIC_DIR: &str = "synthetic";
+/// Subdirectory for marketplace synthetic bundle content under repo-level resources.
+/// Matches the source (.claude-plugin/marketplace.json) and cannot collide with a real sub-bundle name.
+const SYNTHETIC_DIR: &str = ".claude-plugin";
 
 /// File name for storing the resolved ref (repository has detached HEAD after checkout)
 const REF_FILE: &str = ".augent_ref";
