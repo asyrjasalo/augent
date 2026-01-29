@@ -3,33 +3,33 @@
 Installing resources:
 
 - The bundles name is assumed universally unique
-- If augent.yaml is present in the directory, the bundles in it are resolved recursively after.
-- Installs bundles own resources last, they may override resources from earlier bundles if the file names overlap.
+- What to install is not dictated by augent.yaml, it is dictated by augent.lock.
+- If augent.lock is present in the directory, the bundles in it are installed in order.
+- The bundles own resources are installed last
+- If there are resources in this bundle, the last entry in augent.lock is the bundle itself
 
 Always when installing a bundle:
 
-- Augent config files are updated (unless the bundle of same name is installed already). The installed bundle info is always stored regardless it that bundle has augent.yaml itself or not
+- Augent config files are updated (unless the bundle of same name is installed already). The installed bundle info is always stored regardless it that bundle has augent.lock itself or not (i.e. information on non-augent bundles, e.g. resource only bundles, or claude marketplace plugins, must be retained by exact git repo SHA to reproducible)
 - The config files are assumed to be in the following locations in the repo where install is run (first match takes precedence):
-  - this directory if it has augent.yaml (.)
-  - ./augent.yaml (repo root)
-  - ./.augent/augent.yaml (created by default by install if does exist)
+  - this directory if it has augent.lock (.)
+  - ./augent.lock (repo root)
+  - ./.augent/augent.lock (created by default by install if does exist)
 - The lockfile is updated first, then `augent.yaml`, then `augent.index.yaml`
-- If user installs multiple bundles in the repo, each of those bundles gets its own entry in augent.yaml, augent.lock, augent.index.yaml (it is part of the bundle name).
+- If user installs multiple bundles in the repo, each of those bundles gets its own entry in augent.yaml, augent.lock, augent.index.yaml (it is part of the bundle name). Note: depependencies of dependencies are not stored in augent.yaml, they are stored in augent.lock.
 
 Installation order:
 
 - All of augent files retain order in which things were installed.
-- Augent.yaml includes only direct dependencies (as bundles: [])
+- augent.yaml includes only direct dependencies of this bundle (as bundles: [])
 - The lockfile has all the dependencies, and dependencies of dependencies recursively, this is in installation order as well.
-- Similarly augent.index.yaml tracks in order in what came where (also from dependencies of dependencies) if that file is not overridden by a later bundle.
+- Similarly augent.index.yaml tracks in order in what came where (also from dependencies of dependencies)
 
 ## install bundle from directory (type: dir)
 
-Dir bundle's name is always as following in `augent.yaml`, `augent.lock`, `augent.index.yaml`:
+Dir bundle's name is always the following in `augent.yaml`, `augent.lock`, `augent.index.yaml`: dir-name
 
-name: dir-name
-
-### without augent.yaml
+### without augent.lock
 
 user gives any of the following (assuming directory is at ./local-bundle):
 
@@ -38,7 +38,7 @@ user gives any of the following (assuming directory is at ./local-bundle):
 
 where name is: local-bundle
 
--> installs all resources from path local-bundle
+-> installs all resources from path ./local-bundle
 
 what is saved into augent.yaml:
 
@@ -47,9 +47,9 @@ name: local-bundle
 path: ./local-bundle
 ```
 
-path is relative to the directory where augent.yaml is
+for dir bundles, path is relative to the directory where augent.lock is
 
-### with augent.yaml
+### with augent.lock
 
 user gives any of the following (assuming directory is at ./local-bundle):
 
@@ -58,8 +58,7 @@ user gives any of the following (assuming directory is at ./local-bundle):
 
 where name is: local-bundle
 
--> recursively installs all bundles and their resources in order in ./local-bundle/augent.yaml
--> bundles own resources are installed last from the dir where augent.yaml is
+-> install.augent.lock (bundles own resources last)
 
 what is saved into augent.yaml:
 
@@ -68,7 +67,7 @@ name: local-bundle
 path: ./local-bundle
 ```
 
-path is relative to the directory where augent.yaml is
+path is relative to the directory where augent.lock is
 
 ## install from git repository (type: git)
 
@@ -76,9 +75,11 @@ By default, @owner/repo is assumed to be a git repository in GitHub.
 
 Git bundle's name is always in the following format in `augent.yaml`, `augent.lock`, `augent.index.yaml`:
 
-name: @<owner>/repo[/bundle-name[/deeper-bundle-name]][:path/from/repo/root]
+@<owner>/repo[/bundle-name[/deeper-bundle-name]][:path/from/repo/root]
 
-ref is not part of the name but it gets separate field in augent.yaml and augent.lock. Important: the `augent.lock` always has `ref` and THE EXACT `sha` of the commit.
+Note: / is used to separate bundle names, and optional path (to subdirectory) is only given after :
+
+ref is never part of the name but it gets separate field in augent.yaml and augent.lock. Important: the `augent.lock` always has `ref` and THE EXACT `sha` of the commit. Otherwise the setup is not reproducible.
 
 ref can be:
 
@@ -86,15 +87,15 @@ ref can be:
 - tag name
 - SHA of a commit
 
-and git operations are then done respectively.
+We will not use #ref (or alternative form @ref) in the examples below, but the operations are done respectively in that ref.
 
-If ref is not given, the repo's default branch is assumed.
-
-We will not use #ref (or alternative form @ref) in the examples below.
+If ref is not given, the git repo's default branch is read and used (usually either main or master).
 
 ### from repo root
 
-#### bundles without augent.yaml
+This applies when : is not given after the bundle name.
+
+#### bundles without augent.lock
 
 user gives any of the following:
 
@@ -102,9 +103,9 @@ user gives any of the following:
 - augent install @owner/repo
 - augent install github:owner/repo
 - augent install github:@owner/repo
-- augent install <https://github.com/owner/repo.git> (HTTPS url)
-- augent install <https://github.com/owner/repo/tree/main> (GitHub web UI url)
-- augent install <git@github.com>:owner/repo.git (SSH url)
+- augent install https://github.com/owner/repo.git (HTTPS url)
+- augent install https://github.com/owner/repo/tree/main (GitHub web UI url)
+- augent install git@github.com:owner/repo.git (SSH url)
 
 where name is: @owner/repo
 
@@ -118,7 +119,7 @@ git: https://github.com/owner/repo.git
 path: .
 ```
 
-#### bundles with augent.yaml
+#### bundles with augent.lock
 
 user gives any of the following:
 
@@ -126,17 +127,16 @@ user gives any of the following:
 - augent install @owner/repo
 - augent install github:owner/repo
 - augent install github:@owner/repo
-- augent install <https://github.com/owner/repo.git> (HTTPS url)
-- augent install <https://github.com/owner/repo/tree/main> (GitHub web UI url)
-- augent install <git@github.com>:owner/repo.git (SSH url)
+- augent install https://github.com/owner/repo.git (HTTPS url)
+- augent install https://github.com/owner/repo/tree/main (GitHub web UI url)
+- augent install git@github.com:owner/repo.git (SSH url)
 
 where name is: @owner/repo
 
--> either of the following applies (but not both):
-    - it if it is repo root, use that (path: `.`)
-    - if it is in directory ./augent, use that (path: `./augent`)
--> recursively installs all bundles from that augent.yaml
--> bundles own resources are installed last from the dir where augent.yaml is
+-> first of the following applies (but not both):
+    - if `augent.lock` is in the repo root, use that (path: `.`)
+    - if `augent.lock` is in directory ./augent, use that (path: `./augent`)
+-> install augent.lock (bundles own resources last)
 
 what is saved into augent.yaml:
 
@@ -183,7 +183,7 @@ path: $claude-plugin/git-workflow
 
 ### install from git repository's subdirectory
 
-#### bundles without augent.yaml in subdirectory
+#### bundles without augent.lock in subdirectory
 
 user gives any of the following:
 
@@ -191,9 +191,9 @@ user gives any of the following:
 - augent install @owner/repo:path/from/repo/root
 - augent install github:owner/repo:path/from/repo/root
 - augent install github:@owner/repo:path/from/repo/root
-- augent install <https://github.com/owner/repo.git:path/from/repo/root>
-- augent install <https://github.com/owner/repo/tree/main/path/from/repo/root>
-- augent install <git@github.com>:owner/repo.git:path/from/repo/root
+- augent install https://github.com/owner/repo.git:path/from/repo/root
+- augent install https://github.com/owner/repo/tree/main/path/from/repo/root
+- augent install git@github.com:owner/repo.git:path/from/repo/root
 
 where name is: @owner/repo:path/from/repo/root
 
@@ -207,7 +207,7 @@ git: https://github.com/owner/repo.git
 path: path/from/repo/root
 ```
 
-#### bundles with augent.yaml in subdirectory
+#### bundles with augent.lock in subdirectory
 
 this is used for installing only some bundle's own dependency which is stored in the same git repository in a directory, without installing the parent bundle.
 
@@ -217,14 +217,13 @@ user gives any of the following:
 - augent install @owner/repo:path/from/repo/root
 - augent install github:owner/repo:path/from/repo/root
 - augent install github:@owner/repo:path/from/repo/root
-- augent install <https://github.com/owner/repo.git:path/from/repo/root>
-- augent install <https://github.com/owner/repo/tree/main/path/from/repo/root>
-- augent install <git@github.com>:owner/repo.git:path/from/repo/root
+- augent install https://github.com/owner/repo.git:path/from/repo/root
+- augent install https://github.com/owner/repo/tree/main/path/from/repo/root
+- augent install git@github.com:owner/repo.git:path/from/repo/root
 
 where name is: @owner/repo:path/from/from/repo/root
 
--> recursively installs all bundles from path/from/from/repo/root's augent.yaml
--> bundles own resources are installed last from the dir where augent.yaml is
+-> install augent.lock (bundles own resources last)
 
 what is saved into augent.yaml:
 
@@ -236,25 +235,25 @@ path: path/from/from/repo/root
 
 ## Reference: Typical use cases
 
-Install bundles from a git repository (either there is no augent.yaml or it is in the standard locations):
+Install bundles from a git repository (either there is no augent.lock or it is in the standard locations):
 
 ```text
 augent install @owner/repo
 ```
 
-Install bundles from a git repository's subdirectory (either there is no augent.yaml, or it is not in the standard locations):
+Install bundles from a git repository's subdirectory (either there is no augent.lock, or it is not in the standard locations):
 
 ```text
 augent install @owner/repo:path/from/repo/root
 ```
 
-Install only particular bundles from a git repository (there is augent.yaml in the standard locations, or there is .claude-plugin/marketplace.json):
+Install only particular bundles from a git repository (there is augent.lock in the standard locations, or there is .claude-plugin/marketplace.json):
 
 ```text
 augent install @owner/repo/bundle-name
 ```
 
-Install only particular bundles from git repository subdirectory (e.g. there is augent.yaml, or .claude-plugin/marketplace.json, but they are not in the standard locations):
+Install only particular bundles from git repository subdirectory (e.g. there is augent.lock, or .claude-plugin/marketplace.json, but they are not in the standard locations):
 
 ```text
 augent install @owner/repo/bundle-name:path/from/repo/root
