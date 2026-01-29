@@ -930,4 +930,17 @@ Set up cross-platform builds and distribution.
 - [x] Update documentation if any examples or text still describe removed legacy behavior
 - [x] Run full test suite and fix any regressions
 
+### Epic 6 (continued): Install and Naming per Bundles Spec
+
+#### Feature 6.6: Align Install and Naming with Bundles Spec
+
+**Status:** [x] Complete
+
+See: [bundles.md](specs/bundles.md), [install-command.md](specs/install-command.md)
+
+- [x] Dir bundle naming: always use directory name in augent.yaml, augent.lock, augent.index.yaml
+- [x] Git repo root naming: use @owner/repo; Git subdirectory path naming: use @owner/repo:path
+- [x] Git subdirectory with augent.yaml or marketplace: use @owner/repo/bundle-name
+- [x] Update install-command spec lockfile example and add reference to bundles spec
+
 ---

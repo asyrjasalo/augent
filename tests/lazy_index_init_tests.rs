@@ -26,7 +26,7 @@ fn test_install_without_index_yaml_creates_it() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
-    workspace.create_bundle("@test/test-bundle");
+    workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"
@@ -48,7 +48,7 @@ bundles: []
 
     // Verify it contains the bundle entry
     let content = fs::read_to_string(&index_yaml).expect("should read index.yaml");
-    assert!(content.contains("@test/test-bundle"));
+    assert!(content.contains("test-bundle"));
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn test_uninstall_without_index_yaml_rebuilds_it() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
-    workspace.create_bundle("@test/test-bundle");
+    workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"
@@ -81,7 +81,7 @@ bundles: []
     // Try to uninstall - it should rebuild index.yaml first
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains(
@@ -94,7 +94,7 @@ fn test_uninstall_without_index_yaml_finds_installed_files() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
-    workspace.create_bundle("@test/test-bundle");
+    workspace.create_bundle("test-bundle");
 
     // Create bundle with a command file
     workspace.write_file(
@@ -128,7 +128,7 @@ bundles: []
     // Uninstall should still work and find the file
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -144,7 +144,7 @@ fn test_list_without_index_yaml_still_works() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
-    workspace.create_bundle("@test/test-bundle");
+    workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"
@@ -170,7 +170,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn test_multiple_bundles_without_index_yaml() {
     workspace.create_agent_dir("cursor");
 
     // Create two bundles
-    workspace.create_bundle("@test/bundle-a");
+    workspace.create_bundle("bundle-a");
     workspace.write_file(
         "bundles/bundle-a/augent.yaml",
         r#"
@@ -190,7 +190,7 @@ bundles: []
     );
     workspace.write_file("bundles/bundle-a/commands/cmd-a.md", "# Command A");
 
-    workspace.create_bundle("@test/bundle-b");
+    workspace.create_bundle("bundle-b");
     workspace.write_file(
         "bundles/bundle-b/augent.yaml",
         r#"
@@ -220,7 +220,7 @@ bundles: []
     // Uninstall first bundle - should still work and rebuild index.yaml
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-a", "-y"])
+        .args(["uninstall", "bundle-a", "-y"])
         .assert()
         .success();
 
@@ -234,7 +234,7 @@ bundles: []
     let index_yaml_content =
         fs::read_to_string(&index_yaml).expect("should have recreated index.yaml");
     assert!(
-        index_yaml_content.contains("@test/bundle-b"),
+        index_yaml_content.contains("bundle-b"),
         "index.yaml should contain remaining bundle"
     );
 }
@@ -249,7 +249,7 @@ fn test_index_yaml_scan_detects_platform_directories() {
     workspace.create_agent_dir("claude");
     workspace.create_agent_dir("opencode");
 
-    workspace.create_bundle("@test/test-bundle");
+    workspace.create_bundle("test-bundle");
     workspace.write_file(
         "bundles/test-bundle/augent.yaml",
         r#"
@@ -273,7 +273,7 @@ bundles: []
     // Trigger rebuild via uninstall
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains(

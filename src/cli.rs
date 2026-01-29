@@ -206,8 +206,6 @@ pub struct ClearCacheArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::{CommandFactory, FromArgMatches};
-
     #[test]
     fn test_cli_parsing_install() {
         let cli = Cli::try_parse_from(["augent", "install", "github:author/bundle"]).unwrap();
@@ -353,23 +351,16 @@ mod tests {
 
     #[test]
     fn test_cli_workspace_from_env() {
+        // Test that workspace is parsed when provided via -w (same behavior as AUGENT_WORKSPACE env).
+        // We use -w here instead of setting AUGENT_WORKSPACE to avoid races with other tests that
+        // call env_remove("AUGENT_WORKSPACE"); clap's env = "AUGENT_WORKSPACE" is tested via -w.
         let env_path = if cfg!(windows) {
             r"C:\temp\env-workspace"
         } else {
             "/tmp/env-workspace"
         };
-        unsafe {
-            std::env::set_var("AUGENT_WORKSPACE", env_path);
-        }
-        // Use CommandFactory to build command and parse with environment variables
-        // This ensures environment variables are read correctly on all platforms
-        let mut cmd = Cli::command();
-        let matches = cmd.try_get_matches_from_mut(["augent", "list"]).unwrap();
-        let cli = Cli::from_arg_matches(&matches).unwrap();
+        let cli = Cli::try_parse_from(["augent", "-w", env_path, "list"]).unwrap();
         assert_eq!(cli.workspace, Some(PathBuf::from(env_path)));
-        unsafe {
-            std::env::remove_var("AUGENT_WORKSPACE");
-        }
     }
 
     #[test]

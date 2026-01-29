@@ -32,7 +32,7 @@ fn test_uninstall_with_transitive_dependencies() {
     workspace.create_agent_dir("cursor");
 
     // Create bundle C (no dependencies)
-    workspace.create_bundle("@test/bundle-c");
+    workspace.create_bundle("bundle-c");
     workspace.write_file(
         "bundles/bundle-c/augent.yaml",
         r#"
@@ -43,7 +43,7 @@ bundles: []
     workspace.write_file("bundles/bundle-c/commands/cmd-c.md", "# Command C");
 
     // Create bundle B that depends on C
-    workspace.create_bundle("@test/bundle-b");
+    workspace.create_bundle("bundle-b");
     workspace.write_file(
         "bundles/bundle-b/augent.yaml",
         r#"
@@ -56,7 +56,7 @@ bundles:
     workspace.write_file("bundles/bundle-b/commands/cmd-b.md", "# Command B");
 
     // Create bundle A that depends on B
-    workspace.create_bundle("@test/bundle-a");
+    workspace.create_bundle("bundle-a");
     workspace.write_file(
         "bundles/bundle-a/augent.yaml",
         r#"
@@ -81,14 +81,14 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a"))
+        .stdout(predicate::str::contains("bundle-a"))
         .stdout(predicate::str::contains("@test/bundle-b"))
         .stdout(predicate::str::contains("@test/bundle-c"));
 
     // Uninstall A
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-a", "-y"])
+        .args(["uninstall", "bundle-a", "-y"])
         .assert()
         .success();
 
@@ -98,7 +98,7 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a").not());
+        .stdout(predicate::str::contains("bundle-a").not());
 
     // Since all bundles were added to workspace config by install,
     // they're all considered "explicitly installed" from the workspace's perspective.
@@ -110,8 +110,8 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-b").not())
-        .stdout(predicate::str::contains("@test/bundle-c").not());
+        .stdout(predicate::str::contains("bundle-b").not())
+        .stdout(predicate::str::contains("bundle-c").not());
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn test_uninstall_does_not_remove_shared_dependencies() {
     workspace.create_agent_dir("cursor");
 
     // Create bundle C (no dependencies)
-    workspace.create_bundle("@test/shared-dep");
+    workspace.create_bundle("shared-dep");
     workspace.write_file(
         "bundles/shared-dep/augent.yaml",
         r#"
@@ -134,7 +134,7 @@ bundles: []
     workspace.write_file("bundles/shared-dep/commands/shared.md", "# Shared");
 
     // Create bundle A that depends on C
-    workspace.create_bundle("@test/bundle-a-shared");
+    workspace.create_bundle("bundle-a-shared");
     workspace.write_file(
         "bundles/bundle-a-shared/augent.yaml",
         r#"
@@ -147,7 +147,7 @@ bundles:
     workspace.write_file("bundles/bundle-a-shared/commands/cmd-a.md", "# Command A");
 
     // Create bundle B that also depends on C
-    workspace.create_bundle("@test/bundle-b-shared");
+    workspace.create_bundle("bundle-b-shared");
     workspace.write_file(
         "bundles/bundle-b-shared/augent.yaml",
         r#"
@@ -179,14 +179,14 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a-shared"))
-        .stdout(predicate::str::contains("@test/bundle-b-shared"))
+        .stdout(predicate::str::contains("bundle-a-shared"))
+        .stdout(predicate::str::contains("bundle-b-shared"))
         .stdout(predicate::str::contains("@test/shared-dep"));
 
     // Uninstall A
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-a-shared", "-y"])
+        .args(["uninstall", "bundle-a-shared", "-y"])
         .assert()
         .success();
 
@@ -196,8 +196,8 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a-shared").not())
-        .stdout(predicate::str::contains("@test/bundle-b-shared"))
+        .stdout(predicate::str::contains("bundle-a-shared").not())
+        .stdout(predicate::str::contains("bundle-b-shared"))
         .stdout(predicate::str::contains("@test/shared-dep"));
 }
 
@@ -213,7 +213,7 @@ fn test_uninstall_multiple_bundles_removes_unused_dependencies() {
     workspace.create_agent_dir("cursor");
 
     // Create bundle C
-    workspace.create_bundle("@test/bundle-c-multi");
+    workspace.create_bundle("bundle-c-multi");
     workspace.write_file(
         "bundles/bundle-c-multi/augent.yaml",
         r#"
@@ -224,7 +224,7 @@ bundles: []
     workspace.write_file("bundles/bundle-c-multi/commands/cmd-c.md", "# Command C");
 
     // Create bundle A that depends on C
-    workspace.create_bundle("@test/bundle-a-multi");
+    workspace.create_bundle("bundle-a-multi");
     workspace.write_file(
         "bundles/bundle-a-multi/augent.yaml",
         r#"
@@ -237,7 +237,7 @@ bundles:
     workspace.write_file("bundles/bundle-a-multi/commands/cmd-a.md", "# Command A");
 
     // Create bundle B (no dependencies)
-    workspace.create_bundle("@test/bundle-b-multi");
+    workspace.create_bundle("bundle-b-multi");
     workspace.write_file(
         "bundles/bundle-b-multi/augent.yaml",
         r#"
@@ -266,13 +266,13 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a-multi"))
-        .stdout(predicate::str::contains("@test/bundle-b-multi"));
+        .stdout(predicate::str::contains("bundle-a-multi"))
+        .stdout(predicate::str::contains("bundle-b-multi"));
 
     // Uninstall A - this should also remove its dependencies if they're not needed by others
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-a-multi", "-y"])
+        .args(["uninstall", "bundle-a-multi", "-y"])
         .assert()
         .success();
 
@@ -282,7 +282,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a-multi").not());
+        .stdout(predicate::str::contains("bundle-a-multi").not());
 
     // B should still be there since we didn't uninstall it
     augent_cmd()
@@ -290,7 +290,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-b-multi"));
+        .stdout(predicate::str::contains("bundle-b-multi"));
 }
 
 #[test]
@@ -317,7 +317,7 @@ fn test_uninstall_shows_warning_about_dependents() {
     workspace.create_agent_dir("cursor");
 
     // Create bundle B
-    workspace.create_bundle("@test/bundle-b-dep");
+    workspace.create_bundle("bundle-b-dep");
     workspace.write_file(
         "bundles/bundle-b-dep/augent.yaml",
         r#"
@@ -328,7 +328,7 @@ bundles: []
     workspace.write_file("bundles/bundle-b-dep/commands/cmd-b.md", "# Command B");
 
     // Create bundle A that depends on B
-    workspace.create_bundle("@test/bundle-a-dep");
+    workspace.create_bundle("bundle-a-dep");
     workspace.write_file(
         "bundles/bundle-a-dep/augent.yaml",
         r#"
@@ -348,6 +348,7 @@ bundles:
         .success();
 
     // Try to uninstall B - should warn about A depending on it
+    // B was installed as a dependency, so it keeps declared name @test/bundle-b-dep
     augent_cmd()
         .current_dir(&workspace.path)
         .args(["uninstall", "@test/bundle-b-dep", "-y"])

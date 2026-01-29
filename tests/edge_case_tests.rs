@@ -46,7 +46,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/test-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("test-bundle"));
@@ -55,7 +55,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -393,7 +393,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -435,7 +435,7 @@ bundles: []"#,
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-3", "-y"])
+        .args(["uninstall", "bundle-3", "-y"])
         .assert()
         .success();
 

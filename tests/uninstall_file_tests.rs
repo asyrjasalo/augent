@@ -41,7 +41,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -72,7 +72,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -106,7 +106,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/workspace-bundle", "-y"])
+        .args(["uninstall", "workspace-bundle", "-y"])
         .assert()
         .success();
 
@@ -135,7 +135,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uninstalled"));
@@ -172,7 +172,7 @@ bundles: []
     // Uninstall bundle
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -250,7 +250,7 @@ bundles: []
     // Uninstall bundle-b (which provided the active file)
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-b", "-y"])
+        .args(["uninstall", "bundle-b", "-y"])
         .assert()
         .success();
 
@@ -311,7 +311,7 @@ bundles: []
     // Uninstall bundle-a
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle-a", "-y"])
+        .args(["uninstall", "bundle-a", "-y"])
         .assert()
         .success();
 

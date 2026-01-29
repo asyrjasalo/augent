@@ -123,11 +123,11 @@ Bundles are cached in `~/.cache/augent/bundles/<hash>` where `<hash>` is derived
 
 #### 5. Lockfile Generation
 
-Lockfile is generated with exact SHAs and file hashes:
+Bundle names in the lockfile follow the [Bundles spec](bundles.md): dir bundles use the directory name; Git bundles use `@owner/repo[/bundle-name][:path]`. Lockfile is generated with exact SHAs and file hashes:
 
 ```yaml
 bundles:
-  - name: debug-tools
+  - name: '@author/debug-tools'
     source:
       Git:
         url: https://github.com/author/debug-tools.git
@@ -287,6 +287,7 @@ where
 
 ## References
 
+- Bundles: [Bundle naming and install behavior](bundles.md) (authoritative for bundle names in augent.yaml, augent.lock, augent.index.yaml)
 - PRD: [CLI Commands](../mvp/prd.md#cli-commands)
 - ARCHITECTURE: [Installing a Bundle](../architecture.md#installing-a-bundle)
 - ARCHITECTURE: [Installing with Dependencies](../architecture.md#installing-with-dependencies)

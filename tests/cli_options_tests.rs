@@ -204,7 +204,7 @@ bundles: []
         .current_dir(&temp.path)
         .args([
             "show",
-            "@test/test-bundle",
+            "test-bundle",
             "--workspace",
             workspace.path.to_str().unwrap(),
         ])
@@ -607,7 +607,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y", "-v"])
+        .args(["uninstall", "test-bundle", "-y", "-v"])
         .assert()
         .success();
 }
@@ -634,7 +634,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/test-bundle", "-v"])
+        .args(["show", "test-bundle", "-v"])
         .assert()
         .success();
 }
@@ -701,7 +701,7 @@ bundles: []
         .current_dir(&temp.path)
         .args([
             "uninstall",
-            "@test/test-bundle",
+            "test-bundle",
             "-y",
             "--workspace",
             workspace.path.to_str().unwrap(),

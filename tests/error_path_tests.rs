@@ -210,7 +210,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 }
@@ -254,7 +254,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 

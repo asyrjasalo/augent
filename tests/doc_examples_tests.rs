@@ -102,10 +102,10 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/my-bundle"])
+        .args(["show", "my-bundle"])
         .assert()
         .success()
-        .stdout(predicates::str::contains("@test/my-bundle"));
+        .stdout(predicates::str::contains("my-bundle"));
 }
 
 #[test]
@@ -133,7 +133,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/my-bundle", "-y"])
+        .args(["uninstall", "my-bundle", "-y"])
         .assert()
         .success();
 }

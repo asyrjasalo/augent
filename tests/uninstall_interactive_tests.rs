@@ -87,7 +87,7 @@ bundles: []
     let output = test.wait_for_output().unwrap();
 
     assert!(output.contains("Select bundles to uninstall") || output.contains("uninstalled"));
-    assert!(output.contains("@test/test-bundle"));
+    assert!(output.contains("test-bundle"));
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
 }
@@ -223,7 +223,7 @@ bundles: []
     // Use PTY to send Enter (default yes) to confirm
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle"],
+        &["uninstall", "test-bundle"],
         &workspace.path,
     )
     .unwrap();
@@ -343,7 +343,7 @@ bundles: []
     // Use -y flag to skip confirmation
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uninstalled"));
@@ -385,7 +385,7 @@ bundles: []
     // Use PTY to send 'n' to decline
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle"],
+        &["uninstall", "test-bundle"],
         &workspace.path,
     )
     .unwrap();
@@ -436,7 +436,7 @@ bundles: []
     // Use PTY to send 'n' to decline
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle"],
+        &["uninstall", "test-bundle"],
         &workspace.path,
     )
     .unwrap();
@@ -487,7 +487,7 @@ bundles: []
     // Use PTY to send Enter (default yes) to confirm
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle"],
+        &["uninstall", "test-bundle"],
         &workspace.path,
     )
     .unwrap();
@@ -538,7 +538,7 @@ bundles: []
     // Use PTY to check confirmation prompt text
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle"],
+        &["uninstall", "test-bundle"],
         &workspace.path,
     )
     .unwrap();
@@ -550,7 +550,7 @@ bundles: []
 
     // Check that prompt shows bundle info
     assert!(output.contains("The following bundle(s) will be uninstalled"));
-    assert!(output.contains("@test/test-bundle"));
+    assert!(output.contains("test-bundle"));
     assert!(output.contains("Proceed with uninstall?"));
 
     // Send Enter to accept
@@ -773,7 +773,7 @@ bundles: []
     // Use -y flag to skip confirmation
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uninstalled"));
@@ -805,7 +805,7 @@ bundles: []
     // Use -y flag to skip confirmation
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uninstalled"));
@@ -837,7 +837,7 @@ bundles: []
     // Use -y flag to skip confirmation
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uninstalled"));
@@ -879,7 +879,7 @@ bundles: []
     // Use PTY to verify that with -y flag, no confirmation prompt appears
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle", "-y"],
+        &["uninstall", "test-bundle", "-y"],
         &workspace.path,
     )
     .unwrap();
@@ -928,7 +928,7 @@ bundles: []
     // Use PTY to verify that with --yes flag, no confirmation prompt appears
     let mut test = InteractiveTest::new(
         augent_bin_path().to_str().unwrap(),
-        &["uninstall", "@test/test-bundle", "--yes"],
+        &["uninstall", "test-bundle", "--yes"],
         &workspace.path,
     )
     .unwrap();
@@ -993,7 +993,7 @@ bundles: []
     // Uninstall with -y flag
     let output1 = augent_cmd()
         .current_dir(&workspace1.path)
-        .args(["uninstall", "@test/test-bundle-1", "-y"])
+        .args(["uninstall", "test-bundle-1", "-y"])
         .assert()
         .success()
         .get_output()
@@ -1003,7 +1003,7 @@ bundles: []
     // Uninstall with --yes flag
     let output2 = augent_cmd()
         .current_dir(&workspace2.path)
-        .args(["uninstall", "@test/test-bundle-2", "--yes"])
+        .args(["uninstall", "test-bundle-2", "--yes"])
         .assert()
         .success()
         .get_output()

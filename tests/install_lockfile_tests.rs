@@ -356,9 +356,9 @@ fn test_install_with_only_lockfile_creates_augent_yaml_and_index_yaml() {
         !new_augent_yaml.is_empty(),
         "augent.yaml should not be empty"
     );
-    // Should contain the bundle name from lockfile
+    // Should contain the bundle name from lockfile (per spec dir name is dir-name: test-bundle)
     assert!(
-        new_augent_yaml.contains("simple-bundle"),
+        new_augent_yaml.contains("test-bundle"),
         "augent.yaml should reference the bundle from lockfile"
     );
 

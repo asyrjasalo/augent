@@ -73,15 +73,15 @@ bundles: []
         .assert()
         .success();
 
-    // Verify all bundles are installed
+    // Verify all bundles are installed (per spec dir name is dir-name)
     augent_cmd()
         .current_dir(&workspace.path)
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("@wshobson/agents/accessibility"))
-        .stdout(predicate::str::contains("@wshobson/agents/performance"))
-        .stdout(predicate::str::contains("@wshobson/agents/security"));
+        .stdout(predicate::str::contains("accessibility"))
+        .stdout(predicate::str::contains("performance"))
+        .stdout(predicate::str::contains("security"));
 }
 
 #[test]
@@ -90,19 +90,19 @@ fn test_uninstall_scope_with_all_bundles_flag() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    // Create multiple bundles under the same scope
-    workspace.create_bundle("@test/tools/linter");
+    // Create multiple bundles with common prefix for scope matching (per spec dir name is dir-name)
+    workspace.create_bundle("tools-linter");
     workspace.write_file(
-        "bundles/linter/augent.yaml",
+        "bundles/tools-linter/augent.yaml",
         r#"
 name: "@test/tools/linter"
 bundles: []
 "#,
     );
 
-    workspace.create_bundle("@test/tools/formatter");
+    workspace.create_bundle("tools-formatter");
     workspace.write_file(
-        "bundles/formatter/augent.yaml",
+        "bundles/tools-formatter/augent.yaml",
         r#"
 name: "@test/tools/formatter"
 bundles: []
@@ -112,20 +112,20 @@ bundles: []
     // Install both bundles
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/linter", "--for", "cursor"])
+        .args(["install", "./bundles/tools-linter", "--for", "cursor"])
         .assert()
         .success();
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["install", "./bundles/formatter", "--for", "cursor"])
+        .args(["install", "./bundles/tools-formatter", "--for", "cursor"])
         .assert()
         .success();
 
-    // Uninstall with --all-bundles flag (no prompt)
+    // Uninstall with scope prefix and --all-bundles flag (no prompt)
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/tools", "--all-bundles", "-y"])
+        .args(["uninstall", "tools", "--all-bundles", "-y"])
         .assert()
         .success();
 
@@ -137,7 +137,7 @@ bundles: []
         .success()
         .stdout(
             predicate::str::contains("No bundles installed")
-                .or(predicate::str::contains("@test/tools/linter").not()),
+                .or(predicate::str::contains("tools-linter").not()),
         );
 }
 
@@ -147,7 +147,7 @@ fn test_uninstall_single_bundle_no_scope() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    workspace.create_bundle("@test/my-bundle");
+    workspace.create_bundle("my-bundle");
     workspace.write_file(
         "bundles/my-bundle/augent.yaml",
         r#"
@@ -166,7 +166,7 @@ bundles: []
     // Uninstall without scope syntax should work as before
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/my-bundle", "-y"])
+        .args(["uninstall", "my-bundle", "-y"])
         .assert()
         .success();
 
@@ -177,7 +177,7 @@ bundles: []
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("@test/my-bundle")
+            predicate::str::contains("my-bundle")
                 .not()
                 .or(predicate::str::contains("No bundles installed")),
         );
@@ -237,13 +237,13 @@ bundles: []
         .assert()
         .success();
 
-    // Verify list shows it with original casing
+    // Per spec dir name is dir-name; list shows "bundle" (dir name)
     augent_cmd()
         .current_dir(&workspace.path)
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("@MyScope/Bundle"));
+        .stdout(predicate::str::contains("bundle"));
 }
 
 #[test]
@@ -284,14 +284,14 @@ bundles: []
         .assert()
         .success();
 
-    // Verify they're installed
+    // Per spec dir name is dir-name; list shows "ai", "analyzer"
     augent_cmd()
         .current_dir(&workspace.path)
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("@author/agents/ai"))
-        .stdout(predicate::str::contains("@author/agents/analyzer"));
+        .stdout(predicate::str::contains("ai"))
+        .stdout(predicate::str::contains("analyzer"));
 }
 
 #[test]
@@ -332,12 +332,12 @@ bundles: []
         .assert()
         .success();
 
-    // Both should be installed
+    // Both should be installed (per spec dir name is dir-name: agent, agents)
     augent_cmd()
         .current_dir(&workspace.path)
         .arg("list")
         .assert()
         .success()
-        .stdout(predicate::str::contains("@scope/agent"))
-        .stdout(predicate::str::contains("@scope/agents"));
+        .stdout(predicate::str::contains("agent"))
+        .stdout(predicate::str::contains("agents"));
 }

@@ -186,15 +186,15 @@ bundles: []
     assert!(workspace.file_exists(".cursor/skills/c.md"));
 
     let config = workspace.read_file(".augent/augent.yaml");
-    // Only the root bundle (bundle-a) should be in workspace config
+    // Only the root bundle (bundle-a) should be in workspace config; per spec dir name is dir-name
     // Transitive dependencies (bundle-b, bundle-c) are NOT added to workspace config
-    assert!(config.contains("@test/bundle-a"));
-    assert!(!config.contains("@test/bundle-b"));
-    assert!(!config.contains("@test/bundle-c"));
+    assert!(config.contains("bundle-a"));
+    assert!(!config.contains("bundle-b"));
+    assert!(!config.contains("bundle-c"));
 
-    // But they should be in the lockfile
+    // But they should be in the lockfile (root is dir-name, deps keep declared names)
     let lockfile = workspace.read_file(".augent/augent.lock");
-    assert!(lockfile.contains("@test/bundle-a"));
+    assert!(lockfile.contains("bundle-a"));
     assert!(lockfile.contains("@test/bundle-b"));
     assert!(lockfile.contains("@test/bundle-c"));
 }
@@ -241,10 +241,10 @@ bundles: []
         .success();
 
     let config = workspace.read_file(".augent/augent.yaml");
-    // Bundle A should be in config (it's the root bundle being installed)
-    assert!(config.contains("@test/bundle-a"));
+    // Bundle A should be in config (root bundle; per spec dir name is dir-name)
+    assert!(config.contains("bundle-a"));
     // Bundle B should NOT be in config (it's a transitive dependency)
-    let bundle_b_count = config.matches("@test/bundle-b").count();
+    let bundle_b_count = config.matches("bundle-b").count();
     assert_eq!(
         bundle_b_count, 0,
         "Bundle B should not appear in workspace config (it's a transitive dependency)"
@@ -316,7 +316,7 @@ bundles: []
 
     let lockfile = workspace.read_file(".augent/augent.lock");
 
-    // Search for the full bundle names to avoid matching substrings in paths
+    // Search for the full bundle names (root is dir-name, deps keep declared names)
     let pos_c = lockfile
         .find("\"name\": \"@test/bundle-c\"")
         .expect("Bundle C not found in lockfile");
@@ -324,7 +324,7 @@ bundles: []
         .find("\"name\": \"@test/bundle-b\"")
         .expect("Bundle B not found in lockfile");
     let pos_a = lockfile
-        .find("\"name\": \"@test/bundle-a\"")
+        .find("\"name\": \"bundle-a\"")
         .expect("Bundle A not found in lockfile");
 
     assert!(
@@ -459,7 +459,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/a.md"));
 
     let lockfile = workspace.read_file(".augent/augent.lock");
-
+    // Root (installed) is bundle-e (dir-name); deps keep declared names from augent.yaml
     let pos_a = lockfile
         .find("\"name\": \"@test/bundle-a\"")
         .expect("Bundle A not found in lockfile");
@@ -473,7 +473,7 @@ bundles: []
         .find("\"name\": \"@test/bundle-d\"")
         .expect("Bundle D not found in lockfile");
     let pos_e = lockfile
-        .find("\"name\": \"@test/bundle-e\"")
+        .find("\"name\": \"bundle-e\"")
         .expect("Bundle E not found in lockfile");
 
     assert!(

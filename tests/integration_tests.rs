@@ -35,7 +35,7 @@ fn test_install_list_shows_installed() {
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("simple-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -51,10 +51,10 @@ fn test_install_show_displays_info() {
         .assert()
         .success();
 
-    // Use the actual bundle name from the fixture's augent.yaml
+    // Per spec: dir bundle name is dir-name (test-bundle)
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@fixtures/simple-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("commands/debug.md"));
@@ -75,7 +75,7 @@ fn test_install_uninstall_roundtrip() {
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@fixtures/simple-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 }
@@ -99,7 +99,6 @@ fn test_install_multiple_bundles_list() {
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("simple-bundle"))
         .stdout(predicate::str::contains("test-bundle"));
 }
 
@@ -123,18 +122,18 @@ fn test_full_workflow_install_verify_list_show_uninstall() {
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("simple-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@fixtures/simple-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("commands/debug.md"));
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@fixtures/simple-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -145,7 +144,7 @@ fn test_full_workflow_install_verify_list_show_uninstall() {
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("simple-bundle").not());
+        .stdout(predicate::str::contains("test-bundle").not());
 }
 
 #[test]
@@ -196,8 +195,8 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a"))
-        .stdout(predicate::str::contains("@test/bundle-b"));
+        .stdout(predicate::str::contains("bundle-a"))
+        .stdout(predicate::str::contains("bundle-b"));
 }
 
 #[test]
@@ -256,6 +255,7 @@ bundles:
     assert!(workspace.file_exists(".cursor/commands/c.md"));
 
     let lockfile = workspace.read_file(".augent/augent.lock");
+    // Root is dir-name; deps keep declared names from augent.yaml
     let pos_c = lockfile
         .find("\"name\": \"@test/bundle-c\"")
         .expect("Bundle C not found in lockfile");
@@ -263,7 +263,7 @@ bundles:
         .find("\"name\": \"@test/bundle-b\"")
         .expect("Bundle B not found in lockfile");
     let pos_a = lockfile
-        .find("\"name\": \"@test/bundle-a\"")
+        .find("\"name\": \"bundle-a\"")
         .expect("Bundle A not found in lockfile");
 
     assert!(
@@ -276,7 +276,7 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a"))
+        .stdout(predicate::str::contains("bundle-a"))
         .stdout(predicate::str::contains("@test/bundle-b"))
         .stdout(predicate::str::contains("@test/bundle-c"));
 }
@@ -621,8 +621,8 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/bundle-a"))
-        .stdout(predicate::str::contains("@test/bundle-b"));
+        .stdout(predicate::str::contains("bundle-a"))
+        .stdout(predicate::str::contains("bundle-b"));
 }
 
 #[test]
@@ -652,7 +652,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -662,15 +662,15 @@ bundles: []
 
     assert!(!workspace.file_exists(".cursor/commands/test.md"));
     assert!(
-        !lockfile_after.contains("@test/bundle"),
+        !lockfile_after.contains("test-bundle"),
         "Bundle should be removed from lockfile"
     );
     assert!(
-        !workspace_config_after.contains("@test/bundle"),
+        !workspace_config_after.contains("test-bundle"),
         "Bundle should be removed from workspace config"
     );
     assert!(
-        !bundle_config_after.contains("@test/bundle"),
+        !bundle_config_after.contains("test-bundle"),
         "Bundle should be removed from bundle config"
     );
 }
@@ -728,7 +728,7 @@ bundles: [invalid yaml here
 
     let bundle_config = workspace.read_file(".augent/augent.yaml");
     assert!(
-        !bundle_config.contains("@test/bundle"),
+        !bundle_config.contains("test-bundle"),
         "Bundle should not be in config after failed install"
     );
 }
@@ -765,11 +765,11 @@ bundles: []
 
     let _bundle_in_config_before = workspace
         .read_file(".augent/augent.yaml")
-        .contains("@test/bundle");
+        .contains("test-bundle");
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/bundle", "--yes"])
+        .args(["uninstall", "test-bundle", "--yes"])
         .assert()
         .success();
 
@@ -777,7 +777,7 @@ bundles: []
 
     let bundle_config_after = workspace.read_file(".augent/augent.yaml");
     assert!(
-        !bundle_config_after.contains("@test/bundle"),
+        !bundle_config_after.contains("test-bundle"),
         "Bundle should be removed from config after uninstall"
     );
 }
@@ -844,8 +844,8 @@ bundles: []
         .success();
 
     let lockfile = workspace.read_file(".augent/augent.lock");
-    let has_a = lockfile.contains("@test/bundle-a");
-    let has_b = lockfile.contains("@test/bundle-b");
+    let has_a = lockfile.contains("bundle-a");
+    let has_b = lockfile.contains("bundle-b");
 
     if has_a && has_b {
         assert!(

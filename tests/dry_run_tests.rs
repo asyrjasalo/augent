@@ -148,7 +148,7 @@ bundles: []
     // Run uninstall with --dry-run
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "--dry-run"])
+        .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains("[DRY RUN]"));
@@ -186,7 +186,7 @@ bundles: []
     // Run uninstall with --dry-run
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "--dry-run"])
+        .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success();
 
@@ -225,7 +225,7 @@ bundles: []
     // Run uninstall with --dry-run
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "--dry-run"])
+        .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success();
 
@@ -259,7 +259,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "--dry-run"])
+        .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains("[DRY RUN]"))
@@ -293,7 +293,7 @@ bundles: []
     // Run uninstall with --dry-run (should not prompt for confirmation)
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "--dry-run"])
+        .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains("[DRY RUN]"))
@@ -355,7 +355,7 @@ bundles: []
     // Run uninstall with --dry-run
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "--dry-run"])
+        .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success();
 
@@ -365,7 +365,7 @@ bundles: []
     // Now run actual uninstall
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 

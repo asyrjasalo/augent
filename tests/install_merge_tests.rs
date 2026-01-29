@@ -211,16 +211,15 @@ bundles: []
         .assert()
         .success();
 
-    // Verify both bundles are in the lockfile (read file directly to avoid subprocess/path
-    // issues under cross/Docker on aarch64; list is exercised elsewhere)
+    // Verify both bundles are in the lockfile (per spec dir name is dir-name)
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
-        lockfile.contains("@test/bundle-1"),
+        lockfile.contains("bundle-1"),
         "bundle-1 should be in lockfile; augent.lock: {}",
         lockfile
     );
     assert!(
-        lockfile.contains("@test/bundle-2"),
+        lockfile.contains("bundle-2"),
         "bundle-2 should be in lockfile; augent.lock: {}",
         lockfile
     );
@@ -492,16 +491,15 @@ bundles: []
         .assert()
         .success();
 
-    // Verify both bundles are in the lockfile (read file directly to avoid subprocess/path
-    // issues under cross/Docker on aarch64; list is exercised elsewhere)
+    // Verify both bundles are in the lockfile (per spec dir name is dir-name)
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
-        lockfile.contains("@test/bundle-a"),
+        lockfile.contains("bundle-a"),
         "bundle-a should be in lockfile; augent.lock: {}",
         lockfile
     );
     assert!(
-        lockfile.contains("@test/bundle-b"),
+        lockfile.contains("bundle-b"),
         "bundle-b should be in lockfile; augent.lock: {}",
         lockfile
     );

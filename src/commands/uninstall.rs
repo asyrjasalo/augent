@@ -244,6 +244,18 @@ fn is_scope_pattern(name: &str) -> bool {
     name.starts_with('@') || name.ends_with('/')
 }
 
+/// Filter bundles by name prefix (used with --all-bundles when name is not a scope pattern).
+fn filter_bundles_by_prefix(workspace: &Workspace, prefix: &str) -> Vec<String> {
+    let prefix_lower = prefix.to_lowercase();
+    workspace
+        .lockfile
+        .bundles
+        .iter()
+        .filter(|b| b.name.to_lowercase().starts_with(&prefix_lower))
+        .map(|b| b.name.clone())
+        .collect()
+}
+
 /// Filter bundles by scope pattern
 /// Supports patterns like:
 /// - @author/scope - all bundles starting with @author/scope
@@ -348,6 +360,15 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
                     // Otherwise, prompt user to select which bundles to uninstall
                     select_bundles_from_list(&workspace, matching_bundles)?
                 }
+            } else if args.all_bundles {
+                // Name is not a scope pattern but --all-bundles: treat name as prefix
+                let matching_bundles = filter_bundles_by_prefix(&workspace, &name);
+                if matching_bundles.is_empty() {
+                    return Err(AugentError::BundleNotFound {
+                        name: format!("No bundles found matching prefix '{}' in workspace", name),
+                    });
+                }
+                matching_bundles
             } else {
                 // Single bundle specified
                 vec![name]

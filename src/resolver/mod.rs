@@ -391,11 +391,8 @@ impl Resolver {
             .any(|dir| path.join(dir).is_dir())
     }
 
+    /// Bundle name for discovery. Per spec: dir bundle name is always dir-name.
     fn get_bundle_name(&self, path: &Path) -> Result<String> {
-        if let Ok(Some(cfg)) = self.load_bundle_config(path) {
-            return Ok(cfg.name);
-        }
-
         path.file_name()
             .and_then(|n| n.to_str())
             .map(|s| s.to_string())
@@ -489,24 +486,14 @@ impl Resolver {
         // Try to load augent.yaml from source path
         let config = self.load_bundle_config(&source_path)?;
 
-        // Determine bundle name
-        let name = match &config {
-            Some(cfg) => cfg.name.clone(),
-            None => match dependency {
-                Some(dep) => dep.name.clone(),
-                None => {
-                    let dir_name = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("bundle");
-
-                    let username = std::env::var("USER")
-                        .or_else(|_| std::env::var("USERNAME"))
-                        .unwrap_or_else(|_| "user".to_string());
-
-                    format!("@{}/{}", username, dir_name)
-                }
-            },
+        // Determine bundle name. Per spec: dir bundle name is always dir-name.
+        let name = match dependency {
+            Some(dep) => dep.name.clone(),
+            None => path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "bundle".to_string()),
         };
 
         // Check for circular dependency
@@ -620,50 +607,50 @@ impl Resolver {
         // Try to load augent.yaml
         let config = self.load_bundle_config(&content_path)?;
 
-        // Determine bundle name
-        let name = match &config {
-            Some(cfg) => cfg.name.clone(),
-            None => match dependency {
-                Some(dep) => dep.name.clone(),
-                None => {
-                    // Derive base name from URL - format as @author/repo
-                    // Handle both HTTPS and SSH URLs properly
-                    let url_clean = source.url.trim_end_matches(".git");
+        // Derive base name from URL - format as @owner/repo
+        let url_clean = source.url.trim_end_matches(".git");
+        let repo_path = if let Some(colon_idx) = url_clean.find(':') {
+            &url_clean[colon_idx + 1..]
+        } else {
+            url_clean
+        };
+        let url_parts: Vec<&str> = repo_path.split('/').collect();
+        let (author, repo) = if url_parts.len() >= 2 {
+            (
+                url_parts[url_parts.len() - 2],
+                url_parts[url_parts.len() - 1],
+            )
+        } else {
+            ("author", repo_path)
+        };
+        let base_name = format!("@{}/{}", author, repo);
 
-                    // For SSH URLs like git@github.com:owner/repo.git, extract the path after the colon
-                    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
-                        &url_clean[colon_idx + 1..]
-                    } else {
-                        url_clean
-                    };
-
-                    let url_parts: Vec<&str> = repo_path.split('/').collect();
-
-                    let (author, repo) = if url_parts.len() >= 2 {
-                        (
-                            url_parts[url_parts.len() - 2],
-                            url_parts[url_parts.len() - 1],
-                        )
-                    } else {
-                        ("author", repo_path)
-                    };
-
-                    let base_name = format!("@{}/{}", author, repo);
-
-                    // Check if this is a marketplace plugin
-                    if let Some(ref path_val) = source.path {
-                        if let Some(bundle_name) = path_val.strip_prefix("$claudeplugin/") {
-                            // Include the specific bundle name from marketplace in full path
-                            // Format: @author/repo/bundle-name
-                            format!("{}/{}", base_name, bundle_name)
+        // Determine bundle name. Per spec: @owner/repo[/bundle-name][:path/from/repo/root]
+        // Repo root: @owner/repo. Subdir path (no bundle name): @owner/repo:path. Marketplace/subbundle: @owner/repo/bundle-name.
+        let name = match dependency {
+            Some(dep) => dep.name.clone(),
+            None => match &source.path {
+                Some(path_val) if path_val.starts_with("$claudeplugin/") => {
+                    let bundle_name = path_val.strip_prefix("$claudeplugin/").unwrap();
+                    format!("{}/{}", base_name, bundle_name)
+                }
+                Some(path_val) => {
+                    if let Some(cfg) = &config {
+                        // Subdir with augent.lock: use @owner/repo/bundle-name (bundle-name from that subdir's config)
+                        let suffix = if cfg.name.starts_with(&format!("{}/", base_name)) {
+                            cfg.name[base_name.len() + 1..].to_string()
                         } else {
-                            // Regular path - include in name
-                            format!("{}/{}", base_name, path_val)
-                        }
+                            cfg.name.clone()
+                        };
+                        format!("{}/{}", base_name, suffix)
                     } else {
-                        // No subdirectory
-                        base_name
+                        // Subdir without augent.lock: name is @owner/repo:path (colon before path)
+                        format!("{}:{}", base_name, path_val)
                     }
+                }
+                None => {
+                    // Repo root: always @owner/repo (never use bundle's config.name)
+                    base_name
                 }
             },
         };
@@ -1155,7 +1142,8 @@ mod tests {
         assert!(result.is_ok());
         let bundles = result.unwrap();
         assert_eq!(bundles.len(), 1);
-        assert_eq!(bundles[0].name, "@test/my-bundle");
+        // Per spec: dir bundle name is always dir-name
+        assert_eq!(bundles[0].name, "my-bundle");
     }
 
     #[test]
@@ -1261,7 +1249,8 @@ bundles:
         assert_eq!(bundles.len(), 3);
         assert_eq!(bundles[0].name, "@test/bundle-c");
         assert_eq!(bundles[1].name, "@test/bundle-b");
-        assert_eq!(bundles[2].name, "@test/bundle-a");
+        // Top-level dir bundle name is dir-name per spec
+        assert_eq!(bundles[2].name, "bundle-a");
     }
 
     #[test]
@@ -1281,8 +1270,8 @@ bundles:
         assert!(result.is_ok());
         let bundles = result.unwrap();
         assert_eq!(bundles.len(), 1);
-        // Should derive name from directory
-        assert!(bundles[0].name.contains("simple-bundle"));
+        // Per spec: dir bundle name is always dir-name
+        assert_eq!(bundles[0].name, "simple-bundle");
     }
 
     #[test]
@@ -1382,8 +1371,8 @@ bundles:
 
         let resolver = Resolver::new(temp.path());
         let name = resolver.get_bundle_name(&bundle_dir).unwrap();
-
-        assert_eq!(name, "@test/custom-bundle");
+        // Per spec: dir bundle name is always dir-name (not config.name)
+        assert_eq!(name, "test-bundle");
     }
 
     #[test]

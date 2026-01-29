@@ -77,12 +77,12 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     // Show bundle from nested directory should work
     augent_cmd()
         .current_dir(&subdir)
-        .args(["show", "@test/test-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success();
 }
@@ -142,7 +142,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -199,7 +199,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -232,12 +232,12 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     // Show bundle from nested directory should work
     augent_cmd()
         .current_dir(&nested)
-        .args(["show", "@test/test-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success();
 }
@@ -273,7 +273,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -307,7 +307,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -342,12 +342,12 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     // Show should still work
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/test-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success();
 
@@ -445,7 +445,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -487,11 +487,11 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/test-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success();
 }
@@ -554,7 +554,7 @@ bundles: []
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 }
 
 #[test]
@@ -604,7 +604,7 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     // Check that lockfile has workspace name from root augent.yaml
     // When root augent.yaml exists, augent.lock is stored in root
@@ -718,12 +718,12 @@ bundles:
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@test/test-bundle"));
+        .stdout(predicate::str::contains("test-bundle"));
 
     // Show bundle from nested directory should work
     augent_cmd()
         .current_dir(&nested)
-        .args(["show", "@test/test-bundle"])
+        .args(["show", "test-bundle"])
         .assert()
         .success();
 }

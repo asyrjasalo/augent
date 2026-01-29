@@ -57,7 +57,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/versioned-bundle"])
+        .args(["show", "versioned-bundle"])
         .assert()
         .success();
 }

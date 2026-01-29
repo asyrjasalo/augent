@@ -266,7 +266,7 @@ bundles: []
     // Uninstall requires confirmation, use -y to skip
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/test-bundle", "-y"])
+        .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
 
@@ -377,8 +377,7 @@ bundles:
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("@test/main-bundle-a")
-                .or(predicate::str::contains("@test/main-bundle-b")),
+            predicate::str::contains("main-bundle-a").or(predicate::str::contains("main-bundle-b")),
         );
 }
 
@@ -411,7 +410,7 @@ bundles: []
     // Uninstall with -y should NOT show warning about dependents
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["uninstall", "@test/standalone-bundle", "-y"])
+        .args(["uninstall", "standalone-bundle", "-y"])
         .assert()
         .success()
         .stdout(predicate::str::contains("uninstalled"))

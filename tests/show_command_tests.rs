@@ -63,7 +63,7 @@ bundles:
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/dependent-bundle"])
+        .args(["show", "dependent-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dependencies"))
@@ -122,7 +122,7 @@ bundles:
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/multi-dep-bundle"])
+        .args(["show", "multi-dep-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dependencies"))
@@ -157,7 +157,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/standalone-bundle"])
+        .args(["show", "standalone-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dependencies: None"));
@@ -198,7 +198,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/single-agent-bundle"])
+        .args(["show", "single-agent-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands"))
@@ -235,7 +235,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/multi-file-bundle"])
+        .args(["show", "multi-file-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Commands"))
@@ -271,7 +271,7 @@ bundles: []
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@test/empty-bundle"])
+        .args(["show", "empty-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Resources:"))
@@ -306,13 +306,13 @@ bundles: []
         .assert()
         .success();
 
-    // Show with full scope prefix should work
+    // Per spec dir name is dir-name; show by stored name
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@wshobson/agents"])
+        .args(["show", "agents-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@wshobson/agents/accessibility"));
+        .stdout(predicate::str::contains("agents-bundle"));
 }
 
 #[test]
@@ -407,27 +407,25 @@ bundles: []
         .assert()
         .success();
 
-    // Show with scope prefix should find all matching bundles
-    // (Note: without --all-bundles, this triggers interactive menu which we can't test easily with assert_cmd)
-    // So we test with the full bundle name to verify they're all installed
+    // Per spec dir name is dir-name; show each bundle by stored name
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@wshobson/agents/accessibility"])
+        .args(["show", "accessibility"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@wshobson/agents/accessibility"));
+        .stdout(predicate::str::contains("accessibility"));
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@wshobson/agents/performance"])
+        .args(["show", "performance"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@wshobson/agents/performance"));
+        .stdout(predicate::str::contains("performance"));
 
     augent_cmd()
         .current_dir(&workspace.path)
-        .args(["show", "@wshobson/agents/security"])
+        .args(["show", "security"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("@wshobson/agents/security"));
+        .stdout(predicate::str::contains("security"));
 }
