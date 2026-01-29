@@ -942,5 +942,6 @@ See: [bundles.md](specs/bundles.md), [install-command.md](specs/install-command.
 - [x] Git repo root naming: use @owner/repo; Git subdirectory path naming: use @owner/repo:path
 - [x] Git subdirectory with augent.yaml or marketplace: use @owner/repo/bundle-name
 - [x] Update install-command spec lockfile example and add reference to bundles spec
+- [x] Thorough integration tests for bundles spec (dir name/path, config updates, multi-bundle order, deps only in lock, bundle-with-deps order, git name and lockfile pinning, reinstall idempotent)
 
 ---

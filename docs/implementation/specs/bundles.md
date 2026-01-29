@@ -144,7 +144,7 @@ what is saved into augent.yaml:
 ```yaml
 name: '@owner/repo'
 git: https://github.com/owner/repo.git
-path: ´. or ./augent
+path: . or ./augent
 ```
 
 #### install from git repository which stores claude code marketplace format

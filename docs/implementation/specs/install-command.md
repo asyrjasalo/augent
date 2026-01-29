@@ -13,7 +13,7 @@ The install command fetches bundles from various sources (Git repositories, loca
 From PRD:
 
 - Support installing bundles from: local paths, Git URLs, GitHub short-form
-- Support subdirectory selection (e.g., `github:author/repo#plugins/name`)
+- Support subdirectory selection (e.g., `owner/repo:path/from/repo/root`; see [Bundles spec](bundles.md))
 - Support version pinning (branches, tags, SHAs)
 - Detect and resolve bundle dependencies topologically
 - Generate deterministic lockfiles with exact SHAs
@@ -69,7 +69,7 @@ pub enum BundleSource {
 - `author/bundle` → Same as above (implicit github:)
 - `github:author/bundle#v1.0.0` → `ref: Some("v1.0.0")` (preferred syntax)
 - `github:author/bundle@v1.0.0` → `ref: Some("v1.0.0")` (both `#` and `@` supported, `#` preferred)
-- `github:author/repo#plugins/name` → `path: Some("plugins/name")`
+- `owner/repo:path/from/repo/root` or `@owner/repo:path/from/repo/root` → subdirectory path (path after `:`)
 - `https://github.com/author/bundle.git` → Direct Git URL
 - `git@github.com:author/bundle.git` → SSH Git URL
 

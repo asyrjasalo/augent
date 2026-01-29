@@ -6,7 +6,7 @@
 
 ## Overview
 
-Workspace management provides initialization, detection, and configuration management for Augent workspaces. Workspaces contain `.augent/` directory with configuration files (augent.yaml, augent.lock, augent.index.yaml) and track which bundles are installed and which files they provide.
+Workspace management provides initialization, detection, and configuration management for Augent workspaces. Workspaces contain `.augent/` directory with configuration files (augent.yaml, augent.lock, augent.index.yaml) and track which bundles are installed and which files they provide. Config file locations and the format of entries in augent.yaml (e.g. name, path for dir; name, git, path for Git) are defined in the [Bundles spec](bundles.md).
 
 ## Requirements
 

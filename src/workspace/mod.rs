@@ -587,6 +587,20 @@ impl Workspace {
         let mut ordered_lockfile = self.lockfile.clone();
         ordered_lockfile.reorganize(Some(&self.bundle_config.name));
 
+        // Omit ref in augent.yaml when it is the default branch (main/master) to keep file minimal
+        fn is_default_branch(r: &str) -> bool {
+            r == "main" || r == "master"
+        }
+        for dep in ordered_bundle_config.bundles.iter_mut() {
+            if dep.git.is_some() {
+                if let Some(ref r) = dep.git_ref {
+                    if is_default_branch(r) {
+                        dep.git_ref = None;
+                    }
+                }
+            }
+        }
+
         // Reorganize workspace config to match lockfile order
         let mut ordered_workspace_config = synced_workspace_config.clone();
         ordered_workspace_config.reorganize(&ordered_lockfile);

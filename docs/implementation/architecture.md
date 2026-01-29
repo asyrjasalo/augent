@@ -10,16 +10,18 @@ This document describes the architecture of Augent, an AI package manager for ma
 
 ### Bundle
 
-A **Bundle** is a directory containing platform-independent resources. Bundles are distributed via Git repositories and can contain:
+A **Bundle** is a directory containing platform-independent resources. Bundles can exist with or without `augent.yaml`. When a bundle has `augent.lock`, what gets installed is dictated by that lockfile (the bundle's own resources last). Bundles are distributed via Git repositories or local directories and can contain:
 
-- `augent.yaml` - Bundle configuration and dependencies (optional)
-- `augent.lock` - Resolved dependency versions (auto-generated)
+- `augent.yaml` - Bundle metadata and dependencies (optional)
+- `augent.lock` - What to install, in order (optional; when present, install follows it)
 - `commands/` - Command definitions
 - `rules/` - Rule definitions
 - `agents/` - Agent definitions
 - `skills/` - Skill definitions
 - `mcp.jsonc` - MCP server configuration
 - `root/` - Files copied as-is to workspace root
+
+Bundle naming and how install records bundles in the workspace are defined in the [Bundles spec](specs/bundles.md) (e.g. dir name = directory name; Git name = `@owner/repo` or `@owner/repo:path`; ref stored in lockfile).
 
 ### Workspace
 
@@ -66,8 +68,8 @@ Bundles are distributed via Git repositories:
 
 - Any Git host (GitHub, GitLab, self-hosted)
 - HTTPS or SSH authentication (delegated to git)
-- Subdirectories supported (`github:user/repo#plugins/name`)
-- Refs supported (`github:user/repo#v1.0.0` or `github:user/repo@v1.0.0`)
+- Subdirectories supported (`owner/repo:path/from/repo/root`; path after `:`)
+- Refs supported; exact SHA stored in lockfile for reproducibility
 
 ### Bundle Override Order
 

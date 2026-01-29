@@ -32,14 +32,16 @@ augent install [OPTIONS] <SOURCE>
 
 ### Source Formats
 
+Bundle names are stored in canonical form: directory bundles use the directory name; Git bundles use `@owner/repo` or `@owner/repo:path/from/repo/root` (path after `:`). Ref (branch/tag/SHA) is stored in the lockfile, not in the name. See [Bundles spec](implementation/specs/bundles.md).
+
 | Format | Example | Description |
 |--------|----------|-------------|
-| Local path | `./my-bundle` | Install from local directory |
-| GitHub short-form | `github:author/bundle` or `author/bundle` | Install from GitHub repository |
-| Git URL | `https://github.com/author/bundle.git` | Install from any Git repository |
-| GitHub web UI | `https://github.com/author/repo/tree/main/plugins/name` | Copy URL from browser (auto-extracts ref and path) |
-| Git+subdir | `github:author/repo#plugins/name` | Install from repository subdirectory |
-| Git+ref | `github:author/bundle#v1.0.0` or `github:author/bundle@v1.0.0` | Install specific tag/branch/commit |
+| Local path | `./my-bundle` or `my-bundle` | Install from local directory (name = directory name) |
+| GitHub short-form | `owner/repo`, `@owner/repo`, `github:owner/repo` | Install from GitHub repository (name = `@owner/repo`) |
+| Git URL | `https://github.com/owner/repo.git`, `git@github.com:owner/repo.git` | Install from any Git repository |
+| GitHub web UI | `https://github.com/owner/repo/tree/main` or `.../tree/main/path` | Copy URL from browser (auto-extracts ref and path) |
+| Git subdirectory | `owner/repo:path/from/repo/root` or `@owner/repo:path/from/repo/root` | Install from repository subdirectory (path after `:`) |
+| Git+ref | Ref resolved at install; exact SHA stored in lockfile | Use default branch or pin via ref (stored in lockfile) |
 
 ### Examples
 
@@ -56,15 +58,12 @@ augent install ./bundle --for cursor opencode
 # Install with frozen lockfile (CI/CD)
 augent install github:author/bundle --frozen
 
-# Install from subdirectory
-augent install github:author/repo#plugins/name
+# Install from subdirectory (path after colon)
+augent install owner/repo:path/from/repo/root
+augent install https://github.com/owner/repo/tree/main/path/from/repo/root
 
-# Install from GitHub web UI URL (copy from browser)
-augent install https://github.com/author/repo/tree/main/plugins/bundle
-
-# Install specific version (both # and @ supported)
-augent install github:author/bundle#v1.0.0
-augent install github:author/bundle@main
+# Install specific bundle from repo (e.g. with augent.lock or marketplace)
+augent install owner/repo/bundle-name
 ```
 
 ### Installation Process
@@ -77,16 +76,9 @@ augent install github:author/bundle@main
 
 ### Installing from augent.yaml
 
-Run `augent install` without arguments to install all bundles from `.augent/augent.yaml`:
+Run `augent install` without arguments to install all bundles listed in the workspace config (lockfile defines what is actually installed when present). Entries in `augent.yaml` are stored in canonical form (e.g. `name: '@owner/repo'`, `git: ...`, `path: .` for Git; `name: local-bundle`, `path: ./local-bundle` for directory). See [Bundles spec](implementation/specs/bundles.md).
 
-```yaml
-# .augent/augent.yaml
-bundles:
-  - github:author/debug-tools
-  - ./local-bundle
-```
-
-**Note:** Removing a bundle from `augent.yaml` doesn't uninstall it. Use `augent uninstall <name>` to completely remove it.
+**Note:** Removing a bundle from `augent.yaml` doesn't uninstall it. Use `augent uninstall <name>` to completely remove it. Uninstall by the bundle name (e.g. `@owner/repo` or `local-bundle`).
 
 ---
 

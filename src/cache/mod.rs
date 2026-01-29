@@ -29,6 +29,9 @@ const CACHE_DIR: &str = "augent";
 /// Bundles subdirectory within cache
 const BUNDLES_DIR: &str = "bundles";
 
+/// File name for storing the resolved ref in the cache (so we have it after checkout detaches HEAD)
+const REF_FILE: &str = ".augent_ref";
+
 /// Get the default cache directory path
 ///
 /// Returns `~/.cache/augent` on Unix or equivalent on other platforms.
@@ -86,6 +89,22 @@ pub fn get_cached(url: &str, sha: &str) -> Result<Option<PathBuf>> {
     }
 }
 
+/// Read the resolved ref stored in the cache (written when we cached; needed because checkout detaches HEAD).
+fn read_ref_from_cache(cache_path: &Path) -> Option<String> {
+    let ref_path = cache_path.join(REF_FILE);
+    fs::read_to_string(&ref_path)
+        .ok()
+        .map(|s| s.trim().to_string())
+}
+
+/// Write the resolved ref into the cache so we can read it later when the repo is detached.
+fn write_ref_to_cache(cache_path: &Path, ref_name: &str) -> Result<()> {
+    let ref_path = cache_path.join(REF_FILE);
+    fs::write(&ref_path, ref_name).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to write ref file {}: {}", ref_path.display(), e),
+    })
+}
+
 /// Cache a bundle by cloning from a git source
 ///
 /// Clones the repository, checks out the specified commit (or resolves the ref),
@@ -96,17 +115,14 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     // If we already have a resolved SHA and it's cached, return early
     if let Some(sha) = &source.resolved_sha {
         if let Some(path) = get_cached(&source.url, sha)? {
-            // Return from cache - we already have SHA
-            // If git_ref is None, we'll need to get the branch name from cached repo
+            // Return from cache - we already have SHA. Cached repo has detached HEAD,
+            // so get_head_ref_name returns None; read ref from .augent_ref we stored when caching.
             let resolved_ref = if source.git_ref.is_some() {
                 source.git_ref.clone()
+            } else if let Ok(repo) = git::open(&path) {
+                git::get_head_ref_name(&repo)?.or_else(|| read_ref_from_cache(&path))
             } else {
-                // Open the cached repo to get the branch name
-                if let Ok(repo) = git::open(&path) {
-                    git::get_head_ref_name(&repo)?
-                } else {
-                    None
-                }
+                read_ref_from_cache(&path)
             };
             return Ok((path, sha.clone(), resolved_ref));
         }
@@ -148,9 +164,11 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
                                     }
                                 }
                             } else {
-                                // No git_ref specified, use: cached version (for HEAD)
+                                // No git_ref specified, use cached version (for HEAD). Cached repo
+                                // has detached HEAD so get_head_ref_name is None; read from .augent_ref.
                                 if let Ok(repo) = git::open(&cached_path) {
-                                    let resolved_ref = git::get_head_ref_name(&repo)?;
+                                    let resolved_ref = git::get_head_ref_name(&repo)?
+                                        .or_else(|| read_ref_from_cache(&cached_path));
                                     return Ok((cached_path, dir_name.to_string(), resolved_ref));
                                 }
                             }
@@ -186,6 +204,9 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
 
     // Check if we already have this SHA cached
     if let Some(path) = get_cached(&source.url, &sha)? {
+        if let Some(ref r) = resolved_ref {
+            write_ref_to_cache(&path, r)?;
+        }
         return Ok((path, sha, resolved_ref));
     }
 
@@ -217,6 +238,11 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     // Move from temp to cache (atomic on same filesystem)
     // We need to copy instead since temp might be on different filesystem
     copy_dir_recursive(temp_dir.path(), &cache_path)?;
+
+    // Store ref so we have it when serving from cache (cached repo has detached HEAD)
+    if let Some(ref r) = resolved_ref {
+        write_ref_to_cache(&cache_path, r)?;
+    }
 
     Ok((cache_path, sha, resolved_ref))
 }

@@ -9,10 +9,10 @@ Need reproducible installations across team members and CI/CD.
 
 ## Decision
 
-- `augent.lock` resolves all refs to exact git SHAs
+- `augent.lock` always has `ref` and the **exact SHA** of the commit for every Git bundle (reproducibility)
 - BLAKE3 hash for each bundle's contents
 - All files provided by each bundle listed
-- Lockfile updated on `install`, validated on `--frozen`
+- Lockfile updated first on `install` (then augent.yaml, then augent.index.yaml); validated on `--frozen`
 
 ## Lockfile Format
 

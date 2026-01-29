@@ -1114,9 +1114,14 @@ fn create_locked_bundle(
     let bundle_hash = hash::hash_directory(&bundle.source_path)?;
 
     let source = if let Some(git_source) = &bundle.git_source {
+        // ref = user-specified (branch/tag/SHA) or discovered default branch; sha = resolved commit for reproducibility
+        let git_ref = bundle
+            .resolved_ref
+            .clone()
+            .or_else(|| Some("main".to_string()));
         LockedSource::Git {
             url: git_source.url.clone(),
-            git_ref: bundle.resolved_ref.clone(), // Use resolved_ref (actual branch name, not user-specified)
+            git_ref,
             sha: bundle.resolved_sha.clone().unwrap_or_default(),
             path: git_source.path.clone(), // Use path from git_source
             hash: bundle_hash,
@@ -1203,12 +1208,14 @@ fn update_configs(
                 // Use bundle.git_source directly to preserve subdirectory information
                 // from interactive selection (instead of re-parsing the original source string)
                 let dependency = if let Some(ref git_source) = bundle.git_source {
-                    // Git bundle - create dependency preserving subdirectory
-                    let mut dep = BundleDependency::git(
-                        &bundle.name,
-                        &git_source.url,
-                        git_source.git_ref.clone(),
-                    );
+                    // Git bundle - only write ref in augent.yaml when it's not the default branch
+                    let ref_for_yaml = git_source
+                        .git_ref
+                        .clone()
+                        .or_else(|| bundle.resolved_ref.clone())
+                        .filter(|r| r != "main" && r != "master");
+                    let mut dep =
+                        BundleDependency::git(&bundle.name, &git_source.url, ref_for_yaml);
                     // Preserve path from git_source
                     dep.path = git_source.path.clone();
                     dep
@@ -1221,7 +1228,12 @@ fn update_configs(
                             path.to_string_lossy().to_string(),
                         ),
                         BundleSource::Git(git) => {
-                            BundleDependency::git(&bundle.name, &git.url, git.git_ref.clone())
+                            let ref_for_yaml = git
+                                .git_ref
+                                .clone()
+                                .or_else(|| bundle.resolved_ref.clone())
+                                .filter(|r| r != "main" && r != "master");
+                            BundleDependency::git(&bundle.name, &git.url, ref_for_yaml)
                         }
                     }
                 };
@@ -1309,6 +1321,22 @@ fn update_configs(
     workspace
         .bundle_config
         .reorder_dependencies(&lockfile_bundle_names);
+
+    // Backfill ref in augent.yaml from lockfile only when ref is not the default branch
+    for dep in workspace.bundle_config.bundles.iter_mut() {
+        if dep.git.is_some() && dep.git_ref.is_none() {
+            if let Some(locked) = workspace.lockfile.find_bundle(&dep.name) {
+                if let LockedSource::Git {
+                    git_ref: Some(r), ..
+                } = &locked.source
+                {
+                    if r != "main" && r != "master" {
+                        dep.git_ref = Some(r.clone());
+                    }
+                }
+            }
+        }
+    }
 
     // Update workspace config
     for bundle in workspace_bundles {

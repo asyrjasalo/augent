@@ -1,6 +1,6 @@
 # Bundle Format
 
-Bundles are the fundamental unit of distribution in Augent. This document explains bundle structure, configuration files, and how to create your own bundles.
+Bundles are the fundamental unit of distribution in Augent. This document explains bundle structure, configuration files, and how to create your own bundles. The authoritative spec for bundle naming and how install records bundles in the workspace is [Bundles (spec)](implementation/specs/bundles.md).
 
 ---
 
@@ -9,10 +9,10 @@ Bundles are the fundamental unit of distribution in Augent. This document explai
 A **bundle** is a directory containing:
 
 - Platform-independent resources (rules, skills, commands, MCP servers)
-- Optional configuration files (`augent.yaml`)
+- Optional configuration files (`augent.yaml` and/or `augent.lock`)
 - Optional root files/directories copied to workspace root
 
-Bundles are distributed as Git repositories or directories and installed via `augent install`.
+Bundles can exist **with or without** `augent.yaml`. When a bundle has `augent.lock`, what gets installed is dictated by that lockfile (the bundle's own resources are installed last). When there is no `augent.lock`, all resources in the directory are installed. Bundles are distributed as Git repositories or directories and installed via `augent install`.
 
 ---
 
@@ -274,36 +274,24 @@ root/
 
 ## Bundle Sources
 
+Bundle names in the workspace follow the [Bundles spec](implementation/specs/bundles.md): directory bundles use the directory name (e.g. `local-bundle`); Git bundles use `@owner/repo` or `@owner/repo/bundle-name` or `@owner/repo:path/from/repo/root` (path after `:`; ref is never part of the name and is stored separately in the lockfile).
+
 | Format | Example | Description |
 |--------|---------|-------------|
-| **GitHub short-form** | `author/bundle` or `github:author/bundle` | GitHub repository |
-| **Git URL** | `https://github.com/author/bundle.git` or `git@github.com:author/bundle.git` | Any Git repository |
-| **GitHub Web UI URL** | `https://github.com/author/repo/tree/main/plugins/bundle` | Copy from browser (auto-extracts ref and path) |
-| **Local directory** | `./local-bundle` or `../shared/bundle` | Local path |
-| **Subdirectory** | `github:author/repo#plugins/my-bundle` | Repository subdirectory |
-| **Specific version** | `github:author/bundle#v1.0.0` or `github:author/bundle@main` | Tag, branch, or commit (both `#` and `@` supported) |
+| **GitHub short-form** | `author/repo` or `@owner/repo` or `github:owner/repo` | GitHub repository (name stored as `@owner/repo`) |
+| **Git URL** | `https://github.com/owner/repo.git` or `git@github.com:owner/repo.git` | Any Git repository |
+| **GitHub Web UI URL** | `https://github.com/owner/repo/tree/main` or `.../tree/main/path/from/repo/root` | Copy from browser (auto-extracts ref and path) |
+| **Local directory** | `./local-bundle` or `local-bundle` | Local path (name = directory name) |
+| **Subdirectory** | `owner/repo:path/from/repo/root` or `@owner/repo:path/from/repo/root` | Repository subdirectory (path after `:`) |
+| **Specific ref** | `owner/repo` with ref in lockfile | Tag, branch, or SHA; stored in lockfile with exact SHA for reproducibility |
 
 ---
 
 ## Lockfile
 
-`augent.lock` is auto-generated and ensures reproducible installs:
+When a bundle has `augent.lock`, that file (in the bundle directory) defines what gets installed and in what order; the bundle's own resources are installed last. The workspace's `augent.lock` is auto-generated and ensures reproducible installs: it always includes `ref` and the **exact SHA** of the commit for every Git bundle, so the setup is reproducible.
 
-```yaml
-bundles:
-  - name: my-bundle
-    source:
-      Git:
-        url: https://github.com/author/my-bundle.git
-        ref: main
-        resolved_sha: abc123def456...
-    files:
-      - rules/debug.md
-      - skills/analyze.md
-    hash: blake3_hash_value
-```
-
-**Never manually edit `augent.lock`** - it's regenerated on install.
+**Never manually edit the workspace `augent.lock`** — it is updated on install.
 
 ---
 

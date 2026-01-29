@@ -105,10 +105,10 @@ pub enum LockedSource {
         /// Subdirectory within repository (if any)
         #[serde(skip_serializing_if = "std::option::Option::is_none")]
         path: Option<String>,
-        /// Original ref (branch, tag)
+        /// Ref as given by user (branch, tag, or SHA) or discovered default branch when not given
         #[serde(rename = "ref")]
         git_ref: Option<String>,
-        /// Resolved SHA
+        /// Resolved commit SHA for 100% reproducibility (always present)
         sha: String,
         /// BLAKE3 hash of bundle contents
         hash: String,
@@ -131,12 +131,24 @@ impl Lockfile {
 
     /// Parse lockfile from JSON string
     pub fn from_json(json: &str) -> Result<Self> {
-        let lockfile: Self =
+        let mut lockfile: Self =
             serde_json::from_str(json).map_err(|e| AugentError::ConfigParseFailed {
                 path: "augent.lock".to_string(),
                 reason: e.to_string(),
             })?;
+        lockfile.normalize_git_refs();
         Ok(lockfile)
+    }
+
+    /// Ensure every git source has a ref (never null) - default to "main" when missing
+    fn normalize_git_refs(&mut self) {
+        for bundle in &mut self.bundles {
+            if let LockedSource::Git { git_ref, .. } = &mut bundle.source {
+                if git_ref.is_none() {
+                    *git_ref = Some("main".to_string());
+                }
+            }
+        }
     }
 
     /// Serialize lockfile to JSON string (pretty-printed)
