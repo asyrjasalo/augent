@@ -11,6 +11,7 @@ pub const KNOWN_PLATFORM_IDS: &[&str] = &[
     "claude",
     "claude-plugin",
     "codex",
+    "copilot",
     "cursor",
     "factory",
     "gemini",

@@ -174,6 +174,38 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".mcp.json").with_merge(MergeStrategy::Deep),
             ),
+        // GitHub Copilot
+        Platform::new("copilot", "GitHub Copilot", ".github")
+            .with_detection(".github/copilot-instructions.md")
+            .with_detection(".github/instructions")
+            .with_detection(".github/skills")
+            .with_detection(".github/prompts")
+            .with_detection("AGENTS.md")
+            .with_transform(
+                TransformRule::new(
+                    "rules/**/*.md",
+                    ".github/instructions/{name}.instructions.md",
+                )
+                .with_extension("instructions.md"),
+            )
+            .with_transform(
+                TransformRule::new("commands/**/*.md", ".github/prompts/{name}.prompt.md")
+                    .with_extension("prompt.md"),
+            )
+            .with_transform(TransformRule::new(
+                "agents/**/*.md",
+                ".github/agents/{name}/AGENTS.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".github/skills/{name}/SKILL.md",
+            ))
+            .with_transform(
+                TransformRule::new("mcp.jsonc", ".github/mcp.json").with_merge(MergeStrategy::Deep),
+            )
+            .with_transform(
+                TransformRule::new("AGENTS.md", "AGENTS.md").with_merge(MergeStrategy::Composite),
+            ),
         // Cursor
         Platform::new("cursor", "Cursor", ".cursor")
             .with_detection(".cursor")
@@ -395,7 +427,7 @@ mod tests {
     #[test]
     fn test_default_platforms() {
         let platforms = default_platforms();
-        assert_eq!(platforms.len(), 15);
+        assert_eq!(platforms.len(), 16);
 
         let ids: Vec<_> = platforms.iter().map(|p| p.id.as_str()).collect();
         assert!(ids.contains(&"antigravity"));
@@ -403,6 +435,7 @@ mod tests {
         assert!(ids.contains(&"claude"));
         assert!(ids.contains(&"claude-plugin"));
         assert!(ids.contains(&"codex"));
+        assert!(ids.contains(&"copilot"));
         assert!(ids.contains(&"cursor"));
         assert!(ids.contains(&"factory"));
         assert!(ids.contains(&"gemini"));

@@ -239,8 +239,10 @@ fn test_detect_all_platforms() {
     fs::create_dir_all(temp.path().join(".claude-plugin")).unwrap();
     fs::write(temp.path().join(".claude-plugin/plugin.json"), "{}").unwrap();
     fs::create_dir(temp.path().join(".codex")).unwrap();
+    fs::create_dir_all(temp.path().join(".github/instructions")).unwrap();
     fs::create_dir(temp.path().join(".cursor")).unwrap();
     fs::create_dir(temp.path().join(".factory")).unwrap();
+    fs::create_dir(temp.path().join(".gemini")).unwrap();
     fs::create_dir(temp.path().join(".kilocode")).unwrap();
     fs::create_dir(temp.path().join(".kiro")).unwrap();
     fs::create_dir(temp.path().join(".opencode")).unwrap();
@@ -257,8 +259,10 @@ fn test_detect_all_platforms() {
     assert!(platform_ids.contains(&"claude"));
     assert!(platform_ids.contains(&"claude-plugin"));
     assert!(platform_ids.contains(&"codex"));
+    assert!(platform_ids.contains(&"copilot"));
     assert!(platform_ids.contains(&"cursor"));
     assert!(platform_ids.contains(&"factory"));
+    assert!(platform_ids.contains(&"gemini"));
     assert!(platform_ids.contains(&"kilo"));
     assert!(platform_ids.contains(&"kiro"));
     assert!(platform_ids.contains(&"opencode"));
@@ -266,7 +270,7 @@ fn test_detect_all_platforms() {
     assert!(platform_ids.contains(&"roo"));
     assert!(platform_ids.contains(&"warp"));
     assert!(platform_ids.contains(&"windsurf"));
-    assert_eq!(platforms.len(), 14);
+    assert_eq!(platforms.len(), 16);
 }
 
 #[test]

@@ -1,6 +1,6 @@
 # Platform Support
 
-Augent supports 14 AI coding platforms through a flexible platform system.
+Augent supports 15 AI coding platforms through a flexible platform system.
 
 ## Supported Platforms
 
@@ -45,6 +45,19 @@ Augent supports 14 AI coding platforms through a flexible platform system.
   - Commands: `.codex/prompts/**/*.md`
   - Skills: `.codex/skills/**/*`
   - MCP Config: `.codex/config.toml`
+  - Root File: `AGENTS.md`
+
+### GitHub Copilot
+
+- **Platform ID:** `copilot`
+- **Directory:** `.github/`
+- **Detection:** `.github/copilot-instructions.md`, `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`
+- **Resource Locations:**
+  - Rules: `.github/instructions/**/*.instructions.md` (path-specific custom instructions)
+  - Commands: `.github/prompts/**/*.prompt.md` (prompt files)
+  - Agents: `.github/agents/**/AGENTS.md` (per-agent directories) or root `AGENTS.md`
+  - Skills: `.github/skills/**/SKILL.md` (project skills)
+  - MCP Config: `.github/mcp.json`
   - Root File: `AGENTS.md`
 
 ### Cursor AI
@@ -257,11 +270,11 @@ Augent automatically transforms universal resources to platform-specific formats
 
 | Universal Format | Example Platforms |
 |-----------------|-------------------|
-| `commands/**/*.md` | `.claude/commands/`, `.cursor/commands/`, `.opencode/commands/`, `.codex/prompts/`, `.kilocode/workflows/` |
-| `rules/**/*.md` | `.claude/rules/`, `.cursor/rules/*.mdc`, `.opencode/rules/`, `.kilocode/rules/`, `.kiro/steering/` |
-| `agents/**/*.md` | `.claude/agents/`, `.cursor/agents/`, `.opencode/agents/`, `.factory/droids/`, `.qwen/agents/` |
-| `skills/**/*` | `.claude/skills/`, `.cursor/skills/`, `.opencode/skills/`, `.windsurf/skills/`, `.gemini/skills/` |
-| `mcp.jsonc` | `.claude/mcp.json`, `.cursor/mcp.json`, `.opencode/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
+| `commands/**/*.md` | `.claude/commands/`, `.cursor/commands/`, `.opencode/commands/`, `.github/prompts/*.prompt.md`, `.codex/prompts/`, `.kilocode/workflows/` |
+| `rules/**/*.md` | `.claude/rules/`, `.cursor/rules/*.mdc`, `.opencode/rules/`, `.github/instructions/*.instructions.md`, `.kilocode/rules/`, `.kiro/steering/` |
+| `agents/**/*.md` | `.claude/agents/`, `.cursor/agents/`, `.opencode/agents/`, `.github/agents/*/AGENTS.md`, `.factory/droids/`, `.qwen/agents/` |
+| `skills/**/*` | `.claude/skills/`, `.cursor/skills/`, `.opencode/skills/`, `.github/skills/*/SKILL.md`, `.windsurf/skills/`, `.gemini/skills/` |
+| `mcp.jsonc` | `.claude/mcp.json`, `.cursor/mcp.json`, `.opencode/mcp.json`, `.github/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
 | `AGENTS.md` | `CLAUDE.md`, `AGENTS.md`, `QWEN.md`, `WARP.md`, `GEMINI.md` |
 
 For complete transformation details, see [Platform Configuration Schema](platforms_schema.md).
