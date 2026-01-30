@@ -9,7 +9,7 @@ Need to support many AI coding platforms (Claude, Cursor, OpenCode, etc.) with d
 
 ## Decision
 
-- Adopt flow-based transformation system (inspired by OpenPackage)
+- Adopt flow-based transformation system
 - `platforms.jsonc` defines detection, mappings, and transforms
 - Bidirectional: universal ↔ platform-specific
 - Merge strategies: replace, shallow, deep, composite

@@ -182,7 +182,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 #### Feature 3.1: Platform Configuration Schema
 
-- [x] Design `platforms.jsonc` schema (based on OpenPackage research)
+- [x] Design `platforms.jsonc` schema
 - [x] Define `Platform` struct
 - [x] Define `PlatformFlow` struct (from, to, map operations)
 - [x] Define merge strategy enum (replace, shallow, deep, composite)
@@ -948,7 +948,7 @@ See: [bundles.md](specs/bundles.md), [install-command.md](specs/install-command.
 
 ## Universal format for project-specific files
 
-### Epic: Universal resource frontmatter (rulesync-style)
+### Epic: Universal resource frontmatter
 
 **Status:** [x] Complete
 

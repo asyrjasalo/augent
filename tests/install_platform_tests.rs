@@ -413,7 +413,7 @@ fn test_install_universal_frontmatter_full_yaml_for_all_platforms() {
         .assert()
         .success();
 
-    // Cursor gets full merged frontmatter (rulesync-style: cursor block merged)
+    // Cursor gets full merged frontmatter (cursor block merged)
     let cursor_cmd = workspace.read_file(".cursor/commands/review.md");
     assert!(
         cursor_cmd.contains("Cursor review command"),

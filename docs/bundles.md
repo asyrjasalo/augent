@@ -121,11 +121,11 @@ bundles:
 
 ### Universal resource format
 
-Resource files (commands, rules, skills, agents) can use optional **YAML frontmatter** (between `---` delimiters) to declare common metadata and **platform-specific overrides**. At install time, Augent merges common fields with the block for each target platform (keyed by platform id) and emits the **full merged frontmatter** (rulesync-style): all fields are preserved so the same fields and platforms that [rulesync](https://github.com/dyoshikawa/rulesync) supports are supported (except the `targets` field, which Augent does not use). See [Platform support](platforms.md) and [Platforms schema](platforms_schema.md) for platform ids.
+Resource files (commands, rules, skills, agents) can use optional **YAML frontmatter** (between `---` delimiters) to declare common metadata and **platform-specific overrides**. At install time, Augent merges common fields with the block for each target platform (keyed by platform id) and emits the **full merged frontmatter**: all fields are preserved (except the `targets` field, which Augent does not use). See [Platform support](platforms.md) and [Platforms schema](platforms_schema.md) for platform ids.
 
 **Common fields** (resource-type–specific, optional; any YAML key is allowed):
 
-- **Commands:** e.g. `description`; rulesync also uses platform blocks for `trigger`, `turbo` (Antigravity), etc.
+- **Commands:** e.g. `description`; platform blocks can include `trigger`, `turbo` (Antigravity), etc.
 - **Rules:** e.g. `description`, `root` (bool), `globs`; platform blocks for `alwaysApply`, `trigger`, etc. (Cursor, Antigravity)
 - **Skills:** e.g. `name`, `description`; platform blocks for `allowed-tools` (Claude), `short-description` (Codex), etc.
 - **Agents (subagents):** e.g. `name`, `description`; platform blocks for `mode`, `model`, `temperature`, `tools`, `permission` (OpenCode), `model` (Claude), etc.

@@ -890,7 +890,7 @@ impl<'a> Installer<'a> {
             || path_str.contains("/steering/")
     }
 
-    /// Write full merged frontmatter as YAML + body to target (rulesync-style: all fields preserved).
+    /// Write full merged frontmatter as YAML + body to target (all fields preserved).
     fn write_merged_frontmatter_markdown(
         &self,
         merged: &YamlValue,

@@ -15,7 +15,7 @@ This plan covers both pre-implementation planning and actual implementation of A
 ## Notes
 
 - **Critical:** All Phase 0 planning must be completed before any Phase 1+ implementation begins
-- Research on OpenPackage's platforms.jsonc is complete
+- Research on platforms.jsonc schema is complete
 - Research on Rust CLI best practices is complete
 - All operations must be atomic with rollback on failure
 - Testing must pass for each feature to be considered complete
@@ -469,7 +469,7 @@ Goal: Simplify cache command UX by making `augent cache` show only cache statist
 
 **Status:** Complete
 
-#### Feature 17.1: Universal frontmatter (rulesync-style)
+#### Feature 17.1: Universal frontmatter
 
 **Status:** Complete
 
