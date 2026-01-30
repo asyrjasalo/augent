@@ -18,6 +18,7 @@ mod progress;
 mod resolver;
 mod source;
 mod transaction;
+mod universal;
 mod workspace;
 
 use cli::{Cli, Commands};

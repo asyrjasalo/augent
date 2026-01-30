@@ -352,6 +352,91 @@ fn test_platform_detection_order_with_root_files() {
 }
 
 #[test]
+fn test_install_universal_frontmatter_merged_for_opencode() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("opencode");
+    workspace.copy_fixture_bundle("universal-frontmatter-bundle", "test-bundle");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    let cmd_content = workspace.read_file(".opencode/commands/review.md");
+    assert!(
+        cmd_content.contains("OpenCode review command"),
+        "OpenCode command should use merged description from platform block"
+    );
+    assert!(
+        cmd_content.contains("Run the review checklist"),
+        "Command body should be preserved"
+    );
+
+    assert!(
+        workspace.file_exists(".opencode/skills/analyze/SKILL.md"),
+        "OpenCode skill should be installed under skills/analyze/SKILL.md"
+    );
+    let skill_content = workspace.read_file(".opencode/skills/analyze/SKILL.md");
+    assert!(
+        skill_content.contains("OpenCode skill for analysis"),
+        "OpenCode skill should use merged description from platform block"
+    );
+    assert!(
+        skill_content.contains("name: analyze"),
+        "Skill name should be present"
+    );
+
+    let agent_content = workspace.read_file(".opencode/agents/planner.md");
+    assert!(
+        agent_content.contains("OpenCode planner agent"),
+        "OpenCode agent should use merged description from platform block"
+    );
+    assert!(
+        agent_content.contains("You are the planner"),
+        "Agent body should be preserved"
+    );
+}
+
+#[test]
+fn test_install_universal_frontmatter_full_yaml_for_all_platforms() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+    workspace.create_agent_dir("opencode");
+    workspace.copy_fixture_bundle("universal-frontmatter-bundle", "test-bundle");
+
+    augent_cmd()
+        .current_dir(&workspace.path)
+        .args(["install", "./bundles/test-bundle"])
+        .assert()
+        .success();
+
+    // Cursor gets full merged frontmatter (rulesync-style: cursor block merged)
+    let cursor_cmd = workspace.read_file(".cursor/commands/review.md");
+    assert!(
+        cursor_cmd.contains("Cursor review command"),
+        "Cursor command should use merged description from cursor: block"
+    );
+    assert!(
+        cursor_cmd.contains("Run the review checklist"),
+        "Command body should be preserved"
+    );
+    assert!(
+        cursor_cmd.starts_with("---"),
+        "Cursor command should have YAML frontmatter"
+    );
+
+    // OpenCode still gets merged frontmatter
+    let opencode_cmd = workspace.read_file(".opencode/commands/review.md");
+    assert!(
+        opencode_cmd.contains("OpenCode review command"),
+        "OpenCode command should use merged description from opencode: block"
+    );
+}
+
+#[test]
 fn test_claude_commands_transformation() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");

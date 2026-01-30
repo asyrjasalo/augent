@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Universal resource format: optional YAML frontmatter in bundle resources (commands, rules, skills, agents) with common fields and platform-specific blocks (e.g. `opencode:`, `cursor:`). At install time, Augent merges common + platform block and emits the **full merged frontmatter** (rulesync-style) so the same fields and platforms that rulesync supports are supported (except the `targets` field). All Augent platforms that have commands, rules, agents, or skills receive full merged YAML; Gemini commands use TOML. See [bundles.md](docs/bundles.md#universal-resource-format).
+
 ## [0.6.1] - 2026-01-29
 
 ### Fixed

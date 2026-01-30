@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde_yaml::Value as YamlValue;
 use walkdir::WalkDir;
 use wax::{CandidatePath, Glob, Pattern};
 
@@ -18,6 +19,7 @@ use crate::error::{AugentError, Result};
 use crate::platform::{MergeStrategy, Platform, TransformRule};
 use crate::progress::ProgressDisplay;
 use crate::resolver::ResolvedBundle;
+use crate::universal;
 
 /// Known resource directories in bundles
 const RESOURCE_DIRS: &[&str] = &["commands", "rules", "agents", "skills", "root"];
@@ -817,14 +819,30 @@ impl<'a> Installer<'a> {
 
     /// Copy a single file
     fn copy_file(&self, source: &Path, target: &Path) -> Result<()> {
-        // Check if this is a gemini commands file that needs markdown to TOML conversion
-        if self.is_gemini_command_file(target) {
-            return self.convert_markdown_to_toml(source, target);
-        }
-
-        // Check if this is an OpenCode commands/agents/skills file that needs frontmatter conversion
-        if self.is_opencode_metadata_file(target) {
-            return self.convert_opencode_frontmatter(source, target);
+        // Universal frontmatter: for any platform resource file (commands, rules, agents, skills,
+        // workflows, prompts, droids, steering), parse frontmatter, merge for platform, and emit.
+        if self.is_platform_resource_file(target) {
+            let content = fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
+                path: source.display().to_string(),
+                reason: e.to_string(),
+            })?;
+            let known: Vec<String> = self.platforms.iter().map(|p| p.id.clone()).collect();
+            if let Some((fm, body)) = universal::parse_frontmatter_and_body(&content) {
+                if let Some(pid) = self.platform_id_from_target(target) {
+                    let merged = universal::merge_frontmatter_for_platform(&fm, pid, &known);
+                    if self.is_gemini_command_file(target) {
+                        return self.convert_gemini_command_from_merged(&merged, &body, target);
+                    }
+                    return self.write_merged_frontmatter_markdown(&merged, &body, target);
+                }
+            }
+            // No frontmatter: preserve legacy conversion for Gemini and OpenCode
+            if self.is_gemini_command_file(target) {
+                return self.convert_markdown_to_toml(source, target);
+            }
+            if self.is_opencode_metadata_file(target) {
+                return self.convert_opencode_frontmatter(source, target);
+            }
         }
 
         // Ensure parent directory exists
@@ -836,6 +854,61 @@ impl<'a> Installer<'a> {
         }
 
         fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
+            path: target.display().to_string(),
+            reason: e.to_string(),
+        })?;
+        Ok(())
+    }
+
+    /// Resolve which platform a target path belongs to (platform directory is prefix of target).
+    fn platform_id_from_target(&self, target: &Path) -> Option<&str> {
+        for platform in &self.platforms {
+            let platform_dir = self.workspace_root.join(&platform.directory);
+            if target.starts_with(&platform_dir) {
+                return Some(platform.id.as_str());
+            }
+        }
+        None
+    }
+
+    /// True if target is a platform resource file (commands, rules, agents, skills, workflows,
+    /// prompts, droids, steering) under a platform directory. Used for universal frontmatter merge.
+    fn is_platform_resource_file(&self, target: &Path) -> bool {
+        if self.platform_id_from_target(target).is_none() {
+            return false;
+        }
+        let path_str = target.to_string_lossy();
+        path_str.contains("/commands/")
+            || path_str.contains("/rules/")
+            || path_str.contains("/agents/")
+            || path_str.contains("/skills/")
+            || path_str.contains("/workflows/")
+            || path_str.contains("/prompts/")
+            || path_str.contains("/droids/")
+            || path_str.contains("/steering/")
+    }
+
+    /// Write full merged frontmatter as YAML + body to target (rulesync-style: all fields preserved).
+    fn write_merged_frontmatter_markdown(
+        &self,
+        merged: &YamlValue,
+        body: &str,
+        target: &Path,
+    ) -> Result<()> {
+        let yaml = universal::serialize_to_yaml(merged);
+        let yaml = yaml.trim_end(); // serde_yaml adds trailing newline
+        let out = if yaml.is_empty() || yaml == "{}" {
+            format!("---\n---\n\n{}", body)
+        } else {
+            format!("---\n{}\n---\n\n{}", yaml, body)
+        };
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+        fs::write(target, out).map_err(|e| AugentError::FileWriteFailed {
             path: target.display().to_string(),
             reason: e.to_string(),
         })?;
@@ -854,6 +927,41 @@ impl<'a> Installer<'a> {
         (path_str.contains(".opencode/commands/") && path_str.ends_with(".md"))
             || (path_str.contains(".opencode/agents/") && path_str.ends_with(".md"))
             || (path_str.contains(".opencode/skills/") && path_str.ends_with(".md"))
+    }
+
+    /// Emit Gemini command TOML from merged universal frontmatter and body.
+    fn convert_gemini_command_from_merged(
+        &self,
+        merged: &YamlValue,
+        body: &str,
+        target: &Path,
+    ) -> Result<()> {
+        let description = universal::get_str(merged, "description");
+        let mut toml_content = String::new();
+        if let Some(desc) = description {
+            toml_content.push_str(&format!(
+                "description = {}\n",
+                self.escape_toml_string(&desc)
+            ));
+        }
+        let is_multiline = body.contains('\n');
+        if is_multiline {
+            toml_content.push_str(&format!("prompt = \"\"\"\n{}\"\"\"\n", body));
+        } else {
+            toml_content.push_str(&format!("prompt = {}\n", self.escape_toml_string(body)));
+        }
+        let toml_target = target.with_extension("toml");
+        if let Some(parent) = toml_target.parent() {
+            fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+        fs::write(&toml_target, toml_content).map_err(|e| AugentError::FileWriteFailed {
+            path: toml_target.display().to_string(),
+            reason: e.to_string(),
+        })?;
+        Ok(())
     }
 
     /// Convert markdown file to TOML format for Gemini CLI commands

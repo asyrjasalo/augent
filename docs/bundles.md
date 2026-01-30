@@ -119,6 +119,64 @@ bundles:
 
 ## Resource Types
 
+### Universal resource format
+
+Resource files (commands, rules, skills, agents) can use optional **YAML frontmatter** (between `---` delimiters) to declare common metadata and **platform-specific overrides**. At install time, Augent merges common fields with the block for each target platform (keyed by platform id) and emits the **full merged frontmatter** (rulesync-style): all fields are preserved so the same fields and platforms that [rulesync](https://github.com/dyoshikawa/rulesync) supports are supported (except the `targets` field, which Augent does not use). See [Platform support](platforms.md) and [Platforms schema](platforms_schema.md) for platform ids.
+
+**Common fields** (resource-type–specific, optional; any YAML key is allowed):
+
+- **Commands:** e.g. `description`; rulesync also uses platform blocks for `trigger`, `turbo` (Antigravity), etc.
+- **Rules:** e.g. `description`, `root` (bool), `globs`; platform blocks for `alwaysApply`, `trigger`, etc. (Cursor, Antigravity)
+- **Skills:** e.g. `name`, `description`; platform blocks for `allowed-tools` (Claude), `short-description` (Codex), etc.
+- **Agents (subagents):** e.g. `name`, `description`; platform blocks for `mode`, `model`, `temperature`, `tools`, `permission` (OpenCode), `model` (Claude), etc.
+
+**Platform blocks:** Use a top-level key matching the platform id (e.g. `opencode:`, `cursor:`, `claude:`, `antigravity:`) with platform-specific fields. Those fields override or extend the common set when emitting for that platform. The entire merged frontmatter is written as YAML for markdown-based platforms; Gemini commands use TOML with `description` and `prompt`.
+
+**Example – command with common and OpenCode override:**
+
+```markdown
+---
+description: Review a pull request
+opencode:
+  description: OpenCode-specific description
+---
+
+Run the review checklist and comment on the PR.
+```
+
+**Example – skill with name and platform block:**
+
+```markdown
+---
+name: analyze
+description: Analyze codebase and suggest improvements
+opencode:
+  description: OpenCode skill description
+---
+
+Use static analysis and suggest refactors.
+```
+
+**Example – agent (subagent) with OpenCode mode:**
+
+```markdown
+---
+name: planner
+description: General-purpose planner
+opencode:
+  mode: subagent
+  model: anthropic/claude-sonnet-4-20250514
+---
+
+You are the planner. Create a plan based on the user's instruction.
+```
+
+**Platforms:** Universal frontmatter merge and full-YAML emission apply to all Augent platforms that have commands, rules, agents, or skills (including Antigravity workflows, Codex prompts, Factory droids, Kilo workflows, Kiro steering, etc.). Gemini commands are emitted as TOML (`description` + `prompt`). All other platform resource files receive the full merged YAML frontmatter + body.
+
+Files without frontmatter or without a platform block for a given platform behave as before: common fields only, or existing line-based parsing.
+
+---
+
 ### Rules (`rules/`)
 
 AI coding platform rules provide behavior guidelines:

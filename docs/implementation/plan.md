@@ -460,3 +460,19 @@ Scope:
 **Status:** Complete
 
 Goal: Simplify cache command UX by making `augent cache` show only cache statistics and adding `augent cache list` to list cached bundles.
+
+---
+
+## Phase 9: Universal resource format
+
+### Epic 17: Universal format for project-specific files
+
+**Status:** Complete
+
+#### Feature 17.1: Universal frontmatter (rulesync-style)
+
+**Status:** Complete
+
+Goal: Adopt a universal frontmatter format for bundle resources (commands, rules, skills, agents): YAML frontmatter with common fields and optional platform-specific blocks keyed by Augent platform id. At install time, merge common + platform block and emit platform-native content for OpenCode and Gemini; other platforms keep current behavior. Backward compatible: files without frontmatter unchanged.
+
+See: [bundles.md](../bundles.md#universal-resource-format), [tasks.md](tasks.md).

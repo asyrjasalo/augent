@@ -945,3 +945,19 @@ See: [bundles.md](specs/bundles.md), [install-command.md](specs/install-command.
 - [x] Thorough integration tests for bundles spec (dir name/path, config updates, multi-bundle order, deps only in lock, bundle-with-deps order, git name and lockfile pinning, reinstall idempotent)
 
 ---
+
+## Universal format for project-specific files
+
+### Epic: Universal resource frontmatter (rulesync-style)
+
+**Status:** [x] Complete
+
+See: [bundles.md](../bundles.md) (Universal resource format), [platforms_schema.md](../platforms_schema.md)
+
+- [x] Add universal frontmatter parsing (YAML between ---, common fields + platform blocks keyed by platform id)
+- [x] Add platform-from-target helper in installer and wire merged frontmatter to OpenCode/Gemini emitters
+- [x] Refactor OpenCode and Gemini conversions to accept merged frontmatter + body; keep backward compatibility for files without frontmatter
+- [x] Document universal format and examples in docs/bundles.md
+- [x] Add integration test for multi-platform install with platform blocks (universal-frontmatter-bundle fixture)
+
+---
