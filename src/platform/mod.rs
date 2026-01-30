@@ -261,6 +261,29 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_transform(
                 TransformRule::new("AGENTS.md", "AGENTS.md").with_merge(MergeStrategy::Composite),
             ),
+        // JetBrains Junie
+        Platform::new("junie", "JetBrains Junie", ".junie")
+            .with_detection(".junie")
+            .with_detection("AGENTS.md")
+            .with_transform(
+                TransformRule::new("rules/**/*.md", ".junie/guidelines.md")
+                    .with_merge(MergeStrategy::Composite),
+            )
+            .with_transform(TransformRule::new(
+                "commands/**/*.md",
+                ".junie/commands/**/*.md",
+            ))
+            .with_transform(TransformRule::new(
+                "agents/**/*.md",
+                ".junie/agents/**/*.md",
+            ))
+            .with_transform(TransformRule::new("skills/**/*", ".junie/skills/**/*"))
+            .with_transform(
+                TransformRule::new("mcp.jsonc", ".junie/mcp.json").with_merge(MergeStrategy::Deep),
+            )
+            .with_transform(
+                TransformRule::new("AGENTS.md", "AGENTS.md").with_merge(MergeStrategy::Composite),
+            ),
         // Kilo Code
         Platform::new("kilo", "Kilo Code", ".kilocode")
             .with_detection(".kilocode")
@@ -427,7 +450,7 @@ mod tests {
     #[test]
     fn test_default_platforms() {
         let platforms = default_platforms();
-        assert_eq!(platforms.len(), 16);
+        assert_eq!(platforms.len(), 17);
 
         let ids: Vec<_> = platforms.iter().map(|p| p.id.as_str()).collect();
         assert!(ids.contains(&"antigravity"));
@@ -437,6 +460,7 @@ mod tests {
         assert!(ids.contains(&"codex"));
         assert!(ids.contains(&"copilot"));
         assert!(ids.contains(&"cursor"));
+        assert!(ids.contains(&"junie"));
         assert!(ids.contains(&"factory"));
         assert!(ids.contains(&"gemini"));
         assert!(ids.contains(&"kilo"));

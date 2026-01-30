@@ -9,7 +9,7 @@ use super::{default_platforms, detection::detect_platforms};
 fn test_all_platforms_defined() {
     let platforms = default_platforms();
 
-    assert_eq!(platforms.len(), 16);
+    assert_eq!(platforms.len(), 17);
 
     let expected_ids = vec![
         "antigravity",
@@ -21,6 +21,7 @@ fn test_all_platforms_defined() {
         "cursor",
         "factory",
         "gemini",
+        "junie",
         "kilo",
         "kiro",
         "opencode",

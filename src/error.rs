@@ -145,7 +145,7 @@ pub enum AugentError {
     #[error("Platform not supported: {platform}")]
     #[diagnostic(
         code(augent::platform::not_supported),
-        help("Supported platforms: claude, copilot, cursor, opencode, ...")
+        help("Supported platforms: claude, copilot, cursor, junie, opencode, ...")
     )]
     PlatformNotSupported { platform: String },
 

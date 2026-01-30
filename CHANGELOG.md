@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **GitHub Copilot platform** (`--for copilot`): rules → `.github/instructions/*.instructions.md`, commands → `.github/prompts/*.prompt.md`, agents → `.github/agents/{name}/AGENTS.md`, skills → `.github/skills/{name}/SKILL.md`, MCP → `.github/mcp.json`, AGENTS.md → root `AGENTS.md`. Detection: `.github/copilot-instructions.md`, `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`. See [platforms.md](docs/platforms.md).
+- **JetBrains Junie platform** (`--for junie`): rules → `.junie/guidelines.md` (composite merge), commands → `.junie/commands/**/*.md`, agents → `.junie/agents/**/*.md`, skills → `.junie/skills/**/*`, MCP → `.junie/mcp.json`, AGENTS.md → root `AGENTS.md`. Detection: `.junie` or `AGENTS.md`. See [platforms.md](docs/platforms.md).
 - Universal resource format: optional YAML frontmatter in bundle resources (commands, rules, skills, agents) with common fields and platform-specific blocks (e.g. `opencode:`, `cursor:`). At install time, Augent merges common + platform block and emits the **full merged frontmatter** (rulesync-style) so the same fields and platforms that rulesync supports are supported (except the `targets` field). All Augent platforms that have commands, rules, agents, or skills receive full merged YAML; Gemini commands use TOML. See [bundles.md](docs/bundles.md#universal-resource-format).
 
 ## [0.6.1] - 2026-01-29

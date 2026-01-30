@@ -15,6 +15,7 @@ pub const KNOWN_PLATFORM_IDS: &[&str] = &[
     "cursor",
     "factory",
     "gemini",
+    "junie",
     "kilo",
     "kiro",
     "opencode",

@@ -885,6 +885,7 @@ impl<'a> Installer<'a> {
             || path_str.contains("/workflows/")
             || path_str.contains("/prompts/")
             || path_str.contains("/instructions/")
+            || path_str.contains("/guidelines")
             || path_str.contains("/droids/")
             || path_str.contains("/steering/")
     }
