@@ -44,24 +44,30 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: ShowArgs) -> Result<()> 
 
         // If single match, show it directly
         if matching_bundles.len() == 1 {
-            return show_bundle(&workspace, &workspace_root, &matching_bundles[0]);
+            return show_bundle(
+                &workspace,
+                &workspace_root,
+                &matching_bundles[0],
+                args.detailed,
+            );
         }
 
         // Multiple matches - let user select
         let selected = select_bundles_from_list(matching_bundles)?;
         if !selected.is_empty() {
-            return show_bundle(&workspace, &workspace_root, &selected);
+            return show_bundle(&workspace, &workspace_root, &selected, args.detailed);
         }
         return Ok(());
     }
 
-    show_bundle(&workspace, &workspace_root, &bundle_name)
+    show_bundle(&workspace, &workspace_root, &bundle_name, args.detailed)
 }
 
 fn show_bundle(
     workspace: &workspace::Workspace,
     workspace_root: &std::path::Path,
     bundle_name: &str,
+    detailed: bool,
 ) -> Result<()> {
     let locked_bundle =
         workspace
@@ -73,7 +79,11 @@ fn show_bundle(
 
     let workspace_bundle = workspace.workspace_config.find_bundle(bundle_name);
 
-    let bundle_config = load_bundle_config(workspace_root, &locked_bundle.source)?;
+    let bundle_config = if detailed {
+        load_bundle_config(workspace_root, &locked_bundle.source)?
+    } else {
+        BundleConfig::new("".to_string())
+    };
 
     println!();
     display_bundle_info(
@@ -82,6 +92,7 @@ fn show_bundle(
         &bundle_config,
         locked_bundle,
         workspace_bundle,
+        detailed,
     );
 
     Ok(())
@@ -225,8 +236,9 @@ fn display_bundle_info(
     bundle_config: &BundleConfig,
     locked_bundle: &LockedBundle,
     workspace_bundle: Option<&WorkspaceBundle>,
+    detailed: bool,
 ) {
-    println!("{}", Style::new().bold().yellow().apply_to(name));
+    println!("  {}", Style::new().bold().yellow().apply_to(name));
     println!("    {}", Style::new().bold().apply_to("Source:"));
     match &locked_bundle.source {
         LockedSource::Dir { path, .. } => {
@@ -263,40 +275,26 @@ fn display_bundle_info(
             }
         }
     }
-    println!();
 
-    if !bundle_config.bundles.is_empty() {
-        println!("    {}", Style::new().bold().apply_to("Dependencies:"));
-        for dep in &bundle_config.bundles {
-            println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-            if dep.is_local() {
-                println!("        Type: {}", Style::new().green().apply_to("Local"));
-                if let Some(path_val) = &dep.path {
-                    println!("        Path: {}", path_val);
-                }
-            } else if dep.is_git() {
-                println!("        Type: {}", Style::new().green().apply_to("Git"));
-                if let Some(url) = &dep.git {
-                    println!("        URL: {}", url);
-                }
-                if let Some(ref_name) = &dep.git_ref {
-                    println!("        Ref: {}", ref_name);
-                }
+    // Plugin block for Claude Marketplace ($claudeplugin) bundles
+    if let LockedSource::Git { path: Some(p), .. } = &locked_bundle.source {
+        if p.contains("$claudeplugin") {
+            println!("    {}", Style::new().bold().apply_to("Plugin:"));
+            println!(
+                "      {} {}",
+                Style::new().bold().apply_to("type:"),
+                Style::new().green().apply_to("Claude Marketplace")
+            );
+            if let Some(ref v) = locked_bundle.version {
+                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
             }
         }
-    } else {
-        println!(
-            "    {}: {}",
-            Style::new().bold().apply_to("Dependencies"),
-            Style::new().dim().apply_to("None")
-        );
     }
-    println!();
 
     // Display resources from workspace bundle if available, otherwise show all files from lockfile
     if let Some(ws_bundle) = workspace_bundle {
+        println!("    {}", Style::new().bold().apply_to("Enabled resources:"));
         if ws_bundle.enabled.is_empty() {
-            println!("    {}", Style::new().bold().apply_to("Resources:"));
             println!("      No files installed");
         } else {
             display_installed_resources(workspace_root, ws_bundle);
@@ -307,6 +305,36 @@ fn display_bundle_info(
     } else {
         println!("    {}", Style::new().bold().apply_to("Resources:"));
         println!("      {}", Style::new().dim().apply_to("No resources"));
+    }
+
+    // Dependencies last (only when --detailed)
+    if detailed {
+        if !bundle_config.bundles.is_empty() {
+            println!("    {}", Style::new().bold().apply_to("Dependencies:"));
+            for dep in &bundle_config.bundles {
+                println!("      - {}", Style::new().cyan().apply_to(&dep.name));
+                if dep.is_local() {
+                    println!("        Type: {}", Style::new().green().apply_to("Local"));
+                    if let Some(path_val) = &dep.path {
+                        println!("        Path: {}", path_val);
+                    }
+                } else if dep.is_git() {
+                    println!("        Type: {}", Style::new().green().apply_to("Git"));
+                    if let Some(url) = &dep.git {
+                        println!("        URL: {}", url);
+                    }
+                    if let Some(ref_name) = &dep.git_ref {
+                        println!("        Ref: {}", ref_name);
+                    }
+                }
+            }
+        } else {
+            println!(
+                "    {}: {}",
+                Style::new().bold().apply_to("Dependencies"),
+                Style::new().dim().apply_to("None")
+            );
+        }
     }
 }
 
@@ -409,7 +437,7 @@ fn display_installed_resources(workspace_root: &std::path::Path, ws_bundle: &Wor
         entry_width + separator_width
     };
 
-    // Display each resource type in its own table
+    // Display each resource type in its own table (indent like list view: type at 6 spaces, table at 8)
     for (idx, resource_type) in sorted_types.iter().enumerate() {
         if idx > 0 {
             println!();
@@ -420,11 +448,11 @@ fn display_installed_resources(workspace_root: &std::path::Path, ws_bundle: &Wor
 
         // Capitalize resource type for display
         let type_display = capitalize_word(resource_type);
-        println!("{}", Style::new().bold().apply_to(type_display));
+        println!("      {}", Style::new().bold().apply_to(type_display));
 
         // Simple horizontal separator
         println!(
-            "  {}",
+            "        {}",
             Style::new().dim().apply_to(
                 "─"
                     .repeat(file_width + platforms_display_width + 15)
@@ -466,7 +494,7 @@ fn display_installed_resources(workspace_root: &std::path::Path, ws_bundle: &Wor
             let platforms_display = platforms_str.join("    ");
 
             println!(
-                "  {}{}  {}{}",
+                "        {}{}  {}{}",
                 Style::new().cyan().apply_to(filename),
                 Style::new()
                     .dim()
@@ -484,7 +512,7 @@ fn display_installed_resources(workspace_root: &std::path::Path, ws_bundle: &Wor
 
         // Simple horizontal separator
         println!(
-            "  {}",
+            "        {}",
             Style::new().dim().apply_to(
                 "─"
                     .repeat(file_width + platforms_display_width + 15)

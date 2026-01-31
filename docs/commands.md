@@ -170,15 +170,15 @@ augent list -v
 
 ### Output Format
 
-**Basic output:** Shows bundle name, version (when available), source, and resource summary.
+**Basic output:** For each bundle: name, description (if present), Source (type, path/URL, SHA), Plugin (for Claude Marketplace bundles: type and version), and Resources (file counts by type: Agents, Commands, etc.).
 
-**Detailed output:** Includes metadata fields, file counts, dependencies, and resolved SHAs.
+**Detailed output (`--detailed`):** Adds metadata (Author, License, Homepage), version in Source when applicable, Enabled resources grouped by platform (with file→location mapping), and **Dependencies** at the end (from the bundle’s augent.yaml; shows list or "None"). Plugin is shown in both basic and detailed list.
 
 ---
 
 ## show
 
-Display detailed information about a bundle.
+Display information about a bundle.
 
 ### Syntax
 
@@ -196,6 +196,7 @@ augent show [OPTIONS] [NAME]
 
 | Option | Description |
 |--------|-------------|
+| `--detailed` | Include dependencies from the bundle’s augent.yaml |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
 | `-h, --help` | Print help |
@@ -205,6 +206,9 @@ augent show [OPTIONS] [NAME]
 ```bash
 # Show bundle information
 augent show my-bundle
+
+# Show including dependencies
+augent show my-bundle --detailed
 
 # Show a specific bundle
 augent show author/debug-tools
@@ -222,11 +226,10 @@ When no bundle name is provided, `augent show` displays an interactive menu show
 
 ### Information Displayed
 
-- Bundle name and source
-- Resolved git SHA (for git sources)
-- List of all files provided by bundle
-- Dependencies (if any)
-- Installation status per agent
+- **Name** and **Source** (type, path/URL, ref, SHA; path when from a subdirectory)
+- **Plugin** (for Claude Marketplace bundles): type "Claude Marketplace" and version
+- **Enabled resources:** Installed files grouped by type (Agents, Commands, etc.) with a table of which platforms each file is installed for; or "No files installed" / "No resources" when applicable. For lockfile-only (not yet installed), files are listed as "available".
+- **Dependencies** (only with `--detailed`): From the bundle’s augent.yaml; list of dependency names with Type (Local/Git) and Path/URL/Ref, or "None". Shown last.
 
 ---
 

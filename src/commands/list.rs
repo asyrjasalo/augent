@@ -8,7 +8,7 @@ use console::Style;
 use std::path::PathBuf;
 
 use crate::cli::ListArgs;
-use crate::config::LockedSource;
+use crate::config::{BundleConfig, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
 
@@ -49,9 +49,10 @@ fn list_bundles(workspace: &Workspace, detailed: bool) -> Result<()> {
     println!("Installed bundles ({}):", lockfile.bundles.len());
     println!();
 
+    let workspace_root = &workspace.root;
     for bundle in &lockfile.bundles {
         if detailed {
-            display_bundle_detailed(bundle, workspace_config, detailed);
+            display_bundle_detailed(workspace_root, bundle, workspace_config, detailed);
         } else {
             display_bundle_simple(bundle, workspace_config, detailed);
         }
@@ -77,6 +78,22 @@ fn display_bundle_simple(
     }
     println!("    {}", Style::new().bold().apply_to("Source:"));
     display_source_detailed_with_indent(&bundle.source, "      ", bundle.version.as_deref(), false);
+
+    // Plugin for Claude Marketplace ($claudeplugin) bundles
+    if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
+        if p.contains("$claudeplugin") {
+            println!("    {}", Style::new().bold().apply_to("Plugin:"));
+            println!(
+                "      {} {}",
+                Style::new().bold().apply_to("type:"),
+                Style::new().green().apply_to("Claude Marketplace")
+            );
+            if let Some(ref v) = bundle.version {
+                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
+            }
+        }
+    }
+
     display_resources_grouped(&bundle.files);
 }
 
@@ -245,8 +262,54 @@ fn display_provided_files_grouped_by_platform(
     }
 }
 
+/// Load bundle config (augent.yaml) from a locked source for displaying dependencies
+fn load_bundle_config(
+    workspace_root: &std::path::Path,
+    source: &LockedSource,
+) -> Result<BundleConfig> {
+    let bundle_path = match source {
+        LockedSource::Dir { path, .. } => workspace_root.join(path),
+        LockedSource::Git {
+            path: Some(subdir), ..
+        } => {
+            let cache_dir = dirs::cache_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
+                .join("augent/bundles");
+            cache_dir.join(subdir)
+        }
+        LockedSource::Git { url, sha, .. } => {
+            let cache_dir = dirs::cache_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
+                .join("augent/bundles");
+
+            let repo_name = url
+                .rsplit('/')
+                .next()
+                .unwrap_or_default()
+                .trim_end_matches(".git");
+
+            cache_dir.join(format!("{}_{}", repo_name, sha))
+        }
+    };
+
+    let config_path = bundle_path.join("augent.yaml");
+
+    if !config_path.exists() {
+        return Ok(BundleConfig::new("".to_string()));
+    }
+
+    let content =
+        std::fs::read_to_string(&config_path).map_err(|e| AugentError::ConfigReadFailed {
+            path: config_path.display().to_string(),
+            reason: e.to_string(),
+        })?;
+
+    BundleConfig::from_yaml(&content)
+}
+
 /// Display bundle in detailed format
 fn display_bundle_detailed(
+    workspace_root: &std::path::Path,
     bundle: &crate::config::LockedBundle,
     workspace_config: &crate::config::WorkspaceConfig,
     detailed: bool,
@@ -289,19 +352,17 @@ fn display_bundle_detailed(
         detailed,
     );
 
-    // Plugin at same level as Source (only for $claudeplugin in detailed view)
-    if detailed {
-        if let Some(ref v) = bundle.version {
-            if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
-                if p.contains("$claudeplugin") {
-                    println!("    {}", Style::new().bold().apply_to("Plugin:"));
-                    println!(
-                        "      {} {}",
-                        Style::new().bold().apply_to("type:"),
-                        Style::new().green().apply_to("Claude Marketplace")
-                    );
-                    println!("      {} {}", Style::new().bold().apply_to("version:"), v);
-                }
+    // Plugin at same level as Source (for $claudeplugin bundles)
+    if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
+        if p.contains("$claudeplugin") {
+            println!("    {}", Style::new().bold().apply_to("Plugin:"));
+            println!(
+                "      {} {}",
+                Style::new().bold().apply_to("type:"),
+                Style::new().green().apply_to("Claude Marketplace")
+            );
+            if let Some(ref v) = bundle.version {
+                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
             }
         }
     }
@@ -310,6 +371,29 @@ fn display_bundle_detailed(
 
     if detailed && !bundle.files.is_empty() {
         display_provided_files_grouped_by_platform(&bundle.files, workspace_bundle);
+    }
+
+    // Dependencies last (only in detailed view)
+    if detailed {
+        match load_bundle_config(workspace_root, &bundle.source) {
+            Ok(bundle_config) => {
+                if !bundle_config.bundles.is_empty() {
+                    println!("    {}", Style::new().bold().apply_to("Dependencies:"));
+                    for dep in &bundle_config.bundles {
+                        println!("      - {}", Style::new().cyan().apply_to(&dep.name));
+                    }
+                } else {
+                    println!(
+                        "    {}: {}",
+                        Style::new().bold().apply_to("Dependencies"),
+                        Style::new().dim().apply_to("None")
+                    );
+                }
+            }
+            Err(_) => {
+                // Skip dependencies if config cannot be loaded (e.g. cache missing)
+            }
+        }
     }
 }
 

@@ -48,11 +48,19 @@ bundles:
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["show", "dependent-bundle"])
+        .args(["show", "--detailed", "dependent-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dependencies"))
         .stdout(predicate::str::contains("@test/base-bundle"));
+
+    // Without --detailed, Dependencies section is hidden
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["show", "dependent-bundle"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Enabled resources"))
+        .stdout(predicate::str::contains("Dependencies").not());
 }
 
 #[test]
@@ -105,7 +113,7 @@ bundles:
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["show", "multi-dep-bundle"])
+        .args(["show", "--detailed", "multi-dep-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dependencies"))
@@ -138,7 +146,7 @@ bundles: []
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["show", "standalone-bundle"])
+        .args(["show", "--detailed", "standalone-bundle"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Dependencies: None"));
@@ -249,7 +257,7 @@ bundles: []
         .args(["show", "empty-bundle"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Resources:"))
+        .stdout(predicate::str::contains("Enabled resources:"))
         .stdout(predicate::str::contains("No files installed"));
 }
 
