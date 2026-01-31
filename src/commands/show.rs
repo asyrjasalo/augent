@@ -239,6 +239,13 @@ fn display_bundle_info(
     detailed: bool,
 ) {
     println!("  {}", Style::new().bold().yellow().apply_to(name));
+    if let Some(ref description) = locked_bundle.description {
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Description:"),
+            description
+        );
+    }
     println!("    {}", Style::new().bold().apply_to("Source:"));
     match &locked_bundle.source {
         LockedSource::Dir { path, .. } => {
