@@ -42,42 +42,11 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         })?,
     };
 
-    // Detect platforms early (before bundle selection) - only when source is provided
-    // For "no source" path, platform detection happens later after checking for bundles
-    if args.platforms.is_empty() && args.source.is_some() {
-        let detected = detection::detect_platforms(&current_dir)?;
-        if detected.is_empty() {
-            // No platforms detected - show menu to select platforms
-            let loader = platform::loader::PlatformLoader::new(&current_dir);
-            let available_platforms = loader.load()?;
-
-            if available_platforms.is_empty() {
-                return Err(AugentError::NoPlatformsDetected);
-            }
-
-            println!("No platforms detected in workspace.");
-            match select_platforms_interactively(&available_platforms) {
-                Ok(selected_platforms) => {
-                    if selected_platforms.is_empty() {
-                        println!("No platforms selected. Exiting.");
-                        return Ok(());
-                    }
-                    // Convert selected platforms to IDs
-                    args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
-                }
-                Err(_) => {
-                    // Non-interactive environment - require --for flag instead of silently using all platforms
-                    return Err(AugentError::NoPlatformsDetected);
-                }
-            }
-        }
-    }
-
     // If source provided, discover and install
     if let Some(source_str) = &args.source {
         let source_str = source_str.as_str();
 
-        // Parse source and discover bundles BEFORE creating workspace
+        // Parse source and discover bundles BEFORE creating workspace or directory
         let source = BundleSource::parse(source_str)?;
         println!("Installing from: {}", source.display_url());
 
@@ -143,19 +112,51 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                 (vec![], vec![]) // No bundles discovered - will be handled in do_install
             };
 
-        // NOW initialize or open workspace (after user has selected bundles)
-        let mut workspace = Workspace::init_or_open(&current_dir)?;
-
         // If user selected nothing from menu (and there were multiple) AND there are
         // no deselected installed bundles, exit without creating/updating workspace.
-        //
-        // When there ARE deselected bundles (all were preselected and user toggled
-        // them off), we treat this as an "uninstall-only" operation that should
-        // proceed to uninstall the deselected bundles.
         if selected_bundles.is_empty() && discovered_count > 1 && deselected_bundle_names.is_empty()
         {
             return Ok(());
         }
+
+        // Something was selected (to install or uninstall) — prompt for platforms if not yet set
+        if args.platforms.is_empty() {
+            let detected = if current_dir.exists() {
+                detection::detect_platforms(&current_dir)?
+            } else {
+                vec![]
+            };
+            if detected.is_empty() {
+                let loader = platform::loader::PlatformLoader::new(&current_dir);
+                let available_platforms = loader.load()?;
+
+                if available_platforms.is_empty() {
+                    return Err(AugentError::NoPlatformsDetected);
+                }
+
+                println!("No platforms detected in workspace.");
+                match select_platforms_interactively(&available_platforms) {
+                    Ok(selected_platforms) => {
+                        if selected_platforms.is_empty() {
+                            println!("No platforms selected. Exiting.");
+                            return Ok(());
+                        }
+                        args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
+                    }
+                    Err(_) => {
+                        return Err(AugentError::NoPlatformsDetected);
+                    }
+                }
+            }
+        }
+
+        // Only now create workspace directory (user completed bundle and platform selection)
+        std::fs::create_dir_all(&current_dir).map_err(|e| AugentError::IoError {
+            message: format!("Failed to create workspace directory: {}", e),
+        })?;
+
+        // Initialize or open workspace (after bundle and platform selection)
+        let mut workspace = Workspace::init_or_open(&current_dir)?;
 
         // If some bundles were deselected that are already installed, handle uninstall FIRST.
         // Only if the uninstall succeeds (or is confirmed) do we proceed to install.

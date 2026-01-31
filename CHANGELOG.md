@@ -5,17 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.2] - 2026-01-31
 
 ### Added
 
-- **Universal resource format:** optional YAML frontmatter (common + platform blocks) in bundle resources; Augent merges at install and emits full merged frontmatter (except `targets`). See [bundles.md](docs/bundles.md#universal-resource-format).
-- **GitHub Copilot** (`--for copilot`): rules, commands, agents, skills, MCP, and AGENTS.md under `.github/`; auto-detected from `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`. See [platforms.md](docs/platforms.md).
-- **JetBrains Junie** (`--for junie`): rules, commands, agents, skills, MCP, and AGENTS.md under `.junie/`; auto-detected from `.junie` or `AGENTS.md`. See [platforms.md](docs/platforms.md).
+- Universal resource format: optional YAML frontmatter (common + platform blocks) in bundle resources; Augent merges at install and emits full merged frontmatter. See [bundles.md](docs/bundles.md#universal-resource-format).
+- GitHub Copilot (`--for copilot`): rules, commands, agents, skills, MCP, and AGENTS.md under `.github/`; auto-detected from `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`. See [platforms.md](docs/platforms.md).
+- JetBrains Junie (`--for junie`): rules, commands, agents, skills, MCP, and AGENTS.md under `.junie/`; auto-detected from `.junie` or `AGENTS.md`. See [platforms.md](docs/platforms.md).
 
 ### Changed
 
-- **Platform paths and detection:** OpenCode and Codex detect `AGENTS.md`; OpenCode MCP → `.opencode/opencode.json`; Gemini agents use nested paths (`agents/**/*.md` → `.gemini/agents/**/*.md`). Docs list unsupported resource types per platform. See [platforms.md](docs/platforms.md).
+- Platform paths and detection: OpenCode and Codex detect `AGENTS.md`; OpenCode MCP → `.opencode/opencode.json`; Gemini agents use nested paths (`agents/**/*.md` → `.gemini/agents/**/*.md`). Docs list unsupported resource types per platform. See [platforms.md](docs/platforms.md).
 
 ### Fixed
 
