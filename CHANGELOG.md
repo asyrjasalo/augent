@@ -7,19 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- `augent install` no longer creates `.augent/` when there is nothing to install (e.g. run in a directory with no workspace and no bundles to install).
+- **Universal resource format:** optional YAML frontmatter (common + platform blocks) in bundle resources; Augent merges at install and emits full merged frontmatter (except `targets`). See [bundles.md](docs/bundles.md#universal-resource-format).
+- **GitHub Copilot** (`--for copilot`): rules, commands, agents, skills, MCP, and AGENTS.md under `.github/`; auto-detected from `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`. See [platforms.md](docs/platforms.md).
+- **JetBrains Junie** (`--for junie`): rules, commands, agents, skills, MCP, and AGENTS.md under `.junie/`; auto-detected from `.junie` or `AGENTS.md`. See [platforms.md](docs/platforms.md).
 
 ### Changed
 
-- **Platform paths and detection:** OpenCode is now detected when `AGENTS.md` is present (in addition to `.opencode`). OpenCode MCP config is documented as `.opencode/opencode.json` (MCP key in main config). Codex CLI now supports root file `AGENTS.md`. Gemini agents support nested paths (`agents/**/*.md` → `.gemini/agents/**/*.md`). Documentation lists "Not implemented" for resource types that each platform does not support. See [platforms.md](docs/platforms.md).
+- **Platform paths and detection:** OpenCode and Codex detect `AGENTS.md`; OpenCode MCP → `.opencode/opencode.json`; Gemini agents use nested paths (`agents/**/*.md` → `.gemini/agents/**/*.md`). Docs list unsupported resource types per platform. See [platforms.md](docs/platforms.md).
 
-### Added
+### Fixed
 
-- **GitHub Copilot platform** (`--for copilot`): rules → `.github/instructions/*.instructions.md`, commands → `.github/prompts/*.prompt.md`, agents → `.github/agents/{name}/AGENTS.md`, skills → `.github/skills/{name}/SKILL.md`, MCP → `.github/mcp.json`, AGENTS.md → root `AGENTS.md`. Detection: `.github/copilot-instructions.md`, `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`. See [platforms.md](docs/platforms.md).
-- **JetBrains Junie platform** (`--for junie`): rules → `.junie/guidelines.md` (composite merge), commands → `.junie/commands/**/*.md`, agents → `.junie/agents/**/*.md`, skills → `.junie/skills/**/*`, MCP → `.junie/mcp.json`, AGENTS.md → root `AGENTS.md`. Detection: `.junie` or `AGENTS.md`. See [platforms.md](docs/platforms.md).
-- Universal resource format: optional YAML frontmatter in bundle resources (commands, rules, skills, agents) with common fields and platform-specific blocks (e.g. `opencode:`, `cursor:`). At install time, Augent merges common + platform block and emits the **full merged frontmatter** so common and platform-specific fields are preserved (except the `targets` field, which Augent does not use). All Augent platforms that have commands, rules, agents, or skills receive full merged YAML; Gemini commands use TOML. See [bundles.md](docs/bundles.md#universal-resource-format).
+- `augent install` no longer creates `.augent/` when there is nothing to install (e.g. run in a directory with no workspace and no bundles to install).
 
 ## [0.6.1] - 2026-01-29
 

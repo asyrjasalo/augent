@@ -1,4 +1,8 @@
-//! Common test utilities for Augent integration tests
+//! Common test utilities for Augent integration tests.
+//!
+//! Each test must create its own [`TestWorkspace`] via [`TestWorkspace::new`] and run augent
+//! through [`augent_cmd_for_workspace`] or [`configure_augent_cmd`] with that workspace path.
+//! Do not share workspace directories between tests.
 
 mod interactive;
 
@@ -7,6 +11,7 @@ pub use interactive::{InteractiveTest, MenuAction, run_with_timeout, send_menu_a
 
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Once;
 use tempfile::TempDir;
 
 /// Enforce isolated test env when spawning the augent binary: clear inherited workspace/cache/temp
@@ -97,10 +102,25 @@ fn test_temp_base() -> PathBuf {
     }
 }
 
-/// Get the base directory for test workspace temporary directories.
-/// Always outside the repo (platform temp, e.g. /tmp).
-fn test_workspace_temp_base() -> PathBuf {
-    platform_temp_fallback()
+/// Base for workspace dirs; created once per process to avoid repeated create_dir_all.
+/// Uses test_temp_base() so CI can set AUGENT_TEST_CACHE_DIR and put workspaces and caches under one base.
+fn ensure_workspace_base() -> PathBuf {
+    static INIT: Once = Once::new();
+    let base = test_temp_base().join("augent-test-workspaces");
+    INIT.call_once(|| {
+        std::fs::create_dir_all(&base).expect("Failed to create test workspace base directory");
+    });
+    base
+}
+
+/// Base for cache dirs; created once per process so each workspace only creates its hash subdir.
+fn ensure_cache_base() -> PathBuf {
+    static INIT: Once = Once::new();
+    let base = test_temp_base().join("augent-test-cache");
+    INIT.call_once(|| {
+        std::fs::create_dir_all(&base).expect("Failed to create test cache base directory");
+    });
+    base
 }
 
 /// Cache directory for a given workspace path. Same workspace path always gets the same cache
@@ -108,9 +128,7 @@ fn test_workspace_temp_base() -> PathBuf {
 pub(crate) fn test_cache_dir_for_workspace(workspace_path: &Path) -> PathBuf {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     workspace_path.hash(&mut hasher);
-    let cache_path = test_temp_base()
-        .join("augent-test-cache")
-        .join(format!("{:016x}", hasher.finish()));
+    let cache_path = ensure_cache_base().join(format!("{:016x}", hasher.finish()));
     std::fs::create_dir_all(&cache_path).expect("Failed to create test cache directory");
     cache_path
 }
@@ -133,6 +151,8 @@ pub fn test_cache_dir() -> PathBuf {
     cache_path
 }
 
+/// A temporary workspace directory for a single test. Each test must create its own
+/// `TestWorkspace` via `TestWorkspace::new()` and must not share workspace paths between tests.
 #[allow(dead_code)] // Used by test files via common::TestWorkspace
 pub struct TestWorkspace {
     #[allow(dead_code)] // Part of TestWorkspace struct used by tests
@@ -141,11 +161,10 @@ pub struct TestWorkspace {
 }
 
 impl TestWorkspace {
-    /// Create a new test workspace under the platform temp (e.g. /tmp).
-    /// Never creates anything inside the repository directory.
+    /// Create a new test workspace. Each call creates a unique directory; use exactly one
+    /// per test so workspaces are never shared. Never creates anything inside the repository.
     pub fn new() -> Self {
-        let base = test_workspace_temp_base();
-        std::fs::create_dir_all(&base).expect("Failed to create test workspace base directory");
+        let base = ensure_workspace_base();
         let temp = TempDir::new_in(&base).expect("Failed to create temp directory");
         let path = temp.path().to_path_buf();
         // Ensure we never run tests inside the repo (path must not be under CARGO_MANIFEST_DIR)
