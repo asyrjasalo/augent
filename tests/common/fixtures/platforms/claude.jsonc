@@ -34,7 +34,7 @@
     },
     {
       "from": "mcp.jsonc",
-      "to": ".claude/mcp.jsonc",
+      "to": ".mcp.json",
       "merge": "shallow"
     },
     {

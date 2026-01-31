@@ -172,6 +172,7 @@ impl TransformEngine {
 - `commands/*.md` → `.claude/commands/{name}.md`
 - `rules/*.md` → `.claude/rules/{name}.md`
 - `skills/*.md` → `.claude/skills/{name}.md`
+- `mcp.jsonc` → `.mcp.json` (project root for Claude Code), `.cursor/mcp.json`, etc.; see platform configuration
 - Platform-specific rules defined in platform configuration
 
 #### 7. File Installation

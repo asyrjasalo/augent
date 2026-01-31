@@ -436,6 +436,7 @@ Export flow (universal → platform):
     }
   ]
 }
+// Note: Claude Code uses .mcp.json at project root only, not .claude/mcp.json.
 // Note: OpenCode uses .opencode/opencode.json (MCP key in main config), not .opencode/mcp.json
 ```
 
