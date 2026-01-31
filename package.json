@@ -1,6 +1,6 @@
 {
   "name": "augent",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Lean package manager for various AI coding platforms",
   "author": "Anssi Syrjäsalo",
   "license": "AGPL-3.0",
