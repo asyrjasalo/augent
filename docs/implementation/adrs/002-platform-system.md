@@ -18,10 +18,10 @@ Need to support many AI coding platforms (Claude, Cursor, OpenCode, etc.) with d
 
 | Universal Path | Claude | Cursor | OpenCode |
 |---------------|--------|--------|----------|
-| `commands/*.md` | `.claude/commands/*.md` | `.cursor/rules/*.mdc` | `.opencode/commands/*.md` |
+| `commands/*.md` | `.claude/commands/*.md` | `.cursor/commands/*.md` | `.opencode/commands/*.md` |
 | `rules/*.md` | `.claude/rules/*.md` | `.cursor/rules/*.mdc` | `.opencode/rules/*.md` |
 | `agents/*.md` | `.claude/agents/*.md` | `.cursor/agents/*.md` | `.opencode/agents/*.md` |
-| `mcp.jsonc` | `.claude/mcp.json` | N/A | `.opencode/mcp.json` |
+| `mcp.jsonc` | `.claude/mcp.json` | `.cursor/mcp.json` | `.opencode/opencode.json` (MCP key in config) |
 | `AGENTS.md` | `CLAUDE.md` | `AGENTS.md` | `AGENTS.md` |
 
 ## Consequences

@@ -196,7 +196,7 @@ for bundle in bundles {
 **Merge strategies:**
 
 - `replace`: Overwrite completely (default for most files)
-- `composite`: Merge with delimiters (AGENTS.md, mcp.jsonc)
+- `composite`: Merge with delimiters (AGENTS.md, root files). MCP config uses `deep` merge.
 - `shallow`: Merge top-level keys only
 - `deep`: Recursively merge nested structures
 

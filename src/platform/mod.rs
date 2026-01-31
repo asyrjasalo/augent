@@ -15,6 +15,9 @@ pub mod detection;
 pub mod loader;
 pub mod merge;
 
+#[cfg(test)]
+mod tests;
+
 /// A supported AI coding platform
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Platform {
@@ -142,6 +145,8 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".augment/commands/**/*.md",
             )),
         // Claude Code
+        // Note: Official Claude Code docs use project-root .mcp.json for project-scope MCP.
+        // Augent uses .claude/mcp.json so all platform resources live under .claude/.
         Platform::new("claude", "Claude Code", ".claude")
             .with_detection(".claude")
             .with_detection("CLAUDE.md")
@@ -240,6 +245,9 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".codex/config.toml")
                     .with_merge(MergeStrategy::Deep),
+            )
+            .with_transform(
+                TransformRule::new("AGENTS.md", "AGENTS.md").with_merge(MergeStrategy::Composite),
             ),
         // Factory AI
         Platform::new("factory", "Factory AI", ".factory")
@@ -318,6 +326,7 @@ pub fn default_platforms() -> Vec<Platform> {
         // OpenCode
         Platform::new("opencode", "OpenCode", ".opencode")
             .with_detection(".opencode")
+            .with_detection("AGENTS.md")
             .with_transform(TransformRule::new(
                 "commands/**/*.md",
                 ".opencode/commands/**/*.md",
@@ -392,7 +401,10 @@ pub fn default_platforms() -> Vec<Platform> {
                 "commands/**/*.md",
                 ".gemini/commands/**/*.md",
             ))
-            .with_transform(TransformRule::new("agents/*.md", ".gemini/agents/*.md"))
+            .with_transform(TransformRule::new(
+                "agents/**/*.md",
+                ".gemini/agents/**/*.md",
+            ))
             .with_transform(TransformRule::new(
                 "skills/**/*.md",
                 ".gemini/skills/**/*.md",
@@ -409,7 +421,7 @@ pub fn default_platforms() -> Vec<Platform> {
 }
 
 #[cfg(test)]
-mod tests {
+mod unit_tests {
     use super::*;
     use tempfile::TempDir;
 

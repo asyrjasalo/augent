@@ -132,10 +132,10 @@ Augent infers workspace name from git remote:
 
 | Resource Type | Cursor | Claude Code | OpenCode |
 |--------------|--------|-------------|----------|
-| Rules | `.cursor/rules/` | `.claude/rules/` | `.opencode/rules/` |
-| Skills | `.cursor/skills/` | `.claude/skills/` | `.opencode/skills/` |
+| Rules | `.cursor/rules/` (`.mdc`) | `.claude/rules/` | `.opencode/rules/` |
+| Skills | `.cursor/skills/` | `.claude/skills/` | `.opencode/skills/` (each skill in `{name}/SKILL.md`) |
 | Commands | `.cursor/commands/` | `.claude/commands/` | `.opencode/commands/` |
-| MCP | `.cursor/mcp.jsonc` | `.claude/mcp.jsonc` | `.opencode/mcp.jsonc` |
+| MCP | `.cursor/mcp.json` | `.claude/mcp.json` | `.opencode/opencode.json` (MCP key in main config) |
 | AGENTS.md | Merged into `AGENTS.md` | Merged into `CLAUDE.md` | Merged into `AGENTS.md` |
 | Root files | Copied to workspace root |  |  |
 
@@ -144,8 +144,8 @@ Augent infers workspace name from git remote:
 | File Type | Merge Strategy | Behavior |
 |-----------|----------------|----------|
 | Rules/Skills/Commands | Replace | Later bundle overwrites earlier |
-| MCP.jsonc | Composite | Config merged, later values override |
-| AGENTS.md | Composite | Text merged with delimiter |
+| MCP config (mcp.json, opencode.json) | Deep | JSON merged, later values override |
+| AGENTS.md / root file | Composite | Text merged with delimiter |
 | Root files | Replace | Later bundle overwrites earlier |
 
 ---

@@ -436,6 +436,7 @@ Export flow (universal → platform):
     }
   ]
 }
+// Note: OpenCode uses .opencode/opencode.json (MCP key in main config), not .opencode/mcp.json
 ```
 
 ### Merge Strategies
@@ -444,8 +445,8 @@ Export flow (universal → platform):
 |----------|----------|----------|
 | `replace` | Overwrite entire file | Commands, rules |
 | `shallow` | Merge top-level keys | Simple configs |
-| `deep` | Recursive merge | Nested configs |
-| `composite` | Append with delimiter | AGENTS.md |
+| `deep` | Recursive merge | MCP config, nested configs |
+| `composite` | Append with delimiter | AGENTS.md, root files |
 
 ---
 

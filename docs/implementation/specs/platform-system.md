@@ -220,8 +220,9 @@ impl TransformEngine {
 |---------------|----------|-------------|
 | `commands/deploy.md` | Claude | `.claude/commands/deploy.md` |
 | `rules/debug.md` | Cursor | `.cursor/rules/debug.mdc` |
-| `skills/analyze.md` | OpenCode | `.opencode/skills/analyze.md` |
-| `mcp.jsonc` | Any | `.platform/mcp.json` |
+| `skills/analyze.md` | OpenCode | `.opencode/skills/analyze/SKILL.md` |
+| `mcp.jsonc` | Claude/Cursor | `.claude/mcp.json` / `.cursor/mcp.json` |
+| `mcp.jsonc` | OpenCode | `.opencode/opencode.json` (MCP key in main config) |
 
 #### 5. Merge Strategies
 

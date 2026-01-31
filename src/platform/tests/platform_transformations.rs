@@ -1,21 +1,21 @@
 //! Comprehensive platform transformation tests for all 14 supported platforms
 
-use tempfile::TempDir;
-
-use super::{default_platforms, detection::get_platform};
+use crate::platform::{MergeStrategy, default_platforms, detection::get_platform};
 
 /// Helper to verify transformation rules exist
 fn verify_transform_rule(platform_id: &str, from_pattern: &str, expected_to: &str) {
-    let platform =
-        get_platform(platform_id, None).expect(&format!("Platform {} not found", platform_id));
+    let platform = get_platform(platform_id, None)
+        .unwrap_or_else(|| panic!("Platform {} not found", platform_id));
     let rule = platform
         .transforms
         .iter()
         .find(|t| t.from == from_pattern)
-        .expect(&format!(
-            "No transform rule for {} from {}",
-            platform_id, from_pattern
-        ));
+        .unwrap_or_else(|| {
+            panic!(
+                "No transform rule for {} from {}",
+                platform_id, from_pattern
+            )
+        });
 
     assert_eq!(rule.to, expected_to);
 }
@@ -145,6 +145,18 @@ fn test_codex_mcp_to_toml_transform() {
         .unwrap();
 
     assert_eq!(rule.to, ".codex/config.toml");
+}
+
+#[test]
+fn test_codex_agents_md_transform() {
+    let platform = get_platform("codex", None).unwrap();
+    let rule = platform
+        .transforms
+        .iter()
+        .find(|t| t.from == "AGENTS.md")
+        .unwrap();
+
+    assert_eq!(rule.to, "AGENTS.md");
 }
 
 #[test]
@@ -311,7 +323,11 @@ fn test_opencode_agents_transform() {
 
 #[test]
 fn test_opencode_skills_transform() {
-    verify_transform_rule("opencode", "skills/**/*.md", ".opencode/skills/**/*.md");
+    verify_transform_rule(
+        "opencode",
+        "skills/**/*.md",
+        ".opencode/skills/{name}/SKILL.md",
+    );
 }
 
 #[test]
@@ -323,7 +339,7 @@ fn test_opencode_mcp_transform() {
         .find(|t| t.from == "mcp.jsonc")
         .unwrap();
 
-    assert_eq!(rule.to, ".opencode/mcp.json");
+    assert_eq!(rule.to, ".opencode/opencode.json");
 }
 
 #[test]
@@ -432,6 +448,7 @@ fn test_windsurf_skills_transform() {
 fn test_cursor_extension_transformation() {
     let platform = get_platform("cursor", None).unwrap();
 
+    // Cursor rules use .mdc extension
     let rules_rule = platform
         .transforms
         .iter()
@@ -439,12 +456,13 @@ fn test_cursor_extension_transformation() {
         .unwrap();
     assert_eq!(rules_rule.extension, Some("mdc".to_string()));
 
+    // Cursor commands keep .md (no extension transform)
     let commands_rule = platform
         .transforms
         .iter()
         .find(|t| t.from == "commands/**/*.md")
         .unwrap();
-    assert_eq!(commands_rule.extension, Some("mdc".to_string()));
+    assert_eq!(commands_rule.extension, None);
 }
 
 #[test]
@@ -470,14 +488,11 @@ fn test_mcp_merge_strategies() {
             .transforms
             .iter()
             .find(|t| t.from == "mcp.jsonc" || t.from == "mcp.json")
-            .expect(&format!(
-                "Platform {} has no MCP transform rule",
-                platform_id
-            ));
+            .unwrap_or_else(|| panic!("Platform {} has no MCP transform rule", platform_id));
 
         assert_eq!(
             mcp_rule.merge,
-            augent::platform::MergeStrategy::Deep,
+            MergeStrategy::Deep,
             "Platform {} MCP should use deep merge",
             platform_id
         );
@@ -486,7 +501,7 @@ fn test_mcp_merge_strategies() {
 
 #[test]
 fn test_gemini_commands_transform() {
-    verify_transform_rule("gemini", "commands/**/*.md", ".gemini/commands/**/*.toml");
+    verify_transform_rule("gemini", "commands/**/*.md", ".gemini/commands/**/*.md");
 }
 
 #[test]
@@ -499,12 +514,12 @@ fn test_gemini_commands_extension() {
         .iter()
         .find(|t| t.from == "commands/**/*.md")
         .unwrap();
-    assert_eq!(commands_rule.extension, Some("toml".to_string()));
+    assert_eq!(commands_rule.extension, None);
 }
 
 #[test]
 fn test_gemini_agents_transform() {
-    verify_transform_rule("gemini", "agents/*.md", ".gemini/agents/*.md");
+    verify_transform_rule("gemini", "agents/**/*.md", ".gemini/agents/**/*.md");
 }
 
 #[test]
@@ -531,7 +546,7 @@ fn test_gemini_root_files_transform() {
     assert_eq!(agents_rule.to, "GEMINI.md");
     assert_eq!(
         agents_rule.merge,
-        augent::platform::MergeStrategy::Composite,
+        MergeStrategy::Composite,
         "Gemini AGENTS.md should use composite merge"
     );
 
@@ -541,7 +556,7 @@ fn test_gemini_root_files_transform() {
         .find(|t| t.from == "mcp.jsonc")
         .expect("Gemini platform should have mcp.jsonc transform rule");
 
-    assert_eq!(mcp_rule.merge, augent::platform::MergeStrategy::Deep);
+    assert_eq!(mcp_rule.merge, MergeStrategy::Deep);
 }
 
 #[test]
@@ -566,10 +581,7 @@ fn test_root_file_merge_strategies() {
             .transforms
             .iter()
             .find(|t| t.from == "AGENTS.md")
-            .expect(&format!(
-                "Platform {} has no AGENTS.md transform rule",
-                platform_id
-            ));
+            .unwrap_or_else(|| panic!("Platform {} has no AGENTS.md transform rule", platform_id));
 
         assert_eq!(
             agents_rule.to, expected_to,

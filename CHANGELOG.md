@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Platform paths and detection:** OpenCode is now detected when `AGENTS.md` is present (in addition to `.opencode`). OpenCode MCP config is documented as `.opencode/opencode.json` (MCP key in main config). Codex CLI now supports root file `AGENTS.md`. Gemini agents support nested paths (`agents/**/*.md` → `.gemini/agents/**/*.md`). Documentation lists "Not implemented" for resource types that each platform does not support. See [platforms.md](docs/platforms.md).
+
 ### Added
 
 - **GitHub Copilot platform** (`--for copilot`): rules → `.github/instructions/*.instructions.md`, commands → `.github/prompts/*.prompt.md`, agents → `.github/agents/{name}/AGENTS.md`, skills → `.github/skills/{name}/SKILL.md`, MCP → `.github/mcp.json`, AGENTS.md → root `AGENTS.md`. Detection: `.github/copilot-instructions.md`, `.github/instructions`, `.github/skills`, `.github/prompts`, or `AGENTS.md`. See [platforms.md](docs/platforms.md).

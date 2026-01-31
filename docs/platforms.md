@@ -1,6 +1,6 @@
 # Platform Support
 
-Augent supports 16 AI coding platforms through a flexible platform system.
+Augent supports 16 AI coding platforms through a flexible platform system. This document is the reference for which platforms are supported, how they are detected, and where resources (commands, rules, agents, skills, MCP config, root file) are installed. Resource types a platform does not support are listed as "Not implemented" for that platform.
 
 ## Supported Platforms
 
@@ -13,6 +13,9 @@ Augent supports 16 AI coding platforms through a flexible platform system.
   - Rules: `.agent/rules/**/*.md`
   - Commands: `.agent/workflows/**/*.md`
   - Skills: `.agent/skills/**/*`
+  - Agents: Not implemented
+  - MCP Config: Not implemented
+  - Root File: Not implemented
 
 ### Augment Code
 
@@ -22,6 +25,10 @@ Augent supports 16 AI coding platforms through a flexible platform system.
 - **Resource Locations:**
   - Rules: `.augment/rules/**/*.md`
   - Commands: `.augment/commands/**/*.md`
+  - Agents: Not implemented
+  - Skills: Not implemented
+  - MCP Config: Not implemented
+  - Root File: Not implemented
 
 ### Claude Code
 
@@ -46,6 +53,8 @@ Augent supports 16 AI coding platforms through a flexible platform system.
   - Skills: `.codex/skills/**/*`
   - MCP Config: `.codex/config.toml`
   - Root File: `AGENTS.md`
+  - Rules: Not implemented
+  - Agents: Not implemented
 
 ### GitHub Copilot
 
@@ -84,6 +93,7 @@ Augent supports 16 AI coding platforms through a flexible platform system.
   - Skills: `.factory/skills/**/*`
   - MCP Config: `.factory/settings/mcp.json`
   - Root File: `AGENTS.md`
+  - Rules: Not implemented
 
 ### JetBrains Junie
 
@@ -118,6 +128,10 @@ Augent supports 16 AI coding platforms through a flexible platform system.
 - **Resource Locations:**
   - Rules: `.kiro/steering/**/*.md`
   - MCP Config: `.kiro/settings/mcp.json`
+  - Commands: Not implemented
+  - Agents: Not implemented
+  - Skills: Not implemented
+  - Root File: Not implemented
 
 ### OpenCode
 
@@ -128,8 +142,8 @@ Augent supports 16 AI coding platforms through a flexible platform system.
   - Commands: `.opencode/commands/**/*.md`
   - Rules: `.opencode/rules/**/*.md`
   - Agents: `.opencode/agents/**/*.md`
-  - Skills: `.opencode/skills/**/*.md`
-  - MCP Config: `.opencode/mcp.json`
+  - Skills: `.opencode/skills/**/*.md` (each skill in `{name}/SKILL.md`)
+  - MCP Config: `.opencode/opencode.json` (MCP is a key in the main config)
   - Root File: `AGENTS.md`
 
 ### Qwen Code
@@ -142,6 +156,8 @@ Augent supports 16 AI coding platforms through a flexible platform system.
   - Skills: `.qwen/skills/**/*`
   - MCP Config: `.qwen/settings.json`
   - Root File: `QWEN.md`
+  - Commands: Not implemented
+  - Rules: Not implemented
 
 ### Roo Code
 
@@ -153,6 +169,8 @@ Augent supports 16 AI coding platforms through a flexible platform system.
   - Skills: `.roo/skills/**/*`
   - MCP Config: `.roo/mcp.json`
   - Root File: `AGENTS.md`
+  - Rules: Not implemented
+  - Agents: Not implemented
 
 ### Warp
 
@@ -161,6 +179,11 @@ Augent supports 16 AI coding platforms through a flexible platform system.
 - **Detection:** `.warp` directory or `WARP.md` file
 - **Resource Locations:**
   - Root File: `WARP.md`
+  - Commands: Not implemented
+  - Rules: Not implemented
+  - Agents: Not implemented
+  - Skills: Not implemented
+  - MCP Config: Not implemented
 
 ### Windsurf
 
@@ -170,6 +193,10 @@ Augent supports 16 AI coding platforms through a flexible platform system.
 - **Resource Locations:**
   - Rules: `.windsurf/rules/**/*.md`
   - Skills: `.windsurf/skills/**/*`
+  - Commands: Not implemented
+  - Agents: Not implemented
+  - MCP Config: Not implemented
+  - Root File: Not implemented
 
 ### Gemini CLI
 
@@ -177,9 +204,12 @@ Augent supports 16 AI coding platforms through a flexible platform system.
 - **Directory:** `.gemini/`
 - **Detection:** `.gemini` directory or `GEMINI.md` file
 - **Resource Locations:**
+  - Commands: `.gemini/commands/**/*.md`
+  - Agents: `.gemini/agents/**/*.md`
   - Skills: `.gemini/skills/**/*`
   - MCP Config: `.gemini/settings.json`
   - Root File: `GEMINI.md`
+  - Rules: Not implemented
 
 ## Platform Detection
 
@@ -287,7 +317,7 @@ Augent automatically transforms universal resources to platform-specific formats
 | `rules/**/*.md` | `.claude/rules/`, `.cursor/rules/*.mdc`, `.opencode/rules/`, `.github/instructions/*.instructions.md`, `.junie/guidelines.md`, `.kilocode/rules/`, `.kiro/steering/` |
 | `agents/**/*.md` | `.claude/agents/`, `.cursor/agents/`, `.opencode/agents/`, `.github/agents/*/AGENTS.md`, `.junie/agents/`, `.factory/droids/`, `.qwen/agents/` |
 | `skills/**/*` | `.claude/skills/`, `.cursor/skills/`, `.opencode/skills/`, `.github/skills/*/SKILL.md`, `.junie/skills/`, `.windsurf/skills/`, `.gemini/skills/` |
-| `mcp.jsonc` | `.claude/mcp.json`, `.cursor/mcp.json`, `.opencode/mcp.json`, `.github/mcp.json`, `.junie/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
+| `mcp.jsonc` | `.claude/mcp.json`, `.cursor/mcp.json`, `.opencode/opencode.json`, `.github/mcp.json`, `.junie/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
 | `AGENTS.md` | `CLAUDE.md`, `AGENTS.md`, `QWEN.md`, `WARP.md`, `GEMINI.md` |
 
 For complete transformation details, see [Platform Configuration Schema](platforms_schema.md).
@@ -303,7 +333,8 @@ When multiple bundles provide the same resource, Augent uses merge strategies:
 
 Special handling:
 
-- `AGENTS.md` and `mcp.jsonc` use composite merge by default
+- `AGENTS.md` (and platform root files like `CLAUDE.md`, `WARP.md`) use composite merge
+- MCP config (`mcp.json`, `opencode.json`, etc.) use deep merge so JSON is merged
 - Most other resources use replace merge
 
 For detailed merge behavior, see [Platform Configuration Schema](platforms_schema.md#merge-strategies).

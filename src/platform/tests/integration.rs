@@ -3,7 +3,7 @@
 use std::fs;
 use tempfile::TempDir;
 
-use super::{default_platforms, detection::detect_platforms};
+use crate::platform::{default_platforms, detection::detect_platforms};
 
 #[test]
 fn test_all_platforms_defined() {

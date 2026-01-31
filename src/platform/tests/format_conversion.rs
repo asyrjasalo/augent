@@ -3,7 +3,7 @@
 use std::fs;
 use tempfile::TempDir;
 
-use super::merge::MergeStrategy;
+use crate::platform::merge::MergeStrategy;
 
 #[test]
 fn test_deep_merge_mcp_config_simple() {
@@ -211,10 +211,12 @@ fn test_composite_merge_multiple_bundles() {
         .merge_strings(&fs::read_to_string(&existing_path).unwrap(), new_content)
         .unwrap();
 
-    assert!(result.contains("<!-- BEGIN Bundle 1 -->"));
-    assert!(result.contains("<!-- END Bundle 1 -->"));
-    assert!(result.contains("<!-- BEGIN Bundle 2 -->"));
-    assert!(result.contains("<!-- END Bundle 2 -->"));
+    // Composite merge uses separator "<!-- Augent: Additional content below -->"
+    assert!(result.contains("Bundle 1"));
+    assert!(result.contains("Content 1"));
+    assert!(result.contains("Bundle 2"));
+    assert!(result.contains("Content 2"));
+    assert!(result.contains("<!-- Augent: Additional content below -->"));
 }
 
 #[test]
@@ -396,7 +398,8 @@ fn test_deep_merge_invalid_json_new() {
     let existing_path = temp.path().join("mcp.json");
     fs::write(&existing_path, existing).unwrap();
 
-    let result = merge_files(&existing_path, new_content, MergeStrategy::Deep);
+    let existing_str = fs::read_to_string(&existing_path).unwrap();
+    let result = MergeStrategy::Deep.merge_strings(&existing_str, new_content);
 
     assert!(result.is_err());
 }
@@ -412,7 +415,8 @@ fn test_deep_merge_invalid_json_existing() {
     let existing_path = temp.path().join("mcp.json");
     fs::write(&existing_path, existing).unwrap();
 
-    let result = merge_files(&existing_path, new_content, MergeStrategy::Deep);
+    let existing_str = fs::read_to_string(&existing_path).unwrap();
+    let result = MergeStrategy::Deep.merge_strings(&existing_str, new_content);
 
     assert!(result.is_err());
 }

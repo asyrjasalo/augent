@@ -223,7 +223,7 @@ Recursively merge all nested structures. Later values override earlier ones at t
 Merge text files using delimiters. Preserves content from both files.
 
 - **Use for:** Text documentation files like AGENTS.md, CLAUDE.md
-- **Default for:** AGENTS.md and mcp.jsonc (special handling)
+- **Default for:** AGENTS.md (root file). MCP config uses deep merge in built-in platforms.
 - **Delimiters:**
   - Start delimiter: `<!-- BEGIN: bundle-name -->`
   - End delimiter: `<!-- END: bundle-name -->`
@@ -280,7 +280,7 @@ Merge text files using delimiters. Preserves content from both files.
         {
           "from": "mcp.jsonc",
           "to": ".claude/mcp.json",
-          "merge": "composite"
+          "merge": "deep"
         },
         {
           "from": "AGENTS.md",
@@ -300,9 +300,9 @@ Merge text files using delimiters. Preserves content from both files.
       "transforms": [
         {
           "from": "commands/*.md",
-          "to": ".cursor/commands/{name}.mdc",
+          "to": ".cursor/commands/{name}.md",
           "merge": "replace",
-          "extension": "mdc"
+          "extension": "md"
         },
         {
           "from": "rules/*.md",
@@ -312,20 +312,20 @@ Merge text files using delimiters. Preserves content from both files.
         },
         {
           "from": "agents/*.md",
-          "to": ".cursor/agents/{name}.mdc",
+          "to": ".cursor/agents/{name}.md",
           "merge": "replace",
-          "extension": "mdc"
+          "extension": "md"
         },
         {
           "from": "skills/*.md",
-          "to": ".cursor/skills/{name}.mdc",
+          "to": ".cursor/skills/{name}.md",
           "merge": "replace",
-          "extension": "mdc"
+          "extension": "md"
         },
         {
           "from": "mcp.jsonc",
           "to": ".cursor/mcp.json",
-          "merge": "composite"
+          "merge": "deep"
         },
         {
           "from": "AGENTS.md",
@@ -363,14 +363,14 @@ Merge text files using delimiters. Preserves content from both files.
         },
         {
           "from": "skills/*.md",
-          "to": ".opencode/skills/{name}.md",
+          "to": ".opencode/skills/{name}/SKILL.md",
           "merge": "replace",
           "extension": "md"
         },
         {
           "from": "mcp.jsonc",
-          "to": ".opencode/mcp.json",
-          "merge": "composite"
+          "to": ".opencode/opencode.json",
+          "merge": "deep"
         },
         {
           "from": "AGENTS.md",

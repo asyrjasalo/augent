@@ -191,7 +191,7 @@ rules/
 
 - `.cursor/rules/debug.mdc`
 - `.claude/rules/debug.md`
-- `.opencode/agents/debug.md`
+- `.opencode/rules/debug.md`
 
 ### Skills (`skills/`)
 
@@ -205,9 +205,9 @@ skills/
 
 **Transformed to:**
 
-- `.cursor/skills/analyze.mdc`
+- `.cursor/skills/analyze.md`
 - `.claude/skills/analyze.md`
-- `.opencode/skills/analyze.md`
+- `.opencode/skills/analyze/SKILL.md` (each skill in its own directory)
 
 ### Commands (`commands/`)
 
@@ -220,7 +220,7 @@ commands/
 
 **Transformed to:**
 
-- `.cursor/commands/deploy.mdc`
+- `.cursor/commands/deploy.md`
 - `.claude/commands/deploy.md`
 - `.opencode/commands/deploy.md`
 
@@ -241,9 +241,9 @@ MCP server configuration:
 
 **Transformed to:**
 
-- `.cursor/mcp.jsonc` (merged)
-- `.claude/mcp.jsonc` (merged)
-- `.opencode/mcp.jsonc` (merged)
+- `.cursor/mcp.json` (merged)
+- `.claude/mcp.json` (merged)
+- `.opencode/opencode.json` (MCP key in main config; merged)
 
 ### AGENTS.md (`agents.md`)
 
