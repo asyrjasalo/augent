@@ -229,11 +229,11 @@ bundles: []
         "Agents resource should be installed"
     );
     assert!(
-        workspace.file_exists(".claude/mcp.json"),
-        "MCP server configuration should be installed"
+        workspace.file_exists(".mcp.json"),
+        "MCP server configuration should be installed (Claude Code reads project-root .mcp.json)"
     );
 
-    let mcp_content = workspace.read_file(".claude/mcp.json");
+    let mcp_content = workspace.read_file(".mcp.json");
     assert!(
         mcp_content.contains("filesystem"),
         "MCP server should be in config"

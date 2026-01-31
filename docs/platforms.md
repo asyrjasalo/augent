@@ -40,7 +40,7 @@ Augent supports 16 AI coding platforms through a flexible platform system. This 
   - Rules: `.claude/rules/**/*.md`
   - Agents: `.claude/agents/**/*.md`
   - Skills: `.claude/skills/**/*.md`
-  - MCP Config: `.claude/mcp.json`
+  - MCP Config: `.mcp.json` (project root; Claude Code reads this location)
   - Root File: `CLAUDE.md`
 
 ### Codex CLI
@@ -317,7 +317,7 @@ Augent automatically transforms universal resources to platform-specific formats
 | `rules/**/*.md` | `.claude/rules/`, `.cursor/rules/*.mdc`, `.opencode/rules/`, `.github/instructions/*.instructions.md`, `.junie/guidelines.md`, `.kilocode/rules/`, `.kiro/steering/` |
 | `agents/**/*.md` | `.claude/agents/`, `.cursor/agents/`, `.opencode/agents/`, `.github/agents/*/AGENTS.md`, `.junie/agents/`, `.factory/droids/`, `.qwen/agents/` |
 | `skills/**/*` | `.claude/skills/`, `.cursor/skills/`, `.opencode/skills/`, `.github/skills/*/SKILL.md`, `.junie/skills/`, `.windsurf/skills/`, `.gemini/skills/` |
-| `mcp.jsonc` | `.claude/mcp.json`, `.cursor/mcp.json`, `.opencode/opencode.json`, `.github/mcp.json`, `.junie/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
+| `mcp.jsonc` | `.mcp.json` (Claude; project root), `.cursor/mcp.json`, `.opencode/opencode.json`, `.github/mcp.json`, `.junie/mcp.json`, `.codex/config.toml`, `.qwen/settings.json` |
 | `AGENTS.md` | `CLAUDE.md`, `AGENTS.md`, `QWEN.md`, `WARP.md`, `GEMINI.md` |
 
 For complete transformation details, see [Platform Configuration Schema](platforms_schema.md).

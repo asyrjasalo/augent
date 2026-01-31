@@ -78,7 +78,7 @@ fn test_claude_mcp_transform() {
         .find(|t| t.from == "mcp.jsonc")
         .unwrap();
 
-    assert_eq!(rule.to, ".claude/mcp.json");
+    assert_eq!(rule.to, ".mcp.json");
 }
 
 #[test]

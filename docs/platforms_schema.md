@@ -279,7 +279,7 @@ Merge text files using delimiters. Preserves content from both files.
         },
         {
           "from": "mcp.jsonc",
-          "to": ".claude/mcp.json",
+          "to": ".mcp.json",
           "merge": "deep"
         },
         {

@@ -45,7 +45,7 @@ Or in platform-specific format after installation.
 
 - `.cursor/rules/debug.mdc` (Cursor-specific)
 - `.opencode/commands/debug.md` (OpenCode-specific)
-- `.claude/mcp.json` (Claude-specific)
+- `.mcp.json` (project root; Claude Code)
 
 ---
 

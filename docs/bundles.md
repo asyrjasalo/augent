@@ -242,7 +242,7 @@ MCP server configuration:
 **Transformed to:**
 
 - `.cursor/mcp.json` (merged)
-- `.claude/mcp.json` (merged)
+- `.mcp.json` (project root; Claude Code; merged)
 - `.opencode/opencode.json` (MCP key in main config; merged)
 
 ### AGENTS.md (`agents.md`)

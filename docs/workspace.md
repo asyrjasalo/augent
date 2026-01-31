@@ -135,7 +135,7 @@ Augent infers workspace name from git remote:
 | Rules | `.cursor/rules/` (`.mdc`) | `.claude/rules/` | `.opencode/rules/` |
 | Skills | `.cursor/skills/` | `.claude/skills/` | `.opencode/skills/` (each skill in `{name}/SKILL.md`) |
 | Commands | `.cursor/commands/` | `.claude/commands/` | `.opencode/commands/` |
-| MCP | `.cursor/mcp.json` | `.claude/mcp.json` | `.opencode/opencode.json` (MCP key in main config) |
+| MCP | `.cursor/mcp.json` | `.mcp.json` (project root; Claude Code) | `.opencode/opencode.json` (MCP key in main config) |
 | AGENTS.md | Merged into `AGENTS.md` | Merged into `CLAUDE.md` | Merged into `AGENTS.md` |
 | Root files | Copied to workspace root |  |  |
 

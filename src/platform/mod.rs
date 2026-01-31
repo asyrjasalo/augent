@@ -145,8 +145,8 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".augment/commands/**/*.md",
             )),
         // Claude Code
-        // Note: Official Claude Code docs use project-root .mcp.json for project-scope MCP.
-        // Augent uses .claude/mcp.json so all platform resources live under .claude/.
+        // Official Claude Code docs: project-scope MCP is .mcp.json at project root only.
+        // Augent uses .mcp.json so Claude Code picks up installed MCP config.
         Platform::new("claude", "Claude Code", ".claude")
             .with_detection(".claude")
             .with_detection("CLAUDE.md")
@@ -164,7 +164,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".claude/skills/**/*.md",
             ))
             .with_transform(
-                TransformRule::new("mcp.jsonc", ".claude/mcp.json").with_merge(MergeStrategy::Deep),
+                TransformRule::new("mcp.jsonc", ".mcp.json").with_merge(MergeStrategy::Deep),
             )
             .with_transform(
                 TransformRule::new("AGENTS.md", "CLAUDE.md").with_merge(MergeStrategy::Composite),
