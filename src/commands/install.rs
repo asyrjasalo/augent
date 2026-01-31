@@ -305,16 +305,23 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         }
     } else {
         // No source provided, load from augent.yaml in workspace
-        // Initialize or open workspace (auto-initialize if needed)
-        let (workspace_root, was_initialized) =
-            if let Some(root) = Workspace::find_from(&current_dir) {
-                (root, false)
-            } else {
-                // Workspace doesn't exist - initialize it
+        let (workspace_root, was_initialized) = match Workspace::find_from(&current_dir) {
+            Some(root) => (root, false),
+            None => {
+                // No workspace — only create .augent/ if current dir has bundle resources to install
+                use crate::installer::Installer;
+                let has_resources_in_current_dir = Installer::discover_resources(&current_dir)
+                    .map(|resources| !resources.is_empty())
+                    .unwrap_or(false);
+                if !has_resources_in_current_dir {
+                    println!("Nothing to install.");
+                    return Ok(());
+                }
                 let workspace = Workspace::init_or_open(&current_dir)?;
                 println!("Initialized .augent/ directory.");
                 (workspace.root.clone(), true)
-            };
+            }
+        };
 
         let mut workspace = Workspace::open(&workspace_root)?;
 
@@ -330,7 +337,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                 .unwrap_or(false)
         };
 
-        // If there's nothing to install, show a message and exit
+        // If there's nothing to install, show a message and exit (without creating .augent/)
         if !has_bundles_in_config && !has_workspace_resources {
             println!("Nothing to install.");
             return Ok(());
@@ -1645,7 +1652,7 @@ mod tests {
 
     #[test]
     fn test_detect_target_platforms_auto() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create .cursor directory
         std::fs::create_dir(temp.path().join(".cursor")).unwrap();
@@ -1659,7 +1666,7 @@ mod tests {
 
     #[test]
     fn test_detect_target_platforms_specified() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let platforms =
             detect_target_platforms(temp.path(), &["cursor".to_string(), "opencode".to_string()])
@@ -1672,7 +1679,7 @@ mod tests {
 
     #[test]
     fn test_detect_target_platforms_invalid() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let result = detect_target_platforms(temp.path(), &["invalid-platform".to_string()]);
 
@@ -1681,7 +1688,7 @@ mod tests {
 
     #[test]
     fn test_create_locked_bundle_local() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create a simple bundle
         std::fs::create_dir(temp.path().join("commands")).unwrap();
@@ -1705,7 +1712,7 @@ mod tests {
 
     #[test]
     fn test_create_locked_bundle_git() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create a simple bundle
         std::fs::create_dir(temp.path().join("commands")).unwrap();
@@ -1741,7 +1748,7 @@ mod tests {
 
     #[test]
     fn test_create_locked_bundle_git_with_subdirectory() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create a simple bundle
         std::fs::create_dir(temp.path().join("commands")).unwrap();
@@ -1790,7 +1797,7 @@ mod tests {
 
     #[test]
     fn test_generate_lockfile_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),
@@ -1809,7 +1816,7 @@ mod tests {
 
     #[test]
     fn test_generate_lockfile_with_bundle() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();
         std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
@@ -1842,7 +1849,7 @@ mod tests {
 
     #[test]
     fn test_update_configs_adds_new_bundle() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let mut workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),
@@ -1891,7 +1898,7 @@ mod tests {
 
     #[test]
     fn test_update_configs_handles_existing_bundle() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let mut workspace = crate::workspace::Workspace {
             root: temp.path().to_path_buf(),

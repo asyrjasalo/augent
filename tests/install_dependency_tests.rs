@@ -5,21 +5,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_circular_dependency_detection_shows_clear_error() {
@@ -58,8 +44,7 @@ bundles:
     std::fs::write(bundle_b.join("rules").join("test.md"), "# Bundle B")
         .expect("Failed to write rule");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .failure()
@@ -115,8 +100,7 @@ bundles: []
     std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
     std::fs::write(bundle_c.join("skills").join("c.md"), "# C").expect("Failed to write skill");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .success();
@@ -176,8 +160,7 @@ bundles: []
     std::fs::write(bundle_c.join("skills").join("c.md"), "# C has no deps")
         .expect("Failed to write skill");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .success();
@@ -235,8 +218,7 @@ bundles: []
     std::fs::create_dir_all(bundle_b.join("rules")).unwrap();
     std::fs::write(bundle_b.join("rules").join("b.md"), "# B").expect("Failed to write rule");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .success();
@@ -309,8 +291,7 @@ bundles: []
     std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
     std::fs::write(bundle_c.join("skills").join("c.md"), "# C").expect("Failed to write skill");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .success();
@@ -355,8 +336,7 @@ bundles:
     std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
     std::fs::write(bundle_a.join("commands").join("a.md"), "# A").expect("Failed to write command");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .failure()
@@ -447,8 +427,7 @@ bundles: []
     std::fs::write(bundle_a.join("commands").join("a.md"), "# A has no deps")
         .expect("Failed to write command");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-e"])
         .assert()
         .success();

@@ -7,7 +7,7 @@ use crate::platform::merge::MergeStrategy;
 
 #[test]
 fn test_deep_merge_mcp_config_simple() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{
   "mcpServers": {
@@ -42,7 +42,7 @@ fn test_deep_merge_mcp_config_simple() {
 
 #[test]
 fn test_deep_merge_mcp_config_nested() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{
   "mcpServers": {
@@ -79,7 +79,7 @@ fn test_deep_merge_mcp_config_nested() {
 
 #[test]
 fn test_deep_merge_mcp_config_empty_existing() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{}"#;
 
@@ -104,7 +104,7 @@ fn test_deep_merge_mcp_config_empty_existing() {
 
 #[test]
 fn test_deep_merge_mcp_config_empty_new() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{
   "mcpServers": {
@@ -128,7 +128,7 @@ fn test_deep_merge_mcp_config_empty_new() {
 
 #[test]
 fn test_deep_merge_mcp_config_conflicting_values() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{
   "mcpServers": {
@@ -161,7 +161,7 @@ fn test_deep_merge_mcp_config_conflicting_values() {
 
 #[test]
 fn test_composite_merge_agents_md_empty() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "";
 
@@ -179,7 +179,7 @@ fn test_composite_merge_agents_md_empty() {
 
 #[test]
 fn test_composite_merge_agents_md_append() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "# Bundle 1\n\nThis is bundle 1 content.";
 
@@ -198,7 +198,7 @@ fn test_composite_merge_agents_md_append() {
 
 #[test]
 fn test_composite_merge_multiple_bundles() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "# Bundle 1\n\nContent 1";
 
@@ -221,7 +221,7 @@ fn test_composite_merge_multiple_bundles() {
 
 #[test]
 fn test_composite_merge_claude_md() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "# Existing Content\n\nRules from existing bundle.";
 
@@ -240,7 +240,7 @@ fn test_composite_merge_claude_md() {
 
 #[test]
 fn test_composite_merge_qwen_md() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "# Qwen Existing\n\nExisting rules.";
 
@@ -259,7 +259,7 @@ fn test_composite_merge_qwen_md() {
 
 #[test]
 fn test_composite_merge_warp_md() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "# Warp Existing\n\nExisting rules.";
 
@@ -278,7 +278,7 @@ fn test_composite_merge_warp_md() {
 
 #[test]
 fn test_replace_merge() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "# Old Content\n\nThis will be replaced.";
 
@@ -298,7 +298,7 @@ fn test_replace_merge() {
 
 #[test]
 fn test_extension_transformation_cursor_rules() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let source_content = "# Cursor Rule\n\nThis is a rule file.";
     let source_path = temp.path().join("rules/test.md");
@@ -319,7 +319,7 @@ fn test_extension_transformation_cursor_rules() {
 
 #[test]
 fn test_extension_transformation_cursor_commands() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let source_content = "# Cursor Command\n\nThis is a command file.";
     let source_path = temp.path().join("commands/test.md");
@@ -340,7 +340,7 @@ fn test_extension_transformation_cursor_commands() {
 
 #[test]
 fn test_deep_merge_complex_nested() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{
   "mcpServers": {
@@ -389,7 +389,7 @@ fn test_deep_merge_complex_nested() {
 
 #[test]
 fn test_deep_merge_invalid_json_new() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = r#"{}"#;
 
@@ -406,7 +406,7 @@ fn test_deep_merge_invalid_json_new() {
 
 #[test]
 fn test_deep_merge_invalid_json_existing() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "invalid json {{{";
 
@@ -423,7 +423,7 @@ fn test_deep_merge_invalid_json_existing() {
 
 #[test]
 fn test_composite_merge_both_empty() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "";
 
@@ -441,7 +441,7 @@ fn test_composite_merge_both_empty() {
 
 #[test]
 fn test_composite_merge_existing_empty() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let existing = "";
 

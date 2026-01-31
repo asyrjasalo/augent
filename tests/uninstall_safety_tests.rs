@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_uninstall_with_dependent_warns() {
@@ -53,22 +39,19 @@ bundles:
     );
 
     // Install both bundles (dependency first, then main)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/dep-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/main-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Now try to uninstall dep-bundle - should warn about dependents
     // With -y flag, it proceeds anyway (user forced it)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/dep-bundle", "-y"])
         .assert()
         .success()
@@ -107,22 +90,19 @@ bundles:
     );
 
     // Install bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/dep-1", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/main-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall dependency shows warning about dependent bundles
     // With -y, it proceeds anyway (user forced it)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/dep-1", "-y"])
         .assert()
         .success()
@@ -156,28 +136,24 @@ bundles: []
     workspace.write_file("bundles/bundle-b/commands/cmd-b.md", "# Command B\n");
 
     // Install both bundles separately
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall bundle-a should succeed (no dependency)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/bundle-a", "-y"])
         .assert()
         .success();
 
     // bundle-b should still be listed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -219,21 +195,18 @@ bundles:
     );
 
     // Install both bundles (dependency first, then main)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/dep-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/main-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall with bundle name requires confirmation, use -y to skip
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/dep-bundle", "-y"])
         .assert()
         .success();
@@ -256,8 +229,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -265,8 +237,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
     // Uninstall requires confirmation, use -y to skip
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -353,27 +324,23 @@ bundles:
     workspace.write_file("bundles/main-bundle-b/commands/b.md", "# Main B command\n");
 
     // Install all bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/dep-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/main-bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/main-bundle-b", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall dep-bundle with -y should show warning with both dependent names
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/dep-bundle", "-y"])
         .assert()
         .success()
@@ -402,15 +369,13 @@ bundles: []
     );
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/standalone-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall with -y should NOT show warning about dependents
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "standalone-bundle", "-y"])
         .assert()
         .success()

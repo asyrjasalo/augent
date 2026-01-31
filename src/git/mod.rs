@@ -517,7 +517,7 @@ mod tests {
     fn test_clone_public_repo() {
         // This test requires network access, so we mark it as ignored by default
         // Run with: cargo test -- --ignored
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let result = clone(
             "https://github.com/octocat/Hello-World.git",
             temp.path(),
@@ -533,7 +533,7 @@ mod tests {
     #[test]
     fn test_resolve_ref_head() {
         // Create a test repository
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit
@@ -555,7 +555,7 @@ mod tests {
     #[test]
     fn test_resolve_ref_by_name() {
         // Create a test repository with a branch
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit
@@ -580,7 +580,7 @@ mod tests {
     #[test]
     fn test_get_head_ref_name() {
         // Create a test repository
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit
@@ -602,7 +602,7 @@ mod tests {
     #[test]
     fn test_get_head_ref_name_detached() {
         // Create a test repository
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit
@@ -629,7 +629,7 @@ mod tests {
     #[test]
     fn test_checkout_commit() {
         // Create a test repository
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit
@@ -651,7 +651,7 @@ mod tests {
     #[test]
     fn test_resolve_ref_invalid() {
         // Create a test repository
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Create an initial commit
@@ -672,7 +672,7 @@ mod tests {
     #[test]
     fn test_checkout_invalid_sha() {
         // Create a test repository
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         // Try to checkout invalid SHA
@@ -682,14 +682,14 @@ mod tests {
 
     #[test]
     fn test_open_nonexistent_repo() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let result = open(temp.path().join("nonexistent").as_path());
         assert!(result.is_err());
     }
 
     #[test]
     fn test_resolve_reference_full_sha() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let repo = Repository::init(temp.path()).unwrap();
 
         let sig = git2::Signature::now("Test", "test@test.com").unwrap();

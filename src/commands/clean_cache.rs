@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_show_cache_stats_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let cache_dir = temp.path().join("cache");
         std::fs::create_dir_all(&cache_dir).unwrap();
 
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_clean_cache_all() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::create_dir_all(temp.path().join("bundles")).unwrap();
 
         let original = std::env::var("AUGENT_CACHE_DIR").ok();

@@ -4,21 +4,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 // ============================================================================
 // Bundle Version Field Tests (from bundles.md)
@@ -43,21 +29,18 @@ bundles: []
 
     workspace.write_file("bundles/versioned-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/versioned-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
         .stdout(predicate::str::contains("versioned-bundle"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "versioned-bundle"])
         .assert()
         .success();
@@ -82,8 +65,7 @@ bundles: []
 
     workspace.write_file("bundles/semver-bundle/rules/lint.md", "# Lint rules\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/semver-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -118,8 +100,7 @@ bundles: []
         "# Review\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/authored-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -145,8 +126,7 @@ bundles: []
 
     workspace.write_file("bundles/licensed-bundle/commands/deploy.md", "# Deploy\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/licensed-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -172,8 +152,7 @@ bundles: []
 
     workspace.write_file("bundles/linked-bundle/rules/format.md", "# Format\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/linked-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -206,8 +185,7 @@ bundles: []
 
     workspace.write_file("bundles/complete-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/complete-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -251,8 +229,7 @@ bundles:
 
     workspace.write_file("bundles/main-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/main-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -260,8 +237,7 @@ bundles:
     assert!(workspace.file_exists(".cursor/commands/test.md"));
     assert!(workspace.file_exists(".cursor/rules/base.mdc"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -313,8 +289,7 @@ bundles:
 
     workspace.write_file("bundles/multi-dep-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/multi-dep-bundle", "--for", "cursor"])
         .assert()
         .success();

@@ -447,8 +447,8 @@ impl Resolver {
 
             let (bundle_content_path, _synthetic_guard) =
                 if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
-                    let synthetic_temp =
-                        tempfile::TempDir::new().map_err(|e| AugentError::IoError {
+                    let synthetic_temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base())
+                        .map_err(|e| AugentError::IoError {
                             message: format!("Failed to create temp dir: {}", e),
                         })?;
                     MarketplaceConfig::create_synthetic_bundle_to(
@@ -1201,7 +1201,7 @@ mod tests {
 
     #[test]
     fn test_resolve_local_bundle() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create a simple bundle
         let bundle_dir = temp.path().join("my-bundle");
@@ -1226,7 +1226,7 @@ mod tests {
 
     #[test]
     fn test_resolve_nonexistent_bundle() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let mut resolver = Resolver::new(temp.path());
         let result = resolver.resolve("./nonexistent");
@@ -1236,7 +1236,7 @@ mod tests {
 
     #[test]
     fn test_detect_circular_dependency() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create bundle A that depends on B
         let bundle_a = temp.path().join("bundle-a");
@@ -1274,7 +1274,7 @@ bundles:
 
     #[test]
     fn test_topological_sort_order() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create bundle C (no dependencies)
         let bundle_c = temp.path().join("bundle-c");
@@ -1333,7 +1333,7 @@ bundles:
 
     #[test]
     fn test_bundle_without_config() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create a bundle without augent.yaml
         let bundle_dir = temp.path().join("simple-bundle");
@@ -1354,7 +1354,7 @@ bundles:
 
     #[test]
     fn test_circular_dependency_detection() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create bundle A that depends on B
         let bundle_a = temp.path().join("bundle-a");
@@ -1395,7 +1395,7 @@ bundles:
 
     #[test]
     fn test_nonexistent_dependency() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create bundle with nonexistent dependency
         let bundle = temp.path().join("bundle");
@@ -1419,7 +1419,7 @@ bundles:
 
     #[test]
     fn test_is_bundle_directory() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let bundle_dir = temp.path().join("test-bundle");
 
         std::fs::create_dir(&bundle_dir).unwrap();
@@ -1437,7 +1437,7 @@ bundles:
 
     #[test]
     fn test_get_bundle_name_from_config() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let bundle_dir = temp.path().join("test-bundle");
 
         std::fs::create_dir(&bundle_dir).unwrap();
@@ -1455,7 +1455,7 @@ bundles:
 
     #[test]
     fn test_get_bundle_name_from_dir() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let bundle_dir = temp.path().join("custom-bundle");
 
         std::fs::create_dir(&bundle_dir).unwrap();
@@ -1505,7 +1505,7 @@ bundles:
     #[test]
     fn test_marketplace_plugin_naming() {
         // Test that marketplace plugins get unique names from subdirectory
-        let _temp = TempDir::new().unwrap();
+        let _temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create two marketplace plugins with same URL but different subdirectories
         let source1 = GitSource {

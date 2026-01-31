@@ -5,8 +5,36 @@ mod interactive;
 #[allow(unused_imports)]
 pub use interactive::{InteractiveTest, MenuAction, run_with_timeout, send_menu_actions};
 
-use std::path::PathBuf;
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
+
+/// Enforce isolated test env when spawning the augent binary: clear inherited workspace/cache/temp
+/// and set them so each workspace has its own cache and nothing touches the repo or dev env.
+#[allow(dead_code)]
+pub fn configure_augent_cmd(cmd: &mut assert_cmd::Command, workspace_path: &Path) {
+    cmd.env_remove("AUGENT_WORKSPACE");
+    cmd.env_remove("AUGENT_CACHE_DIR");
+    cmd.env_remove("TMPDIR");
+    cmd.env("AUGENT_WORKSPACE", workspace_path.as_os_str());
+    cmd.env(
+        "AUGENT_CACHE_DIR",
+        test_cache_dir_for_workspace(workspace_path).as_os_str(),
+    );
+    cmd.env("TMPDIR", test_tmpdir_for_child().as_os_str());
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
+}
+
+/// Canonical command for running augent in a workspace. Use this in all tests so workspace/cache/temp
+/// are isolated and never inherit from the environment (e.g. AUGENT_WORKSPACE from mise).
+#[allow(dead_code)]
+#[allow(deprecated)]
+pub fn augent_cmd_for_workspace(workspace_path: &Path) -> assert_cmd::Command {
+    let mut cmd = assert_cmd::Command::cargo_bin("augent").unwrap();
+    configure_augent_cmd(&mut cmd, workspace_path);
+    cmd.current_dir(workspace_path);
+    cmd
+}
 
 /// Environment variable for test cache base directory (cross/Docker special case).
 /// When set (e.g. by CI when using cross), tests create unique subdirs under this path.
@@ -14,17 +42,84 @@ use tempfile::TempDir;
 #[allow(dead_code)] // Used in env::var_os() call below
 pub const AUGENT_TEST_CACHE_DIR: &str = "AUGENT_TEST_CACHE_DIR";
 
-/// Get a temporary cache directory path for tests
-///
-/// Uses `AUGENT_TEST_CACHE_DIR` when set (e.g. in cross/Docker so the container has a
-/// writable base path). Otherwise uses the OS temp directory. Always creates a unique
-/// subdirectory per call for test isolation.
+/// TMPDIR value to pass to the augent child process so it never uses a path inside the repo.
+/// Used by augent_cmd_for_workspace when configuring the child process.
+#[allow(dead_code)] // Used by augent_cmd_for_workspace
+pub fn test_tmpdir_for_child() -> PathBuf {
+    platform_temp_fallback()
+}
+
+/// Repository root (compile-time). Used to ensure test dirs are never created inside the repo.
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
+/// Safe temp base: never inside the repo. If the env/base would resolve under the repo
+/// (e.g. TMPDIR=tmp or TMPDIR=./tmp when cwd is repo), use a platform-specific fallback.
+fn safe_temp_base(candidate: PathBuf) -> PathBuf {
+    let repo = repo_root();
+    let repo_abs = repo.canonicalize().unwrap_or(repo.clone());
+    // Relative paths are resolved from cwd (often the repo) → treat as unsafe
+    if !candidate.is_absolute() {
+        return platform_temp_fallback();
+    }
+    let candidate_abs = match candidate.canonicalize() {
+        Ok(p) => p,
+        Err(_) => candidate,
+    };
+    if candidate_abs.strip_prefix(&repo_abs).is_ok() {
+        platform_temp_fallback()
+    } else {
+        candidate_abs
+    }
+}
+
+#[cfg(unix)]
+fn platform_temp_fallback() -> PathBuf {
+    PathBuf::from("/tmp")
+}
+
+#[cfg(windows)]
+fn platform_temp_fallback() -> PathBuf {
+    std::env::var("TEMP")
+        .or_else(|_| std::env::var("TMP"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("C:\\Windows\\Temp"))
+}
+
+/// Get the base directory for test cache temporary files.
+/// Default is outside the repo; CI can set AUGENT_TEST_CACHE_DIR.
+fn test_temp_base() -> PathBuf {
+    use std::env;
+    match env::var_os(AUGENT_TEST_CACHE_DIR).map(PathBuf::from) {
+        Some(c) => safe_temp_base(c),
+        None => platform_temp_fallback(),
+    }
+}
+
+/// Get the base directory for test workspace temporary directories.
+/// Always outside the repo (platform temp, e.g. /tmp).
+fn test_workspace_temp_base() -> PathBuf {
+    platform_temp_fallback()
+}
+
+/// Cache directory for a given workspace path. Same workspace path always gets the same cache
+/// so multiple spawns in one test share cache; different workspaces never share cache or touch dev.
+pub(crate) fn test_cache_dir_for_workspace(workspace_path: &Path) -> PathBuf {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    workspace_path.hash(&mut hasher);
+    let cache_path = test_temp_base()
+        .join("augent-test-cache")
+        .join(format!("{:016x}", hasher.finish()));
+    std::fs::create_dir_all(&cache_path).expect("Failed to create test cache directory");
+    cache_path
+}
+
+/// Get a temporary cache directory path for tests (unique per call).
+/// Prefer configure_augent_cmd(workspace_path) so each workspace gets its own stable cache.
 #[allow(dead_code)] // Used by test files via common::test_cache_dir()
 pub fn test_cache_dir() -> PathBuf {
-    use std::env;
-    let base_temp = env::var_os(AUGENT_TEST_CACHE_DIR)
-        .map(PathBuf::from)
-        .unwrap_or_else(env::temp_dir);
+    let base_temp = test_temp_base();
     let unique_name = format!(
         "augent-test-cache-{}-{}",
         std::time::SystemTime::now()
@@ -46,10 +141,19 @@ pub struct TestWorkspace {
 }
 
 impl TestWorkspace {
-    /// Create a new test workspace
+    /// Create a new test workspace under the platform temp (e.g. /tmp).
+    /// Never creates anything inside the repository directory.
     pub fn new() -> Self {
-        let temp = TempDir::new().expect("Failed to create temp directory");
+        let base = test_workspace_temp_base();
+        std::fs::create_dir_all(&base).expect("Failed to create test workspace base directory");
+        let temp = TempDir::new_in(&base).expect("Failed to create temp directory");
         let path = temp.path().to_path_buf();
+        // Ensure we never run tests inside the repo (path must not be under CARGO_MANIFEST_DIR)
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        assert!(
+            path.strip_prefix(repo).is_err(),
+            "test workspace must not be inside the repository"
+        );
         Self { temp, path }
     }
 

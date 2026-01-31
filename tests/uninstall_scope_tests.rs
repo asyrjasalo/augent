@@ -5,21 +5,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_uninstall_scope_with_multiple_bundles() {
@@ -56,27 +42,23 @@ bundles: []
     );
 
     // Install all three bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/accessibility", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/performance", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/security", "--for", "cursor"])
         .assert()
         .success();
 
     // Verify all bundles are installed (per spec dir name is dir-name)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .arg("list")
         .assert()
         .success()
@@ -111,28 +93,24 @@ bundles: []
     );
 
     // Install both bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/tools-linter", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/tools-formatter", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall with scope prefix and --all-bundles flag (no prompt)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "tools", "--all-bundles", "-y"])
         .assert()
         .success();
 
     // Verify both bundles were uninstalled
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .arg("list")
         .assert()
         .success()
@@ -158,22 +136,19 @@ bundles: []
     );
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Uninstall without scope syntax should work as before
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "my-bundle", "-y"])
         .assert()
         .success();
 
     // Verify bundle was uninstalled
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .arg("list")
         .assert()
         .success()
@@ -200,15 +175,13 @@ bundles: []
     );
 
     // Install a bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/other-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Try to uninstall with a scope that doesn't match anything
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@nonexistent/scope"])
         .assert()
         .success()
@@ -232,15 +205,13 @@ bundles: []
     );
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Per spec dir name is dir-name; list shows "bundle" (dir name)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .arg("list")
         .assert()
         .success()
@@ -273,21 +244,18 @@ bundles: []
     );
 
     // Install both bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/ai", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/analyzer", "--for", "cursor"])
         .assert()
         .success();
 
     // Per spec dir name is dir-name; list shows "ai", "analyzer"
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .arg("list")
         .assert()
         .success()
@@ -321,21 +289,18 @@ bundles: []
     );
 
     // Install both
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/agent", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/agents", "--for", "cursor"])
         .assert()
         .success();
 
     // Both should be installed (per spec dir name is dir-name: agent, agents)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .arg("list")
         .assert()
         .success()

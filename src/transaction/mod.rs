@@ -187,7 +187,7 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_test_workspace() -> (TempDir, PathBuf, PathBuf) {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_root = temp.path().to_path_buf();
         let augent_dir = workspace_root.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();

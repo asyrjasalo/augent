@@ -7,21 +7,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 #[test]
 fn test_bundle_added_to_yaml_appears_in_lockfile_and_workspace() {
     let workspace = common::TestWorkspace::new();
@@ -42,8 +27,7 @@ fn test_bundle_added_to_yaml_appears_in_lockfile_and_workspace() {
         "name: '@test/augent'\nbundles:\n- name: '@test/test-bundle'\n  path: ../bundles/test-bundle\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "gemini"])
         .assert()
         .success();
@@ -101,8 +85,7 @@ fn test_bundle_removed_from_yaml_stays_in_lockfile_and_workspace() {
         "name: '@test/augent'\nbundles:\n- name: '@test/test-bundle-1'\n  path: ../bundles/test-bundle-1\n- name: '@test/test-bundle-2'\n  path: ../bundles/test-bundle-2\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "gemini"])
         .assert()
         .success();
@@ -134,8 +117,7 @@ fn test_bundle_removed_from_yaml_stays_in_lockfile_and_workspace() {
         "name: '@test/augent'\nbundles:\n- name: '@test/test-bundle-1'\n  path: ../bundles/test-bundle-1\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "gemini"])
         .assert()
         .success();
@@ -200,8 +182,7 @@ fn test_install_only_resolves_bundles_in_augent_yaml() {
         "name: '@test/augent'\nbundles:\n- name: '@test/test-bundle-1'\n  path: ../bundles/test-bundle-1\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "gemini"])
         .assert()
         .success();
@@ -219,8 +200,7 @@ fn test_install_only_resolves_bundles_in_augent_yaml() {
         "name: '@test/augent'\nbundles:\n- name: '@test/test-bundle-1'\n  path: ../bundles/test-bundle-1\n- name: '@test/test-bundle-2'\n  path: ../bundles/test-bundle-2\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "gemini"])
         .assert()
         .success();

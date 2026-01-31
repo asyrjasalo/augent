@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_install_dry_run_does_not_create_files() {
@@ -26,8 +12,7 @@ fn test_install_dry_run_does_not_create_files() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     // Run install with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--dry-run"])
         .assert()
         .success()
@@ -53,8 +38,7 @@ fn test_install_dry_run_does_not_update_lockfile() {
     };
 
     // Run install with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--dry-run"])
         .assert()
         .success();
@@ -84,8 +68,7 @@ fn test_install_dry_run_does_not_update_config() {
     };
 
     // Run install with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--dry-run"])
         .assert()
         .success();
@@ -110,8 +93,7 @@ fn test_install_dry_run_shows_dry_run_messages() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--dry-run"])
         .assert()
         .success()
@@ -137,8 +119,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -147,8 +128,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
     // Run uninstall with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success()
@@ -174,8 +154,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -185,8 +164,7 @@ bundles: []
     assert!(config_before.contains("test-bundle"));
 
     // Run uninstall with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success();
@@ -213,8 +191,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -224,8 +201,7 @@ bundles: []
     assert!(lockfile_before.contains("test-bundle"));
 
     // Run uninstall with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success();
@@ -252,14 +228,12 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success()
@@ -285,15 +259,13 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Run uninstall with --dry-run (should not prompt for confirmation)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success()
@@ -309,8 +281,7 @@ fn test_install_dry_run_then_actual_install() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     // Run install with --dry-run first
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--dry-run"])
         .assert()
         .success();
@@ -319,8 +290,7 @@ fn test_install_dry_run_then_actual_install() {
     assert!(!workspace.file_exists(".cursor/commands/debug.md"));
 
     // Now run actual install
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -345,8 +315,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -354,8 +323,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
     // Run uninstall with --dry-run
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "--dry-run"])
         .assert()
         .success();
@@ -364,8 +332,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
     // Now run actual uninstall
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();

@@ -5,22 +5,8 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_install_without_index_yaml_creates_it() {
@@ -37,8 +23,7 @@ bundles: []
     );
 
     // Install bundle (index.yaml doesn't exist yet)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -67,8 +52,7 @@ bundles: []
     );
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -80,8 +64,7 @@ bundles: []
     assert!(!index_yaml.exists(), "index.yaml should be deleted");
 
     // Try to uninstall - it should rebuild index.yaml first
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
@@ -112,8 +95,7 @@ bundles: []
     );
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -127,8 +109,7 @@ bundles: []
     fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // Uninstall should still work and find the file
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -155,8 +136,7 @@ bundles: []
     );
 
     // Install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -166,8 +146,7 @@ bundles: []
     fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // List should still work (reads from lockfile)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -202,14 +181,12 @@ bundles: []
     workspace.write_file("bundles/bundle-b/commands/cmd-b.md", "# Command B");
 
     // Install both bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b", "--for", "cursor"])
         .assert()
         .success();
@@ -219,8 +196,7 @@ bundles: []
     fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // Uninstall first bundle - should still work and rebuild index.yaml
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "bundle-a", "-y"])
         .assert()
         .success();
@@ -261,8 +237,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/rules/debug.md", "# Debug Rule");
 
     // Install for all platforms
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -272,8 +247,7 @@ bundles: []
     fs::remove_file(&index_yaml).expect("should delete index.yaml");
 
     // Trigger rebuild via uninstall
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()

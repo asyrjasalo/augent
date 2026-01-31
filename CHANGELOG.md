@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `augent install` no longer creates `.augent/` when there is nothing to install (e.g. run in a directory with no workspace and no bundles to install).
+
 ### Changed
 
 - **Platform paths and detection:** OpenCode is now detected when `AGENTS.md` is present (in addition to `.opencode`). OpenCode MCP config is documented as `.opencode/opencode.json` (MCP key in main config). Codex CLI now supports root file `AGENTS.md`. Gemini agents support nested paths (`agents/**/*.md` → `.gemini/agents/**/*.md`). Documentation lists "Not implemented" for resource types that each platform does not support. See [platforms.md](docs/platforms.md).

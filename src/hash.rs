@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_hash_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let file_path = temp.path().join("test.txt");
         std::fs::write(&file_path, "test content").unwrap();
 
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_hash_directory() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create some files
         std::fs::write(temp.path().join("file1.txt"), "content1").unwrap();
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_hash_directory_deterministic() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         std::fs::write(temp.path().join("a.txt"), "aaa").unwrap();
         std::fs::write(temp.path().join("b.txt"), "bbb").unwrap();
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_hash_directory_excludes_lockfile() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         std::fs::write(temp.path().join("file.txt"), "content").unwrap();
         let hash1 = hash_directory(temp.path()).unwrap();

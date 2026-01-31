@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 // ============================================================================
 // Completions command tests
@@ -24,7 +10,8 @@ fn augent_cmd() -> Command {
 
 #[test]
 fn test_completions_bash() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "bash"])
         .assert()
         .success()
@@ -33,7 +20,8 @@ fn test_completions_bash() {
 
 #[test]
 fn test_completions_zsh() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "zsh"])
         .assert()
         .success()
@@ -42,7 +30,8 @@ fn test_completions_zsh() {
 
 #[test]
 fn test_completions_fish() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "fish"])
         .assert()
         .success()
@@ -51,7 +40,8 @@ fn test_completions_fish() {
 
 #[test]
 fn test_completions_powershell() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "powershell"])
         .assert()
         .success();
@@ -59,7 +49,8 @@ fn test_completions_powershell() {
 
 #[test]
 fn test_completions_elvish() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "elvish"])
         .assert()
         .success()
@@ -68,7 +59,8 @@ fn test_completions_elvish() {
 
 #[test]
 fn test_completions_missing_shell() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions"])
         .assert()
         .failure()
@@ -77,7 +69,8 @@ fn test_completions_missing_shell() {
 
 #[test]
 fn test_completions_invalid_shell() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "invalid"])
         .assert()
         .failure();
@@ -115,8 +108,7 @@ bundles: []
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--frozen"])
         .assert()
         .failure();
@@ -137,15 +129,13 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     // First install without --frozen to create lockfile
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Now install with --frozen - should succeed as lockfile matches
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/test-bundle",
@@ -169,8 +159,7 @@ fn test_list_with_workspace_option() {
     // Run list from a different directory using --workspace
     let temp = common::TestWorkspace::new();
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["list", "--workspace", workspace.path.to_str().unwrap()])
         .assert()
         .success()
@@ -192,8 +181,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     // Install bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -201,8 +189,7 @@ bundles: []
     // Run show from different directory using --workspace
     let temp = common::TestWorkspace::new();
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args([
             "show",
             "test-bundle",
@@ -232,15 +219,13 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Verbose list should still succeed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "-v"])
         .assert()
         .success();
@@ -260,8 +245,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor", "-v"])
         .assert()
         .success();
@@ -273,7 +257,8 @@ bundles: []
 
 #[test]
 fn test_version_shows_rust_version() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("version")
         .assert()
         .success()
@@ -282,7 +267,8 @@ fn test_version_shows_rust_version() {
 
 #[test]
 fn test_version_shows_build_info() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("version")
         .assert()
         .success()
@@ -295,7 +281,8 @@ fn test_version_shows_build_info() {
 
 #[test]
 fn test_help_shows_all_commands() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("--help")
         .assert()
         .success()
@@ -310,7 +297,8 @@ fn test_help_shows_all_commands() {
 
 #[test]
 fn test_install_help() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["install", "--help"])
         .assert()
         .success()
@@ -320,7 +308,8 @@ fn test_install_help() {
 
 #[test]
 fn test_uninstall_help() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["uninstall", "--help"])
         .assert()
         .success()
@@ -337,8 +326,7 @@ fn test_error_invalid_bundle_name() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "invalid_bundle_name_format"])
         .assert()
         .failure()
@@ -354,8 +342,7 @@ fn test_error_bundle_not_found() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "@test/nonexistent"])
         .assert()
         .failure()
@@ -371,7 +358,12 @@ fn test_error_bundle_not_found() {
 
 #[test]
 fn test_help_fits_on_one_screen() {
+    let temp = common::TestWorkspace::new();
+    let cache_dir = common::test_cache_dir();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_augent"))
+        .current_dir(&temp.path)
+        .env_remove("AUGENT_WORKSPACE")
+        .env("AUGENT_CACHE_DIR", &cache_dir)
         .arg("--help")
         .output()
         .expect("Failed to run augent --help");
@@ -388,7 +380,12 @@ fn test_help_fits_on_one_screen() {
 
 #[test]
 fn test_install_help_fits_on_one_screen() {
+    let temp = common::TestWorkspace::new();
+    let cache_dir = common::test_cache_dir();
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_augent"))
+        .current_dir(&temp.path)
+        .env_remove("AUGENT_WORKSPACE")
+        .env("AUGENT_CACHE_DIR", &cache_dir)
         .args(["install", "--help"])
         .output()
         .expect("Failed to run augent install --help");
@@ -421,8 +418,7 @@ bundles: []
     workspace.write_file("bundles/example-bundle/commands/example.md", "# Example\n");
     workspace.create_agent_dir("claude");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/example-bundle", "--for", "claude"])
         .assert()
         .success();
@@ -444,14 +440,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -464,7 +458,8 @@ bundles: []
 
 #[test]
 fn test_bash_completion_script_valid() {
-    let output = augent_cmd()
+    let temp = common::TestWorkspace::new();
+    let output = common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "bash"])
         .output()
         .expect("Failed to generate bash completions");
@@ -482,7 +477,8 @@ fn test_bash_completion_script_valid() {
 
 #[test]
 fn test_zsh_completion_script_valid() {
-    let output = augent_cmd()
+    let temp = common::TestWorkspace::new();
+    let output = common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "zsh"])
         .output()
         .expect("Failed to generate zsh completions");
@@ -499,7 +495,8 @@ fn test_zsh_completion_script_valid() {
 
 #[test]
 fn test_powershell_completion_script_valid() {
-    let output = augent_cmd()
+    let temp = common::TestWorkspace::new();
+    let output = common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "powershell"])
         .output()
         .expect("Failed to generate powershell completions");
@@ -514,7 +511,8 @@ fn test_powershell_completion_script_valid() {
 
 #[test]
 fn test_fish_completion_script_valid() {
-    let output = augent_cmd()
+    let temp = common::TestWorkspace::new();
+    let output = common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "fish"])
         .output()
         .expect("Failed to generate fish completions");
@@ -531,7 +529,8 @@ fn test_fish_completion_script_valid() {
 
 #[test]
 fn test_elvish_completion_script_valid() {
-    let output = augent_cmd()
+    let temp = common::TestWorkspace::new();
+    let output = common::augent_cmd_for_workspace(&temp.path)
         .args(["completions", "elvish"])
         .output()
         .expect("Failed to generate elvish completions");
@@ -566,14 +565,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -600,14 +597,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y", "-v"])
         .assert()
         .success();
@@ -627,14 +622,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "test-bundle", "-v"])
         .assert()
         .success();
@@ -660,8 +653,7 @@ bundles: []
 
     let temp = common::TestWorkspace::new();
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args([
             "install",
             workspace.path.join("bundles/test-bundle").to_str().unwrap(),
@@ -690,16 +682,14 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
     let temp = common::TestWorkspace::new();
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args([
             "uninstall",
             "test-bundle",
@@ -720,8 +710,7 @@ fn test_completions_verbose() {
 
     // Note: The -v flag is accepted but doesn't affect completions output
     // (completion scripts go to stdout and shouldn't be mixed with verbose messages)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["completions", "bash", "-v"])
         .assert()
         .success()

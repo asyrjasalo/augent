@@ -5,21 +5,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 #[test]
 fn test_replace_merge_strategy_for_regular_files() {
     let workspace = common::TestWorkspace::new();
@@ -61,14 +46,12 @@ bundles: []
     )
     .expect("Failed to write command");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-1"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-2"])
         .assert()
         .success();
@@ -123,14 +106,12 @@ bundles: []
     )
     .expect("Failed to write AGENTS.md");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-1"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-2"])
         .assert()
         .success();
@@ -200,14 +181,12 @@ bundles: []
     )
     .expect("Failed to write mcp.jsonc");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-1", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-2", "--for", "claude"])
         .assert()
         .success();
@@ -288,14 +267,12 @@ bundles: []
     )
     .expect("Failed to write mcp.jsonc");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-1"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-2"])
         .assert()
         .success();
@@ -376,8 +353,7 @@ bundles: []
     )
     .expect("Failed to write mcp.jsonc");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -421,8 +397,7 @@ fn test_root_files_copied_to_workspace_root() {
 
     workspace.copy_fixture_bundle("bundle-with-root-files", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -480,14 +455,12 @@ bundles: []
     )
     .expect("Failed to write command");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b", "--for", "cursor"])
         .assert()
         .success();
@@ -531,8 +504,7 @@ bundles: []
         "# Test\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-with-empty-root"])
         .assert()
         .success();
@@ -566,8 +538,7 @@ bundles: []
         "# Test 2\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-with-non-empty-root"])
         .assert()
         .success();

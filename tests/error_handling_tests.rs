@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_invalid_bundle_name_format() {
@@ -24,8 +10,7 @@ fn test_invalid_bundle_name_format() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "InvalidNameWithNoFormat"])
         .assert()
         .failure()
@@ -41,8 +26,7 @@ fn test_invalid_bundle_name_with_special_chars() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "@test/bundle!@#$%"])
         .assert()
         .failure();
@@ -61,8 +45,7 @@ fn test_corrupted_lockfile_yaml() {
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./test-bundle"])
         .assert()
         .failure()
@@ -87,8 +70,7 @@ bundles: [
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./test-bundle"])
         .assert()
         .failure()
@@ -105,8 +87,7 @@ fn test_git_clone_network_failure() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("claude");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "https://invalid.nonexistent.example.tld/bundle.git",
@@ -140,8 +121,7 @@ bundles: []
         std::fs::set_permissions(&agent_dir, std::fs::Permissions::from_mode(0o000))
             .expect("Failed to set permissions");
 
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["install", "./bundles/test-bundle", "--for", "claude"])
             .assert()
             .failure();
@@ -152,8 +132,7 @@ bundles: []
 
     #[cfg(not(unix))]
     {
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["install", "./bundles/test-bundle", "--for", "claude"])
             .assert()
             .success();

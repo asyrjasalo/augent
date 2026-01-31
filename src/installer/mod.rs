@@ -1486,14 +1486,14 @@ mod tests {
 
     #[test]
     fn test_discover_resources_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let resources = Installer::discover_resources(temp.path()).unwrap();
         assert!(resources.is_empty());
     }
 
     #[test]
     fn test_discover_resources_commands() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create commands directory with files
         let commands_dir = temp.path().join("commands");
@@ -1517,7 +1517,7 @@ mod tests {
 
     #[test]
     fn test_discover_resources_root_files() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create root-level resource files
         fs::write(temp.path().join("AGENTS.md"), "# Agents").unwrap();
@@ -1617,7 +1617,7 @@ mod tests {
 
     #[test]
     fn test_install_resource_no_platforms() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let mut installer = Installer::new(temp.path(), vec![]);
 
         let bundle = ResolvedBundle {
@@ -1638,7 +1638,7 @@ mod tests {
 
     #[test]
     fn test_copy_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let installer = Installer::new(temp.path(), vec![]);
 
         let source = temp.path().join("source.txt");

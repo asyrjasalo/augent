@@ -10,18 +10,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 // =============================================================================
 // Dir bundle: name is dir-name, path relative to augent.lock directory (spec)
 // =============================================================================
@@ -35,8 +23,7 @@ fn test_dir_bundle_name_is_dir_name_in_config() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "my-local-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-local-bundle"])
         .assert()
         .success();
@@ -72,8 +59,7 @@ fn test_dir_bundle_path_relative_to_augent_lock_dir() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "local-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/local-bundle"])
         .assert()
         .success();
@@ -96,8 +82,7 @@ fn test_dir_bundle_install_with_relative_path_saves_dir_name() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "local-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/local-bundle"])
         .assert()
         .success();
@@ -129,8 +114,7 @@ fn test_dir_bundle_without_augent_yaml_installs_resources_and_uses_dir_name() {
     )
     .expect("write");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/resource-only"])
         .assert()
         .success();
@@ -173,8 +157,7 @@ fn test_install_updates_lockfile_yaml_and_index() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -207,14 +190,12 @@ fn test_multiple_bundles_each_get_own_entry_and_order_retained() {
     workspace.copy_fixture_bundle("simple-bundle", "bundle-a");
     workspace.copy_fixture_bundle("simple-bundle", "bundle-b");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b"])
         .assert()
         .success();
@@ -290,8 +271,7 @@ bundles: []
     std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
     std::fs::write(bundle_c.join("skills/c.md"), "# C").expect("write");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
         .assert()
         .success();
@@ -324,8 +304,7 @@ fn test_bundle_with_deps_installs_deps_first_then_bundle_in_lockfile() {
     workspace.copy_fixture_bundle("simple-bundle", "simple-bundle");
     workspace.copy_fixture_bundle("with-deps", "with-deps");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/with-deps"])
         .assert()
         .success();
@@ -365,8 +344,7 @@ fn test_git_bundle_name_format_and_reproducible_in_lockfile() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -456,8 +434,7 @@ fn test_git_subdirectory_name_format_in_config() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -483,8 +460,7 @@ fn test_reinstall_same_bundle_does_not_duplicate_entries() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "same-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/same-bundle"])
         .assert()
         .success();
@@ -492,8 +468,7 @@ fn test_reinstall_same_bundle_does_not_duplicate_entries() {
     let yaml_before = workspace.read_file(".augent/augent.yaml");
     let count_before = yaml_before.matches("same-bundle").count();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/same-bundle"])
         .assert()
         .success();

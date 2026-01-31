@@ -758,7 +758,7 @@ mod tests {
 
     #[test]
     fn test_workspace_exists() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // No workspace yet
         assert!(!Workspace::exists(temp.path()));
@@ -770,7 +770,7 @@ mod tests {
 
     #[test]
     fn test_workspace_find_from() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Create workspace directory
         fs::create_dir(temp.path().join(WORKSPACE_DIR)).unwrap();
@@ -787,7 +787,7 @@ mod tests {
 
     #[test]
     fn test_workspace_find_from_not_found() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let nested = temp.path().join("src/deep/nested");
         fs::create_dir_all(&nested).unwrap();
 
@@ -798,7 +798,7 @@ mod tests {
 
     #[test]
     fn test_workspace_init() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let workspace = Workspace::init(temp.path()).unwrap();
 
@@ -826,7 +826,7 @@ mod tests {
 
     #[test]
     fn test_workspace_init_or_open() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // First call should init
         let workspace1 = Workspace::init_or_open(temp.path()).unwrap();
@@ -839,7 +839,7 @@ mod tests {
 
     #[test]
     fn test_workspace_open_not_found() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let result = Workspace::open(temp.path());
         assert!(result.is_err());
@@ -847,7 +847,7 @@ mod tests {
 
     #[test]
     fn test_workspace_save_and_reload() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Init and modify
         let mut workspace = Workspace::init(temp.path()).unwrap();
@@ -882,7 +882,7 @@ mod tests {
 
     #[test]
     fn test_fallback_name() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let name = Workspace::fallback_name(temp.path());
 
         // Should contain @ and /
@@ -899,9 +899,9 @@ mod modified_tests {
 
     #[test]
     fn test_detect_modified_files_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace = Workspace::init(temp.path()).unwrap();
-        let cache_dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let modified = detect_modified_files(&workspace, cache_dir.path()).unwrap();
         assert!(modified.is_empty());
@@ -909,7 +909,7 @@ mod modified_tests {
 
     #[test]
     fn test_preserve_modified_files() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let mut workspace = Workspace::init(temp.path()).unwrap();
 
         // Create a mock modified file

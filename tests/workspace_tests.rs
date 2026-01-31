@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_workspace_auto_created_on_first_install() {
@@ -34,8 +20,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     // First install should auto-create workspace
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -60,8 +45,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -73,7 +57,7 @@ bundles: []
     std::fs::create_dir(&subdir).expect("Failed to create subdirectory");
 
     // List bundles from nested directory should work (finds workspace in parent)
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&subdir)
         .args(["list"])
         .assert()
@@ -81,7 +65,7 @@ bundles: []
         .stdout(predicate::str::contains("test-bundle"));
 
     // Show bundle from nested directory should work
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&subdir)
         .args(["show", "test-bundle"])
         .assert()
@@ -118,8 +102,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     // Install bundle - should use git remote for workspace name
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -138,8 +121,7 @@ bundles: []
     assert!(lockfile.contains("\"name\": \"@user/test-project\""));
 
     // Bundle should be listed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -159,8 +141,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -195,8 +176,7 @@ bundles: []
         lockfile
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -217,8 +197,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -228,7 +207,7 @@ bundles: []
     std::fs::create_dir_all(&nested).expect("Failed to create nested dirs");
 
     // List bundles from nested directory should work (finds workspace in parent)
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&nested)
         .args(["list"])
         .assert()
@@ -236,7 +215,7 @@ bundles: []
         .stdout(predicate::str::contains("test-bundle"));
 
     // Show bundle from nested directory should work
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&nested)
         .args(["show", "test-bundle"])
         .assert()
@@ -258,8 +237,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Original\n");
     workspace.write_file("bundles/test-bundle/skills/skill.md", "# Original skill\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -269,8 +247,7 @@ bundles: []
     workspace.write_file(".cursor/skills/skill.md", "# Modified skill by user\n");
 
     // List command should still work with modified files present
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -293,8 +270,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/skills/skill1.md", "# Skill 1\n");
     workspace.write_file("bundles/test-bundle/skills/skill2.md", "# Skill 2\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -303,8 +279,7 @@ bundles: []
     workspace.write_file(".cursor/commands/test.md", "# Modified\n");
 
     // List should still work with modified file present
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -327,8 +302,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/rules/rule1.md", "# Rule 1\n");
     workspace.write_file("bundles/test-bundle/skills/skill1.md", "# Skill 1\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -338,16 +312,14 @@ bundles: []
     workspace.write_file(".cursor/rules/rule1.md", "# Modified rule1\n");
 
     // List should still work
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
         .stdout(predicate::str::contains("test-bundle"));
 
     // Show should still work
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "test-bundle"])
         .assert()
         .success();
@@ -356,8 +328,7 @@ bundles: []
     workspace.write_file(".cursor/commands/new_file.md", "# New user file\n");
 
     // Operations should still work
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success();
@@ -367,8 +338,7 @@ bundles: []
 fn test_workspace_detection_error_no_workspace_found() {
     let workspace = common::TestWorkspace::new();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .failure()
@@ -386,7 +356,7 @@ fn test_workspace_detection_error_in_nested_directory() {
     let nested = workspace.path.join("deep/nested/dir");
     std::fs::create_dir_all(&nested).expect("Failed to create nested dirs");
 
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&nested)
         .args(["list"])
         .assert()
@@ -420,8 +390,7 @@ bundles: []
         "# Original skill2\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -434,15 +403,13 @@ bundles: []
     // cmd2.md and skill1.md remain as-is
 
     // Re-install should not fail due to modified files
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Bundle should still be listed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -470,8 +437,7 @@ bundles: []
 
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -483,15 +449,13 @@ bundles: []
     workspace.write_file("additional.txt", "# Additional file\n");
 
     // Operations should still work with modified root files
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
         .stdout(predicate::str::contains("test-bundle"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "test-bundle"])
         .assert()
         .success();
@@ -510,8 +474,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -539,8 +502,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -550,8 +512,7 @@ bundles: []
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -573,8 +534,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     // Install first (creates .augent/augent.yaml)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -593,15 +553,13 @@ bundles:
     );
 
     // Install from root augent.yaml should use that instead of .augent/augent.yaml
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // List should show both bundles (one from .augent and one from root)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -631,8 +589,7 @@ bundles: []
     workspace.create_agent_dir("cursor");
 
     // First install to initialize .augent directory
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -649,8 +606,7 @@ bundles:
     );
 
     // Install again using root augent.yaml
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -685,8 +641,7 @@ bundles: []
     workspace.create_agent_dir("cursor");
 
     // First install to initialize .augent directory
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -703,8 +658,7 @@ bundles:
     );
 
     // Run install again to migrate lockfile to root
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -714,7 +668,7 @@ bundles:
     std::fs::create_dir_all(&nested).expect("Failed to create nested directory");
 
     // List from nested directory should work (finds workspace in parent)
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&nested)
         .args(["list"])
         .assert()
@@ -722,7 +676,7 @@ bundles:
         .stdout(predicate::str::contains("test-bundle"));
 
     // Show bundle from nested directory should work
-    augent_cmd()
+    common::augent_cmd_for_workspace(&workspace.path)
         .current_dir(&nested)
         .args(["show", "test-bundle"])
         .assert()

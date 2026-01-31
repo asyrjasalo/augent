@@ -8,21 +8,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_install_bypasses_menu_when_subdirectory_specified() {
@@ -55,8 +41,7 @@ bundles: []
     workspace.write_file("repo/bundle-b/commands/b.md", "# B\n");
 
     // Install with explicit subdirectory path - should bypass menu
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo/bundle-a", "--for", "claude"])
         .assert()
         .success()
@@ -85,8 +70,7 @@ bundles: []
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test\n");
 
     // Install with explicit path - should work without menu
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle", "--for", "claude"])
         .assert()
         .success();
@@ -114,8 +98,7 @@ bundles: []
     workspace.write_file("repo/with-desc/commands/test.md", "# Test\n");
 
     // Specify subdirectory explicitly to avoid interactive menu
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo/with-desc", "--for", "claude"])
         .assert()
         .success();
@@ -142,8 +125,7 @@ bundles: []
     workspace.write_file("repo/plugins/commands/test.md", "# Test\n");
 
     // Specify the subdirectory explicitly - should install without menu
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo/plugins", "--for", "claude"])
         .assert()
         .success()
@@ -164,8 +146,7 @@ fn test_install_handles_repository_with_empty_subdirectories() {
     workspace.create_bundle("repo/empty-dir");
 
     // This should fail or handle gracefully
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo", "--for", "claude"])
         .assert()
         .failure();
@@ -192,8 +173,7 @@ bundles: []
     // Create a non-bundle directory (no augent.yaml)
     workspace.write_file("repo/random-dir/file.txt", "content\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo/bundle", "--for", "claude"])
         .assert()
         .success();
@@ -232,8 +212,7 @@ bundles: []
     workspace.write_file("repo/bundle-2/commands/two.md", "# Two\n");
 
     // Install specific bundle - not the parent directory
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo/bundle-1", "--for", "claude"])
         .assert()
         .success();
@@ -273,8 +252,7 @@ bundles: []
         );
     }
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./repo/bundle-2", "--for", "claude"])
         .assert()
         .success();

@@ -17,6 +17,7 @@ mod platform;
 mod progress;
 mod resolver;
 mod source;
+mod temp;
 mod transaction;
 mod universal;
 mod workspace;

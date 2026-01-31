@@ -9,21 +9,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_discover_single_bundle_from_git_repo() {
@@ -88,8 +74,7 @@ fn test_discover_single_bundle_from_git_repo() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url, "--for", "claude"])
         .assert()
         .success()
@@ -120,8 +105,7 @@ fn test_discover_bundle_from_local_directory_with_resources() {
     std::fs::write(bundle_dir.join("rules/debug.md"), "# Debug rule")
         .expect("Failed to write rule");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/local-bundle", "--for", "claude"])
         .assert()
         .success()
@@ -142,8 +126,7 @@ fn test_discover_bundle_from_local_directory_without_resources() {
 
     // Empty directories without augent.yaml or resources are still treated as local bundles
     // They just install with 0 files
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./empty-bundle", "--for", "claude"])
         .assert()
         .success()
@@ -170,8 +153,7 @@ fn test_discover_claude_code_plugin() {
     std::fs::write(plugin_dir.join("README.md"), "# Claude Code Plugin")
         .expect("Failed to write README");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./claude-plugin", "--for", "claude"])
         .assert()
         .success();
@@ -211,8 +193,7 @@ fn test_discover_claude_marketplace_format() {
     )
     .expect("Failed to write agent");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./marketplace-plugin", "--for", "claude"])
         .assert()
         .success();
@@ -303,8 +284,7 @@ fn test_discover_nested_bundle_with_subdirectory_path() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url, "--for", "claude"])
         .assert()
         .success()
@@ -400,8 +380,7 @@ fn test_discover_multiple_bundles_from_git_repository() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url, "--for", "claude"])
         .assert()
         .success()
@@ -414,8 +393,7 @@ fn test_discover_multiple_bundles_from_git_repository() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url_b, "--for", "claude"])
         .assert()
         .success()
@@ -428,8 +406,7 @@ fn test_discover_multiple_bundles_from_git_repository() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url_c, "--for", "claude"])
         .assert()
         .success()

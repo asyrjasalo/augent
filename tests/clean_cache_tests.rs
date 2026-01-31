@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_cache_miss_after_bundle_change() {
@@ -32,22 +18,19 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Modified test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/test-bundle", "-y"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
@@ -71,14 +54,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache"])
         .assert()
         .success()
@@ -99,14 +80,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "clear"])
         .assert()
         .success()
@@ -127,14 +106,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    let output = augent_cmd()
-        .current_dir(&workspace.path)
+    let output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache"])
         .output()
         .expect("Failed to run cache");
@@ -158,16 +135,14 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
     assert!(workspace.file_exists(".claude/commands/test.md"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "clear"])
         .assert()
         .success();
@@ -189,16 +164,14 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
     let temp = common::TestWorkspace::new();
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args([
             "cache",
             "clear",
@@ -223,14 +196,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "clear", "-v"])
         .assert()
         .success();
@@ -250,20 +221,17 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "clear"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache"])
         .assert()
         .success()
@@ -272,15 +240,19 @@ bundles: []
 
 #[test]
 fn test_clean_cache_truly_non_existent_cache_dir() {
-    // augent_cmd() already sets AUGENT_CACHE_DIR via test_cache_dir(),
+    let temp = common::TestWorkspace::new();
+    // augent_cmd_for_workspace sets AUGENT_CACHE_DIR via test_cache_dir_for_workspace(),
     // so we can use it directly without manual override
-    augent_cmd()
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["cache"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Cache is empty"));
 
-    augent_cmd().args(["cache", "clear"]).assert().success();
+    common::augent_cmd_for_workspace(&temp.path)
+        .args(["cache", "clear"])
+        .assert()
+        .success();
 }
 
 #[test]
@@ -297,8 +269,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
@@ -312,8 +283,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle2/commands/test2.md", "# Test2\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle2", "--for", "claude"])
         .assert()
         .success();
@@ -326,14 +296,12 @@ bundles: []
 
     let cache_existed_before = cache_dir.exists();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "clear"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache"])
         .assert()
         .success()
@@ -367,8 +335,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
@@ -382,15 +349,13 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle2/commands/test2.md", "# Test2\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle2", "--for", "claude"])
         .assert()
         .success();
 
     // Test that clear --only requires a slug
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "clear", "--only"])
         .assert()
         .failure();
@@ -410,14 +375,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["cache", "list"])
         .assert()
         .success()

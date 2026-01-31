@@ -111,14 +111,14 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let platforms = detect_platforms(temp.path()).unwrap();
         assert!(platforms.is_empty());
     }
 
     #[test]
     fn test_detect_platforms_claude() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::create_dir(temp.path().join(".claude")).unwrap();
 
         let platforms = detect_platforms(temp.path()).unwrap();
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_multiple() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::create_dir(temp.path().join(".claude")).unwrap();
         std::fs::create_dir(temp.path().join(".cursor")).unwrap();
 
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_by_file() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::write(temp.path().join("CLAUDE.md"), "# Claude").unwrap();
 
         let platforms = detect_platforms(temp.path()).unwrap();
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_or_error_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let result = detect_platforms_or_error(temp.path());
         assert!(result.is_err());
     }
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_resolve_platforms_specified() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         // Even without any platform directories, specified platforms work
         let platforms = resolve_platforms(temp.path(), &["claude".to_string()]).unwrap();
         assert_eq!(platforms.len(), 1);
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_resolve_platforms_auto_detect() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::create_dir(temp.path().join(".opencode")).unwrap();
 
         let platforms = resolve_platforms(temp.path(), &[]).unwrap();

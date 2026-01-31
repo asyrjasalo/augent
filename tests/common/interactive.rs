@@ -34,8 +34,15 @@ impl InteractiveTest {
         let mut cmd = Command::new(program);
         cmd.args(args);
         cmd.current_dir(workdir);
-        // Always ignore any developer AUGENT_WORKSPACE overrides during interactive tests
         cmd.env_remove("AUGENT_WORKSPACE");
+        cmd.env_remove("AUGENT_CACHE_DIR");
+        cmd.env_remove("TMPDIR");
+        cmd.env("AUGENT_WORKSPACE", workdir.as_os_str());
+        cmd.env(
+            "AUGENT_CACHE_DIR",
+            super::test_cache_dir_for_workspace(workdir).as_os_str(),
+        );
+        cmd.env("TMPDIR", super::test_tmpdir_for_child().as_os_str());
 
         let session = Session::spawn(cmd)
             .map_err(|e| std::io::Error::other(format!("Failed to spawn session: {}", e)))?;

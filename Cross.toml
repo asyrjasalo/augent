@@ -3,5 +3,5 @@
 
 [build.env]
 # Pass test cache base into the container so tests have a writable path.
-# CI sets AUGENT_TEST_CACHE_DIR=/tmp/augent-cache when using cross (runner.temp is not mounted).
+# CI sets AUGENT_TEST_CACHE_DIR when using cross (runner.temp is not mounted).
 passthrough = ["AUGENT_TEST_CACHE_DIR"]

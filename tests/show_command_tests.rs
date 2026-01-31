@@ -4,21 +4,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 // ============================================================================
 // Show Command Dependencies Tests (from commands.md)
@@ -56,14 +42,12 @@ bundles:
 
     workspace.write_file("bundles/dependent-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/dependent-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "dependent-bundle"])
         .assert()
         .success()
@@ -115,14 +99,12 @@ bundles:
 
     workspace.write_file("bundles/multi-dep-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/multi-dep-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "multi-dep-bundle"])
         .assert()
         .success()
@@ -150,14 +132,12 @@ bundles: []
 
     workspace.write_file("bundles/standalone-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/standalone-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "standalone-bundle"])
         .assert()
         .success()
@@ -186,8 +166,7 @@ bundles: []
 
     workspace.write_file("bundles/single-agent-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/single-agent-bundle",
@@ -197,8 +176,7 @@ bundles: []
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "single-agent-bundle"])
         .assert()
         .success()
@@ -228,14 +206,12 @@ bundles: []
     workspace.write_file("bundles/multi-file-bundle/rules/rule1.md", "# Rule 1\n");
     workspace.write_file("bundles/multi-file-bundle/skills/skill1.md", "# Skill 1\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/multi-file-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "multi-file-bundle"])
         .assert()
         .success()
@@ -264,14 +240,12 @@ bundles: []
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/empty-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "empty-bundle"])
         .assert()
         .success()
@@ -301,15 +275,13 @@ bundles: []
 
     workspace.write_file("bundles/agents-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/agents-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Per spec dir name is dir-name; show by stored name
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "agents-bundle"])
         .assert()
         .success()
@@ -334,15 +306,13 @@ bundles: []
 
     workspace.write_file("bundles/other-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/other-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     // Show with non-matching scope prefix should fail
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "@wshobson/agents"])
         .assert()
         .failure()
@@ -390,41 +360,35 @@ bundles: []
     workspace.write_file("bundles/security/commands/test.md", "# Test\n");
 
     // Install all bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/accessibility", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/performance", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/security", "--for", "cursor"])
         .assert()
         .success();
 
     // Per spec dir name is dir-name; show each bundle by stored name
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "accessibility"])
         .assert()
         .success()
         .stdout(predicate::str::contains("accessibility"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "performance"])
         .assert()
         .success()
         .stdout(predicate::str::contains("performance"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "security"])
         .assert()
         .success()

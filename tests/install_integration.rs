@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_install_files_are_installed() {
@@ -25,8 +11,7 @@ fn test_install_files_are_installed() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -43,8 +28,7 @@ fn test_install_with_modified_files_preserves_changes() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     // First install the bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -54,8 +38,7 @@ fn test_install_with_modified_files_preserves_changes() {
     workspace.write_file(".cursor/commands/debug.md", modified_content);
 
     // Install again - should succeed and preserve modified content
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -75,8 +58,7 @@ fn test_install_generates_lockfile() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -91,8 +73,7 @@ fn test_install_updates_config_files() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -107,8 +88,7 @@ fn test_install_git_source_fails_without_network() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "github:author/repo", "--for", "cursor"])
         .assert()
         .failure()
@@ -125,8 +105,7 @@ fn test_install_invalid_url() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "invalid::url::format", "--for", "cursor"])
         .assert()
         .failure()
@@ -149,8 +128,7 @@ bundles:
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .failure()
@@ -164,25 +142,22 @@ bundles:
 #[test]
 fn test_install_auto_initializes_workspace_when_missing() {
     let workspace = common::TestWorkspace::new();
-    // Don't initialize workspace - it should be auto-initialized
     workspace.create_agent_dir("opencode");
+    // Add bundle resources so there is something to install (otherwise we do not create .augent/)
+    std::fs::create_dir_all(workspace.path.join("commands")).expect("create commands dir");
+    std::fs::write(workspace.path.join("commands/foo.md"), "# Foo").expect("write command");
 
-    // Verify workspace doesn't exist yet
     assert!(!workspace.file_exists(".augent/augent.yaml"));
 
-    // Run install without source - should auto-initialize workspace
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "opencode"])
         .assert()
         .success();
 
-    // Verify workspace was created
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
-    // Verify augent.yaml has correct structure
     let config = workspace.read_file(".augent/augent.yaml");
     assert!(config.contains("name:"));
     assert!(config.contains("bundles:"));
@@ -192,32 +167,29 @@ fn test_install_auto_initializes_workspace_when_missing() {
 fn test_install_auto_initializes_workspace_creates_correct_files() {
     let workspace = common::TestWorkspace::new();
     workspace.create_agent_dir("cursor");
+    // Add bundle resources so there is something to install (otherwise we do not create .augent/)
+    std::fs::create_dir_all(workspace.path.join("commands")).expect("create commands dir");
+    std::fs::write(workspace.path.join("commands/bar.md"), "# Bar").expect("write command");
 
-    // Run install without source - should auto-initialize workspace
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "cursor"])
         .assert()
         .success();
 
-    // Verify all workspace files exist
     assert!(workspace.file_exists(".augent/augent.yaml"));
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
-    // Verify augent.yaml is valid YAML and has required fields
     let config = workspace.read_file(".augent/augent.yaml");
     assert!(config.contains("name:"));
     assert!(config.contains("bundles:"));
 
-    // Verify lockfile is valid JSON and has required fields
     let lockfile = workspace.read_file(".augent/augent.lock");
     let lockfile_json: serde_json::Value =
         serde_json::from_str(&lockfile).expect("Lockfile should be valid JSON");
     assert!(lockfile_json["name"].is_string());
     assert!(lockfile_json["bundles"].is_array());
 
-    // Verify workspace config is valid YAML
     let workspace_config = workspace.read_file(".augent/augent.index.yaml");
     assert!(workspace_config.contains("name:"));
 }
@@ -233,8 +205,7 @@ fn test_install_with_existing_workspace_works_correctly() {
     assert!(workspace.file_exists(".augent/augent.yaml"));
 
     // Run install without source - should work with existing workspace
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "--for", "opencode"])
         .assert()
         .success();
@@ -248,17 +219,15 @@ fn test_install_with_existing_workspace_works_correctly() {
 #[test]
 fn test_install_exits_early_when_no_resources_on_init() {
     let workspace = common::TestWorkspace::new();
-    // Don't initialize workspace - it should be auto-initialized
-    // Don't create any resources - should exit early without prompting
+    // Don't initialize workspace - no augent.yaml, no .augent
+    // Don't create any resources - should exit early without creating .augent/
 
     // Verify workspace doesn't exist yet
     assert!(!workspace.file_exists(".augent/augent.yaml"));
 
     // Run install without source and without --for flag
-    // Should auto-initialize and exit early since there are no resources to install
-    // Should show "Nothing to install." message and not prompt for platforms
-    augent_cmd()
-        .current_dir(&workspace.path)
+    // Should exit early with "Nothing to install." and NOT create .augent/
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])
         .assert()
         .success()
@@ -268,10 +237,8 @@ fn test_install_exits_early_when_no_resources_on_init() {
         // Should not install anything or mention platforms
         .stdout(predicate::str::contains("Installing for").not());
 
-    // Verify workspace was created (initialization happened)
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-    assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.index.yaml"));
+    // Verify .augent/ was NOT created when there is nothing to install
+    assert!(!workspace.path.join(".augent").exists());
 }
 
 #[test]
@@ -289,8 +256,7 @@ fn test_install_skips_platform_prompt_when_no_bundles() {
 
     // Run install without source - should exit early since there are no resources to install
     // Should show "Nothing to install." message and not prompt for platforms
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])
         .assert()
         .success()

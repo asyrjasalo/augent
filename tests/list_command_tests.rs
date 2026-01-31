@@ -4,21 +4,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 // ============================================================================
 // List Command Detailed Output Tests (from commands.md)
@@ -42,14 +28,12 @@ bundles: []
 
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -88,8 +72,7 @@ bundles: []
             &format!("# Test {}\n", i),
         );
 
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args([
                 "install",
                 &format!("./bundles/bundle-{}", i),
@@ -100,8 +83,7 @@ bundles: []
             .success();
     }
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -133,8 +115,7 @@ bundles: []
             &format!("# Test {}\n", i),
         );
 
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args([
                 "install",
                 &format!("./bundles/bundle-{}", i),
@@ -146,8 +127,7 @@ bundles: []
     }
 
     for i in 1..=5 {
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["list", "--detailed"])
             .assert()
             .success()
@@ -201,28 +181,24 @@ bundles: []
     workspace.write_file("bundles/opencode-bundle/skills/test.md", "# Test\n");
 
     workspace.create_agent_dir("cursor");
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/cursor-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     workspace.create_agent_dir("claude");
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/claude-bundle", "--for", "claude"])
         .assert()
         .success();
 
     workspace.create_agent_dir("opencode");
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/opencode-bundle", "--for", "opencode"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -255,14 +231,12 @@ bundles: []
     workspace.write_file("bundles/multi-file-bundle/rules/rule1.md", "# Rule 1\n");
     workspace.write_file("bundles/multi-file-bundle/skills/skill1.md", "# Skill 1\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/multi-file-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -295,14 +269,12 @@ bundles: []
 
     workspace.write_file("bundles/metadata-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/metadata-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -335,14 +307,12 @@ bundles: []
 
     workspace.write_file("bundles/versioned-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/versioned-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -370,14 +340,12 @@ bundles: []
     workspace.write_file("bundles/readable-bundle/commands/test2.md", "# Test 2\n");
     workspace.write_file("bundles/readable-bundle/rules/rule.md", "# Rule\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/readable-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    let output = augent_cmd()
-        .current_dir(&workspace.path)
+    let output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -424,14 +392,12 @@ bundles: []
 
     workspace.write_file("bundles/layout-bundle/commands/test.md", "# Test layout\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/layout-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    let basic_output = augent_cmd()
-        .current_dir(&workspace.path)
+    let basic_output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -439,8 +405,7 @@ bundles: []
         .stdout
         .clone();
 
-    let detailed_output = augent_cmd()
-        .current_dir(&workspace.path)
+    let detailed_output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -493,8 +458,7 @@ bundles: []
     );
     workspace.write_file("bundles/resources-layout-bundle/rules/rule.md", "# Rule\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/resources-layout-bundle",
@@ -504,8 +468,7 @@ bundles: []
         .assert()
         .success();
 
-    let basic_output = augent_cmd()
-        .current_dir(&workspace.path)
+    let basic_output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -513,8 +476,7 @@ bundles: []
         .stdout
         .clone();
 
-    let detailed_output = augent_cmd()
-        .current_dir(&workspace.path)
+    let detailed_output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -581,8 +543,7 @@ bundles: []
     workspace.create_agent_dir("claude");
     workspace.create_agent_dir("opencode");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/multi-platform-bundle",
@@ -594,8 +555,7 @@ bundles: []
         .assert()
         .success();
 
-    let output = augent_cmd()
-        .current_dir(&workspace.path)
+    let output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["list", "--detailed"])
         .assert()
         .success()

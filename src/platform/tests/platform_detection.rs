@@ -8,7 +8,7 @@ use crate::platform::{default_platforms, detection::detect_platforms};
 /// Test platform detection for all 14 platforms
 #[test]
 fn test_detect_antigravity_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".agent")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -17,7 +17,7 @@ fn test_detect_antigravity_by_directory() {
 
 #[test]
 fn test_detect_augment_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".augment")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -26,7 +26,7 @@ fn test_detect_augment_by_directory() {
 
 #[test]
 fn test_detect_claude_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".claude")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -35,7 +35,7 @@ fn test_detect_claude_by_directory() {
 
 #[test]
 fn test_detect_claude_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("CLAUDE.md"), "# Claude\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -44,7 +44,7 @@ fn test_detect_claude_by_file() {
 
 #[test]
 fn test_detect_claude_plugin_by_directory_and_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     let plugin_dir = temp.path().join(".claude-plugin");
     fs::create_dir_all(&plugin_dir).unwrap();
     fs::write(plugin_dir.join("plugin.json"), "{}").unwrap();
@@ -55,7 +55,7 @@ fn test_detect_claude_plugin_by_directory_and_file() {
 
 #[test]
 fn test_detect_codex_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".codex")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -64,7 +64,7 @@ fn test_detect_codex_by_directory() {
 
 #[test]
 fn test_detect_codex_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -73,7 +73,7 @@ fn test_detect_codex_by_file() {
 
 #[test]
 fn test_detect_cursor_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".cursor")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -82,7 +82,7 @@ fn test_detect_cursor_by_directory() {
 
 #[test]
 fn test_detect_cursor_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -91,7 +91,7 @@ fn test_detect_cursor_by_file() {
 
 #[test]
 fn test_detect_factory_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".factory")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -100,7 +100,7 @@ fn test_detect_factory_by_directory() {
 
 #[test]
 fn test_detect_factory_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -109,7 +109,7 @@ fn test_detect_factory_by_file() {
 
 #[test]
 fn test_detect_kilo_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".kilocode")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -118,7 +118,7 @@ fn test_detect_kilo_by_directory() {
 
 #[test]
 fn test_detect_kilo_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -127,7 +127,7 @@ fn test_detect_kilo_by_file() {
 
 #[test]
 fn test_detect_kiro_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".kiro")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -136,7 +136,7 @@ fn test_detect_kiro_by_directory() {
 
 #[test]
 fn test_detect_opencode_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".opencode")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -145,7 +145,7 @@ fn test_detect_opencode_by_directory() {
 
 #[test]
 fn test_detect_opencode_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -154,7 +154,7 @@ fn test_detect_opencode_by_file() {
 
 #[test]
 fn test_detect_qwen_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".qwen")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -163,7 +163,7 @@ fn test_detect_qwen_by_directory() {
 
 #[test]
 fn test_detect_qwen_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("QWEN.md"), "# Qwen\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -172,7 +172,7 @@ fn test_detect_qwen_by_file() {
 
 #[test]
 fn test_detect_roo_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".roo")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -181,7 +181,7 @@ fn test_detect_roo_by_directory() {
 
 #[test]
 fn test_detect_roo_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -190,7 +190,7 @@ fn test_detect_roo_by_file() {
 
 #[test]
 fn test_detect_warp_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".warp")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -199,7 +199,7 @@ fn test_detect_warp_by_directory() {
 
 #[test]
 fn test_detect_warp_by_file() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("WARP.md"), "# Warp\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -208,7 +208,7 @@ fn test_detect_warp_by_file() {
 
 #[test]
 fn test_detect_windsurf_by_directory() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".windsurf")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -217,7 +217,7 @@ fn test_detect_windsurf_by_directory() {
 
 #[test]
 fn test_detect_multiple_platforms() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".claude")).unwrap();
     fs::create_dir(temp.path().join(".cursor")).unwrap();
     fs::create_dir(temp.path().join(".opencode")).unwrap();
@@ -231,7 +231,7 @@ fn test_detect_multiple_platforms() {
 
 #[test]
 fn test_detect_all_platforms() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     fs::create_dir(temp.path().join(".agent")).unwrap();
     fs::create_dir(temp.path().join(".augment")).unwrap();
@@ -277,7 +277,7 @@ fn test_detect_all_platforms() {
 
 #[test]
 fn test_detect_no_platforms() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
     assert_eq!(platforms.len(), 0);
@@ -285,7 +285,7 @@ fn test_detect_no_platforms() {
 
 #[test]
 fn test_agents_md_detects_multiple_platforms() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
@@ -303,7 +303,7 @@ fn test_agents_md_detects_multiple_platforms() {
 
 #[test]
 fn test_directory_detection_takes_precedence() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::create_dir(temp.path().join(".claude")).unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();

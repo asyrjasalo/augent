@@ -557,7 +557,7 @@ mod tests {
 
     #[test]
     fn test_select_bundle_interactively_empty() {
-        let temp = tempfile::TempDir::new().unwrap();
+        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_root = temp.path();
         let augent_dir = workspace_root.join(".augent");
         std::fs::create_dir_all(&augent_dir).unwrap();

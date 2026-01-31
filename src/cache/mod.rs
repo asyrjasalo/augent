@@ -407,9 +407,11 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
 pub fn clone_and_checkout(
     source: &GitSource,
 ) -> Result<(tempfile::TempDir, String, Option<String>)> {
-    let temp_dir = tempfile::TempDir::new().map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to create temp directory: {}", e),
-    })?;
+    let base = crate::temp::temp_dir_base();
+    let temp_dir =
+        tempfile::TempDir::new_in(&base).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to create temp directory: {}", e),
+        })?;
 
     let repo = git::clone(&source.url, temp_dir.path(), true)?;
 
@@ -613,30 +615,32 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     let (temp_dir, sha, resolved_ref) = clone_and_checkout(source)?;
     let path_opt = source.path.as_deref();
 
-    let (bundle_name, content_path, _synthetic_guard) =
-        if let Some(plugin_name) = path_opt.and_then(|p| p.strip_prefix("$claudeplugin/")) {
-            // Marketplace bundle: create synthetic content to temp dir; keep temp alive until copy
-            let bundle_name = derive_marketplace_bundle_name(&source.url, plugin_name);
-            let synthetic_temp =
-                tempfile::TempDir::new().map_err(|e| AugentError::CacheOperationFailed {
-                    message: format!("Failed to create temp directory: {}", e),
-                })?;
-            MarketplaceConfig::create_synthetic_bundle_to(
-                temp_dir.path(),
-                plugin_name,
-                synthetic_temp.path(),
-                Some(&source.url),
-            )?;
-            (
-                bundle_name,
-                synthetic_temp.path().to_path_buf(),
-                Some(synthetic_temp),
-            )
-        } else {
-            let content_path = content_path_in_repo(temp_dir.path(), source);
-            let bundle_name = get_bundle_name_for_source(source, &content_path)?;
-            (bundle_name, content_path, None)
-        };
+    let (bundle_name, content_path, _synthetic_guard) = if let Some(plugin_name) =
+        path_opt.and_then(|p| p.strip_prefix("$claudeplugin/"))
+    {
+        // Marketplace bundle: create synthetic content to temp dir; keep temp alive until copy
+        let bundle_name = derive_marketplace_bundle_name(&source.url, plugin_name);
+        let base = crate::temp::temp_dir_base();
+        let synthetic_temp =
+            tempfile::TempDir::new_in(&base).map_err(|e| AugentError::CacheOperationFailed {
+                message: format!("Failed to create temp directory: {}", e),
+            })?;
+        MarketplaceConfig::create_synthetic_bundle_to(
+            temp_dir.path(),
+            plugin_name,
+            synthetic_temp.path(),
+            Some(&source.url),
+        )?;
+        (
+            bundle_name,
+            synthetic_temp.path().to_path_buf(),
+            Some(synthetic_temp),
+        )
+    } else {
+        let content_path = content_path_in_repo(temp_dir.path(), source);
+        let bundle_name = get_bundle_name_for_source(source, &content_path)?;
+        (bundle_name, content_path, None)
+    };
 
     if let Some((_, ref_name)) = index_lookup(&source.url, &sha, path_opt)? {
         let entry_path = repo_cache_entry_path(&source.url, &sha)?;
@@ -923,7 +927,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cache_dir() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let expected_path = temp_dir.path().to_path_buf();
 
         let original_cache_dir = std::env::var("AUGENT_CACHE_DIR").ok();
@@ -1036,7 +1040,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_clear_cache() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let cache_base = temp_dir.path();
 
         let original = std::env::var("AUGENT_CACHE_DIR").ok();
@@ -1062,7 +1066,7 @@ mod tests {
 
     #[test]
     fn test_dir_size() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let test_dir = temp_dir.path().join("test");
         std::fs::create_dir_all(&test_dir).unwrap();
         let file_path = test_dir.join("test.txt");

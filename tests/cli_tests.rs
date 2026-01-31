@@ -3,27 +3,13 @@
 mod common;
 use common::TestWorkspace;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
 
-// Temporary fix for deprecated cargo_bin - will be updated when build-dir issues are resolved
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 #[test]
 fn test_help_output() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("--help")
         .assert()
         .success()
@@ -36,7 +22,8 @@ fn test_help_output() {
 
 #[test]
 fn test_version_output() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("version")
         .assert()
         .success()
@@ -71,8 +58,7 @@ bundles: []
     )
     .expect("Failed to write workspace config");
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["uninstall", "my-bundle"])
         .assert()
         .failure()
@@ -84,8 +70,7 @@ bundles: []
 #[test]
 fn test_list_no_workspace() {
     let temp = common::TestWorkspace::new();
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("list")
         .assert()
         .failure()
@@ -121,8 +106,7 @@ bundles: []
     )
     .expect("Failed to write workspace config");
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("list")
         .assert()
         .success()
@@ -188,8 +172,7 @@ bundles:
     )
     .expect("Failed to write workspace config");
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("list")
         .assert()
         .success()
@@ -242,8 +225,7 @@ bundles:
     )
     .expect("Failed to write workspace config");
 
-    augent_cmd()
-        .current_dir(&temp.path)
+    common::augent_cmd_for_workspace(&temp.path)
         .args(["list", "--detailed"])
         .assert()
         .success()
@@ -311,8 +293,7 @@ bundles:
     // Create .opencode directory so platform is detected
     fs::create_dir_all(workspace.path.join(".opencode")).unwrap();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "@user/test-bundle"])
         .assert()
         .success()
@@ -364,8 +345,7 @@ bundles:
 }"#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "@user/test-bundle"])
         .assert()
         .success()
@@ -405,8 +385,7 @@ bundles: []
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "nonexistent-bundle"])
         .assert()
         .failure()
@@ -417,7 +396,8 @@ bundles: []
 
 #[test]
 fn test_unknown_command() {
-    augent_cmd()
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("unknown")
         .assert()
         .failure()
@@ -427,14 +407,16 @@ fn test_unknown_command() {
 #[test]
 fn test_install_missing_source() {
     let temp = common::TestWorkspace::new();
-    // Running install without source should auto-initialize workspace and exit if nothing to install
-    augent_cmd()
-        .current_dir(&temp.path)
+    // Running install without source in a dir with no workspace should exit without creating .augent/
+    common::augent_cmd_for_workspace(&temp.path)
         .arg("install")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Initialized .augent/ directory"))
         .stdout(predicate::str::contains("Nothing to install"));
+    assert!(
+        !temp.path.join(".augent").exists(),
+        ".augent/ must not be created when nothing to install"
+    );
 }
 
 #[test]
@@ -495,8 +477,7 @@ bundles: []
 
     // For now, we'll test with the full source string including subdirectory
     // In real usage, users would select from an interactive menu
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             &format!("{}:subdir-bundle", repo_url),

@@ -4,22 +4,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-// Remove unused import - predicates used via module path
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 #[test]
 fn test_readme_quick_start_install_example_works() {
     let workspace = common::TestWorkspace::new();
@@ -41,8 +25,7 @@ bundles: []
         "# Analysis skill\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/debug-tools"])
         .assert()
         .success();
@@ -64,14 +47,12 @@ bundles: []
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -95,14 +76,12 @@ bundles: []
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "my-bundle"])
         .assert()
         .success()
@@ -126,14 +105,12 @@ bundles: []
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "my-bundle", "-y"])
         .assert()
         .success();
@@ -156,8 +133,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -180,14 +156,12 @@ bundles: []
     );
     workspace.write_file("bundles/my-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -209,8 +183,7 @@ description: Minimal bundle
     );
     workspace.write_file("bundles/minimal-bundle/rules/debug.md", "# Debug rule\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/minimal-bundle"])
         .assert()
         .success();
@@ -232,8 +205,7 @@ bundles: []
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -255,14 +227,12 @@ bundles: []
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["completions", "bash"])
         .assert()
         .success()

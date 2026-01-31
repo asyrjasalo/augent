@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_install_with_corrupted_augent_yaml() {
@@ -30,8 +16,7 @@ fn test_install_with_corrupted_augent_yaml() {
         "invalid: yaml: [unclosed",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .failure()
@@ -49,8 +34,7 @@ fn test_install_with_corrupted_augent_lock() {
 
     workspace.write_file(".augent/augent.lock", "invalid: yaml: content");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "test-bundle"])
         .assert()
         .failure();
@@ -64,8 +48,7 @@ fn test_install_with_corrupted_augent_index_yaml() {
 
     workspace.write_file(".augent/augent.lock", "invalid: yaml: content");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "test-bundle"])
         .assert()
         .failure();
@@ -76,8 +59,7 @@ fn test_show_with_bundle_not_found() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["show", "@test/nonexistent"])
         .assert()
         .failure()
@@ -95,8 +77,7 @@ fn test_list_with_corrupted_lockfile() {
 
     workspace.write_file(".augent/augent.lock", "invalid: yaml: content");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .failure();
@@ -130,8 +111,7 @@ bundles:
     );
     workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "claude"])
         .assert()
         .failure()
@@ -159,8 +139,7 @@ bundles:
     );
     workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "claude"])
         .assert()
         .failure()
@@ -179,8 +158,7 @@ fn test_uninstall_with_bundle_not_found() {
     // When trying to uninstall a scope that doesn't match any bundles,
     // the command now returns success with a friendly message instead of failing.
     // This is better UX - the user gets clear feedback that no bundles matched.
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/nonexistent"])
         .assert()
         .success()
@@ -201,16 +179,14 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Original\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
 
     workspace.write_file(".claude/commands/test.md", "# Modified by user\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -218,12 +194,20 @@ bundles: []
 
 #[test]
 fn test_version_command_always_succeeds() {
-    augent_cmd().args(["version"]).assert().success();
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
+        .args(["version"])
+        .assert()
+        .success();
 }
 
 #[test]
 fn test_help_command_always_succeeds() {
-    augent_cmd().args(["help"]).assert().success();
+    let temp = common::TestWorkspace::new();
+    common::augent_cmd_for_workspace(&temp.path)
+        .args(["help"])
+        .assert()
+        .success();
 }
 
 #[test]
@@ -245,16 +229,14 @@ bundles: []
         "# Original content\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     workspace.modify_file(".cursor/commands/test.md", "# Modified content\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -292,8 +274,7 @@ bundles: []
         // temporary lockfile next to augent.lock, which can legitimately
         // fail when the directory is read-only. We only assert that the
         // command fails with a clear error message, not on the exact path.
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["install", "./bundles/test-bundle", "--for", "claude"])
             .assert()
             .failure()
@@ -305,8 +286,7 @@ bundles: []
     #[cfg(windows)]
     {
         // On Windows, directory permissions behave differently
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["install", "./bundles/test-bundle", "--for", "claude"])
             .assert()
             .success();
@@ -329,16 +309,14 @@ fn test_list_with_insufficient_permissions() {
             perms.set_readonly(true);
             std::fs::set_permissions(&lockfile_path, perms).unwrap();
 
-            augent_cmd()
-                .current_dir(&workspace.path)
+            common::augent_cmd_for_workspace(&workspace.path)
                 .args(["list"])
                 .assert()
                 .success();
 
             std::fs::set_permissions(&lockfile_path, original_perms).unwrap();
         } else {
-            augent_cmd()
-                .current_dir(&workspace.path)
+            common::augent_cmd_for_workspace(&workspace.path)
                 .args(["list"])
                 .assert()
                 .success();
@@ -347,8 +325,7 @@ fn test_list_with_insufficient_permissions() {
 
     #[cfg(windows)]
     {
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["list"])
             .assert()
             .success();
@@ -371,8 +348,7 @@ bundles:
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])
         .assert()
         .failure()
@@ -399,8 +375,7 @@ bundles:
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])
         .assert()
         .failure()
@@ -428,8 +403,7 @@ bundles:
 "#,
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])
         .assert()
         .failure()

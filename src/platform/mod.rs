@@ -435,7 +435,7 @@ mod unit_tests {
 
     #[test]
     fn test_platform_detection() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::create_dir(temp.path().join(".claude")).unwrap();
 
         let claude = Platform::new("claude", "Claude", ".claude").with_detection(".claude");

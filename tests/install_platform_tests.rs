@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_install_auto_detect_platforms() {
@@ -27,8 +13,7 @@ fn test_install_auto_detect_platforms() {
     workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -41,8 +26,7 @@ fn test_install_for_single_agent() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -56,8 +40,7 @@ fn test_install_for_multiple_agents() {
     workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/test-bundle",
@@ -75,8 +58,7 @@ fn test_install_invalid_agent_name() {
     workspace.init_from_fixture("empty");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "invalid-agent"])
         .assert()
         .failure()
@@ -90,8 +72,7 @@ fn test_install_empty_workspace_platforms() {
     workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -104,8 +85,7 @@ fn test_install_with_root_files() {
     workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("bundle-with-root-files", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -138,8 +118,7 @@ bundles: []
     )
     .expect("Failed to write file");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -206,8 +185,7 @@ bundles: []
     )
     .expect("Failed to write mcp.jsonc");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -267,8 +245,7 @@ bundles: []
     )
     .expect("Failed to write unsupported resource");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -294,8 +271,7 @@ fn test_platform_detection_order_with_multiple_platforms() {
 
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -335,8 +311,7 @@ fn test_platform_detection_order_with_root_files() {
 
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -358,8 +333,7 @@ fn test_install_universal_frontmatter_merged_for_opencode() {
     workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("universal-frontmatter-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -407,8 +381,7 @@ fn test_install_universal_frontmatter_full_yaml_for_all_platforms() {
     workspace.create_agent_dir("opencode");
     workspace.copy_fixture_bundle("universal-frontmatter-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -458,8 +431,7 @@ bundles: []
     )
     .expect("Failed to write command");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -495,8 +467,7 @@ bundles: []
     std::fs::write(bundle.join("rules").join("lint.md"), "# Linting rule")
         .expect("Failed to write rule");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -532,8 +503,7 @@ bundles: []
     std::fs::write(bundle.join("skills").join("analyze.md"), "# Analysis skill")
         .expect("Failed to write skill");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -569,8 +539,7 @@ bundles: []
     std::fs::write(bundle.join("rules").join("format.md"), "# Formatting rule")
         .expect("Failed to write rule");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -619,8 +588,7 @@ bundles: []
     std::fs::write(bundle.join("skills").join("debug.md"), "# Debugging skill")
         .expect("Failed to write skill");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -680,8 +648,7 @@ bundles: []
     std::fs::write(bundle.join("rules").join("test.md"), "# Test rule")
         .expect("Failed to write rule");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -737,8 +704,7 @@ bundles: []
     std::fs::write(bundle.join("rules").join("rule.md"), "# Rule").expect("Failed to write");
     std::fs::write(bundle.join("skills").join("skill.md"), "# Skill").expect("Failed to write");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();

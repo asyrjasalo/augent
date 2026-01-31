@@ -8,22 +8,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    // Prevent git from prompting for credentials (e.g. "Username for 'https://github.com':")
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 /// Test that @author/repo format is parsed and recognized as GitHub URL
 #[test]
 fn test_at_prefix_basic_format() {
@@ -32,8 +16,7 @@ fn test_at_prefix_basic_format() {
     workspace.create_agent_dir("cursor");
 
     // Test that CLI accepts @author/repo format (will fail on clone, but proves parsing works)
-    let _ = augent_cmd()
-        .current_dir(&workspace.path)
+    let _ = common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "@nonexistent/fake-repo"])
         .output();
     // We don't assert success because the repo doesn't exist, but we're testing the parsing
@@ -56,8 +39,7 @@ fn test_at_prefix_displays_github_url() {
     // Test that @author/repo format is parsed and converted to GitHub URL
     // We use a non-existent GitHub repo format to test parsing without network access
     // The install will fail quickly, but should show the GitHub URL in the output
-    let output = augent_cmd()
-        .current_dir(&workspace.path)
+    let output = common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "@nonexistent/fake-repo"])
         .output()
         .expect("Failed to run command");
@@ -75,8 +57,7 @@ fn test_at_prefix_displays_github_url() {
     );
 
     // Also verify that a local file:// URL works (proves the test infrastructure works)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();

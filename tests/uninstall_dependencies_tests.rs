@@ -5,21 +5,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_uninstall_with_transitive_dependencies() {
@@ -70,15 +56,13 @@ bundles:
     workspace.write_file("bundles/bundle-a/commands/cmd-a.md", "# Command A");
 
     // Install A (which should install B and C as dependencies)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
     // Verify all three bundles are installed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -87,15 +71,13 @@ bundles:
         .stdout(predicate::str::contains("@test/bundle-c"));
 
     // Uninstall A
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "bundle-a", "-y"])
         .assert()
         .success();
 
     // Verify A is removed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -106,8 +88,7 @@ bundles:
     // The uninstall logic will only remove them if they're not needed by anything else.
     // With the lockfile order heuristic, B and C come before A, and nothing else needs them,
     // so they should be removed too.
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -161,22 +142,19 @@ bundles:
     workspace.write_file("bundles/bundle-b-shared/commands/cmd-b.md", "# Command B");
 
     // Install A (which installs C as dependency)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a-shared", "--for", "cursor"])
         .assert()
         .success();
 
     // Install B (which also needs C, but C already exists)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b-shared", "--for", "cursor"])
         .assert()
         .success();
 
     // Verify all three bundles are installed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -185,15 +163,13 @@ bundles:
         .stdout(predicate::str::contains("@test/shared-dep"));
 
     // Uninstall A
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "bundle-a-shared", "-y"])
         .assert()
         .success();
 
     // Verify A is removed but C is still there (B needs it)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -249,21 +225,18 @@ bundles: []
     workspace.write_file("bundles/bundle-b-multi/commands/cmd-b.md", "# Command B");
 
     // Install A, B
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a-multi", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b-multi", "--for", "cursor"])
         .assert()
         .success();
 
     // Verify bundles are installed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -271,23 +244,20 @@ bundles: []
         .stdout(predicate::str::contains("bundle-b-multi"));
 
     // Uninstall A - this should also remove its dependencies if they're not needed by others
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "bundle-a-multi", "-y"])
         .assert()
         .success();
 
     // Verify A is removed
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
         .stdout(predicate::str::contains("bundle-a-multi").not());
 
     // B should still be there since we didn't uninstall it
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
@@ -342,16 +312,14 @@ bundles:
     workspace.write_file("bundles/bundle-a-dep/commands/cmd-a.md", "# Command A");
 
     // Install A (which installs B as dependency)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a-dep", "--for", "cursor"])
         .assert()
         .success();
 
     // Try to uninstall B - should warn about A depending on it
     // B was installed as a dependency, so it keeps declared name @test/bundle-b-dep
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "@test/bundle-b-dep", "-y"])
         .assert()
         .success();

@@ -4,22 +4,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    // Prevent git from prompting for credentials (e.g. "Username for 'https://github.com':")
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 // file:// URL support is fully implemented
 #[test]
@@ -36,8 +21,7 @@ fn test_install_from_github_short_form() {
 
     assert!(repo_path.join("augent.yaml").exists());
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -58,8 +42,7 @@ fn test_install_from_https_git_url() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -136,8 +119,7 @@ fn test_install_with_specific_ref() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -218,8 +200,7 @@ fn test_install_with_subdirectory() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -233,8 +214,7 @@ fn test_install_from_ssh_git_url_fails_without_ssh_keys() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "git@github.com:author/bundle.git"])
         .assert()
         .failure()
@@ -328,8 +308,7 @@ fn test_bundle_discovery_with_multiple_bundles() {
         bundles_dir.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -417,8 +396,7 @@ fn test_discover_multiple_bundles_in_repository() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -478,8 +456,7 @@ fn test_install_from_real_github_repository_discovers_all_bundles() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -577,8 +554,7 @@ fn test_install_with_branch_ref() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -659,8 +635,7 @@ fn test_install_with_sha_ref() {
         sha
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -674,8 +649,7 @@ fn test_install_with_invalid_url_format() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "not:a:valid:format:://url", "--for", "cursor"])
         .assert()
         .failure()
@@ -692,8 +666,7 @@ fn test_install_with_nonexistent_repository() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "https://github.com/this-user-should-not-exist-12345/nonexistent-repo",
@@ -722,8 +695,7 @@ fn test_install_with_nonexistent_ref() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .failure()
@@ -747,8 +719,7 @@ fn test_install_with_nonexistent_subdirectory() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .failure()

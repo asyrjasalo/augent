@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_parse_marketplace_config() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let marketplace_json = temp.path().join("marketplace.json");
 
         let json_content = r#"{
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_parse_marketplace_config_with_defaults() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let marketplace_json = temp.path().join("marketplace.json");
 
         let json_content = r#"{
@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_json() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let marketplace_json = temp.path().join("marketplace.json");
 
         fs::write(&marketplace_json, "invalid json {{{").unwrap();

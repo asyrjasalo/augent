@@ -875,7 +875,7 @@ mod tests {
     fn test_determine_files_to_remove_unique() {
         let lockfile = create_test_lockfile();
 
-        let workspace_root = TempDir::new().unwrap();
+        let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -912,7 +912,7 @@ mod tests {
     fn test_determine_files_to_remove_overridden() {
         let lockfile = create_test_lockfile();
 
-        let workspace_root = TempDir::new().unwrap();
+        let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -951,7 +951,7 @@ mod tests {
 
     #[test]
     fn test_is_dir_empty() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let empty_dir = temp.path().join("empty");
         fs::create_dir(&empty_dir).unwrap();
 
@@ -966,7 +966,7 @@ mod tests {
 
     #[test]
     fn test_is_dir_empty_with_gitkeep() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let dir = temp.path().join("with-gitkeep");
         fs::create_dir(&dir).unwrap();
         fs::write(dir.join(".gitkeep"), "").unwrap();
@@ -976,7 +976,7 @@ mod tests {
 
     #[test]
     fn test_update_configs() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_path = temp.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1036,7 +1036,7 @@ bundles:
     fn test_determine_files_to_remove_nonexistent_bundle() {
         let lockfile = create_test_lockfile();
 
-        let workspace_root = TempDir::new().unwrap();
+        let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1157,7 +1157,7 @@ bundles:
 
     #[test]
     fn test_is_dir_empty_with_files() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let dir = temp.path().join("test");
 
         fs::create_dir(&dir).unwrap();
@@ -1226,7 +1226,10 @@ bundles:
         });
 
         let workspace = crate::workspace::Workspace {
-            root: TempDir::new().unwrap().path().to_path_buf(),
+            root: TempDir::new_in(crate::temp::temp_dir_base())
+                .unwrap()
+                .path()
+                .to_path_buf(),
             augent_dir: std::path::PathBuf::from(".augent"),
             config_dir: std::path::PathBuf::from(".augent"),
             bundle_config: crate::config::BundleConfig::new("@test/workspace"),
@@ -1295,7 +1298,7 @@ bundles:
             files: vec![],
         });
 
-        let workspace_root = TempDir::new().unwrap();
+        let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1346,7 +1349,7 @@ bundles:
             files: vec![],
         });
 
-        let workspace_root = TempDir::new().unwrap();
+        let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();

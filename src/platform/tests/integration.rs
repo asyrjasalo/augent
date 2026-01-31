@@ -42,7 +42,7 @@ fn test_all_platforms_defined() {
 
 #[test]
 fn test_detect_all_platforms_integration() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
     fs::create_dir(temp.path().join(".agent")).unwrap();
     fs::create_dir(temp.path().join(".augment")).unwrap();

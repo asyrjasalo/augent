@@ -1,19 +1,7 @@
 mod common;
 
-use assert_cmd::Command;
 use common::InteractiveTest;
 use std::path::PathBuf;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 fn augent_bin_path() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_augent"))
@@ -161,8 +149,7 @@ fn test_install_menu_deselect_all_uninstalls_all() {
         workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
         // First install all bundles non-interactively
-        augent_cmd()
-            .current_dir(&workspace.path)
+        common::augent_cmd_for_workspace(&workspace.path)
             .args(["install", "./bundles", "--for", "cursor", "--all-bundles"])
             .assert()
             .success();

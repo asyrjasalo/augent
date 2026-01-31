@@ -5,21 +5,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_lockfile_determinism_same_lockfile_on_multiple_runs() {
@@ -29,8 +15,7 @@ fn test_lockfile_determinism_same_lockfile_on_multiple_runs() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     // First install
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -38,8 +23,7 @@ fn test_lockfile_determinism_same_lockfile_on_multiple_runs() {
     let lockfile1 = workspace.read_file(".augent/augent.lock");
 
     // Second install of same bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -59,8 +43,7 @@ fn test_frozen_fails_when_lockfile_would_change() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -75,8 +58,7 @@ fn test_frozen_fails_when_lockfile_would_change() {
     std::fs::write(bundle2.join("commands").join("new.md"), "# New bundle")
         .expect("Failed to write command");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle-2", "--frozen"])
         .assert()
         .failure()
@@ -94,16 +76,14 @@ fn test_frozen_succeeds_when_lockfile_unchanged() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
 
     let original_lockfile = workspace.read_file(".augent/augent.lock");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--frozen"])
         .assert()
         .success();
@@ -123,8 +103,7 @@ fn test_frozen_fails_when_lockfile_missing() {
     workspace.create_agent_dir("cursor");
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--frozen"])
         .assert()
         .failure()
@@ -153,8 +132,7 @@ fn test_lockfile_ref_not_null_when_no_user_ref_specified() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url])
         .assert()
         .success();
@@ -245,8 +223,7 @@ fn test_lockfile_regeneration_after_ref_change() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url_v1])
         .assert()
         .success();
@@ -292,8 +269,7 @@ fn test_lockfile_regeneration_after_ref_change() {
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", &git_url_v2])
         .assert()
         .success();
@@ -322,8 +298,7 @@ fn test_install_with_only_lockfile_creates_augent_yaml_and_index_yaml() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     // First, create a proper lockfile by installing normally
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
         .assert()
         .success();
@@ -344,8 +319,7 @@ fn test_install_with_only_lockfile_creates_augent_yaml_and_index_yaml() {
     assert!(workspace.file_exists(".augent/augent.lock"));
 
     // Now run install again with only augent.lock
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])
         .assert()
         .success();

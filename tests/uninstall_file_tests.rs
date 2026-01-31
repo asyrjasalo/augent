@@ -2,21 +2,7 @@
 
 mod common;
 
-use assert_cmd::Command;
 use predicates::prelude::*;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
 
 #[test]
 fn test_uninstall_removes_single_file() {
@@ -32,16 +18,14 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -63,16 +47,14 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -97,16 +79,14 @@ bundles: []
         "# Workspace command\n",
     );
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/workspace-bundle", "--for", "cursor"])
         .assert()
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "workspace-bundle", "-y"])
         .assert()
         .success();
@@ -128,14 +108,12 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success()
@@ -160,8 +138,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/skills/skill.md", "# Skill\n");
 
     // Install bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -171,8 +148,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/skills/skill.md"));
 
     // Uninstall bundle
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "test-bundle", "-y"])
         .assert()
         .success();
@@ -232,14 +208,12 @@ bundles: []
     );
 
     // Install both bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b", "--for", "cursor"])
         .assert()
         .success();
@@ -249,8 +223,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/b-b-only.md"));
 
     // Uninstall bundle-b (which provided the active file)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "bundle-b", "-y"])
         .assert()
         .success();
@@ -291,14 +264,12 @@ bundles: []
     workspace.write_file("bundles/bundle-b/skills/skill-b.md", "# Skill from B\n");
 
     // Install both bundles
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a", "--for", "cursor"])
         .assert()
         .success();
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-b", "--for", "cursor"])
         .assert()
         .success();
@@ -310,8 +281,7 @@ bundles: []
     assert!(workspace.file_exists(".cursor/skills/skill-b.md"));
 
     // Uninstall bundle-a
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["uninstall", "bundle-a", "-y"])
         .assert()
         .success();

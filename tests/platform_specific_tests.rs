@@ -2,21 +2,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 #[test]
 fn test_platform_detection_order() {
     let workspace = common::TestWorkspace::new();
@@ -34,8 +19,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/test-bundle",
@@ -68,8 +52,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/rules/lint.md", "# Lint Rule\n");
     workspace.write_file("bundles/test-bundle/skills/analyze.md", "# Analyze Skill\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "claude"])
         .assert()
         .success();
@@ -104,8 +87,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/rules/debug.md", "# Debug Rule\n");
     workspace.write_file("bundles/test-bundle/rules/lint.md", "# Lint Rule\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--for", "cursor"])
         .assert()
         .success();
@@ -138,8 +120,7 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args([
             "install",
             "./bundles/test-bundle",

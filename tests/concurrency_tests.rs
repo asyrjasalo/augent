@@ -4,21 +4,6 @@
 
 mod common;
 
-use assert_cmd::Command;
-
-#[allow(deprecated)]
-fn augent_cmd() -> Command {
-    // Use a temporary cache directory in the OS's default temp location
-    // This ensures tests don't pollute the user's actual cache directory
-    let cache_dir = common::test_cache_dir();
-    let mut cmd = Command::cargo_bin("augent").unwrap();
-    // Always ignore any developer AUGENT_WORKSPACE overrides during tests
-    cmd.env_remove("AUGENT_WORKSPACE");
-    cmd.env("AUGENT_CACHE_DIR", cache_dir);
-    cmd.env("GIT_TERMINAL_PROMPT", "0");
-    cmd
-}
-
 #[test]
 fn test_concurrent_workspace_access_two_installs() {
     let workspace = common::TestWorkspace::new();
@@ -52,15 +37,13 @@ bundles: []
     let path1 = workspace.path.clone();
     let path2 = workspace.path.clone();
     let result1 = std::thread::spawn(move || {
-        augent_cmd()
-            .current_dir(&path1)
+        common::augent_cmd_for_workspace(&path1)
             .args(["install", "./bundles/bundle-1", "--for", "cursor"])
             .output()
     });
 
     let result2 = std::thread::spawn(move || {
-        augent_cmd()
-            .current_dir(&path2)
+        common::augent_cmd_for_workspace(&path2)
             .args(["install", "./bundles/bundle-2", "--for", "cursor"])
             .output()
     });
@@ -76,8 +59,7 @@ bundles: []
     );
 
     // Verify workspace is in valid state (not corrupted)
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success();
@@ -114,8 +96,7 @@ bundles: []
     let list_path = workspace.path.clone();
     let install_handle = std::thread::spawn(move || {
         for i in 1..=5 {
-            augent_cmd()
-                .current_dir(&install_path)
+            common::augent_cmd_for_workspace(&install_path)
                 .args([
                     "install",
                     &format!("./bundles/bundle-{}", i),
@@ -133,8 +114,7 @@ bundles: []
         // Try listing at different times during installation
         // Wait longer to allow installs to make progress
         std::thread::sleep(std::time::Duration::from_millis(200));
-        augent_cmd()
-            .current_dir(&list_path)
+        common::augent_cmd_for_workspace(&list_path)
             .args(["list"])
             .assert()
             .success();
@@ -147,8 +127,7 @@ bundles: []
     // This still exercises concurrent install/list behavior, but avoids
     // asserting an exact bundle count, which can be sensitive to timing
     // in highly parallel environments.
-    augent_cmd()
-        .current_dir(&workspace.path)
+    common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success();
