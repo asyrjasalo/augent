@@ -68,15 +68,15 @@ fn display_bundle_simple(
     _detailed: bool,
 ) {
     println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
-    if let Some(ref version) = bundle.version {
+    if let Some(ref description) = bundle.description {
         println!(
             "    {} {}",
-            Style::new().bold().apply_to("Version:"),
-            version
+            Style::new().bold().apply_to("Description:"),
+            description
         );
     }
     println!("    {}", Style::new().bold().apply_to("Source:"));
-    display_source_detailed_with_indent(&bundle.source, "      ");
+    display_source_detailed_with_indent(&bundle.source, "      ", bundle.version.as_deref(), false);
     display_resources_grouped(&bundle.files);
 }
 
@@ -116,7 +116,14 @@ fn display_resources_grouped(files: &[String]) {
         return;
     }
 
-    println!("    {}", Style::new().bold().apply_to("Resources:"));
+    let total = files.len();
+    let files_label = if total == 1 { "file" } else { "files" };
+    println!(
+        "    {} ({} {})",
+        Style::new().bold().apply_to("Resources:"),
+        total,
+        files_label
+    );
 
     // Group by resource type
     let mut resource_by_type: HashMap<&str, Vec<String>> = HashMap::new();
@@ -135,10 +142,17 @@ fn display_resources_grouped(files: &[String]) {
     // Display each resource type with simple file list
     for resource_type in sorted_types.iter() {
         let type_display = capitalize_word(resource_type);
-        println!("      {}", Style::new().cyan().apply_to(type_display));
+        let files_for_type = resource_by_type.get(resource_type).unwrap();
+        let n = files_for_type.len();
+        let type_label = if n == 1 { "file" } else { "files" };
+        println!(
+            "      {} ({} {})",
+            Style::new().cyan().apply_to(type_display),
+            n,
+            type_label
+        );
 
         // File rows
-        let files_for_type = resource_by_type.get(resource_type).unwrap();
         for file in files_for_type {
             println!("        {}", Style::new().dim().apply_to(file));
         }
@@ -162,14 +176,14 @@ fn extract_platform_from_location(location: &str) -> String {
     }
 }
 
-/// Display provided files grouped by platform
+/// Display enabled resources grouped by platform
 fn display_provided_files_grouped_by_platform(
     files: &[String],
     workspace_bundle: Option<&crate::config::WorkspaceBundle>,
 ) {
     use std::collections::HashMap;
 
-    println!("    {}", Style::new().bold().apply_to("Provided files:"));
+    println!("    {}", Style::new().bold().apply_to("Enabled resources:"));
 
     if let Some(ws_bundle) = workspace_bundle {
         // Group files by platform
@@ -249,13 +263,6 @@ fn display_bundle_detailed(
             description
         );
     }
-    if let Some(ref version) = bundle.version {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("Version:"),
-            version
-        );
-    }
     if let Some(ref author) = bundle.author {
         println!("    {} {}", Style::new().bold().apply_to("Author:"), author);
     }
@@ -275,13 +282,29 @@ fn display_bundle_detailed(
     }
 
     println!("    {}", Style::new().bold().apply_to("Source:"));
-    display_source_detailed_with_indent(&bundle.source, "      ");
-
-    println!(
-        "    {} {}",
-        Style::new().bold().apply_to("Files:"),
-        bundle.files.len()
+    display_source_detailed_with_indent(
+        &bundle.source,
+        "      ",
+        bundle.version.as_deref(),
+        detailed,
     );
+
+    // Plugin at same level as Source (only for $claudeplugin in detailed view)
+    if detailed {
+        if let Some(ref v) = bundle.version {
+            if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
+                if p.contains("$claudeplugin") {
+                    println!("    {}", Style::new().bold().apply_to("Plugin:"));
+                    println!(
+                        "      {} {}",
+                        Style::new().bold().apply_to("type:"),
+                        Style::new().green().apply_to("Claude Marketplace")
+                    );
+                    println!("      {} {}", Style::new().bold().apply_to("version:"), v);
+                }
+            }
+        }
+    }
 
     display_resources_grouped(&bundle.files);
 
@@ -291,7 +314,12 @@ fn display_bundle_detailed(
 }
 
 /// Display source information with custom indentation
-fn display_source_detailed_with_indent(source: &LockedSource, indent: &str) {
+fn display_source_detailed_with_indent(
+    source: &LockedSource,
+    indent: &str,
+    version: Option<&str>,
+    show_version: bool,
+) {
     match source {
         LockedSource::Dir { path, .. } => {
             println!(
@@ -306,6 +334,16 @@ fn display_source_detailed_with_indent(source: &LockedSource, indent: &str) {
                 Style::new().bold().apply_to("Path:"),
                 path
             );
+            if show_version {
+                if let Some(v) = version {
+                    println!(
+                        "{}{} {}",
+                        indent,
+                        Style::new().bold().apply_to("version:"),
+                        v
+                    );
+                }
+            }
         }
         LockedSource::Git {
             url,
@@ -337,6 +375,19 @@ fn display_source_detailed_with_indent(source: &LockedSource, indent: &str) {
                     Style::new().bold().apply_to("path:"),
                     subdir
                 );
+            }
+            if show_version {
+                if let Some(v) = version {
+                    // Plugin block is printed at bundle level by caller for $claudeplugin
+                    if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
+                        println!(
+                            "{}{} {}",
+                            indent,
+                            Style::new().bold().apply_to("version:"),
+                            v
+                        );
+                    }
+                }
             }
         }
     }

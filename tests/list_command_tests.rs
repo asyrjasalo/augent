@@ -40,7 +40,7 @@ bundles: []
         .stdout(predicate::str::contains("test-bundle"))
         .stdout(predicate::str::contains("Source:"))
         .stdout(predicate::str::contains("Type: Directory"))
-        .stdout(predicate::str::contains("Provided files:"));
+        .stdout(predicate::str::contains("Enabled resources:"));
 }
 
 // ============================================================================
@@ -240,7 +240,7 @@ bundles: []
         .args(["list", "--detailed"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Files:"))
+        .stdout(predicate::str::contains("Resources: (4 files)"))
         .stdout(predicate::str::contains("commands/cmd1.md"))
         .stdout(predicate::str::contains("commands/cmd2.md"))
         .stdout(predicate::str::contains("rules/rule1.md"))
@@ -280,12 +280,12 @@ bundles: []
         .success()
         .stdout(predicate::str::contains("metadata-bundle"))
         .stdout(predicate::str::contains("Description:"))
-        .stdout(predicate::str::contains("Version:"))
+        .stdout(predicate::str::contains("version: 1.0.0"))
         .stdout(predicate::str::contains("Author:"))
         .stdout(predicate::str::contains("License:"))
         .stdout(predicate::str::contains("Homepage:"))
         .stdout(predicate::str::contains("Source:"))
-        .stdout(predicate::str::contains("Provided files:"));
+        .stdout(predicate::str::contains("Enabled resources:"));
 }
 
 #[test]
@@ -312,12 +312,19 @@ bundles: []
         .assert()
         .success();
 
+    // Basic list shows the bundle; version is only shown in --detailed view
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("versioned-bundle"))
-        .stdout(predicate::str::contains("Version: 1.2.3"));
+        .stdout(predicate::str::contains("versioned-bundle"));
+
+    // Detailed list shows version on its own line after path
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["list", "--detailed"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("version: 1.2.3"));
 }
 
 #[test]
@@ -496,7 +503,7 @@ bundles: []
 
         let mut block = Vec::new();
         for &line in &lines[start..] {
-            if line.trim().is_empty() || line.contains("Provided files:") {
+            if line.trim().is_empty() || line.contains("Enabled resources:") {
                 break;
             }
             block.push(line.to_string());
@@ -565,18 +572,18 @@ bundles: []
 
     let output_str = String::from_utf8(output).unwrap();
 
-    // Verify "Provided files:" section exists
+    // Verify "Enabled resources:" section exists
     assert!(
-        output_str.contains("Provided files:"),
-        "Detailed output should contain Provided files section"
+        output_str.contains("Enabled resources:"),
+        "Detailed output should contain Enabled resources section"
     );
 
     // Verify platforms are grouped
     let lines: Vec<&str> = output_str.lines().collect();
     let provided_files_start = lines
         .iter()
-        .position(|line| line.contains("Provided files:"))
-        .expect("Should find Provided files section");
+        .position(|line| line.contains("Enabled resources:"))
+        .expect("Should find Enabled resources section");
 
     // Check that platform names appear as headers (capitalized)
     let section_lines = &lines[provided_files_start..];

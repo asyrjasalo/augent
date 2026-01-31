@@ -575,7 +575,7 @@ bundles: []
         .assert()
         .success()
         .stdout(predicate::str::contains("test-bundle"))
-        .stdout(predicate::str::contains("Provided files"))
+        .stdout(predicate::str::contains("Enabled resources"))
         .stdout(predicate::str::contains("commands/test.md"));
 }
 
