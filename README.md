@@ -63,7 +63,7 @@ Install from local directory within workspace:
 
 Install only for specific platforms (otherwise installs to all detected):
 
-    augent install ./local-bundle --for cursor opencode
+    augent install ./local-bundle --to cursor opencode
 
 Install from GitHub repository, `develop` branch, subdirectory `plugins/which`:
 

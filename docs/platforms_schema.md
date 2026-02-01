@@ -25,7 +25,7 @@ The `platforms.jsonc` file defines how Augent detects and transforms resources f
   // Built-in platform definitions
   "platforms": [
     {
-      // Platform identifier (used in CLI --for flag)
+      // Platform identifier (used in CLI --to flag)
       "id": "claude",
 
       // Display name for user messages
@@ -79,7 +79,7 @@ The `platforms.jsonc` file defines how Augent detects and transforms resources f
 
 - **Type:** `string`
 - **Required:** Yes
-- **Description:** Unique identifier for the platform. Used in CLI `--for` flag.
+- **Description:** Unique identifier for the platform. Used in CLI `--to` flag.
 - **Examples:** `claude`, `cursor`, `opencode`, `windsurf`
 
 ### name

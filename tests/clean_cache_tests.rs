@@ -19,7 +19,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -31,7 +31,7 @@ bundles: []
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -55,7 +55,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -81,7 +81,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -107,7 +107,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -136,7 +136,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -165,7 +165,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -197,7 +197,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -222,7 +222,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -270,7 +270,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -284,7 +284,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle2/commands/test2.md", "# Test2\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle2", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle2", "--to", "claude"])
         .assert()
         .success();
 
@@ -336,7 +336,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -350,7 +350,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle2/commands/test2.md", "# Test2\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle2", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle2", "--to", "claude"])
         .assert()
         .success();
 
@@ -376,7 +376,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 

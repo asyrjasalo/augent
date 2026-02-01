@@ -239,7 +239,7 @@ bundles:
 # Result: cmd.md is removed from BOTH .claude/ and .cursor/
 ```
 
-**If bundle-a was only installed for claude** (`--for claude`):
+**If bundle-a was only installed for claude** (`--to claude`):
 
 ```yaml
 bundles:
@@ -421,7 +421,7 @@ Installed bundles (2):
 ### Example 3: Platform-Specific Installation
 
 ```bash
-# Installed: augent install ./bundles/bundle-a --for claude
+# Installed: augent install ./bundles/bundle-a --to claude
 # Files are only in .claude/ directory
 
 $ augent uninstall bundle-a -y

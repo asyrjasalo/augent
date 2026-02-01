@@ -27,7 +27,7 @@ fn test_install_for_single_agent() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 }
@@ -44,7 +44,7 @@ fn test_install_for_multiple_agents() {
         .args([
             "install",
             "./bundles/test-bundle",
-            "--for",
+            "--to",
             "cursor",
             "opencode",
         ])
@@ -59,7 +59,7 @@ fn test_install_invalid_agent_name() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "invalid-agent"])
+        .args(["install", "./bundles/test-bundle", "--to", "invalid-agent"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("invalid").or(predicate::str::contains("not supported")));
@@ -540,7 +540,7 @@ bundles: []
         .expect("Failed to write rule");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 

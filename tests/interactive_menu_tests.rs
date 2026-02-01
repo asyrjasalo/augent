@@ -64,7 +64,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -152,7 +152,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -229,7 +229,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -281,7 +281,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -334,7 +334,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -383,7 +383,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -448,7 +448,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -508,7 +508,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -564,7 +564,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -638,7 +638,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");
@@ -700,7 +700,7 @@ bundles: []
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )
     .expect("Failed to create interactive test");

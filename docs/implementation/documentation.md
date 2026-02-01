@@ -73,13 +73,13 @@ ARGS:
     <SOURCE>    Bundle source (path, URL, or github:author/repo)
 
 OPTIONS:
-    --for <PLATFORM>...    Install only for specific platforms
+    --to <PLATFORM>..., -t    Install only for specific platforms
     --frozen            Fail if lockfile would change
     -h, --help          Print help
 
 EXAMPLES:
     augent install github:author/debug-tools
-    augent install ./my-bundle --for cursor opencode
+    augent install ./my-bundle --to cursor opencode
     augent install git@github.com:org/private.git
 ```
 
@@ -163,7 +163,7 @@ Install bundles from various sources.
 
 | Option | Description |
 |--------|-------------|
-| `--for <PLATFORM>...` | Install only for specific platforms |
+| `--to <PLATFORM>...`, `-t` | Install only for specific platforms |
 | `--frozen` | Fail if lockfile would change |
 
 ### Source Formats
@@ -182,7 +182,7 @@ Install from GitHub:
     augent install github:author/debug-tools
 
 Install for specific platforms:
-    augent install ./bundle --for cursor opencode
+    augent install ./bundle --to cursor opencode
 
 Install with frozen lockfile (CI):
     augent install --frozen

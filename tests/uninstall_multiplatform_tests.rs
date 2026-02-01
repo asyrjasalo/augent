@@ -27,7 +27,7 @@ bundles: []
         .args([
             "install",
             "./bundles/test-bundle",
-            "--for",
+            "--to",
             "cursor",
             "claude",
         ])
@@ -92,7 +92,7 @@ bundles: []
         .args([
             "install",
             "./bundles/test-bundle",
-            "--for",
+            "--to",
             "cursor",
             "claude",
         ])

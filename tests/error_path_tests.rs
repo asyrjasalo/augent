@@ -17,7 +17,7 @@ fn test_install_with_corrupted_augent_yaml() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .failure()
         .stderr(
@@ -112,7 +112,7 @@ bundles:
     workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "claude"])
+        .args(["install", "./bundles/bundle-a", "--to", "claude"])
         .assert()
         .failure()
         .stderr(
@@ -140,7 +140,7 @@ bundles:
     workspace.write_file("bundles/bundle-a/commands/a.md", "# Bundle A\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "claude"])
+        .args(["install", "./bundles/bundle-a", "--to", "claude"])
         .assert()
         .failure()
         .stderr(
@@ -180,7 +180,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Original\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -230,7 +230,7 @@ bundles: []
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -275,7 +275,7 @@ bundles: []
         // fail when the directory is read-only. We only assert that the
         // command fails with a clear error message, not on the exact path.
         common::augent_cmd_for_workspace(&workspace.path)
-            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .args(["install", "./bundles/test-bundle", "--to", "claude"])
             .assert()
             .failure()
             .stderr(predicate::str::contains("Failed to write file"));
@@ -287,7 +287,7 @@ bundles: []
     {
         // On Windows, directory permissions behave differently
         common::augent_cmd_for_workspace(&workspace.path)
-            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .args(["install", "./bundles/test-bundle", "--to", "claude"])
             .assert()
             .success();
     }

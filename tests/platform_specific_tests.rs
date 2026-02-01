@@ -23,7 +23,7 @@ bundles: []
         .args([
             "install",
             "./bundles/test-bundle",
-            "--for",
+            "--to",
             "claude",
             "cursor",
             "opencode",
@@ -53,7 +53,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/skills/analyze.md", "# Analyze Skill\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -88,7 +88,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/rules/lint.md", "# Lint Rule\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -124,7 +124,7 @@ bundles: []
         .args([
             "install",
             "./bundles/test-bundle",
-            "--for",
+            "--to",
             "claude",
             "cursor",
             "opencode",

@@ -89,7 +89,7 @@ fn test_install_git_source_fails_without_network() {
     workspace.create_agent_dir("cursor");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "github:author/repo", "--for", "cursor"])
+        .args(["install", "github:author/repo", "--to", "cursor"])
         .assert()
         .failure()
         .stderr(
@@ -106,7 +106,7 @@ fn test_install_invalid_url() {
     workspace.create_agent_dir("cursor");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "invalid::url::format", "--for", "cursor"])
+        .args(["install", "invalid::url::format", "--to", "cursor"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("invalid").or(predicate::str::contains("does not exist")));
@@ -129,7 +129,7 @@ bundles:
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .failure()
         .stderr(
@@ -150,7 +150,7 @@ fn test_install_auto_initializes_workspace_when_missing() {
     assert!(!workspace.file_exists(".augent/augent.yaml"));
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "opencode"])
+        .args(["install", "--to", "opencode"])
         .assert()
         .success();
 
@@ -172,7 +172,7 @@ fn test_install_auto_initializes_workspace_creates_correct_files() {
     std::fs::write(workspace.path.join("commands/bar.md"), "# Bar").expect("write command");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "cursor"])
+        .args(["install", "--to", "cursor"])
         .assert()
         .success();
 
@@ -206,7 +206,7 @@ fn test_install_with_existing_workspace_works_correctly() {
 
     // Run install without source - should work with existing workspace
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "opencode"])
+        .args(["install", "--to", "opencode"])
         .assert()
         .success();
 
@@ -225,7 +225,7 @@ fn test_install_exits_early_when_no_resources_on_init() {
     // Verify workspace doesn't exist yet
     assert!(!workspace.file_exists(".augent/augent.yaml"));
 
-    // Run install without source and without --for flag
+    // Run install without source and without --to flag
     // Should exit early with "Nothing to install." and NOT create .augent/
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install"])

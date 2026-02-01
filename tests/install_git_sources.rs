@@ -650,7 +650,7 @@ fn test_install_with_invalid_url_format() {
     workspace.create_agent_dir("cursor");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "not:a:valid:format:://url", "--for", "cursor"])
+        .args(["install", "not:a:valid:format:://url", "--to", "cursor"])
         .assert()
         .failure()
         .stderr(
@@ -670,7 +670,7 @@ fn test_install_with_nonexistent_repository() {
         .args([
             "install",
             "https://github.com/this-user-should-not-exist-12345/nonexistent-repo",
-            "--for",
+            "--to",
             "cursor",
         ])
         .assert()

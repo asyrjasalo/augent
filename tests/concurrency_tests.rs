@@ -38,13 +38,13 @@ bundles: []
     let path2 = workspace.path.clone();
     let result1 = std::thread::spawn(move || {
         common::augent_cmd_for_workspace(&path1)
-            .args(["install", "./bundles/bundle-1", "--for", "cursor"])
+            .args(["install", "./bundles/bundle-1", "--to", "cursor"])
             .output()
     });
 
     let result2 = std::thread::spawn(move || {
         common::augent_cmd_for_workspace(&path2)
-            .args(["install", "./bundles/bundle-2", "--for", "cursor"])
+            .args(["install", "./bundles/bundle-2", "--to", "cursor"])
             .output()
     });
 
@@ -100,7 +100,7 @@ bundles: []
                 .args([
                     "install",
                     &format!("./bundles/bundle-{}", i),
-                    "--for",
+                    "--to",
                     "cursor",
                 ])
                 .assert()

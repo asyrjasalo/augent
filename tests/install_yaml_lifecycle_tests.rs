@@ -28,7 +28,7 @@ fn test_bundle_added_to_yaml_appears_in_lockfile_and_workspace() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "gemini"])
+        .args(["install", "--to", "gemini"])
         .assert()
         .success();
 
@@ -86,7 +86,7 @@ fn test_bundle_removed_from_yaml_stays_in_lockfile_and_workspace() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "gemini"])
+        .args(["install", "--to", "gemini"])
         .assert()
         .success();
 
@@ -118,7 +118,7 @@ fn test_bundle_removed_from_yaml_stays_in_lockfile_and_workspace() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "gemini"])
+        .args(["install", "--to", "gemini"])
         .assert()
         .success();
 
@@ -183,7 +183,7 @@ fn test_install_only_resolves_bundles_in_augent_yaml() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "gemini"])
+        .args(["install", "--to", "gemini"])
         .assert()
         .success();
 
@@ -201,7 +201,7 @@ fn test_install_only_resolves_bundles_in_augent_yaml() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--for", "gemini"])
+        .args(["install", "--to", "gemini"])
         .assert()
         .success();
 

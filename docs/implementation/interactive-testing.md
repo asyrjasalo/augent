@@ -122,7 +122,7 @@ fn test_menu_selects_all() {
     let augent_path = augent_bin_path();
     let mut test = InteractiveTest::new(
         augent_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     )?;
 
@@ -436,7 +436,7 @@ fn test_complete_install_workflow() {
     let bin_path = PathBuf::from(env!("CARGO_BIN_EXE_augent"));
     let mut test = InteractiveTest::new(
         bin_path.to_str().unwrap(),
-        &["install", "./repo", "--for", "claude"],
+        &["install", "./repo", "--to", "claude"],
         &workspace.path,
     ).expect("Failed to create test");
 

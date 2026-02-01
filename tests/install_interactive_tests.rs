@@ -42,7 +42,7 @@ bundles: []
 
     // Install with explicit subdirectory path - should bypass menu
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo/bundle-a", "--for", "claude"])
+        .args(["install", "./repo/bundle-a", "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -71,7 +71,7 @@ bundles: []
 
     // Install with explicit path - should work without menu
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/my-bundle", "--for", "claude"])
+        .args(["install", "./bundles/my-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -99,7 +99,7 @@ bundles: []
 
     // Specify subdirectory explicitly to avoid interactive menu
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo/with-desc", "--for", "claude"])
+        .args(["install", "./repo/with-desc", "--to", "claude"])
         .assert()
         .success();
 
@@ -126,7 +126,7 @@ bundles: []
 
     // Specify the subdirectory explicitly - should install without menu
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo/plugins", "--for", "claude"])
+        .args(["install", "./repo/plugins", "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -147,7 +147,7 @@ fn test_install_handles_repository_with_empty_subdirectories() {
 
     // This should fail or handle gracefully
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo", "--for", "claude"])
+        .args(["install", "./repo", "--to", "claude"])
         .assert()
         .failure();
 }
@@ -174,7 +174,7 @@ bundles: []
     workspace.write_file("repo/random-dir/file.txt", "content\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo/bundle", "--for", "claude"])
+        .args(["install", "./repo/bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -213,7 +213,7 @@ bundles: []
 
     // Install specific bundle - not the parent directory
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo/bundle-1", "--for", "claude"])
+        .args(["install", "./repo/bundle-1", "--to", "claude"])
         .assert()
         .success();
 
@@ -253,7 +253,7 @@ bundles: []
     }
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./repo/bundle-2", "--for", "claude"])
+        .args(["install", "./repo/bundle-2", "--to", "claude"])
         .assert()
         .success();
 

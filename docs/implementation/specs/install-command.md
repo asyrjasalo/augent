@@ -19,7 +19,7 @@ From PRD:
 - Generate deterministic lockfiles with exact SHAs
 - Transform universal resources to platform-specific formats
 - Apply merge strategies for conflicts
-- Support `--for <agent>` flag to limit installation to specific platforms
+- Support `--to <agent>` flag to limit installation to specific platforms
 - Support `--frozen` flag for CI/CD reproducibility
 - Provide atomic rollback on any failure
 - Cache downloaded bundles
@@ -38,7 +38,7 @@ augent install [OPTIONS] <SOURCE>
 
 **Options:**
 
-- `--for <PLATFORM>...`: Install only for specific platforms
+- `--to <PLATFORM>...`: Install only for specific platforms
 - `--frozen`: Fail if lockfile would change
 - `-w, --workspace <PATH>`: Workspace directory
 - `-v, --verbose`: Enable verbose output
@@ -281,7 +281,7 @@ where
 - Install with subdirectory selection
 - Install with specific version
 - Install with dependencies
-- Install with `--for` flag
+- Install with `--to` flag
 - Install with `--frozen` flag (success and failure cases)
 - Install failure triggers rollback
 - Lockfile is deterministic across multiple runs

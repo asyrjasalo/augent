@@ -383,7 +383,7 @@ fn display_available_resources(files: &[String]) {
                 Style::new().cyan().apply_to(filename),
                 Style::new()
                     .dim()
-                    .apply_to("(available - run 'augent install --for <platform>' to deploy)")
+                    .apply_to("(available - run 'augent install --to <platform>' to deploy)")
             );
         }
     }

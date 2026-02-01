@@ -24,7 +24,7 @@ bundles: []
 
     // Install bundle (index.yaml doesn't exist yet)
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -53,7 +53,7 @@ bundles: []
 
     // Install the bundle
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -96,7 +96,7 @@ bundles: []
 
     // Install the bundle
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -137,7 +137,7 @@ bundles: []
 
     // Install the bundle
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -182,12 +182,12 @@ bundles: []
 
     // Install both bundles
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a", "--to", "cursor"])
         .assert()
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-b", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-b", "--to", "cursor"])
         .assert()
         .success();
 

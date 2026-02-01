@@ -480,7 +480,7 @@ bundles: []
         .args([
             "install",
             &format!("{}:subdir-bundle", repo_url),
-            "--for",
+            "--to",
             "claude",
         ])
         .assert()

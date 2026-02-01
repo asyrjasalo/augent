@@ -581,7 +581,7 @@ fn do_install_from_yaml(
     }
 
     // Detect target platforms
-    // If no platforms detected and no --for flag provided, show platform selection menu
+    // If no platforms detected and no --to flag provided, show platform selection menu
     // Skip platform prompt if workspace was just initialized (use all platforms)
     if args.platforms.is_empty() && !was_initialized {
         let detected = detection::detect_platforms(&workspace.root)?;
@@ -605,7 +605,7 @@ fn do_install_from_yaml(
                     args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
                 }
                 Err(_) => {
-                    // Non-interactive environment - require --for flag instead of silently using all platforms
+                    // Non-interactive environment - require --to flag instead of silently using all platforms
                     return Err(AugentError::NoPlatformsDetected);
                 }
             }
@@ -1073,7 +1073,7 @@ fn do_install(
     Ok(())
 }
 
-/// Detect target platforms based on workspace and --for flag
+/// Detect target platforms based on workspace and --to flag
 fn detect_target_platforms(workspace_root: &Path, platforms: &[String]) -> Result<Vec<Platform>> {
     if platforms.is_empty() {
         // Auto-detect platforms in workspace

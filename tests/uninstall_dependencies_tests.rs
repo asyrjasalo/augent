@@ -57,7 +57,7 @@ bundles:
 
     // Install A (which should install B and C as dependencies)
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a", "--to", "cursor"])
         .assert()
         .success();
 
@@ -143,13 +143,13 @@ bundles:
 
     // Install A (which installs C as dependency)
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a-shared", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a-shared", "--to", "cursor"])
         .assert()
         .success();
 
     // Install B (which also needs C, but C already exists)
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-b-shared", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-b-shared", "--to", "cursor"])
         .assert()
         .success();
 
@@ -226,12 +226,12 @@ bundles: []
 
     // Install A, B
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a-multi", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a-multi", "--to", "cursor"])
         .assert()
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-b-multi", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-b-multi", "--to", "cursor"])
         .assert()
         .success();
 
@@ -313,7 +313,7 @@ bundles:
 
     // Install A (which installs B as dependency)
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a-dep", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a-dep", "--to", "cursor"])
         .assert()
         .success();
 

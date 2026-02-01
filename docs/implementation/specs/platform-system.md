@@ -17,7 +17,7 @@ From PRD:
 - Transform universal resources to platform-specific paths
 - Apply merge strategies when multiple bundles provide same resource
 - Enable adding new platforms through configuration files (no code changes)
-- Support platform selection via `--for` flag
+- Support platform selection via `--to` flag
 
 ## Design
 
@@ -32,7 +32,7 @@ augent install github:author/bundle  # Installs for all detected platforms
 **Platform selection (manual):**
 
 ```bash
-augent install github:author/bundle --for cursor opencode
+augent install github:author/bundle --to cursor opencode
 ```
 
 **Custom platform configuration:**
@@ -157,7 +157,7 @@ fn resolve_platforms(
 
 **Resolution order:**
 
-1. Explicitly specified via `--for` flag
+1. Explicitly specified via `--to` flag
 2. Auto-detected from workspace
 3. Error if neither specified nor detected
 
@@ -346,7 +346,7 @@ impl PlatformLoader {
 | Error Condition | Error Message | Recovery |
 |----------------|----------------|----------|
 | Unknown platform specified | "Unknown platform: {name}. Valid platforms: {list}" | Exit with error |
-| No platform detected | "No platform detected. Specify with --for or initialize workspace" | Exit with error |
+| No platform detected | "No platform detected. Specify with --to or initialize workspace" | Exit with error |
 | No transformation rule | "No transformation rule for {path} on platform {platform}" | Skip file |
 | Merge conflict | "Failed to merge {file}: {reason}" | Exit with error |
 | Invalid platform config | "Invalid platforms.jsonc: {reason}" | Exit with error |
@@ -369,7 +369,7 @@ impl PlatformLoader {
 
 - Install with auto-detected platforms
 - Install with explicit platform selection
-- Install with multiple platforms via `--for`
+- Install with multiple platforms via `--to`
 - Custom platform configuration loaded and used
 - Transformations applied correctly for each platform
 - Merge strategies produce correct output

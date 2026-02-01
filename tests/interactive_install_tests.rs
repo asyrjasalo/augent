@@ -49,7 +49,7 @@ fn test_install_with_menu_selects_all_bundles() {
         let augent_path = augent_bin_path();
         let mut test = InteractiveTest::new(
             augent_path.to_str().unwrap(),
-            &["install", "./bundles", "--for", "cursor"],
+            &["install", "./bundles", "--to", "cursor"],
             &workspace.path,
         )
         .expect("Failed to create interactive test");
@@ -150,7 +150,7 @@ fn test_install_menu_deselect_all_uninstalls_all() {
 
         // First install all bundles non-interactively
         common::augent_cmd_for_workspace(&workspace.path)
-            .args(["install", "./bundles", "--for", "cursor", "--all-bundles"])
+            .args(["install", "./bundles", "--to", "cursor", "--all-bundles"])
             .assert()
             .success();
 
@@ -164,7 +164,7 @@ fn test_install_menu_deselect_all_uninstalls_all() {
         let augent_path = augent_bin_path();
         let mut test = InteractiveTest::new(
             augent_path.to_str().unwrap(),
-            &["install", "./bundles", "--for", "cursor"],
+            &["install", "./bundles", "--to", "cursor"],
             &workspace.path,
         )
         .expect("Failed to create interactive test");

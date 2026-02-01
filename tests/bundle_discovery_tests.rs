@@ -75,7 +75,7 @@ fn test_discover_single_bundle_from_git_repo() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url, "--for", "claude"])
+        .args(["install", &git_url, "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -106,7 +106,7 @@ fn test_discover_bundle_from_local_directory_with_resources() {
         .expect("Failed to write rule");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/local-bundle", "--for", "claude"])
+        .args(["install", "./bundles/local-bundle", "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -127,7 +127,7 @@ fn test_discover_bundle_from_local_directory_without_resources() {
     // Empty directories without augent.yaml or resources are still treated as local bundles
     // They just install with 0 files
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./empty-bundle", "--for", "claude"])
+        .args(["install", "./empty-bundle", "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("0 file(s)"));
@@ -154,7 +154,7 @@ fn test_discover_claude_code_plugin() {
         .expect("Failed to write README");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./claude-plugin", "--for", "claude"])
+        .args(["install", "./claude-plugin", "--to", "claude"])
         .assert()
         .success();
 
@@ -194,7 +194,7 @@ fn test_discover_claude_marketplace_format() {
     .expect("Failed to write agent");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./marketplace-plugin", "--for", "claude"])
+        .args(["install", "./marketplace-plugin", "--to", "claude"])
         .assert()
         .success();
 
@@ -285,7 +285,7 @@ fn test_discover_nested_bundle_with_subdirectory_path() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url, "--for", "claude"])
+        .args(["install", &git_url, "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -381,7 +381,7 @@ fn test_discover_multiple_bundles_from_git_repository() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url, "--for", "claude"])
+        .args(["install", &git_url, "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -394,7 +394,7 @@ fn test_discover_multiple_bundles_from_git_repository() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url_b, "--for", "claude"])
+        .args(["install", &git_url_b, "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
@@ -407,7 +407,7 @@ fn test_discover_multiple_bundles_from_git_repository() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url_c, "--for", "claude"])
+        .args(["install", &git_url_c, "--to", "claude"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));

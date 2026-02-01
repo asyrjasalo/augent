@@ -122,7 +122,7 @@ bundles: []
             .expect("Failed to set permissions");
 
         common::augent_cmd_for_workspace(&workspace.path)
-            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .args(["install", "./bundles/test-bundle", "--to", "claude"])
             .assert()
             .failure();
 
@@ -133,7 +133,7 @@ bundles: []
     #[cfg(not(unix))]
     {
         common::augent_cmd_for_workspace(&workspace.path)
-            .args(["install", "./bundles/test-bundle", "--for", "claude"])
+            .args(["install", "./bundles/test-bundle", "--to", "claude"])
             .assert()
             .success();
     }

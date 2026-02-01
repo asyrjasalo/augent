@@ -24,7 +24,7 @@ augent install [OPTIONS] <SOURCE>
 
 | Option | Description |
 |--------|-------------|
-| `--for <PLATFORM>...` | Install only for specific platforms (e.g., `--for cursor opencode`) |
+| `--to <PLATFORM>...`, `-t` | Install only for specific platforms (e.g., `--to cursor opencode`) |
 | `--frozen` | Fail if lockfile would change (useful for CI/CD) |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
@@ -53,7 +53,7 @@ augent install github:author/debug-tools
 augent install ./my-bundle
 
 # Install for specific platforms
-augent install ./bundle --for cursor opencode
+augent install ./bundle --to cursor opencode
 
 # Install with frozen lockfile (CI/CD)
 augent install github:author/bundle --frozen

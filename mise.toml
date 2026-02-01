@@ -20,6 +20,7 @@ AUGENT_WORKSPACE = "{{ [config_root] | concat(with='tmp') | join_path }}"
 # Run augent by name (instead of cargo run --) in the project directory
 [shell_alias]
 augent = "cargo build --quiet --manifest-path {{ [config_root] | concat(with='Cargo.toml') | join_path }} && {{ [config_root] | concat(with='target/debug/augent') | join_path }}"
+ag = "augent"
 
 ### Tasks ######################################################################
 

@@ -45,7 +45,7 @@ pub fn default_platforms() -> Vec<Platform> {
 
 Each `Platform` defines:
 
-- **id**: Unique identifier (used in CLI `--for` flag)
+- **id**: Unique identifier (used in CLI `--to` flag)
 - **name**: Display name for users
 - **directory**: Where files are installed (e.g., `.claude/`)
 - **detection**: Patterns to auto-detect platform presence
@@ -192,7 +192,7 @@ To add support for a new AI coding platform (e.g., "MyAgent"):
 
 - Detect `.myagent/` directories
 - Transform resources for MyAgent
-- Include it in `--for` flag options
+- Include it in `--to` flag options
 
 ### Option 2: Contribute to `default_platforms()`
 

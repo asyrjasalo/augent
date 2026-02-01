@@ -21,7 +21,7 @@ bundles: []
 
     // First install should auto-create workspace
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -46,7 +46,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -103,7 +103,7 @@ bundles: []
 
     // Install bundle - should use git remote for workspace name
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -142,7 +142,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -198,7 +198,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -238,7 +238,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/skills/skill.md", "# Original skill\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -271,7 +271,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/skills/skill2.md", "# Skill 2\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -303,7 +303,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/skills/skill1.md", "# Skill 1\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -391,7 +391,7 @@ bundles: []
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -404,7 +404,7 @@ bundles: []
 
     // Re-install should not fail due to modified files
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -475,7 +475,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -503,7 +503,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -535,7 +535,7 @@ bundles: []
 
     // Install first (creates .augent/augent.yaml)
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -554,7 +554,7 @@ bundles:
 
     // Install from root augent.yaml should use that instead of .augent/augent.yaml
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -590,7 +590,7 @@ bundles: []
 
     // First install to initialize .augent directory
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -607,7 +607,7 @@ bundles:
 
     // Install again using root augent.yaml
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -642,7 +642,7 @@ bundles: []
 
     // First install to initialize .augent directory
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -659,7 +659,7 @@ bundles:
 
     // Run install again to migrate lockfile to root
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 

@@ -182,12 +182,12 @@ bundles: []
     .expect("Failed to write mcp.jsonc");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-1", "--for", "claude"])
+        .args(["install", "./bundles/bundle-1", "--to", "claude"])
         .assert()
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-2", "--for", "claude"])
+        .args(["install", "./bundles/bundle-2", "--to", "claude"])
         .assert()
         .success();
 
@@ -456,12 +456,12 @@ bundles: []
     .expect("Failed to write command");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a", "--to", "cursor"])
         .assert()
         .success();
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-b", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-b", "--to", "cursor"])
         .assert()
         .success();
 

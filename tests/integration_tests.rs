@@ -12,7 +12,7 @@ fn test_install_list_shows_installed() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -31,7 +31,7 @@ fn test_install_show_displays_info() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -51,7 +51,7 @@ fn test_install_uninstall_roundtrip() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -70,7 +70,7 @@ fn test_install_multiple_bundles_list() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -89,7 +89,7 @@ fn test_full_workflow_install_verify_list_show_uninstall() {
     workspace.copy_fixture_bundle("simple-bundle", "test-bundle");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -148,14 +148,14 @@ bundles: []
     workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a", "--to", "cursor"])
         .assert()
         .success();
 
     assert!(workspace.file_exists(".cursor/commands/a.md"));
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-b", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-b", "--to", "cursor"])
         .assert()
         .success();
 
@@ -216,7 +216,7 @@ bundles:
     workspace.write_file("bundles/bundle-a/commands/a.md", "# Command A\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+        .args(["install", "./bundles/bundle-a", "--to", "cursor"])
         .assert()
         .success();
 
@@ -268,7 +268,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test Command\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -276,7 +276,7 @@ bundles: []
     let workspace_config_before = workspace.read_file(".augent/augent.index.yaml");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -371,7 +371,7 @@ fn test_update_bundle_by_changing_ref() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url, "--for", "cursor"])
+        .args(["install", &git_url, "--to", "cursor"])
         .assert()
         .success();
 
@@ -421,7 +421,7 @@ fn test_update_bundle_by_changing_ref() {
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url_v2, "--for", "cursor"])
+        .args(["install", &git_url_v2, "--to", "cursor"])
         .assert()
         .success();
 
@@ -450,7 +450,7 @@ bundles: []
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -520,7 +520,7 @@ bundles: []
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", &git_url, "--for", "cursor"])
+        .args(["install", &git_url, "--to", "cursor"])
         .assert()
         .success();
 
@@ -560,7 +560,7 @@ bundles: []
     workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-a", "--for", "cursor", "claude"])
+        .args(["install", "./bundles/bundle-a", "--to", "cursor", "claude"])
         .assert()
         .success();
 
@@ -569,7 +569,7 @@ bundles: []
     assert!(!workspace.file_exists(".opencode/commands/a.md"));
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/bundle-b", "--for", "opencode"])
+        .args(["install", "./bundles/bundle-b", "--to", "opencode"])
         .assert()
         .success();
 
@@ -603,7 +603,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -655,7 +655,7 @@ bundles: [invalid yaml here
     let workspace_file_before = workspace.file_exists(".augent/augent.index.yaml");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .failure();
 
@@ -711,7 +711,7 @@ bundles: []
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -770,7 +770,7 @@ bundles: []
 
     let handle1 = std::thread::spawn(move || {
         common::augent_cmd_for_workspace(&path1)
-            .args(["install", "./bundles/bundle-a", "--for", "cursor"])
+            .args(["install", "./bundles/bundle-a", "--to", "cursor"])
             .output()
     });
 
@@ -778,7 +778,7 @@ bundles: []
 
     let handle2 = std::thread::spawn(move || {
         common::augent_cmd_for_workspace(&path2)
-            .args(["install", "./bundles/bundle-b", "--for", "cursor"])
+            .args(["install", "./bundles/bundle-b", "--to", "cursor"])
             .output()
     });
 

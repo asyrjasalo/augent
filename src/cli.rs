@@ -24,7 +24,7 @@ use std::path::PathBuf;
                   reproducible manner.",
     after_help = "\x1b[1m\x1b[32mExamples:\x1b[0m\n   \
                   augent install @author/bundle          \x1b[90m# Install from GitHub shorthand\x1b[0m\n   \
-                  augent install ./bundle --for claude   \x1b[90m# Install only for Claude Code\x1b[0m\n   \
+                  augent install ./bundle --to claude   \x1b[90m# Install only for Claude Code\x1b[0m\n   \
                   augent uninstall @author/bundle        \x1b[90m# Uninstall bundle\x1b[0m\n   \
                   augent uninstall @author --all-bundles \x1b[90m# Uninstall all bundles under scope\x1b[0m\n   \
                   augent list                            \x1b[90m# List all installed bundles\x1b[0m\n   \
@@ -76,15 +76,15 @@ pub enum Commands {
                    Install from GitHub:\n    augent install @author/bundle\n    \
                    augent install github:author/bundle\n\n\
                    Install from local directory:\n    augent install ./my-bundle\n\n\
-                   Install for specific platforms:\n    augent install ./bundle --for cursor\n\n\
+                   Install for specific platforms:\n    augent install ./bundle --to cursor\n\n\
                    Install with frozen lockfile:\n    augent install @author/bundle --frozen")]
 pub struct InstallArgs {
     /// Bundle source (path, URL, or github:author/repo). If not provided, reads from augent.yaml
     /// Supports: @author/repo, github:author/repo, author/repo, ./local-path, https://...
     pub source: Option<String>,
 
-    /// Install only for specific platforms (e.g., --for cursor opencode)
-    #[arg(long = "for", value_name = "PLATFORM", num_args = 1..)]
+    /// Install only for specific platforms (e.g., --to cursor opencode)
+    #[arg(long = "to", short = 't', value_name = "PLATFORM", num_args = 1..)]
     pub platforms: Vec<String>,
 
     /// Fail if lockfile would change
@@ -242,9 +242,9 @@ mod tests {
             "augent",
             "install",
             "./local-bundle",
-            "--for",
+            "--to",
             "cursor",
-            "--for",
+            "--to",
             "opencode",
             "--frozen",
         ])

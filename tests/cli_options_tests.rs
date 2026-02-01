@@ -130,7 +130,7 @@ bundles: []
 
     // First install without --frozen to create lockfile
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -140,7 +140,7 @@ bundles: []
             "install",
             "./bundles/test-bundle",
             "--frozen",
-            "--for",
+            "--to",
             "cursor",
         ])
         .assert()
@@ -182,7 +182,7 @@ bundles: []
 
     // Install bundle
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -220,7 +220,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -246,7 +246,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor", "-v"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor", "-v"])
         .assert()
         .success();
 }
@@ -302,7 +302,7 @@ fn test_install_help() {
         .args(["install", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("--for"))
+        .stdout(predicate::str::contains("--to"))
         .stdout(predicate::str::contains("--frozen"));
 }
 
@@ -419,7 +419,7 @@ bundles: []
     workspace.create_agent_dir("claude");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/example-bundle", "--for", "claude"])
+        .args(["install", "./bundles/example-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -441,7 +441,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -566,7 +566,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -598,7 +598,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -623,7 +623,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
@@ -659,7 +659,7 @@ bundles: []
             workspace.path.join("bundles/test-bundle").to_str().unwrap(),
             "--workspace",
             workspace.path.to_str().unwrap(),
-            "--for",
+            "--to",
             "claude",
         ])
         .assert()
@@ -683,7 +683,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "claude"])
+        .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 

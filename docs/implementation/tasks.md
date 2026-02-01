@@ -196,7 +196,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement platform detection by checking for root files (CLAUDE.md, AGENTS.md)
 - [x] Add detection pattern matching (glob patterns)
 - [x] Create platform alias resolution - get_platform
-- [x] Implement auto-detection for `--for` flag - resolve_platforms
+- [x] Implement auto-detection for `--to` flag - resolve_platforms
 - [x] Write tests for platform detection logic
 
 #### Feature 3.3: Transformation Engine
@@ -334,7 +334,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Update `augent.lock` with resolved dependencies
 - [x] Update `augent.index.yaml` with installed files mapping
 - [x] Track which agents each file is installed for
-- [x] Handle `--for <agent>` flag logic
+- [x] Handle `--to <agent>` flag logic
 - [x] Write tests for configuration updates
 
 #### Feature 6.5: Atomic Rollback on Failure
@@ -757,9 +757,9 @@ Comprehensive test coverage for all user-facing functionality including integrat
 - [x] Test install for claude platform with various resources
 - [x] Test install for cursor platform with various resources
 - [x] Test install for opencode platform with various resources
-- [x] Test install with --for flag for multiple agents
-- [x] Test install with --for flag for single agent
-- [x] Test auto-detection of platforms when --for not specified
+- [x] Test install with --to flag for multiple agents
+- [x] Test install with --to flag for single agent
+- [x] Test auto-detection of platforms when --to not specified
 - [x] Test platform detection from .claude directory
 - [x] Test platform detection from .cursor directory
 - [x] Test platform detection from .opencode directory

@@ -218,7 +218,7 @@ Augent automatically detects which platforms are present in your workspace:
 1. **Directory Detection:** Checks for platform-specific directories (`.claude`, `.cursor`, `.opencode`)
 2. **File Detection:** Checks for platform-specific root files (`CLAUDE.md`, `AGENTS.md`)
 
-By default, Augent installs bundles for all detected platforms. You can override this with the `--for` flag.
+By default, Augent installs bundles for all detected platforms. You can override this with the `--to` flag.
 
 ## Installing for Specific Platforms
 
@@ -227,10 +227,10 @@ By default, Augent installs bundles for all detected platforms. You can override
 augent install github:author/bundle
 
 # Install for specific platforms only
-augent install github:author/bundle --for claude
+augent install github:author/bundle --to claude
 
 # Install for multiple specific platforms
-augent install github:author/bundle --for claude cursor
+augent install github:author/bundle --to claude cursor
 ```
 
 ## Adding New Platforms
@@ -299,7 +299,7 @@ Create `platforms.jsonc` in your workspace root:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Unique identifier (used in `--for` flag) |
+| `id` | string | Unique identifier (used in `--to` flag) |
 | `name` | string | Human-readable display name |
 | `directory` | string | Platform directory (relative to workspace root) |
 | `detection` | array | Patterns that indicate platform presence |

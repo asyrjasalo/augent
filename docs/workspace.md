@@ -210,7 +210,7 @@ Augent automatically detects installed AI coding platforms:
 
 ```bash
 # Install only for specific platforms
-augent install ./bundle --for cursor opencode
+augent install ./bundle --to cursor opencode
 
 # Auto-detect platforms
 augent install ./bundle

@@ -29,7 +29,7 @@ bundles: []
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -76,7 +76,7 @@ bundles: []
             .args([
                 "install",
                 &format!("./bundles/bundle-{}", i),
-                "--for",
+                "--to",
                 "cursor",
             ])
             .assert()
@@ -119,7 +119,7 @@ bundles: []
             .args([
                 "install",
                 &format!("./bundles/bundle-{}", i),
-                "--for",
+                "--to",
                 "cursor",
             ])
             .assert()
@@ -182,19 +182,19 @@ bundles: []
 
     workspace.create_agent_dir("cursor");
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/cursor-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/cursor-bundle", "--to", "cursor"])
         .assert()
         .success();
 
     workspace.create_agent_dir("claude");
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/claude-bundle", "--for", "claude"])
+        .args(["install", "./bundles/claude-bundle", "--to", "claude"])
         .assert()
         .success();
 
     workspace.create_agent_dir("opencode");
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/opencode-bundle", "--for", "opencode"])
+        .args(["install", "./bundles/opencode-bundle", "--to", "opencode"])
         .assert()
         .success();
 
@@ -232,7 +232,7 @@ bundles: []
     workspace.write_file("bundles/multi-file-bundle/skills/skill1.md", "# Skill 1\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/multi-file-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/multi-file-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -270,7 +270,7 @@ bundles: []
     workspace.write_file("bundles/metadata-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/metadata-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/metadata-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -308,7 +308,7 @@ bundles: []
     workspace.write_file("bundles/versioned-bundle/commands/test.md", "# Test\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/versioned-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/versioned-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -348,7 +348,7 @@ bundles: []
     workspace.write_file("bundles/readable-bundle/rules/rule.md", "# Rule\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/readable-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/readable-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -400,7 +400,7 @@ bundles: []
     workspace.write_file("bundles/layout-bundle/commands/test.md", "# Test layout\n");
 
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/layout-bundle", "--for", "cursor"])
+        .args(["install", "./bundles/layout-bundle", "--to", "cursor"])
         .assert()
         .success();
 
@@ -469,7 +469,7 @@ bundles: []
         .args([
             "install",
             "./bundles/resources-layout-bundle",
-            "--for",
+            "--to",
             "cursor",
         ])
         .assert()
@@ -554,7 +554,7 @@ bundles: []
         .args([
             "install",
             "./bundles/multi-platform-bundle",
-            "--for",
+            "--to",
             "cursor",
             "claude",
             "opencode",
