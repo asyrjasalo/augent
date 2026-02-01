@@ -67,9 +67,11 @@ impl Workspace {
     ///
     /// A workspace exists if either:
     /// 1. A .augent directory exists (traditional workspace)
-    /// 2. An augent.yaml file exists in the root (root-level workspace config)
+    /// 2. An augent.yaml or augent.lock file exists in the root (root-level workspace config)
     pub fn exists(root: &Path) -> bool {
-        root.join(WORKSPACE_DIR).is_dir() || root.join(BUNDLE_CONFIG_FILE).exists()
+        root.join(WORKSPACE_DIR).is_dir()
+            || root.join(BUNDLE_CONFIG_FILE).exists()
+            || root.join(LOCKFILE_NAME).exists()
     }
 
     /// Find a workspace by searching upward from the given path
@@ -90,26 +92,28 @@ impl Workspace {
     /// Open an existing workspace
     ///
     /// Loads workspace configuration with the following precedence:
-    /// 1. If augent.yaml exists in the root, use that (takes precedence)
-    /// 2. Otherwise, use .augent/augent.yaml
+    /// 1. If augent.yaml or augent.lock exists in the root, use that (root layout takes precedence)
+    /// 2. Otherwise, use .augent/ directory (.augent layout)
     ///
-    /// Configuration files (augent.lock, augent.index.yaml) are loaded from the same
-    /// directory as augent.yaml.
+    /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from the same
+    /// directory (either root or .augent/).
     pub fn open(root: &Path) -> Result<Self> {
         let augent_dir = root.join(WORKSPACE_DIR);
 
         // Check if workspace exists (either .augent or root augent.yaml)
         let has_augent_dir = augent_dir.is_dir();
         let has_root_config = root.join(BUNDLE_CONFIG_FILE).exists();
+        let has_root_lockfile = root.join(LOCKFILE_NAME).exists();
 
-        if !has_augent_dir && !has_root_config {
+        if !has_augent_dir && !has_root_config && !has_root_lockfile {
             return Err(AugentError::WorkspaceNotFound {
                 path: root.display().to_string(),
             });
         }
 
-        // Determine config directory based on where augent.yaml exists
-        let config_dir = if has_root_config {
+        // Determine config directory based on where augent.yaml or augent.lock exists
+        // Root layout takes precedence if either augent.yaml or augent.lock is in root
+        let config_dir = if has_root_config || has_root_lockfile {
             root.to_path_buf()
         } else {
             augent_dir.clone()

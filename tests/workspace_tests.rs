@@ -682,3 +682,83 @@ bundles:
         .assert()
         .success();
 }
+
+#[test]
+fn test_workspace_augent_lock_in_root_creates_config_in_root() {
+    let workspace = common::TestWorkspace::new();
+
+    // Create initial workspace by installing a bundle
+    workspace.create_bundle("initial-bundle");
+    workspace.write_file(
+        "bundles/initial-bundle/augent.yaml",
+        r#"name: "@test/initial-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/initial-bundle/commands/test.md", "# Test\n");
+
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install", "./bundles/initial-bundle", "--to", "cursor"])
+        .assert()
+        .success();
+
+    // Manually move augent.lock to root (simulating the .augent layout being migrated to root layout)
+    let lock_from = workspace.path.join(".augent/augent.lock");
+    let lock_to = workspace.path.join("augent.lock");
+    std::fs::copy(&lock_from, &lock_to).expect("Failed to copy augent.lock to root");
+
+    // Remove augent.yaml from root if it exists
+    let root_augent_yaml = workspace.path.join("augent.yaml");
+    if root_augent_yaml.exists() {
+        std::fs::remove_file(&root_augent_yaml).expect("Failed to remove augent.yaml");
+    }
+
+    // Remove augent.index.yaml from root if it exists
+    let root_index = workspace.path.join("augent.index.yaml");
+    if root_index.exists() {
+        std::fs::remove_file(&root_index).expect("Failed to remove augent.index.yaml");
+    }
+
+    // Now install another bundle - should use root layout since augent.lock is in root
+    workspace.create_bundle("second-bundle");
+    workspace.write_file(
+        "bundles/second-bundle/augent.yaml",
+        r#"name: "@test/second-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/second-bundle/commands/second.md", "# Second\n");
+
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install", "./bundles/second-bundle", "--to", "cursor"])
+        .assert()
+        .success();
+
+    // Verify that augent.yaml and augent.index.yaml were created in root, not in .augent/
+    assert!(
+        workspace.file_exists("augent.yaml"),
+        "augent.yaml should be created in root when augent.lock is in root"
+    );
+    assert!(
+        workspace.file_exists("augent.index.yaml"),
+        "augent.index.yaml should be created in root when augent.lock is in root"
+    );
+    assert!(
+        workspace.file_exists("augent.lock"),
+        "augent.lock should remain in root"
+    );
+
+    // Verify that augent.yaml in root contains the bundles
+    let root_config = workspace.read_file("augent.yaml");
+    assert!(
+        root_config.contains("bundles:") || root_config.contains("@test/second-bundle"),
+        "Root augent.yaml should contain bundle information"
+    );
+
+    // Verify that the bundle can be listed
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("second-bundle"));
+}
