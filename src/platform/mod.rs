@@ -135,7 +135,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".agent/workflows/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".agent/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -169,7 +169,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".claude/agents/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".claude/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -189,7 +189,7 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_transform(TransformRule::new("commands/**/*.md", "commands/**/*.md"))
             .with_transform(TransformRule::new("agents/**/*.md", "agents/**/*.md"))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 "skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new("skills/**/*", "skills/{name}/**/*"))
@@ -219,7 +219,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".github/agents/{name}/AGENTS.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".github/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -248,7 +248,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".cursor/agents/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".cursor/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -270,7 +270,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".codex/prompts/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".codex/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -297,7 +297,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".factory/droids/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".factory/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -328,7 +328,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".junie/agents/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".junie/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -354,7 +354,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".kilocode/workflows/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".kilocode/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -396,7 +396,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".opencode/agents/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".opencode/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -416,7 +416,7 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_detection("QWEN.md")
             .with_transform(TransformRule::new("agents/**/*.md", ".qwen/agents/**/*.md"))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".qwen/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -439,7 +439,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".roo/commands/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".roo/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new("skills/**/*", ".roo/skills/{name}/**/*"))
@@ -464,7 +464,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".windsurf/rules/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".windsurf/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
@@ -484,7 +484,7 @@ pub fn default_platforms() -> Vec<Platform> {
                 ".gemini/agents/**/*.md",
             ))
             .with_transform(TransformRule::new(
-                "skills/**/*.md",
+                "skills/**/SKILL.md",
                 ".gemini/skills/{name}/SKILL.md",
             ))
             .with_transform(TransformRule::new(
