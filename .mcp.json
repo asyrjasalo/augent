@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "dynamic-mcp": {
+            "type": "stdio",
+            "command": "dmcp"
+        }
+    }
+}
