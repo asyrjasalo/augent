@@ -345,8 +345,18 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                 .unwrap_or(false)
         };
 
+        // If workspace was just initialized, also check workspace root for local resources
+        let has_local_resources = if was_initialized {
+            use crate::installer::Installer;
+            Installer::discover_resources(&workspace_root)
+                .map(|resources| !resources.is_empty())
+                .unwrap_or(false)
+        } else {
+            false
+        };
+
         // If there's nothing to install, show a message and exit (without creating .augent/)
-        if !has_bundles_in_config && !has_workspace_resources {
+        if !has_bundles_in_config && !has_workspace_resources && !has_local_resources {
             println!("Nothing to install.");
             return Ok(());
         }
@@ -371,7 +381,13 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         transaction.backup_configs()?;
 
         // Install all bundles from augent.yaml
-        match do_install_from_yaml(&mut args, &mut workspace, &mut transaction, was_initialized) {
+        match do_install_from_yaml(
+            &mut args,
+            &mut workspace,
+            &mut transaction,
+            was_initialized,
+            has_local_resources,
+        ) {
             Ok(()) => {
                 transaction.commit();
                 Ok(())
@@ -387,6 +403,7 @@ fn do_install_from_yaml(
     workspace: &mut Workspace,
     transaction: &mut Transaction,
     was_initialized: bool,
+    has_local_resources: bool,
 ) -> Result<()> {
     // Detect and preserve any modified files before reinstalling bundles
     let cache_dir = cache::bundles_cache_dir()?;
@@ -493,7 +510,12 @@ fn do_install_from_yaml(
             // Resolve workspace bundle which will automatically resolve its declared dependencies
             // from augent.yaml. All bundles are treated uniformly by the resolver.
             // Use root augent.yaml if it exists, otherwise fall back to .augent
-            let bundle_sources = vec![workspace.get_config_source_path()];
+            // If workspace was just initialized with local resources, resolve from root to discover them
+            let bundle_sources = if was_initialized && has_local_resources {
+                vec![".".to_string()]
+            } else {
+                vec![workspace.get_config_source_path()]
+            };
 
             println!("Resolving workspace bundle and its dependencies...");
 
@@ -545,12 +567,16 @@ fn do_install_from_yaml(
 
         // Fix workspace bundle name: ensure it uses the workspace bundle name, not the directory name
         // This handles the case where the workspace bundle is in .augent/ and was named after the dir
+        // OR when it's resolved from "." (workspace root) and named after the directory
         let mut resolved_bundles = resolved;
         let workspace_bundle_name = workspace.bundle_config.name.clone();
         for bundle in &mut resolved_bundles {
             // Check if this is the workspace bundle by checking if its source path matches
             let bundle_source_path = workspace.get_bundle_source_path();
-            if bundle.source_path == bundle_source_path && bundle.name != workspace_bundle_name {
+            let is_workspace_bundle = bundle.source_path == bundle_source_path // .augent dir
+                || bundle.source_path == workspace.root; // workspace root (when resolving from ".")
+
+            if is_workspace_bundle && bundle.name != workspace_bundle_name {
                 // This is the workspace bundle but it has the wrong name (probably derived from directory)
                 // Rename it to use the workspace bundle name
                 bundle.name = workspace_bundle_name.clone();
@@ -945,11 +971,15 @@ fn do_install(
 
     // Fix workspace bundle name: ensure it uses the workspace bundle name, not the directory name
     // This handles the case where the workspace bundle is in .augent/ and was named after the dir
+    // OR when it's resolved from "." (workspace root) and named after the directory
     let workspace_bundle_name = workspace.bundle_config.name.clone();
     for bundle in &mut resolved_bundles {
         // Check if this is the workspace bundle by checking if its source path matches
         let bundle_source_path = workspace.get_bundle_source_path();
-        if bundle.source_path == bundle_source_path && bundle.name != workspace_bundle_name {
+        let is_workspace_bundle = bundle.source_path == bundle_source_path // .augent dir
+            || bundle.source_path == workspace.root; // workspace root (when resolving from ".")
+
+        if is_workspace_bundle && bundle.name != workspace_bundle_name {
             // This is the workspace bundle but it has the wrong name (probably derived from directory)
             // Rename it to use the workspace bundle name
             bundle.name = workspace_bundle_name.clone();
