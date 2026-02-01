@@ -821,7 +821,8 @@ impl<'a> Installer<'a> {
     fn copy_file(&self, source: &Path, target: &Path) -> Result<()> {
         // Universal frontmatter: for any platform resource file (commands, rules, agents, skills,
         // workflows, prompts, droids, steering), parse frontmatter, merge for platform, and emit.
-        if self.is_platform_resource_file(target) {
+        // Skip text parsing for known binary files (e.g. .zip in skills/) — copy as-is.
+        if self.is_platform_resource_file(target) && !Self::is_likely_binary_file(source) {
             let content = fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
                 path: source.display().to_string(),
                 reason: e.to_string(),
@@ -915,6 +916,37 @@ impl<'a> Installer<'a> {
             reason: e.to_string(),
         })?;
         Ok(())
+    }
+
+    /// True if the path has a known binary extension; such files must be copied as-is, not read as text.
+    fn is_likely_binary_file(path: &Path) -> bool {
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        matches!(
+            ext.to_lowercase().as_str(),
+            "zip"
+                | "pdf"
+                | "png"
+                | "jpg"
+                | "jpeg"
+                | "gif"
+                | "webp"
+                | "ico"
+                | "woff"
+                | "woff2"
+                | "ttf"
+                | "otf"
+                | "eot"
+                | "mp3"
+                | "mp4"
+                | "webm"
+                | "avi"
+                | "mov"
+                | "exe"
+                | "dll"
+                | "so"
+                | "dylib"
+                | "bin"
+        )
     }
 
     /// Check if target path is a gemini command file
