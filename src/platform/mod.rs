@@ -134,7 +134,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "commands/**/*.md",
                 ".agent/workflows/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".agent/skills/**/*")),
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".agent/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".agent/skills/{name}/**/*",
+            )),
         // Augment Code
         Platform::new("augment", "Augment Code", ".augment")
             .with_detection(".augment")
@@ -163,7 +170,11 @@ pub fn default_platforms() -> Vec<Platform> {
             ))
             .with_transform(TransformRule::new(
                 "skills/**/*.md",
-                ".claude/skills/**/*.md",
+                ".claude/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".claude/skills/{name}/**/*",
             ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".mcp.json").with_merge(MergeStrategy::Deep),
@@ -177,7 +188,11 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_transform(TransformRule::new("rules/**/*.md", "rules/**/*.md"))
             .with_transform(TransformRule::new("commands/**/*.md", "commands/**/*.md"))
             .with_transform(TransformRule::new("agents/**/*.md", "agents/**/*.md"))
-            .with_transform(TransformRule::new("skills/**/*", "skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                "skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new("skills/**/*", "skills/{name}/**/*"))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".mcp.json").with_merge(MergeStrategy::Deep),
             ),
@@ -207,6 +222,10 @@ pub fn default_platforms() -> Vec<Platform> {
                 "skills/**/*.md",
                 ".github/skills/{name}/SKILL.md",
             ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".github/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".github/mcp.json").with_merge(MergeStrategy::Deep),
             )
@@ -228,7 +247,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "agents/**/*.md",
                 ".cursor/agents/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".cursor/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".cursor/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".cursor/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".cursor/mcp.json").with_merge(MergeStrategy::Deep),
             )
@@ -243,7 +269,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "commands/**/*.md",
                 ".codex/prompts/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".codex/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".codex/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".codex/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".codex/config.toml")
                     .with_merge(MergeStrategy::Deep),
@@ -263,7 +296,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "agents/**/*.md",
                 ".factory/droids/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".factory/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".factory/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".factory/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".factory/settings/mcp.json")
                     .with_merge(MergeStrategy::Deep),
@@ -287,7 +327,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "agents/**/*.md",
                 ".junie/agents/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".junie/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".junie/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".junie/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".junie/mcp.json").with_merge(MergeStrategy::Deep),
             )
@@ -306,7 +353,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "commands/**/*.md",
                 ".kilocode/workflows/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".kilocode/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".kilocode/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".kilocode/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".kilocode/mcp.json")
                     .with_merge(MergeStrategy::Deep),
@@ -361,7 +415,14 @@ pub fn default_platforms() -> Vec<Platform> {
             .with_detection(".qwen")
             .with_detection("QWEN.md")
             .with_transform(TransformRule::new("agents/**/*.md", ".qwen/agents/**/*.md"))
-            .with_transform(TransformRule::new("skills/**/*", ".qwen/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".qwen/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".qwen/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("AGENTS.md", "QWEN.md").with_merge(MergeStrategy::Composite),
             )
@@ -377,7 +438,11 @@ pub fn default_platforms() -> Vec<Platform> {
                 "commands/**/*.md",
                 ".roo/commands/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".roo/skills/**/*"))
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".roo/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new("skills/**/*", ".roo/skills/{name}/**/*"))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".roo/mcp.json").with_merge(MergeStrategy::Deep),
             )
@@ -398,7 +463,14 @@ pub fn default_platforms() -> Vec<Platform> {
                 "rules/**/*.md",
                 ".windsurf/rules/**/*.md",
             ))
-            .with_transform(TransformRule::new("skills/**/*", ".windsurf/skills/**/*")),
+            .with_transform(TransformRule::new(
+                "skills/**/*.md",
+                ".windsurf/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".windsurf/skills/{name}/**/*",
+            )),
         // Gemini CLI
         Platform::new("gemini", "Gemini CLI", ".gemini")
             .with_detection(".gemini")
@@ -413,7 +485,11 @@ pub fn default_platforms() -> Vec<Platform> {
             ))
             .with_transform(TransformRule::new(
                 "skills/**/*.md",
-                ".gemini/skills/**/*.md",
+                ".gemini/skills/{name}/SKILL.md",
+            ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".gemini/skills/{name}/**/*",
             ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".gemini/settings.json")

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `augent install`: renamed `--for` to `--to` and added short form `-t` for specifying target platforms (e.g. `augent install ./bundle -t cursor`).
+- Skill transformations (leaf skill as `{name}`, path under skill for non-.md files) now apply to all platforms that support skills: Antigravity, Claude, Claude Plugin, GitHub Copilot, Cursor, Codex, Factory, Junie, Kilo, OpenCode, Qwen, Roo, Windsurf, and Gemini. Each installs skills as `.platform/skills/{name}/SKILL.md` and `.platform/skills/{name}/**/*` for nested content (e.g. `scripts/`).
 
 ### Fixed
 

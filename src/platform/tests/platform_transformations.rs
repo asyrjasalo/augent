@@ -36,7 +36,11 @@ fn test_antigravity_commands_transform() {
 
 #[test]
 fn test_antigravity_skills_transform() {
-    verify_transform_rule("antigravity", "skills/**/*", ".agent/skills/**/*");
+    verify_transform_rule(
+        "antigravity",
+        "skills/**/*.md",
+        ".agent/skills/{name}/SKILL.md",
+    );
 }
 
 #[test]
@@ -66,7 +70,7 @@ fn test_claude_agents_transform() {
 
 #[test]
 fn test_claude_skills_transform() {
-    verify_transform_rule("claude", "skills/**/*.md", ".claude/skills/**/*.md");
+    verify_transform_rule("claude", "skills/**/*.md", ".claude/skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -110,7 +114,7 @@ fn test_claude_plugin_agents_transform() {
 
 #[test]
 fn test_claude_plugin_skills_transform() {
-    verify_transform_rule("claude-plugin", "skills/**/*", "skills/**/*");
+    verify_transform_rule("claude-plugin", "skills/**/*.md", "skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -132,7 +136,7 @@ fn test_codex_commands_to_prompts_transform() {
 
 #[test]
 fn test_codex_skills_transform() {
-    verify_transform_rule("codex", "skills/**/*", ".codex/skills/**/*");
+    verify_transform_rule("codex", "skills/**/*.md", ".codex/skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -184,7 +188,7 @@ fn test_cursor_agents_transform() {
 
 #[test]
 fn test_cursor_skills_transform() {
-    verify_transform_rule("cursor", "skills/**/*", ".cursor/skills/**/*");
+    verify_transform_rule("cursor", "skills/**/*.md", ".cursor/skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -223,7 +227,11 @@ fn test_factory_agents_to_droids_transform() {
 
 #[test]
 fn test_factory_skills_transform() {
-    verify_transform_rule("factory", "skills/**/*", ".factory/skills/**/*");
+    verify_transform_rule(
+        "factory",
+        "skills/**/*.md",
+        ".factory/skills/{name}/SKILL.md",
+    );
 }
 
 #[test]
@@ -262,7 +270,7 @@ fn test_kilo_commands_to_workflows_transform() {
 
 #[test]
 fn test_kilo_skills_transform() {
-    verify_transform_rule("kilo", "skills/**/*", ".kilocode/skills/**/*");
+    verify_transform_rule("kilo", "skills/**/*.md", ".kilocode/skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -361,7 +369,7 @@ fn test_qwen_agents_transform() {
 
 #[test]
 fn test_qwen_skills_transform() {
-    verify_transform_rule("qwen", "skills/**/*", ".qwen/skills/**/*");
+    verify_transform_rule("qwen", "skills/**/*.md", ".qwen/skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -395,7 +403,7 @@ fn test_roo_commands_transform() {
 
 #[test]
 fn test_roo_skills_transform() {
-    verify_transform_rule("roo", "skills/**/*", ".roo/skills/**/*");
+    verify_transform_rule("roo", "skills/**/*.md", ".roo/skills/{name}/SKILL.md");
 }
 
 #[test]
@@ -441,7 +449,11 @@ fn test_windsurf_rules_transform() {
 
 #[test]
 fn test_windsurf_skills_transform() {
-    verify_transform_rule("windsurf", "skills/**/*", ".windsurf/skills/**/*");
+    verify_transform_rule(
+        "windsurf",
+        "skills/**/*.md",
+        ".windsurf/skills/{name}/SKILL.md",
+    );
 }
 
 #[test]
@@ -524,7 +536,7 @@ fn test_gemini_agents_transform() {
 
 #[test]
 fn test_gemini_skills_transform() {
-    verify_transform_rule("gemini", "skills/**/*.md", ".gemini/skills/**/*.md");
+    verify_transform_rule("gemini", "skills/**/*.md", ".gemini/skills/{name}/SKILL.md");
 }
 
 #[test]
