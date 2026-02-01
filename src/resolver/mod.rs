@@ -591,14 +591,21 @@ impl Resolver {
         // Try to load augent.yaml from source path
         let config = self.load_bundle_config(&source_path)?;
 
-        // Determine bundle name. Per spec: dir bundle name is always dir-name.
+        // Determine bundle name.
+        // If there's a dependency, use its name.
+        // Otherwise, use the name from augent.yaml if present (for workspace bundles and configured bundles).
+        // Otherwise, per spec: dir bundle name is always dir-name.
         let name = match dependency {
             Some(dep) => dep.name.clone(),
-            None => path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| "bundle".to_string()),
+            None => {
+                // For dir bundles (no dependency context), always use the directory name per spec.
+                // This ensures that when you install "./my-bundle", it's recorded as "my-bundle"
+                // in augent.yaml/lock/index, regardless of what name is in the bundle's augent.yaml.
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "bundle".to_string())
+            }
         };
 
         // Check for circular dependency
@@ -1220,7 +1227,7 @@ mod tests {
         assert!(result.is_ok());
         let bundles = result.unwrap();
         assert_eq!(bundles.len(), 1);
-        // Per spec: dir bundle name is always dir-name
+        // Per spec: dir bundle name is always the directory name, not the augent.yaml name
         assert_eq!(bundles[0].name, "my-bundle");
     }
 
@@ -1293,7 +1300,7 @@ bundles:
             r#"
 name: "@test/bundle-b"
 bundles:
-  - name: "@test/bundle-c"
+  - name: "bundle-c"
     path: ../bundle-c
 "#,
         )
@@ -1307,7 +1314,7 @@ bundles:
             r#"
 name: "@test/bundle-a"
 bundles:
-  - name: "@test/bundle-b"
+  - name: "bundle-b"
     path: ../bundle-b
 "#,
         )
@@ -1325,9 +1332,9 @@ bundles:
 
         // Should be in order: C, B, A (dependencies first)
         assert_eq!(bundles.len(), 3);
-        assert_eq!(bundles[0].name, "@test/bundle-c");
-        assert_eq!(bundles[1].name, "@test/bundle-b");
-        // Top-level dir bundle name is dir-name per spec
+        assert_eq!(bundles[0].name, "bundle-c");
+        assert_eq!(bundles[1].name, "bundle-b");
+        // Per spec: dir bundle name is always the directory name
         assert_eq!(bundles[2].name, "bundle-a");
     }
 

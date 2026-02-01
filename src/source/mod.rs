@@ -104,7 +104,21 @@ impl BundleSource {
         // Use Path::is_absolute() for cross-platform absolute path detection
         // This handles Windows drive letters (C:\), Unix absolute paths (/), etc.
         let path = Path::new(input);
-        if input.starts_with("./") || input.starts_with("../") || path.is_absolute() {
+
+        // Check if this looks like a local path:
+        // - Starts with ./ or ../
+        // - Is . or ..
+        // - Starts with . but doesn't look like a git URL (no :// after the .)
+        //   (e.g., .augent, .cursor, .claude are local paths, not git sources)
+        // - Is absolute (/ on Unix, C:\ on Windows, etc.)
+        let is_local_path = input.starts_with("./")
+            || input.starts_with("../")
+            || input == "."
+            || input == ".."
+            || (input.starts_with(".") && !input.contains("://"))
+            || path.is_absolute();
+
+        if is_local_path {
             return Ok(BundleSource::Dir {
                 path: PathBuf::from(input),
             });
