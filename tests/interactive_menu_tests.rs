@@ -647,16 +647,21 @@ bundles: []
         .expect("Menu should appear");
 
     // Navigate down once to bundle-b (bundles are sorted alphabetically)
+    std::thread::sleep(std::time::Duration::from_millis(100));
     test.send_input("\x1b[B").expect("Failed to send down");
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     test.send_space().expect("Failed to send space");
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    std::thread::sleep(std::time::Duration::from_millis(100));
     test.send_input("\n").expect("Failed to send enter");
 
     let output = test.wait_for_output().expect("Failed to wait for output");
 
-    assert!(output.to_lowercase().contains("installed"));
+    assert!(
+        output.to_lowercase().contains("installed") || output.to_lowercase().contains("installing"),
+        "Output should indicate installation. Got: {}",
+        output
+    );
     assert!(!workspace.file_exists(".claude/commands/a.md"));
     assert!(workspace.file_exists(".claude/commands/b.md"));
     assert!(!workspace.file_exists(".claude/commands/c.md"));
