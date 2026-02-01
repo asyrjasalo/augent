@@ -323,3 +323,111 @@ bundles: []
     assert!(workspace.file_exists(".cursor/commands/cmd-b.md"));
     assert!(workspace.file_exists(".cursor/skills/skill-b/SKILL.md"));
 }
+
+/// Test that installed files are tracked in index (augent.index.yaml), not lockfile
+///
+/// This is a critical invariant: the index tracks what files are actually installed,
+/// and uninstall should only remove files from the index.
+#[test]
+fn test_installed_files_tracked_in_index_not_lockfile() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    // Create bundle with skill files
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
+    workspace.write_file(
+        "bundles/test-bundle/skills/skill/SKILL.md",
+        "---\nname: skill\ndescription: Test skill.\n---\n\n# Test skill\n",
+    );
+
+    // Install bundle
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
+        .assert()
+        .success();
+
+    // Verify file exists on filesystem
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+    assert!(workspace.file_exists(".cursor/skills/skill/SKILL.md"));
+
+    // Verify file is tracked in index, not just present in lockfile
+    let index_path = workspace.path.join(".augent/augent.index.yaml");
+    let index_content = std::fs::read_to_string(&index_path).unwrap();
+    let lockfile_path = workspace.path.join(".augent/augent.lock");
+    let lockfile_content = std::fs::read_to_string(&lockfile_path).unwrap();
+
+    // Index must contain the skill file
+    assert!(
+        index_content.contains("skills/skill/SKILL.md"),
+        "Skill file must be tracked in index"
+    );
+
+    // Lockfile may contain skill file (it lists what bundle provides)
+    // but what matters is what index tracks for uninstall
+    assert!(
+        lockfile_content.contains("skills/skill/SKILL.md"),
+        "Lockfile should list skill file (bundle provides it)"
+    );
+}
+
+/// Test that uninstall never removes files which are not tracked in the index
+///
+/// If a file is not tracked in augent.index.yaml, it should not be removed
+/// even if it's listed in the lockfile.
+#[test]
+fn test_uninstall_respects_index_not_lockfile() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    // Create bundle and manually add skill file to lockfile only
+    // (simulating a scenario where lockfile lists more than index tracks)
+    workspace.create_bundle("test-bundle");
+    workspace.write_file(
+        "bundles/test-bundle/augent.yaml",
+        r#"name: "@test/test-bundle"
+bundles: []
+"#,
+    );
+    workspace.write_file("bundles/test-bundle/commands/test.md", "# Test command\n");
+
+    // Install normally
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
+        .assert()
+        .success();
+
+    // Verify command file exists and is tracked in index
+    assert!(workspace.file_exists(".cursor/commands/test.md"));
+    let index_path = workspace.path.join(".augent/augent.index.yaml");
+    let index_content = std::fs::read_to_string(&index_path).unwrap();
+    assert!(
+        index_content.contains("commands/test.md"),
+        "Command file must be tracked in index"
+    );
+
+    // Manually corrupt index to not track command file
+    // (simulating scenario where index and lockfile get out of sync)
+    let corrupted_index = index_content.replace("commands/test.md", "commands/wrong.md");
+    std::fs::write(&index_path, &corrupted_index).unwrap();
+
+    // Uninstall - should NOT remove command file since it's not in index
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["uninstall", "test-bundle", "-y"])
+        .assert()
+        .success();
+
+    // Command file should still exist (not removed, since not in index)
+    assert!(
+        workspace.file_exists(".cursor/commands/test.md"),
+        "File should NOT be removed when not tracked in index"
+    );
+}
