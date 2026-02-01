@@ -345,6 +345,10 @@ pub fn default_platforms() -> Vec<Platform> {
                 "skills/**/*.md",
                 ".opencode/skills/{name}/SKILL.md",
             ))
+            .with_transform(TransformRule::new(
+                "skills/**/*",
+                ".opencode/skills/{name}/**/*",
+            ))
             .with_transform(
                 TransformRule::new("mcp.jsonc", ".opencode/opencode.json")
                     .with_merge(MergeStrategy::Deep),

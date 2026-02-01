@@ -67,6 +67,9 @@ pub struct Installer<'a> {
 
     /// Optional progress display for showing installation progress
     progress: Option<&'a mut ProgressDisplay>,
+
+    /// Leaf skill dirs (e.g. skills/claude.ai/vercel-deploy-claimable) for {name} and path resolution
+    pub(super) leaf_skill_dirs: Option<std::collections::HashSet<String>>,
 }
 
 /// A pending file installation with merge strategy
@@ -89,6 +92,7 @@ impl<'a> Installer<'a> {
             installed_files: HashMap::new(),
             dry_run: false,
             progress: None,
+            leaf_skill_dirs: None,
         }
     }
 
@@ -104,6 +108,7 @@ impl<'a> Installer<'a> {
             installed_files: HashMap::new(),
             dry_run,
             progress: None,
+            leaf_skill_dirs: None,
         }
     }
 
@@ -120,6 +125,7 @@ impl<'a> Installer<'a> {
             installed_files: HashMap::new(),
             dry_run,
             progress,
+            leaf_skill_dirs: None,
         }
     }
 
@@ -207,15 +213,16 @@ impl<'a> Installer<'a> {
         !desc_trim.is_empty() && desc_trim.len() <= 1024
     }
 
-    /// Filter skills so we only install directories that contain a SKILL.md file.
+    /// Filter skills so we only install leaf directories that contain a SKILL.md file.
     /// - Skip standalone files directly under skills/ (e.g. skills/web-design-guidelines.zip).
-    /// - Include any skill subdir that has a SKILL.md (frontmatter is not validated).
+    /// - Include only leaf skill dirs: if both skills/claude.ai/ and skills/claude.ai/vercel-deploy-claimable/
+    ///   have SKILL.md, treat only vercel-deploy-claimable as the skill (not claude.ai).
     fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<DiscoveredResource> {
         const SKILLS_PREFIX: &str = "skills/";
         const SKILL_MD_NAME: &str = "SKILL.md";
 
-        // Set of skill dirs that contain a SKILL.md (any content; no frontmatter validation)
-        let skill_dirs_with_skill_md: std::collections::HashSet<String> = resources
+        // Set of all skill dirs that contain a SKILL.md
+        let all_skill_dirs: std::collections::HashSet<String> = resources
             .iter()
             .filter(|r| r.resource_type == "skills")
             .filter(|r| r.bundle_path.file_name().and_then(|n| n.to_str()) == Some(SKILL_MD_NAME))
@@ -223,6 +230,17 @@ impl<'a> Installer<'a> {
                 let parent = r.bundle_path.parent()?;
                 Some(parent.to_string_lossy().replace('\\', "/"))
             })
+            .collect();
+
+        // Keep only leaf skill dirs (remove any dir that is a strict prefix of another)
+        let leaf_skill_dirs: std::collections::HashSet<String> = all_skill_dirs
+            .iter()
+            .filter(|dir| {
+                !all_skill_dirs
+                    .iter()
+                    .any(|other| *other != **dir && other.starts_with(&format!("{}/", dir)))
+            })
+            .cloned()
             .collect();
 
         resources
@@ -240,11 +258,44 @@ impl<'a> Installer<'a> {
                 if !after_skills.contains('/') {
                     return false;
                 }
-                // Include if this path is inside any skill dir that has SKILL.md (supports nested dirs e.g. skills/claude.ai/vercel-deploy-claimable/)
-                skill_dirs_with_skill_md.iter().any(|skill_dir| {
+                // Include only if path is inside a leaf skill dir (e.g. vercel-deploy-claimable, not claude.ai)
+                leaf_skill_dirs.iter().any(|skill_dir| {
                     path_str == *skill_dir || path_str.starts_with(&format!("{}/", skill_dir))
                 })
             })
+            .collect()
+    }
+
+    /// Compute leaf skill dirs from filtered resources (for {name} and path-under-skill resolution).
+    fn compute_leaf_skill_dirs(
+        resources: &[DiscoveredResource],
+    ) -> std::collections::HashSet<String> {
+        const SKILLS_PREFIX: &str = "skills/";
+        const SKILL_MD_NAME: &str = "SKILL.md";
+
+        let all_skill_dirs: std::collections::HashSet<String> = resources
+            .iter()
+            .filter(|r| r.resource_type == "skills")
+            .filter(|r| r.bundle_path.file_name().and_then(|n| n.to_str()) == Some(SKILL_MD_NAME))
+            .filter_map(|r| {
+                let parent = r.bundle_path.parent()?;
+                let s = parent.to_string_lossy().replace('\\', "/");
+                if s.starts_with(SKILLS_PREFIX) {
+                    Some(s)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        all_skill_dirs
+            .iter()
+            .filter(|dir| {
+                !all_skill_dirs
+                    .iter()
+                    .any(|other| *other != **dir && other.starts_with(&format!("{}/", dir)))
+            })
+            .cloned()
             .collect()
     }
 
@@ -252,6 +303,8 @@ impl<'a> Installer<'a> {
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
         let resources =
             Self::filter_skills_resources(Self::discover_resources(&bundle.source_path)?);
+
+        self.leaf_skill_dirs = Some(Self::compute_leaf_skill_dirs(&resources));
 
         let pending_installations = self.collect_pending_installations(&resources, bundle)?;
 
@@ -296,6 +349,8 @@ impl<'a> Installer<'a> {
         for (source_path, target_paths) in source_to_targets {
             workspace_bundle.add_file(source_path, target_paths);
         }
+
+        self.leaf_skill_dirs = None;
 
         Ok(workspace_bundle)
     }
@@ -730,23 +785,44 @@ impl<'a> Installer<'a> {
         // Normalize path to forward slashes for consistent processing
         let path_str = resource_path.to_string_lossy().replace('\\', "/");
 
+        // Resolve leaf skill root when path is under skills/ (e.g. skills/claude.ai/vercel-deploy-claimable -> vercel-deploy-claimable)
+        let skill_root: Option<&str> = if path_str.starts_with("skills/")
+            && self.leaf_skill_dirs.as_ref().is_some_and(|dirs| {
+                dirs.iter()
+                    .any(|d| path_str == d.as_str() || path_str.starts_with(&format!("{}/", d)))
+            }) {
+            self.leaf_skill_dirs.as_ref().and_then(|dirs| {
+                dirs.iter()
+                    .find(|dir| {
+                        path_str == dir.as_str() || path_str.starts_with(&format!("{}/", dir))
+                    })
+                    .map(String::as_str)
+            })
+        } else {
+            None
+        };
+
         // Build target path by substituting variables and wildcards
         let mut target = rule.to.clone();
 
-        // Handle {name} placeholder - for skills/<dir>/... use directory name (Agent Skills spec);
+        // Handle {name} placeholder - for skills use leaf skill dir name (e.g. vercel-deploy-claimable);
         // otherwise use filename stem
         if target.contains("{name}") {
             let name = if path_str.starts_with("skills/") {
-                path_str
-                    .trim_start_matches("skills/")
-                    .split('/')
-                    .next()
-                    .map(String::from)
+                skill_root
+                    .and_then(|root| root.split('/').next_back().map(String::from))
                     .unwrap_or_else(|| {
-                        resource_path
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().into_owned())
-                            .unwrap_or_default()
+                        path_str
+                            .trim_start_matches("skills/")
+                            .split('/')
+                            .next()
+                            .map(String::from)
+                            .unwrap_or_else(|| {
+                                resource_path
+                                    .file_stem()
+                                    .map(|s| s.to_string_lossy().into_owned())
+                                    .unwrap_or_default()
+                            })
                     })
             } else {
                 resource_path
@@ -759,9 +835,21 @@ impl<'a> Installer<'a> {
             }
         }
 
-        // Extract the relative part that matches wildcards in the source pattern
-        // This handles both * and ** wildcards
-        let relative_part = self.extract_relative_part(&rule.from, &path_str);
+        // For OpenCode-style targets (rule has {name}), use path under skill root so .opencode/skills/vercel-deploy-claimable/scripts/...
+        // For other platforms (e.g. .claude/skills/**/*), use full path after skills/ so .claude/skills/skill/SKILL.md
+        let relative_part = if rule.to.contains("{name}") {
+            if let Some(root) = skill_root {
+                path_str
+                    .strip_prefix(root)
+                    .unwrap_or(&path_str)
+                    .trim_start_matches('/')
+                    .to_string()
+            } else {
+                self.extract_relative_part(&rule.from, &path_str)
+            }
+        } else {
+            self.extract_relative_part(&rule.from, &path_str)
+        };
 
         // Replace wildcards in target pattern with the extracted relative part
         if target.contains("**") {
@@ -1773,6 +1861,62 @@ mod tests {
         assert!(
             !paths.contains(&"skills/claude.ai/vercel-deploy-claimable.zip".to_string()),
             "zip file in skills/ (not under a skill dir) should be skipped"
+        );
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_skills_resources_leaf_only_parent_and_child_have_skill_md() {
+        // When both skills/claude.ai/ and skills/claude.ai/vercel-deploy-claimable/ have SKILL.md,
+        // only the leaf (vercel-deploy-claimable) is treated as a skill; claude.ai is not installed.
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let base = temp.path();
+
+        fn make_resource(bundle_path: &str, absolute: &Path) -> DiscoveredResource {
+            DiscoveredResource {
+                bundle_path: PathBuf::from(bundle_path),
+                absolute_path: absolute.to_path_buf(),
+                resource_type: if bundle_path.starts_with("skills/") {
+                    "skills".to_string()
+                } else {
+                    "commands".to_string()
+                },
+            }
+        }
+
+        let resources = vec![
+            make_resource("skills/claude.ai/SKILL.md", &base.join("parent.md")),
+            make_resource(
+                "skills/claude.ai/vercel-deploy-claimable/SKILL.md",
+                &base.join("leaf.md"),
+            ),
+            make_resource(
+                "skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh",
+                &base.join("deploy.sh"),
+            ),
+        ];
+
+        let filtered = Installer::filter_skills_resources(resources);
+
+        let paths: Vec<_> = filtered
+            .iter()
+            .map(|r| r.bundle_path.to_string_lossy().into_owned())
+            .collect();
+        // Leaf skill (vercel-deploy-claimable) is kept
+        assert!(
+            paths.contains(&"skills/claude.ai/vercel-deploy-claimable/SKILL.md".to_string()),
+            "leaf skill dir should keep SKILL.md"
+        );
+        assert!(
+            paths.contains(
+                &"skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh".to_string()
+            ),
+            "leaf skill dir should keep files under it"
+        );
+        // Parent (claude.ai) is not treated as a skill
+        assert!(
+            !paths.contains(&"skills/claude.ai/SKILL.md".to_string()),
+            "parent dir with SKILL.md should be skipped when child also has SKILL.md (leaf-only)"
         );
         assert_eq!(filtered.len(), 2);
     }

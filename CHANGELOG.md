@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `augent install`: renamed `--for` to `--to` and added short form `-t` for specifying target platforms (e.g. `augent install ./bundle -t cursor`).
 
+### Fixed
+
+- Nested skills (e.g. `skills/claude.ai/vercel-deploy-claimable/` from [agent-skills](https://github.com/vercel-labs/agent-skills)) are now installed as the leaf skill only: `.opencode/skills/vercel-deploy-claimable/` with `SKILL.md` and `scripts/` (not as `claude.ai`).
+
 ## [0.6.2] - 2026-01-31
 
 ### Added

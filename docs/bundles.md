@@ -23,9 +23,9 @@ Bundles can exist **with or without** `augent.yaml`. When a bundle has `augent.l
 Augent installs **skills** in line with the [Agent Skills specification](https://agentskills.io/specification):
 
 - A **skill** is a directory that contains at least a `SKILL.md` file.
-- Only skill directories whose `SKILL.md` has valid frontmatter are installed: required `name` (1–64 chars, lowercase/hyphens, must match the directory name) and `description` (1–1024 chars).
+- Only **leaf** skill directories are installed: if both `skills/claude.ai/` and `skills/claude.ai/vercel-deploy-claimable/` have `SKILL.md`, only `vercel-deploy-claimable` is treated as a skill (not `claude.ai`).
 - Standalone files directly under `skills/` (e.g. `skills/foo.zip`) are not installed.
-- Directories under `skills/` that have no `SKILL.md`, or whose `SKILL.md` fails validation, are skipped.
+- Directories under `skills/` that have no `SKILL.md`, or that are a parent of another skill dir with `SKILL.md`, are skipped.
 
 Optional subdirectories such as `scripts/`, `references/`, and `assets/` inside a skill directory are installed with the skill.
 
