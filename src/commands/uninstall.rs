@@ -563,13 +563,15 @@ pub(crate) fn do_uninstall(
 
     let mut removed_count = 0;
 
-    // Get the platform-specific file locations from workspace config
-    let bundle_config = workspace.workspace_config.find_bundle(name);
+    // Get the platform-specific file locations from workspace config (use lockfile name for lookup)
+    let bundle_config = workspace.workspace_config.find_bundle(&locked_bundle.name);
 
     for file_path in &files_to_remove {
+        // Normalize path for lookup (index keys use forward slashes)
+        let path_key = file_path.replace('\\', "/");
         // First, try to get the platform-specific locations from workspace config
         if let Some(bundle_cfg) = &bundle_config {
-            if let Some(locations) = bundle_cfg.get_locations(file_path) {
+            if let Some(locations) = bundle_cfg.get_locations(&path_key) {
                 for location in locations {
                     let full_path = workspace.root.join(location);
                     if full_path.exists() {

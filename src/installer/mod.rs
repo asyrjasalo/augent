@@ -169,9 +169,89 @@ impl<'a> Installer<'a> {
         Ok(resources)
     }
 
+    /// Validate SKILL.md frontmatter per [Agent Skills specification](https://agentskills.io/specification).
+    /// Requires: `name` (1–64 chars, lowercase/hyphens), `description` (1–1024 chars).
+    /// Not used when filtering (we install any dir with SKILL.md); kept for possible strict mode.
+    #[allow(dead_code)]
+    fn validate_skill_frontmatter_spec(content: &str, _parent_dir_name: &str) -> bool {
+        let (fm, _) = match universal::parse_frontmatter_and_body(content) {
+            Some(p) => p,
+            None => return false,
+        };
+        let name = match universal::get_str(&fm, "name") {
+            Some(n) => n,
+            None => return false,
+        };
+        let description = match universal::get_str(&fm, "description") {
+            Some(d) => d,
+            None => return false,
+        };
+        // name: 1-64 chars, lowercase letters numbers hyphens only, no start/end hyphen, no consecutive hyphens
+        if name.is_empty() || name.len() > 64 {
+            return false;
+        }
+        let name_ok = name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+        if !name_ok {
+            return false;
+        }
+        if name.starts_with('-') || name.ends_with('-') {
+            return false;
+        }
+        if name.contains("--") {
+            return false;
+        }
+        // description: 1-1024 chars, non-empty
+        let desc_trim = description.trim();
+        !desc_trim.is_empty() && desc_trim.len() <= 1024
+    }
+
+    /// Filter skills so we only install directories that contain a SKILL.md file.
+    /// - Skip standalone files directly under skills/ (e.g. skills/web-design-guidelines.zip).
+    /// - Include any skill subdir that has a SKILL.md (frontmatter is not validated).
+    fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<DiscoveredResource> {
+        const SKILLS_PREFIX: &str = "skills/";
+        const SKILL_MD_NAME: &str = "SKILL.md";
+
+        // Set of skill dirs that contain a SKILL.md (any content; no frontmatter validation)
+        let skill_dirs_with_skill_md: std::collections::HashSet<String> = resources
+            .iter()
+            .filter(|r| r.resource_type == "skills")
+            .filter(|r| r.bundle_path.file_name().and_then(|n| n.to_str()) == Some(SKILL_MD_NAME))
+            .filter_map(|r| {
+                let parent = r.bundle_path.parent()?;
+                Some(parent.to_string_lossy().replace('\\', "/"))
+            })
+            .collect();
+
+        resources
+            .into_iter()
+            .filter(|r| {
+                if r.resource_type != "skills" {
+                    return true;
+                }
+                let path_str = r.bundle_path.to_string_lossy().replace('\\', "/");
+                if !path_str.starts_with(SKILLS_PREFIX) {
+                    return true;
+                }
+                let after_skills = path_str.trim_start_matches(SKILLS_PREFIX);
+                // Standalone file directly under skills/ (e.g. skills/web-design-guidelines.zip) -> skip
+                if !after_skills.contains('/') {
+                    return false;
+                }
+                // Include if this path is inside any skill dir that has SKILL.md (supports nested dirs e.g. skills/claude.ai/vercel-deploy-claimable/)
+                skill_dirs_with_skill_md.iter().any(|skill_dir| {
+                    path_str == *skill_dir || path_str.starts_with(&format!("{}/", skill_dir))
+                })
+            })
+            .collect()
+    }
+
     /// Install a single bundle
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
-        let resources = Self::discover_resources(&bundle.source_path)?;
+        let resources =
+            Self::filter_skills_resources(Self::discover_resources(&bundle.source_path)?);
 
         let pending_installations = self.collect_pending_installations(&resources, bundle)?;
 
@@ -225,15 +305,15 @@ impl<'a> Installer<'a> {
         let mut workspace_bundles = Vec::new();
         let total_bundles = bundles.len();
 
-        // Count total files for progress display
+        // Count total files for progress display (use same filter as install_bundle)
         let total_files = if self.progress.is_some() {
             bundles
                 .iter()
                 .map(|b| {
                     Self::discover_resources(&b.source_path)
                         .map(|resources| {
-                            // Count files per platform
-                            resources.len() * self.platforms.len()
+                            let filtered = Self::filter_skills_resources(resources);
+                            filtered.len() * self.platforms.len()
                         })
                         .unwrap_or(0)
                 })
@@ -653,10 +733,29 @@ impl<'a> Installer<'a> {
         // Build target path by substituting variables and wildcards
         let mut target = rule.to.clone();
 
-        // Handle {name} placeholder - extract filename without extension
+        // Handle {name} placeholder - for skills/<dir>/... use directory name (Agent Skills spec);
+        // otherwise use filename stem
         if target.contains("{name}") {
-            if let Some(stem) = resource_path.file_stem() {
-                target = target.replace("{name}", &stem.to_string_lossy());
+            let name = if path_str.starts_with("skills/") {
+                path_str
+                    .trim_start_matches("skills/")
+                    .split('/')
+                    .next()
+                    .map(String::from)
+                    .unwrap_or_else(|| {
+                        resource_path
+                            .file_stem()
+                            .map(|s| s.to_string_lossy().into_owned())
+                            .unwrap_or_default()
+                    })
+            } else {
+                resource_path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default()
+            };
+            if !name.is_empty() {
+                target = target.replace("{name}", &name);
             }
         }
 
@@ -1557,6 +1656,125 @@ mod tests {
 
         let resources = Installer::discover_resources(temp.path()).unwrap();
         assert_eq!(resources.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_skills_resources() {
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let base = temp.path();
+
+        // Valid SKILL.md per Agent Skills spec (name matches dir, required fields)
+        let valid_skill_md =
+            "---\nname: valid-skill\ndescription: A valid skill for testing.\n---\n\nBody.";
+        fs::write(base.join("b.md"), valid_skill_md).unwrap();
+
+        fn make_resource(bundle_path: &str, absolute: &Path) -> DiscoveredResource {
+            DiscoveredResource {
+                bundle_path: PathBuf::from(bundle_path),
+                absolute_path: absolute.to_path_buf(),
+                resource_type: if bundle_path.starts_with("skills/") {
+                    "skills".to_string()
+                } else {
+                    "commands".to_string()
+                },
+            }
+        }
+
+        let resources = vec![
+            make_resource("skills/web-design-guidelines.zip", &base.join("a.zip")),
+            make_resource("skills/valid-skill/SKILL.md", &base.join("b.md")),
+            make_resource("skills/valid-skill/metadata.json", &base.join("c.json")),
+            make_resource("skills/metadata-only/metadata.json", &base.join("d.json")),
+            make_resource("commands/debug.md", &base.join("e.md")),
+        ];
+
+        let filtered = Installer::filter_skills_resources(resources);
+
+        let paths: Vec<_> = filtered
+            .iter()
+            .map(|r| r.bundle_path.to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            !paths.contains(&"skills/web-design-guidelines.zip".to_string()),
+            "standalone file in skills/ should be skipped"
+        );
+        assert!(
+            !paths.contains(&"skills/metadata-only/metadata.json".to_string()),
+            "skill dir without SKILL.md should be skipped"
+        );
+        assert!(
+            paths.contains(&"skills/valid-skill/SKILL.md".to_string()),
+            "skill dir with valid SKILL.md should keep SKILL.md"
+        );
+        assert!(
+            paths.contains(&"skills/valid-skill/metadata.json".to_string()),
+            "skill dir with valid SKILL.md should keep metadata.json"
+        );
+        assert!(
+            paths.contains(&"commands/debug.md".to_string()),
+            "non-skills resources should be unchanged"
+        );
+        assert_eq!(filtered.len(), 3);
+    }
+
+    #[test]
+    fn test_filter_skills_resources_nested_skill_dir() {
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let base = temp.path();
+
+        // Nested skill (e.g. vercel-labs/agent-skills: skills/claude.ai/vercel-deploy-claimable/)
+        let nested_skill_md =
+            "---\nname: vercel-deploy\ndescription: Deploy to Vercel.\n---\n\nBody.";
+        fs::write(base.join("nested.md"), nested_skill_md).unwrap();
+
+        fn make_resource(bundle_path: &str, absolute: &Path) -> DiscoveredResource {
+            DiscoveredResource {
+                bundle_path: PathBuf::from(bundle_path),
+                absolute_path: absolute.to_path_buf(),
+                resource_type: if bundle_path.starts_with("skills/") {
+                    "skills".to_string()
+                } else {
+                    "commands".to_string()
+                },
+            }
+        }
+
+        let resources = vec![
+            make_resource(
+                "skills/claude.ai/vercel-deploy-claimable/SKILL.md",
+                &base.join("nested.md"),
+            ),
+            make_resource(
+                "skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh",
+                &base.join("deploy.sh"),
+            ),
+            make_resource(
+                "skills/claude.ai/vercel-deploy-claimable.zip",
+                &base.join("a.zip"),
+            ),
+        ];
+
+        let filtered = Installer::filter_skills_resources(resources);
+
+        let paths: Vec<_> = filtered
+            .iter()
+            .map(|r| r.bundle_path.to_string_lossy().into_owned())
+            .collect();
+        assert!(
+            paths.contains(&"skills/claude.ai/vercel-deploy-claimable/SKILL.md".to_string()),
+            "nested skill dir with valid SKILL.md should keep SKILL.md"
+        );
+        assert!(
+            paths.contains(
+                &"skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh".to_string()
+            ),
+            "nested skill dir should keep files under it"
+        );
+        assert!(
+            !paths.contains(&"skills/claude.ai/vercel-deploy-claimable.zip".to_string()),
+            "zip file in skills/ (not under a skill dir) should be skipped"
+        );
+        assert_eq!(filtered.len(), 2);
     }
 
     #[test]

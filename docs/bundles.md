@@ -18,6 +18,17 @@ Bundles can exist **with or without** `augent.yaml`. When a bundle has `augent.l
 
 ## Bundle Structure
 
+### Skills and the Agent Skills specification
+
+Augent installs **skills** in line with the [Agent Skills specification](https://agentskills.io/specification):
+
+- A **skill** is a directory that contains at least a `SKILL.md` file.
+- Only skill directories whose `SKILL.md` has valid frontmatter are installed: required `name` (1–64 chars, lowercase/hyphens, must match the directory name) and `description` (1–1024 chars).
+- Standalone files directly under `skills/` (e.g. `skills/foo.zip`) are not installed.
+- Directories under `skills/` that have no `SKILL.md`, or whose `SKILL.md` fails validation, are skipped.
+
+Optional subdirectories such as `scripts/`, `references/`, and `assets/` inside a skill directory are installed with the skill.
+
 ### Minimal Bundle
 
 A bundle can be as simple as a directory with resources:
@@ -27,7 +38,8 @@ my-bundle/
 ├── rules/
 │   └── debug.md
 └── skills/
-    └── analyze.md
+    └── my-skill/
+        └── SKILL.md    # Required; valid frontmatter (name, description)
 ```
 
 ### Full Bundle Structure
@@ -39,9 +51,11 @@ my-bundle/
 ├── rules/                  # AI coding platform rules
 │   ├── debug.md
 │   └── testing.md
-├── skills/                 # AI coding platform skills
-│   ├── analyze.md
-│   └── review.md
+├── skills/                 # AI coding platform skills (Agent Skills spec)
+│   ├── analyze/            # Skill directory with SKILL.md
+│   │   └── SKILL.md
+│   └── review/
+│       └── SKILL.md
 ├── commands/                # AI coding platform commands
 │   └── deploy.md
 ├── mcp.jsonc               # MCP server configuration

@@ -120,14 +120,16 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         }
 
         // Something was selected (to install or uninstall) — prompt for platforms if not yet set
+        // Use workspace root for detection when inside a workspace so we see existing platform dirs
         if args.platforms.is_empty() {
-            let detected = if current_dir.exists() {
-                detection::detect_platforms(&current_dir)?
+            let detect_root = Workspace::find_from(&current_dir).unwrap_or(current_dir.clone());
+            let detected = if detect_root.exists() {
+                detection::detect_platforms(&detect_root)?
             } else {
                 vec![]
             };
             if detected.is_empty() {
-                let loader = platform::loader::PlatformLoader::new(&current_dir);
+                let loader = platform::loader::PlatformLoader::new(&detect_root);
                 let available_platforms = loader.load()?;
 
                 if available_platforms.is_empty() {
@@ -296,7 +298,12 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         transaction.backup_configs()?;
 
         // Perform installation
-        match do_install(&args, &selected_bundles, &mut workspace, &mut transaction) {
+        match do_install(
+            &mut args,
+            &selected_bundles,
+            &mut workspace,
+            &mut transaction,
+        ) {
             Ok(()) => {
                 // Commit installation
                 transaction.commit();
@@ -612,7 +619,30 @@ fn do_install_from_yaml(
         }
     }
 
-    let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
+    let platforms = match detect_target_platforms(&workspace.root, &args.platforms) {
+        Ok(p) => p,
+        Err(AugentError::NoPlatformsDetected) if args.platforms.is_empty() => {
+            // e.g. workspace just initialized (was_initialized) or no platform dirs yet
+            let loader = platform::loader::PlatformLoader::new(&workspace.root);
+            let available_platforms = loader.load()?;
+            if available_platforms.is_empty() {
+                return Err(AugentError::NoPlatformsDetected);
+            }
+            println!("No platforms detected in workspace.");
+            match select_platforms_interactively(&available_platforms) {
+                Ok(selected_platforms) => {
+                    if selected_platforms.is_empty() {
+                        println!("No platforms selected. Exiting.");
+                        return Ok(());
+                    }
+                    args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
+                    detect_target_platforms(&workspace.root, &args.platforms)?
+                }
+                Err(_) => return Err(AugentError::NoPlatformsDetected),
+            }
+        }
+        Err(e) => return Err(e),
+    };
     if platforms.is_empty() {
         return Err(AugentError::NoPlatformsDetected);
     }
@@ -809,7 +839,7 @@ fn do_install_from_yaml(
 
 /// Perform the actual installation
 fn do_install(
-    args: &InstallArgs,
+    args: &mut InstallArgs,
     selected_bundles: &[crate::resolver::DiscoveredBundle],
     workspace: &mut Workspace,
     transaction: &mut Transaction,
@@ -925,7 +955,29 @@ fn do_install(
     }
 
     // Detect target platforms
-    let platforms = detect_target_platforms(&workspace.root, &args.platforms)?;
+    let platforms = match detect_target_platforms(&workspace.root, &args.platforms) {
+        Ok(p) => p,
+        Err(AugentError::NoPlatformsDetected) if args.platforms.is_empty() => {
+            let loader = platform::loader::PlatformLoader::new(&workspace.root);
+            let available_platforms = loader.load()?;
+            if available_platforms.is_empty() {
+                return Err(AugentError::NoPlatformsDetected);
+            }
+            println!("No platforms detected in workspace.");
+            match select_platforms_interactively(&available_platforms) {
+                Ok(selected_platforms) => {
+                    if selected_platforms.is_empty() {
+                        println!("No platforms selected. Exiting.");
+                        return Err(AugentError::NoPlatformsDetected);
+                    }
+                    args.platforms = selected_platforms.iter().map(|p| p.id.clone()).collect();
+                    detect_target_platforms(&workspace.root, &args.platforms)?
+                }
+                Err(_) => return Err(AugentError::NoPlatformsDetected),
+            }
+        }
+        Err(e) => return Err(e),
+    };
     if platforms.is_empty() {
         return Err(AugentError::NoPlatformsDetected);
     }
@@ -1073,19 +1125,17 @@ fn do_install(
     Ok(())
 }
 
-/// Detect target platforms based on workspace and --to flag
+/// Detect target platforms based on workspace and --to flag.
+/// When no platforms are specified and none are detected, returns NoPlatformsDetected
+/// so the caller can prompt the user (e.g. interactive menu) instead of installing to all platforms.
 fn detect_target_platforms(workspace_root: &Path, platforms: &[String]) -> Result<Vec<Platform>> {
     if platforms.is_empty() {
-        // Auto-detect platforms in workspace
         let detected = detection::detect_platforms(workspace_root)?;
         if detected.is_empty() {
-            // Return all platforms (including custom platforms.jsonc) if none detected
-            let loader = platform::loader::PlatformLoader::new(workspace_root);
-            return loader.load();
+            return Err(AugentError::NoPlatformsDetected);
         }
         Ok(detected)
     } else {
-        // Use specified platforms
         detection::get_platforms(platforms, Some(workspace_root))
     }
 }
@@ -1676,6 +1726,14 @@ mod tests {
         assert_eq!(platforms.len(), 2);
         assert!(platforms.iter().any(|p| p.id == "cursor"));
         assert!(platforms.iter().any(|p| p.id == "opencode"));
+    }
+
+    #[test]
+    fn test_detect_target_platforms_none_detected() {
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        // No platform dirs (e.g. only .augent exists) — should not fall back to all platforms
+        let result = detect_target_platforms(temp.path(), &[]);
+        assert!(matches!(result, Err(AugentError::NoPlatformsDetected)));
     }
 
     #[test]

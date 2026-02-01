@@ -97,8 +97,12 @@ bundles: []
 "#,
     );
 
-    std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
-    std::fs::write(bundle_c.join("skills").join("c.md"), "# C").expect("Failed to write skill");
+    std::fs::create_dir_all(bundle_c.join("skills/c")).unwrap();
+    std::fs::write(
+        bundle_c.join("skills/c/SKILL.md"),
+        "---\nname: c\ndescription: Skill C for testing.\n---\n\n# C",
+    )
+    .expect("Failed to write skill");
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
@@ -107,7 +111,7 @@ bundles: []
 
     assert!(workspace.file_exists(".cursor/commands/a.md"));
     assert!(workspace.file_exists(".cursor/rules/b.mdc"));
-    assert!(workspace.file_exists(".cursor/skills/c.md"));
+    assert!(workspace.file_exists(".cursor/skills/c/SKILL.md"));
 }
 
 #[test]
@@ -156,9 +160,12 @@ bundles: []
 "#,
     );
 
-    std::fs::create_dir_all(bundle_c.join("skills")).unwrap();
-    std::fs::write(bundle_c.join("skills").join("c.md"), "# C has no deps")
-        .expect("Failed to write skill");
+    std::fs::create_dir_all(bundle_c.join("skills/c")).unwrap();
+    std::fs::write(
+        bundle_c.join("skills/c/SKILL.md"),
+        "---\nname: c\ndescription: Skill C has no deps.\n---\n\n# C has no deps",
+    )
+    .expect("Failed to write skill");
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/bundle-a"])
@@ -167,7 +174,7 @@ bundles: []
 
     assert!(workspace.file_exists(".cursor/commands/a.md"));
     assert!(workspace.file_exists(".cursor/rules/b.mdc"));
-    assert!(workspace.file_exists(".cursor/skills/c.md"));
+    assert!(workspace.file_exists(".cursor/skills/c/SKILL.md"));
 
     let config = workspace.read_file(".augent/augent.yaml");
     // Only the root bundle (bundle-a) should be in workspace config; per spec dir name is dir-name

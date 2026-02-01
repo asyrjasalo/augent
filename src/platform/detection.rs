@@ -8,8 +8,9 @@ use super::{Platform, loader::PlatformLoader};
 
 /// Detect which platforms are present in the workspace
 ///
-/// Returns a list of detected platforms based on the presence of
-/// platform-specific directories or files.
+/// Returns platforms whose directory exists in the workspace (e.g. `.opencode`, `.cursor`).
+/// Root-level agent files (AGENTS.md, CLAUDE.md, etc.) do not add any platform; only
+/// platform directories are used so install targets only the platforms the user actually has.
 pub fn detect_platforms(workspace_root: &Path) -> Result<Vec<Platform>> {
     if !workspace_root.exists() {
         return Err(AugentError::WorkspaceNotFound {
@@ -19,9 +20,10 @@ pub fn detect_platforms(workspace_root: &Path) -> Result<Vec<Platform>> {
 
     let loader = PlatformLoader::new(workspace_root);
     let platforms = loader.load()?;
+
     let detected: Vec<Platform> = platforms
         .into_iter()
-        .filter(|p| p.is_detected(workspace_root))
+        .filter(|p| workspace_root.join(&p.directory).exists())
         .collect();
 
     Ok(detected)
@@ -137,13 +139,15 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_platforms_by_file() {
+    fn test_root_agent_file_adds_no_platform() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         std::fs::write(temp.path().join("CLAUDE.md"), "# Claude").unwrap();
 
         let platforms = detect_platforms(temp.path()).unwrap();
-        assert_eq!(platforms.len(), 1);
-        assert_eq!(platforms[0].id, "claude");
+        assert!(
+            platforms.is_empty(),
+            "root agent files (CLAUDE.md, AGENTS.md, etc.) must not add any platform"
+        );
     }
 
     #[test]

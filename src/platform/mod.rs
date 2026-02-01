@@ -83,7 +83,9 @@ impl Platform {
         self
     }
 
-    /// Check if this platform is detected in the given directory
+    /// Check if this platform is detected in the given directory (any detection pattern matches).
+    /// Install uses directory-only detection; this is kept for tests and custom logic.
+    #[allow(dead_code)]
     pub fn is_detected(&self, workspace_root: &Path) -> bool {
         self.detection.iter().any(|pattern| {
             let check_path = workspace_root.join(pattern);

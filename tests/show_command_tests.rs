@@ -207,7 +207,10 @@ bundles: []
     workspace.write_file("bundles/multi-file-bundle/commands/cmd1.md", "# Cmd 1\n");
     workspace.write_file("bundles/multi-file-bundle/commands/cmd2.md", "# Cmd 2\n");
     workspace.write_file("bundles/multi-file-bundle/rules/rule1.md", "# Rule 1\n");
-    workspace.write_file("bundles/multi-file-bundle/skills/skill1.md", "# Skill 1\n");
+    workspace.write_file(
+        "bundles/multi-file-bundle/skills/skill1/SKILL.md",
+        "---\nname: skill1\ndescription: Skill 1.\n---\n\n# Skill 1\n",
+    );
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/multi-file-bundle", "--to", "cursor"])
@@ -224,7 +227,7 @@ bundles: []
         .stdout(predicate::str::contains("commands/cmd1.md"))
         .stdout(predicate::str::contains("commands/cmd2.md"))
         .stdout(predicate::str::contains("rules/rule1.md"))
-        .stdout(predicate::str::contains("skills/skill1.md"));
+        .stdout(predicate::str::contains("skills/skill1/SKILL.md"));
 }
 
 #[test]

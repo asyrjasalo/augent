@@ -50,17 +50,20 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/debug.md", "# Debug Command\n");
     workspace.write_file("bundles/test-bundle/rules/lint.md", "# Lint Rule\n");
-    workspace.write_file("bundles/test-bundle/skills/analyze.md", "# Analyze Skill\n");
+    workspace.write_file(
+        "bundles/test-bundle/skills/analyze/SKILL.md",
+        "---\nname: analyze\ndescription: Analyze skill.\n---\n\n# Analyze Skill\n",
+    );
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--to", "claude"])
         .assert()
         .success();
 
-    // Claude: commands go to .claude/commands/, rules to .claude/rules/, skills to .claude/skills/
+    // Claude: commands go to .claude/commands/, rules to .claude/rules/, skills to .claude/skills/<name>/SKILL.md
     assert!(workspace.file_exists(".claude/commands/debug.md"));
     assert!(workspace.file_exists(".claude/rules/lint.md"));
-    assert!(workspace.file_exists(".claude/skills/analyze.md"));
+    assert!(workspace.file_exists(".claude/skills/analyze/SKILL.md"));
 
     let debug_content = workspace.read_file(".claude/commands/debug.md");
     assert!(debug_content.contains("Debug Command"));
@@ -68,7 +71,7 @@ bundles: []
     let lint_content = workspace.read_file(".claude/rules/lint.md");
     assert!(lint_content.contains("Lint Rule"));
 
-    let analyze_content = workspace.read_file(".claude/skills/analyze.md");
+    let analyze_content = workspace.read_file(".claude/skills/analyze/SKILL.md");
     assert!(analyze_content.contains("Analyze Skill"));
 }
 

@@ -179,10 +179,11 @@ fn test_discover_claude_marketplace_format() {
     )
     .expect("Failed to write augent.yaml");
 
-    std::fs::create_dir_all(marketplace_dir.join("skills")).unwrap();
+    // Agent Skills spec: skill is a directory with SKILL.md (https://agentskills.io/specification)
+    std::fs::create_dir_all(marketplace_dir.join("skills/code-review")).unwrap();
     std::fs::write(
-        marketplace_dir.join("skills/code-review.md"),
-        "# Code review skill",
+        marketplace_dir.join("skills/code-review/SKILL.md"),
+        "---\nname: code-review\ndescription: Code review skill for validating changes.\n---\n\n# Code review skill",
     )
     .expect("Failed to write skill");
 
@@ -198,7 +199,7 @@ fn test_discover_claude_marketplace_format() {
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".claude/skills/code-review.md"));
+    assert!(workspace.file_exists(".claude/skills/code-review/SKILL.md"));
     assert!(workspace.file_exists(".claude/agents/reviewer.md"));
 }
 
@@ -356,8 +357,12 @@ fn test_discover_multiple_bundles_from_git_repository() {
         "name: \"@test/bundle-c\"\nbundles: []\n",
     )
     .expect("Failed to write augent.yaml");
-    std::fs::create_dir_all(bundle3.join("skills")).unwrap();
-    std::fs::write(bundle3.join("skills/skill-c.md"), "# Skill C\n").expect("Failed to write file");
+    std::fs::create_dir_all(bundle3.join("skills/skill-c")).unwrap();
+    std::fs::write(
+        bundle3.join("skills/skill-c/SKILL.md"),
+        "---\nname: skill-c\ndescription: Skill C for testing.\n---\n\n# Skill C\n",
+    )
+    .expect("Failed to write file");
 
     std::process::Command::new("git")
         .args(["add", "."])
@@ -412,5 +417,5 @@ fn test_discover_multiple_bundles_from_git_repository() {
         .success()
         .stdout(predicate::str::contains("Installed 1 bundle"));
 
-    assert!(workspace.file_exists(".claude/skills/skill-c.md"));
+    assert!(workspace.file_exists(".claude/skills/skill-c/SKILL.md"));
 }

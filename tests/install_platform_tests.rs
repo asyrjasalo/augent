@@ -164,9 +164,12 @@ bundles: []
     std::fs::write(bundle.join("rules").join("lint.md"), "# Linting rule")
         .expect("Failed to write rule");
 
-    std::fs::create_dir_all(bundle.join("skills")).unwrap();
-    std::fs::write(bundle.join("skills").join("analyze.md"), "# Analysis skill")
-        .expect("Failed to write skill");
+    std::fs::create_dir_all(bundle.join("skills/analyze")).unwrap();
+    std::fs::write(
+        bundle.join("skills/analyze/SKILL.md"),
+        "---\nname: analyze\ndescription: Analysis skill for testing.\n---\n\n# Analysis skill",
+    )
+    .expect("Failed to write skill");
 
     std::fs::create_dir_all(bundle.join("agents")).unwrap();
     std::fs::write(bundle.join("agents").join("custom.md"), "# Custom agent")
@@ -199,7 +202,7 @@ bundles: []
         "Rules resource should be installed"
     );
     assert!(
-        workspace.file_exists(".claude/skills/analyze.md"),
+        workspace.file_exists(".claude/skills/analyze/SKILL.md"),
         "Skills resource should be installed"
     );
     assert!(
@@ -306,6 +309,9 @@ fn test_platform_detection_order_with_multiple_platforms() {
 fn test_platform_detection_order_with_root_files() {
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
+    // Only platform directories are used for detection; root agent files do not add platforms
+    workspace.create_agent_dir("claude");
+    workspace.create_agent_dir("cursor");
     workspace.write_file("CLAUDE.md", "# Claude Config");
     workspace.write_file("AGENTS.md", "# Agents Config");
 
@@ -318,11 +324,11 @@ fn test_platform_detection_order_with_root_files() {
 
     assert!(
         workspace.file_exists(".claude/commands/debug.md"),
-        "Claude platform should be detected from CLAUDE.md"
+        "Claude platform (directory present) should get commands"
     );
     assert!(
         workspace.file_exists(".cursor/commands/debug.md"),
-        "Cursor platform should be detected from AGENTS.md"
+        "Cursor platform (directory present) should get commands"
     );
 }
 
@@ -499,9 +505,12 @@ bundles: []
 "#,
     );
 
-    std::fs::create_dir_all(bundle.join("skills")).unwrap();
-    std::fs::write(bundle.join("skills").join("analyze.md"), "# Analysis skill")
-        .expect("Failed to write skill");
+    std::fs::create_dir_all(bundle.join("skills/analyze")).unwrap();
+    std::fs::write(
+        bundle.join("skills/analyze/SKILL.md"),
+        "---\nname: analyze\ndescription: Analysis skill.\n---\n\n# Analysis skill",
+    )
+    .expect("Failed to write skill");
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
@@ -509,13 +518,13 @@ bundles: []
         .success();
 
     assert!(
-        workspace.file_exists(".claude/skills/analyze.md"),
+        workspace.file_exists(".claude/skills/analyze/SKILL.md"),
         "Skills should transform to .claude/skills/"
     );
 
-    let content = workspace.read_file(".claude/skills/analyze.md");
-    assert_eq!(
-        content, "# Analysis skill",
+    let content = workspace.read_file(".claude/skills/analyze/SKILL.md");
+    assert!(
+        content.contains("# Analysis skill"),
         "Skill content should be preserved"
     );
 }
@@ -584,9 +593,12 @@ bundles: []
     std::fs::write(bundle.join("rules").join("security.md"), "# Security rule")
         .expect("Failed to write rule");
 
-    std::fs::create_dir_all(bundle.join("skills")).unwrap();
-    std::fs::write(bundle.join("skills").join("debug.md"), "# Debugging skill")
-        .expect("Failed to write skill");
+    std::fs::create_dir_all(bundle.join("skills/debug")).unwrap();
+    std::fs::write(
+        bundle.join("skills/debug/SKILL.md"),
+        "---\nname: debug\ndescription: Debugging skill.\n---\n\n# Debugging skill",
+    )
+    .expect("Failed to write skill");
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
@@ -616,9 +628,10 @@ bundles: []
         "# Security rule",
         "Rule content should be preserved"
     );
-    assert_eq!(
-        workspace.read_file(".opencode/skills/debug/SKILL.md"),
-        "# Debugging skill",
+    assert!(
+        workspace
+            .read_file(".opencode/skills/debug/SKILL.md")
+            .contains("# Debugging skill"),
         "Skill content should be preserved"
     );
 }
@@ -702,7 +715,12 @@ bundles: []
 
     std::fs::write(bundle.join("commands").join("cmd.md"), "# Command").expect("Failed to write");
     std::fs::write(bundle.join("rules").join("rule.md"), "# Rule").expect("Failed to write");
-    std::fs::write(bundle.join("skills").join("skill.md"), "# Skill").expect("Failed to write");
+    std::fs::create_dir_all(bundle.join("skills/skill")).unwrap();
+    std::fs::write(
+        bundle.join("skills/skill/SKILL.md"),
+        "---\nname: skill\ndescription: A test skill.\n---\n\n# Skill",
+    )
+    .expect("Failed to write");
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle"])
@@ -718,7 +736,7 @@ bundles: []
         ".claude/rules/ directory should exist"
     );
     assert!(
-        workspace.file_exists(".claude/skills/skill.md"),
+        workspace.file_exists(".claude/skills/skill/SKILL.md"),
         ".claude/skills/ directory should exist"
     );
 }

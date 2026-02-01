@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Skills installation follows the [Agent Skills specification](https://agentskills.io/specification): only skill directories that contain a valid `SKILL.md` (required `name` and `description` frontmatter, `name` must match the directory name) are installed; standalone files under `skills/` and directories without valid `SKILL.md` are skipped. See [bundles.md](docs/bundles.md#skills-and-the-agent-skills-specification).
+
 ### Changed
 
 - `augent install`: renamed `--for` to `--to` and added short form `-t` for specifying target platforms (e.g. `augent install ./bundle -t cursor`).

@@ -39,7 +39,10 @@ fn test_detect_claude_by_file() {
     fs::write(temp.path().join("CLAUDE.md"), "# Claude\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "claude"));
+    assert!(
+        platforms.is_empty(),
+        "CLAUDE.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -68,7 +71,10 @@ fn test_detect_codex_by_file() {
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "codex"));
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -86,7 +92,10 @@ fn test_detect_cursor_by_file() {
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "cursor"));
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -104,7 +113,10 @@ fn test_detect_factory_by_file() {
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "factory"));
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -122,7 +134,10 @@ fn test_detect_kilo_by_file() {
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "kilo"));
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -143,13 +158,33 @@ fn test_detect_opencode_by_directory() {
     assert!(platforms.iter().any(|p| p.id == "opencode"));
 }
 
+/// With .opencode present, only OpenCode is detected even if AGENTS.md exists
+/// (AGENTS.md would otherwise match Cursor, Codex, etc.).
+#[test]
+fn test_opencode_and_agents_md_only_opencode_detected() {
+    let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+    fs::create_dir(temp.path().join(".opencode")).unwrap();
+    fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
+
+    let platforms = detect_platforms(temp.path()).unwrap();
+    assert_eq!(
+        platforms.len(),
+        1,
+        "only one platform when only .opencode dir exists"
+    );
+    assert_eq!(platforms[0].id, "opencode");
+}
+
 #[test]
 fn test_detect_opencode_by_file() {
     let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "opencode"));
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -167,7 +202,10 @@ fn test_detect_qwen_by_file() {
     fs::write(temp.path().join("QWEN.md"), "# Qwen\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "qwen"));
+    assert!(
+        platforms.is_empty(),
+        "QWEN.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -185,7 +223,10 @@ fn test_detect_roo_by_file() {
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "roo"));
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -203,7 +244,10 @@ fn test_detect_warp_by_file() {
     fs::write(temp.path().join("WARP.md"), "# Warp\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    assert!(platforms.iter().any(|p| p.id == "warp"));
+    assert!(
+        platforms.is_empty(),
+        "WARP.md alone must not add any platform"
+    );
 }
 
 #[test]
@@ -284,21 +328,15 @@ fn test_detect_no_platforms() {
 }
 
 #[test]
-fn test_agents_md_detects_multiple_platforms() {
+fn test_root_agent_files_add_no_platforms() {
     let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
     fs::write(temp.path().join("AGENTS.md"), "# Agents\n").unwrap();
 
     let platforms = detect_platforms(temp.path()).unwrap();
-    let platform_ids: Vec<_> = platforms.iter().map(|p| p.id.as_str()).collect();
-
-    assert!(platform_ids.contains(&"codex"));
-    assert!(platform_ids.contains(&"cursor"));
-    assert!(platform_ids.contains(&"factory"));
-    assert!(platform_ids.contains(&"kilo"));
-    assert!(platform_ids.contains(&"opencode"));
-    assert!(platform_ids.contains(&"roo"));
-
-    assert!(platforms.len() >= 6);
+    assert!(
+        platforms.is_empty(),
+        "AGENTS.md and other root agent files must not add any platform"
+    );
 }
 
 #[test]
