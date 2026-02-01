@@ -7,18 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Skills installation follows the [Agent Skills specification](https://agentskills.io/specification): only skill directories that contain a valid `SKILL.md` (required `name` and `description` frontmatter, `name` must match the directory name) are installed; standalone files under `skills/` and directories without valid `SKILL.md` are skipped. See [bundles.md](docs/bundles.md#skills-and-the-agent-skills-specification).
-
 ### Changed
 
-- `augent install`: renamed `--for` to `--to` and added short form `-t` for specifying target platforms (e.g. `augent install ./bundle -t cursor`).
-- Skill transformations (leaf skill as `{name}`, path under skill for non-.md files) now apply to all platforms that support skills: Antigravity, Claude, Claude Plugin, GitHub Copilot, Cursor, Codex, Factory, Junie, Kilo, OpenCode, Qwen, Roo, Windsurf, and Gemini. Each installs skills as `.platform/skills/{name}/SKILL.md` and `.platform/skills/{name}/**/*` for nested content (e.g. `scripts/`).
+- `augent install`: `--for` renamed to `--to` with short `-t` for target platforms (e.g. `augent install ./bundle -t cursor`).
+- Skill transformations (leaf as `{name}`, nested content under skill) now apply to all skill-supporting platforms; installs as `.platform/skills/{name}/SKILL.md` and `.platform/skills/{name}/**/*`.
 
 ### Fixed
 
-- Nested skills (e.g. `skills/claude.ai/vercel-deploy-claimable/` from [agent-skills](https://github.com/vercel-labs/agent-skills)) are now installed as the leaf skill only: `.opencode/skills/vercel-deploy-claimable/` with `SKILL.md` and `scripts/` (not as `claude.ai`).
+- Nested skills (e.g. `skills/platform-name/skill-name/`) are now installed as the leaf skill only: `.platform/skills/skill-name/` with `SKILL.md` and any nested content (e.g. `scripts/`), not as intermediate path segments like `platform-name`.
 
 ## [0.6.2] - 2026-01-31
 
