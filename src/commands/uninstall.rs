@@ -704,6 +704,7 @@ fn check_file_conflicts(
 /// 1. It's provided by target bundle
 /// 2. No other bundle provides it
 /// 3. Or other bundles only override it (don't actually provide it)
+/// 4. It was actually installed (tracked in workspace config index)
 fn determine_files_to_remove(
     workspace: &Workspace,
     bundle_name: &str,
@@ -739,6 +740,14 @@ fn determine_files_to_remove(
         }
     };
 
+    // Get set of files that were actually installed for this bundle
+    // (tracked in workspace config index)
+    let installed_files: std::collections::HashSet<String> = workspace
+        .workspace_config
+        .find_bundle(bundle_name)
+        .map(|bundle_cfg| bundle_cfg.enabled.keys().cloned().collect())
+        .unwrap_or_default();
+
     let empty_vec: Vec<String> = Vec::new();
 
     for file in bundle_files {
@@ -751,6 +760,15 @@ fn determine_files_to_remove(
                     .get(p)
                     .is_some_and(|&order| order < target_order)
             });
+
+        // Only remove files that were actually installed (tracked in workspace config index)
+        if !installed_files.is_empty() && !installed_files.contains(file) {
+            eprintln!(
+                "WARNING: File {} in lockfile but not in installed files, skipping removal",
+                file
+            );
+            continue;
+        }
 
         if can_remove {
             files_to_remove.push(file.clone());

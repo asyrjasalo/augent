@@ -1524,10 +1524,14 @@ fn update_configs_from_yaml(
 /// Remove file entries from earlier bundles when they're overridden by later bundles
 fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
     // Build a map of which files are provided by which bundle (in order)
+    // Skip workspace bundle when building file-bundle map
     let mut file_bundle_map: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
 
     for bundle in &workspace.workspace_config.bundles {
+        if bundle.name == workspace.bundle_config.name {
+            continue;
+        }
         for file_path in bundle.enabled.keys() {
             file_bundle_map.insert(file_path.clone(), bundle.name.clone());
         }
@@ -1535,6 +1539,11 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
 
     // Remove files from earlier bundles if they're also in later bundles
     for i in 0..workspace.workspace_config.bundles.len() {
+        // Skip workspace bundle when removing overridden files
+        if workspace.workspace_config.bundles[i].name == workspace.bundle_config.name {
+            continue;
+        }
+
         for file_path in workspace.workspace_config.bundles[i]
             .enabled
             .keys()
