@@ -18,3 +18,8 @@ backend = "aqua:j178/prek"
 [[tools.rust]]
 version = "1.93.0"
 backend = "core:rust"
+
+[[tools.rust-analyzer]]
+version = "2026-01-26"
+backend = "aqua:rust-lang/rust-analyzer"
+"platforms.macos-arm64" = { checksum = "sha256:d67bc67233240de7825a76291999a1ad10e744b5d5d6ca56d7e050576963a153", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-01-26/rust-analyzer-aarch64-apple-darwin.gz"}
