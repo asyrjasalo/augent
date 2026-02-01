@@ -33,23 +33,22 @@ It does NOT:
    - In `docs/implementation/tasks.md`: Mark tasks as `[-]` (in progress)
    - This allows epics to be worked in parallel as long as dependencies are met
 2. **Create task** - If not already there, add a task to the end of @docs/implementation/tasks.md before starting work
-3. **Research** - Review existing documentation for the topic: @docs/
-4. **Write tests first** - Write tests before implementation (TDD approach)
-5. **Write implementation** - Write the implementation code
-6. **Run tests** - Verify implementation with tests
-7. **Iterate** - Repeat steps 4-6 (write test → write implementation → run test) until tests pass
-8. **Run formatters** - Fix formatting issues:
+3. **Write tests first** - Write tests before implementation (TDD approach)
+4. **Write implementation** - Write the implementation code
+5. **Run tests** - Verify implementation with tests
+6. **Iterate** - Repeat steps 3-5 (write test → write implementation → run test) until tests pass
+7. **Run formatters** - Fix formatting issues:
    - `cargo fmt`
-9. **Run linters** - Ensure code quality (must use same arguments as CI):
+8. **Run linters** - Ensure code quality (must use same arguments as CI):
    - `cargo clippy --all-targets --all-features -- -D warnings`
-10. **Run security audit** - Check for vulnerabilities:
-    - `cargo audit`
-11. **Run any other checks** - If any
-12. **Update documentation** - Update relevant @docs/
-13. **Run pre-commit** - Check documentation and other files:
+9. **Run security audit** - Check for vulnerabilities:
+   - `cargo audit`
+10. **Run any other checks** - If any
+11. **Update documentation** - Update relevant @docs/
+12. **Run pre-commit** - Check documentation and other files:
     - `pre-commit run --all-files`
-14. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation, then update corresponding Epic/Feature status in plan.md
-15. **Update CHANGELOG.md** - For user-facing features or bug fixes only
+13. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation, then update corresponding Epic/Feature status in plan.md
+14. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
 ## Development Guidelines
 
@@ -92,66 +91,9 @@ When adding or updating tasks in `docs/implementation/tasks.md`:
 - ❌ Implement platform detection - get_platform in src/platform/detection.rs
 - ❌ Add resource conflict detection logic - find_conflicts() and has_conflict() in WorkspaceBundle
 
-## Key Directories
-
-- `src/` - Source code
-  - `src/commands/` - CLI command implementations
-  - `src/config/` - Configuration file handling (bundle, lockfile, workspace, marketplace)
-  - `src/platform/` - Platform detection and transformation engine
-  - `src/source/` - Bundle source parsing and bundle models
-  - `src/workspace/` - Workspace management and initialization
-  - `src/cache/` - Bundle caching system
-  - `src/git/` - Git repository operations
-  - `src/resolver/` - Dependency resolution
-  - `src/installer/` - Installation and uninstallation logic
-  - `src/transaction/` - Transaction management for atomic operations
-  - `src/hash.rs` - BLAKE3 hashing for integrity verification
-  - `src/error.rs` - Error handling with miette
-  - `src/cli.rs` - CLI framework with clap
-  - `src/progress.rs` - Progress reporting for long-running operations
-- `tests/` - Integration tests using assert_cmd
-  - `tests/cli_tests.rs` - Main CLI integration tests
-  - `tests/common/` - Test fixtures and utilities
-- `docs/` - User documentation
-- `docs/implementation/` - Implementation documentation
-  - `docs/implementation/specs/` - Feature specifications
-  - `docs/implementation/adrs/` - Architecture Decision Records
-
-## Key Documentation
-
-| Document | Purpose |
-|----------|---------|
-| @docs/implementation/mvp/prd.md | Product requirements and Type 1/2 decisions |
-| @docs/implementation/mvp/ | Historical planning documents (do not modify) |
-| @docs/implementation/plan.md | Implementation plan with epics/features |
-| @docs/implementation/tasks.md | Task tracking checklist |
-| @docs/implementation/testing.md | Testing strategy and requirements |
-| @docs/implementation/architecture.md | Architecture and ADRs |
-| @docs/implementation/documentation.md | Documentation plan |
-| @docs/implementation/adrs/ | Architecture Decision Records |
-| @docs/implementation/specs/ | Feature specifications |
-| @docs/commands.md | Detailed command documentation |
-| @docs/bundles.md | Bundle format documentation |
-| @docs/workspace.md | Workspace configuration documentation |
-| @docs/platforms.md | Platform support documentation |
-| @docs/platforms_schema.md | Platform schema and transformation documentation |
-
 ## Core Principles
 
 - We are primarily building a resources manager, NOT a package manager
 - Simplicity and developer-friendliness are paramount
 - No cargo culting existing package managers
 - Integration tests must use REAL CLI
-
-## Commands Reference
-
-See PRD for complete command specifications:
-
-- `augent install` - Install bundles from various sources
-- `augent uninstall` - Remove bundles
-- `augent list` - List installed bundles
-- `augent show` - Show bundle information
-- `augent cache` - Manage cached bundles
-- `augent completions` - Generate shell completions
-- `augent help` - Show brief help (fits on one screen)
-- `augent version` - Show version and build info
