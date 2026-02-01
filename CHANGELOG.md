@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3](https://github.com/asyrjasalo/augent/releases/tag/v0.6.3) - 2026-02-01
+
 ### Changed
 
 - `augent install`: `--for` renamed to `--to` with short `-t` for target platforms (e.g. `augent install ./bundle -t cursor`).
@@ -15,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Nested skills (e.g. `skills/platform-name/skill-name/`) are now installed as the leaf skill only: `.platform/skills/skill-name/` with `SKILL.md` and any nested content (e.g. `scripts/`), not as intermediate path segments like `platform-name`.
+- Workspace root resources are now discovered during install, preventing "Nothing to install" when only local root resources exist and ensuring the workspace bundle is correctly identified.
 
-## [0.6.2] - 2026-01-31
+## [0.6.2](https://github.com/asyrjasalo/augent/releases/tag/v0.6.2) - 2026-01-31
 
 ### Added
 
@@ -32,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `augent install` no longer creates `.augent/` when there is nothing to install (e.g. run in a directory with no workspace and no bundles to install).
 
-## [0.6.1] - 2026-01-29
+## [0.6.1](https://github.com/asyrjasalo/augent/releases/tag/v0.6.1) - 2026-01-29
 
 ### Fixed
 
@@ -41,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Git bundles are served from cache when possible — repeated installs of the same ref no longer refetch
 - Cache stores one entry per repo+sha instead of per sub-bundle, so multi-bundle repos use a single copy instead of duplicates
 
-## [0.6.0] - 2026-01-28
+## [0.6.0](https://github.com/asyrjasalo/augent/releases/tag/v0.6.0) - 2026-01-28
 
 ### Added
 
@@ -62,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserved bundle order in the lockfile during uninstall operations
 - Ensured deselected bundles are handled consistently during install and uninstall flows
 
-## [0.5.1] - 2026-01-26
+## [0.5.1](https://github.com/asyrjasalo/augent/releases/tag/v0.5.1) - 2026-01-26
 
 ### Added
 
