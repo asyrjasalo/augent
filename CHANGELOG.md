@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4](https://github.com/asyrjasalo/augent/releases/tag/v0.6.4) - 2026-02-02
+
 ### Changed
 
 - `augent install`: When run from a subdirectory containing bundle resources, or when specifying a local path (e.g., `augent install ./my-bundle`), only that bundle and its dependencies are installed. The workspace bundle is not installed in these cases.
