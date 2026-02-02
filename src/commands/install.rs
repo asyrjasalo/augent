@@ -1507,33 +1507,40 @@ fn update_configs(
                                 .unwrap_or(&bundle.name)
                                 .to_string();
 
-                            // Convert path to relative from workspace root if possible
-                            let relative_path = match path.strip_prefix(&workspace.root) {
-                                Ok(rel_path) => {
-                                    let mut path_str =
-                                        rel_path.to_string_lossy().replace('\\', "/");
-                                    // Normalize the path - remove all redundant ./ segments
-                                    loop {
-                                        if let Some(pos) = path_str.find("/./") {
-                                            path_str = format!(
-                                                "{}{}",
-                                                &path_str[..pos],
-                                                &path_str[pos + 2..]
-                                            );
-                                        } else if path_str.starts_with("./") {
-                                            path_str = path_str[2..].to_string();
-                                        } else {
-                                            break;
-                                        }
-                                    }
-                                    // If path is empty (bundle is at root), use "."
-                                    if path_str.is_empty() {
-                                        ".".to_string()
-                                    } else {
-                                        path_str
-                                    }
+                            // Convert path to relative from config_dir (where augent.yaml is)
+                            let relative_path = if let Ok(rel_from_config) =
+                                path.strip_prefix(&workspace.config_dir)
+                            {
+                                // Bundle is under config_dir
+                                let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+                                if path_str.is_empty() {
+                                    ".".to_string()
+                                } else {
+                                    path_str
                                 }
-                                Err(_) => path.to_string_lossy().to_string(),
+                            } else if let Ok(rel_from_root) = path.strip_prefix(&workspace.root) {
+                                // Bundle is under workspace root but not under config_dir
+                                // Need to construct path with .. segments
+                                let rel_from_root_str =
+                                    rel_from_root.to_string_lossy().replace('\\', "/");
+
+                                // Find how deep config_dir is relative to workspace root
+                                if let Ok(config_rel) =
+                                    workspace.config_dir.strip_prefix(&workspace.root)
+                                {
+                                    let config_depth = config_rel.components().count();
+                                    let mut parts = vec!["..".to_string(); config_depth];
+                                    if !rel_from_root_str.is_empty() {
+                                        parts.push(rel_from_root_str);
+                                    }
+                                    parts.join("/")
+                                } else {
+                                    // config_dir is not under root (shouldn't happen), use absolute path
+                                    path.to_string_lossy().to_string()
+                                }
+                            } else {
+                                // Bundle is outside workspace - use absolute path
+                                path.to_string_lossy().to_string()
                             };
 
                             BundleDependency::local(&dir_name, relative_path)
