@@ -5,9 +5,9 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::error::{AugentError, Result};
+use crate::error::Result;
 
 /// Custom serializer for enabled map that sorts keys and values alphabetically
 fn serialize_enabled_sorted<S>(
@@ -33,13 +33,74 @@ where
 }
 
 /// Index configuration (augent.index.yaml)
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct WorkspaceConfig {
-    /// Bundle name (same as augent.yaml)
-    pub name: String,
-
     /// Bundle file mappings
     pub bundles: Vec<WorkspaceBundle>,
+}
+
+impl Serialize for WorkspaceConfig {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("WorkspaceConfig", 2)?;
+        // Note: name is injected externally during file write, we serialize empty string
+        state.serialize_field("name", "")?;
+        state.serialize_field("bundles", &self.bundles)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for WorkspaceConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::MapAccess;
+        use serde::de::Visitor;
+        use std::fmt;
+
+        struct WorkspaceConfigVisitor;
+
+        impl<'de> Visitor<'de> for WorkspaceConfigVisitor {
+            type Value = WorkspaceConfig;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a WorkspaceConfig")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> std::result::Result<WorkspaceConfig, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut bundles = Vec::new();
+
+                while let Some(key) = map.next_key()? {
+                    let key: String = key;
+                    match key.as_str() {
+                        "name" => {
+                            // Skip the name field - it's read from filesystem location
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                        "bundles" => {
+                            bundles = map.next_value()?;
+                        }
+                        _ => {
+                            // Skip unknown fields
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+
+                Ok(WorkspaceConfig { bundles })
+            }
+        }
+
+        deserializer.deserialize_map(WorkspaceConfigVisitor)
+    }
 }
 
 /// A bundle's file mappings in the workspace
@@ -57,9 +118,8 @@ pub struct WorkspaceBundle {
 
 impl WorkspaceConfig {
     /// Create a new workspace configuration
-    pub fn new(name: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         Self {
-            name: name.into(),
             bundles: Vec::new(),
         }
     }
@@ -70,9 +130,13 @@ impl WorkspaceConfig {
         Ok(config)
     }
 
-    /// Serialize workspace configuration to YAML string
-    pub fn to_yaml(&self) -> Result<String> {
-        let yaml = serde_yaml::to_string(self)?;
+    /// Serialize workspace configuration to YAML string with workspace name
+    pub fn to_yaml(&self, workspace_name: &str) -> Result<String> {
+        let mut yaml = serde_yaml::to_string(self)?;
+
+        // Replace the empty name with the actual workspace name
+        yaml = yaml.replace("name: ''", &format!("name: '{}'", workspace_name));
+
         // Insert empty line after name field for readability
         let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
         if parts.len() != 2 {
@@ -186,12 +250,7 @@ impl WorkspaceConfig {
     /// This function is used by tests.
     #[allow(dead_code)] // Used by tests
     pub fn validate(&self) -> Result<()> {
-        if self.name.is_empty() {
-            return Err(AugentError::ConfigInvalid {
-                message: "Workspace name cannot be empty".to_string(),
-            });
-        }
-
+        // Name is computed from workspace location, not validated here
         Ok(())
     }
 }
@@ -222,8 +281,7 @@ mod tests {
 
     #[test]
     fn test_workspace_config_new() {
-        let config = WorkspaceConfig::new("@author/my-bundle");
-        assert_eq!(config.name, "@author/my-bundle");
+        let config = WorkspaceConfig::new();
         assert!(config.bundles.is_empty());
     }
 
@@ -243,7 +301,6 @@ bundles:
         - .opencode/agents/code-reviewer.md
 "#;
         let config = WorkspaceConfig::from_yaml(yaml).unwrap();
-        assert_eq!(config.name, "@author/my-bundle");
         assert_eq!(config.bundles.len(), 2);
 
         let bundle = config.find_bundle("my-debug-bundle").unwrap();
@@ -253,7 +310,7 @@ bundles:
 
     #[test]
     fn test_workspace_config_to_yaml() {
-        let mut config = WorkspaceConfig::new("@test/bundle");
+        let mut config = WorkspaceConfig::new();
         let mut bundle = WorkspaceBundle::new("dep1");
         bundle.add_file(
             "commands/test.md",
@@ -261,7 +318,7 @@ bundles:
         );
         config.add_bundle(bundle);
 
-        let yaml = config.to_yaml().unwrap();
+        let yaml = config.to_yaml("@test/bundle").unwrap();
         assert!(yaml.contains("@test/bundle"));
         assert!(yaml.contains("dep1"));
         assert!(yaml.contains("commands/test.md"));
@@ -272,14 +329,13 @@ bundles:
 
         // Verify round-trip works
         let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();
-        assert_eq!(parsed.name, "@test/bundle");
         assert_eq!(parsed.bundles.len(), 1);
         assert_eq!(parsed.bundles[0].name, "dep1");
     }
 
     #[test]
     fn test_workspace_config_to_yaml_multiple_bundles() {
-        let mut config = WorkspaceConfig::new("@test/workspace");
+        let mut config = WorkspaceConfig::new();
 
         // Add first bundle
         let mut bundle1 = WorkspaceBundle::new("@author/bundle1");
@@ -317,7 +373,7 @@ bundles:
         );
         config.add_bundle(bundle3);
 
-        let yaml = config.to_yaml().unwrap();
+        let yaml = config.to_yaml("@test/workspace").unwrap();
 
         // Verify structure
         assert!(yaml.contains("name: '@test/workspace'"));
@@ -357,7 +413,6 @@ bundles:
 
         // Verify round-trip works
         let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();
-        assert_eq!(parsed.name, "@test/workspace");
         assert_eq!(parsed.bundles.len(), 3);
     }
 
@@ -375,7 +430,7 @@ bundles:
 
     #[test]
     fn test_workspace_config_find_provider() {
-        let mut config = WorkspaceConfig::new("@test/bundle");
+        let mut config = WorkspaceConfig::new();
         let mut bundle = WorkspaceBundle::new("my-bundle");
         bundle.add_file(
             "commands/debug.md",
@@ -395,19 +450,13 @@ bundles:
 
     #[test]
     fn test_workspace_config_validation() {
-        let config = WorkspaceConfig::new("@test/bundle");
+        let config = WorkspaceConfig::new();
         assert!(config.validate().is_ok());
-
-        let config = WorkspaceConfig {
-            name: String::new(),
-            bundles: vec![],
-        };
-        assert!(config.validate().is_err());
     }
 
     #[test]
     fn test_workspace_config_remove_bundle() {
-        let mut config = WorkspaceConfig::new("@test/bundle");
+        let mut config = WorkspaceConfig::new();
         config.add_bundle(WorkspaceBundle::new("bundle1"));
         config.add_bundle(WorkspaceBundle::new("bundle2"));
 
@@ -420,7 +469,7 @@ bundles:
 
     #[test]
     fn test_workspace_bundle_enabled_alphabetical_order() {
-        let mut config = WorkspaceConfig::new("@test/workspace");
+        let mut config = WorkspaceConfig::new();
 
         // Create a bundle with files added in non-alphabetical order
         let mut bundle = WorkspaceBundle::new("test-bundle");
@@ -440,7 +489,8 @@ bundles:
         );
         config.add_bundle(bundle);
 
-        let yaml = config.to_yaml().unwrap();
+        let workspace_name = "@test/workspace";
+        let yaml = config.to_yaml(workspace_name).unwrap();
 
         // Verify all entries are present
         assert!(yaml.contains("commands/zebra.md"));
@@ -470,7 +520,7 @@ bundles:
 
     #[test]
     fn test_workspace_bundle_enabled_values_alphabetical_order() {
-        let mut config = WorkspaceConfig::new("@test/workspace");
+        let mut config = WorkspaceConfig::new();
 
         // Create a bundle with locations added in non-alphabetical order
         let mut bundle = WorkspaceBundle::new("test-bundle");
@@ -498,7 +548,8 @@ bundles:
         );
         config.add_bundle(bundle);
 
-        let yaml = config.to_yaml().unwrap();
+        let workspace_name = "@test/workspace";
+        let yaml = config.to_yaml(workspace_name).unwrap();
 
         // Verify that locations are sorted alphabetically within each file entry
         // .claude should come before .opencode alphabetically
@@ -543,7 +594,7 @@ bundles:
 
     #[test]
     fn test_workspace_config_reorder_to_match_lockfile() {
-        let mut workspace_config = WorkspaceConfig::new("@test/workspace");
+        let mut workspace_config = WorkspaceConfig::new();
 
         // Add bundles in one order in workspace config
         let mut bundle1 = WorkspaceBundle::new("local-bundle");
@@ -559,7 +610,7 @@ bundles:
         workspace_config.add_bundle(bundle3);
 
         // Create a lockfile with different order (git bundles first, then local)
-        let mut lockfile = crate::config::Lockfile::new("@test/workspace");
+        let mut lockfile = crate::config::Lockfile::new();
         lockfile.add_bundle(crate::config::LockedBundle::git(
             "git-bundle-1",
             "https://github.com/test/repo1.git",

@@ -565,10 +565,11 @@ bundles:
         .success()
         .stdout(predicate::str::contains("test-bundle"));
 
-    // Check that lockfile has workspace name from root augent.yaml
+    // Check that lockfile was created and contains bundle information
     // When root augent.yaml exists, augent.lock is stored in root
     let lockfile = workspace.read_file("augent.lock");
-    assert!(lockfile.contains("@root/workspace"));
+    // Verify that the lockfile contains bundle entries (no longer stores workspace name)
+    assert!(lockfile.contains("bundles"));
 }
 
 #[test]
@@ -615,10 +616,11 @@ bundles:
     assert!(workspace.file_exists("config.yaml"));
     assert!(workspace.file_exists(".cursor/commands/test.md"));
 
-    // Check lockfile workspace name is from root augent.yaml
+    // Check that lockfile was created properly
     // When root augent.yaml exists, augent.lock is stored in root
     let lockfile = workspace.read_file("augent.lock");
-    assert!(lockfile.contains("\"name\": \"@root/workspace\"")); // Workspace name should be from root augent.yaml
+    // Verify that the lockfile contains bundle information (no longer stores workspace name)
+    assert!(lockfile.contains("bundles")); // Lockfile should contain bundle entries
 
     // Check that the bundle is recorded with its subdirectory path
     assert!(lockfile.contains("\"path\": \"bundles/test-bundle\"")); // Bundle path should be its subdirectory

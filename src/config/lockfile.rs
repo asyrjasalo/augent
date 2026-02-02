@@ -6,16 +6,13 @@
 use std::collections::HashMap;
 
 use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::{AugentError, Result};
 
 /// Lockfile structure (augent.lock)
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Lockfile {
-    /// Bundle name (same as augent.yaml)
-    pub name: String,
-
     /// Resolved bundles in installation order
     pub bundles: Vec<LockedBundle>,
 }
@@ -120,11 +117,72 @@ fn default_dot_path() -> String {
     ".".to_string()
 }
 
+impl Serialize for Lockfile {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Lockfile", 2)?;
+        // Note: name is injected externally during file write, we serialize empty string
+        state.serialize_field("name", "")?;
+        state.serialize_field("bundles", &self.bundles)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Lockfile {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::MapAccess;
+        use serde::de::Visitor;
+        use std::fmt;
+
+        struct LockfileVisitor;
+
+        impl<'de> Visitor<'de> for LockfileVisitor {
+            type Value = Lockfile;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a Lockfile")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> std::result::Result<Lockfile, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut bundles = Vec::new();
+
+                while let Some(key) = map.next_key()? {
+                    let key: String = key;
+                    match key.as_str() {
+                        "name" => {
+                            // Skip the name field - it's read from filesystem location
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                        "bundles" => {
+                            bundles = map.next_value()?;
+                        }
+                        _ => {
+                            // Skip unknown fields
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+
+                Ok(Lockfile { bundles })
+            }
+        }
+
+        deserializer.deserialize_map(LockfileVisitor)
+    }
+}
+
 impl Lockfile {
     /// Create a new lockfile
-    pub fn new(name: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         Self {
-            name: name.into(),
             bundles: Vec::new(),
         }
     }
@@ -151,13 +209,18 @@ impl Lockfile {
         }
     }
 
-    /// Serialize lockfile to JSON string (pretty-printed)
-    pub fn to_json(&self) -> Result<String> {
-        let json =
+    /// Serialize lockfile to JSON string (pretty-printed) with workspace name
+    pub fn to_json(&self, workspace_name: &str) -> Result<String> {
+        let mut json =
             serde_json::to_string_pretty(self).map_err(|e| AugentError::ConfigParseFailed {
                 path: "augent.lock".to_string(),
                 reason: e.to_string(),
             })?;
+        // Replace the empty name with the actual workspace name
+        json = json.replace(
+            "\"name\": \"\"",
+            &format!("\"name\": \"{}\"", workspace_name),
+        );
         Ok(json)
     }
 
@@ -444,8 +507,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_new() {
-        let lockfile = Lockfile::new("@author/my-bundle");
-        assert_eq!(lockfile.name, "@author/my-bundle");
+        let lockfile = Lockfile::new();
         assert!(lockfile.bundles.is_empty());
     }
 
@@ -479,7 +541,6 @@ mod tests {
 }"#;
 
         let lockfile = Lockfile::from_json(json).unwrap();
-        assert_eq!(lockfile.name, "@author/my-bundle");
         assert_eq!(lockfile.bundles.len(), 2);
 
         let bundle = lockfile.find_bundle("my-debug-bundle").unwrap();
@@ -491,7 +552,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_to_json() {
-        let mut lockfile = Lockfile::new("@test/bundle");
+        let mut lockfile = Lockfile::new();
         lockfile.add_bundle(LockedBundle::dir(
             "dep1",
             "local-bundles/dep1",
@@ -499,7 +560,7 @@ mod tests {
             vec!["file1.md".to_string()],
         ));
 
-        let json = lockfile.to_json().unwrap();
+        let json = lockfile.to_json("@test/bundle").unwrap();
         assert!(json.contains("@test/bundle"));
         assert!(json.contains("dep1"));
         assert!(json.contains("blake3:abc123"));
@@ -507,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_operations() {
-        let mut lockfile = Lockfile::new("@test/bundle");
+        let mut lockfile = Lockfile::new();
         assert!(lockfile.find_bundle("dep1").is_none());
 
         lockfile.add_bundle(LockedBundle::dir("dep1", "path", "blake3:hash", vec![]));
@@ -561,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_equals_identical() {
-        let mut lockfile1 = Lockfile::new("@test/bundle");
+        let mut lockfile1 = Lockfile::new();
         lockfile1.add_bundle(LockedBundle::dir(
             "bundle1",
             "path1",
@@ -569,7 +630,7 @@ mod tests {
             vec!["file1.md".to_string()],
         ));
 
-        let mut lockfile2 = Lockfile::new("@test/bundle");
+        let mut lockfile2 = Lockfile::new();
         lockfile2.add_bundle(LockedBundle::dir(
             "bundle1",
             "path1",
@@ -582,11 +643,11 @@ mod tests {
 
     #[test]
     fn test_lockfile_equals_different_order() {
-        let mut lockfile1 = Lockfile::new("@test/bundle");
+        let mut lockfile1 = Lockfile::new();
         lockfile1.add_bundle(LockedBundle::dir("bundle1", "p1", "blake3:h1", vec![]));
         lockfile1.add_bundle(LockedBundle::dir("bundle2", "p2", "blake3:h2", vec![]));
 
-        let mut lockfile2 = Lockfile::new("@test/bundle");
+        let mut lockfile2 = Lockfile::new();
         lockfile2.add_bundle(LockedBundle::dir("bundle2", "p2", "blake3:h2", vec![]));
         lockfile2.add_bundle(LockedBundle::dir("bundle1", "p1", "blake3:h1", vec![]));
 
@@ -595,7 +656,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_equals_different_content() {
-        let mut lockfile1 = Lockfile::new("@test/bundle");
+        let mut lockfile1 = Lockfile::new();
         lockfile1.add_bundle(LockedBundle::dir(
             "bundle1",
             "path1",
@@ -603,7 +664,7 @@ mod tests {
             vec![],
         ));
 
-        let mut lockfile2 = Lockfile::new("@test/bundle");
+        let mut lockfile2 = Lockfile::new();
         lockfile2.add_bundle(LockedBundle::dir(
             "bundle1",
             "path1",
@@ -616,7 +677,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_equals_git_source() {
-        let mut lockfile1 = Lockfile::new("@test/bundle");
+        let mut lockfile1 = Lockfile::new();
         lockfile1.add_bundle(LockedBundle::git(
             "bundle1",
             "https://github.com/test/repo.git",
@@ -625,7 +686,7 @@ mod tests {
             vec!["file.md".to_string()],
         ));
 
-        let mut lockfile2 = Lockfile::new("@test/bundle");
+        let mut lockfile2 = Lockfile::new();
         lockfile2.add_bundle(LockedBundle::git(
             "bundle1",
             "https://github.com/test/repo.git",
@@ -639,7 +700,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_equals_different_sha() {
-        let mut lockfile1 = Lockfile::new("@test/bundle");
+        let mut lockfile1 = Lockfile::new();
         lockfile1.add_bundle(LockedBundle::git(
             "bundle1",
             "https://github.com/test/repo.git",
@@ -648,7 +709,7 @@ mod tests {
             vec![],
         ));
 
-        let mut lockfile2 = Lockfile::new("@test/bundle");
+        let mut lockfile2 = Lockfile::new();
         lockfile2.add_bundle(LockedBundle::git(
             "bundle1",
             "https://github.com/test/repo.git",
@@ -662,7 +723,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_files_serialized_alphabetically() {
-        let mut lockfile = Lockfile::new("@test/bundle");
+        let mut lockfile = Lockfile::new();
         let bundle = LockedBundle::git(
             "test-bundle",
             "https://github.com/test/repo.git",
@@ -677,7 +738,8 @@ mod tests {
         );
         lockfile.add_bundle(bundle);
 
-        let json = lockfile.to_json().unwrap();
+        let workspace_name = "@test/workspace";
+        let json = lockfile.to_json(workspace_name).unwrap();
 
         // Verify alphabetical order in the JSON
         let alpha_pos = json.find("agents/alpha.md").unwrap();
@@ -693,7 +755,7 @@ mod tests {
 
     #[test]
     fn test_bundle_ordering_dir_bundles_last() {
-        let mut lockfile = Lockfile::new("@test/bundle");
+        let mut lockfile = Lockfile::new();
 
         // Add bundles in mixed order - should reorder so dir bundles come last
         // First add a git bundle
@@ -762,7 +824,7 @@ mod tests {
 
     #[test]
     fn test_lockfile_reorganize() {
-        let mut lockfile = Lockfile::new("@test/bundle");
+        let mut lockfile = Lockfile::new();
 
         // Add bundles in completely wrong order
         lockfile.bundles.push(LockedBundle::dir(

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Workspace management provides initialization, detection, and configuration management for Augent workspaces. Workspaces contain `.augent/` directory with configuration files (augent.yaml, augent.lock, augent.index.yaml) and track which bundles are installed and which files they provide. Config file locations and the format of entries in augent.yaml (e.g. name, path for dir; name, git, path for Git) are defined in the [Bundles spec](bundles.md).
+Workspace management provides initialization, detection, and configuration management for Augent workspaces. Workspaces contain `.augent/` directory with configuration files (augent.yaml, augent.lock, augent.index.yaml) and track which bundles are installed and which files they provide. Config file locations and the format of entries in augent.yaml are defined in the [Bundles spec](bundles.md). **Workspace bundle name is no longer stored in config files** — it is automatically inferred from the workspace location (git remote or directory name).
 
 ## Requirements
 
@@ -51,41 +51,33 @@ fn initialize_workspace(workspace_path: &Path) -> Result<Workspace> {
         return load_workspace(workspace_path);
     }
 
-    // Infer workspace bundle name
-    let name = infer_bundle_name(workspace_path)?;
-
     // Create .augent directory structure
     let augent_dir = workspace_path.join(".augent");
     fs::create_dir_all(&augent_dir)?;
     fs::create_dir_all(augent_dir.join("bundles"))?;
 
-    // Generate initial configuration
-    let workspace_config = WorkspaceConfig {
-        name: name.clone(),
-        bundles: vec![],
-        ..Default::default()
-    };
-
-    // Generate initial lockfile
+    // Generate initial configuration (workspace name is inferred, not stored)
+    let bundle_config = BundleConfig::new();
     let lockfile = Lockfile::new();
+    let workspace_config = WorkspaceConfig::new();
 
-    // Generate workspace tracking
-    let workspace_lock = WorkspaceLock::new(name);
+    // Write configuration files (workspace name injected during serialization)
+    let workspace_name = infer_workspace_name(workspace_path)?;
+    write_config(&augent_dir.join("augent.yaml"), &bundle_config, &workspace_name)?;
+    write_config(&augent_dir.join("augent.lock"), &lockfile, &workspace_name)?;
+    write_config(&augent_dir.join("augent.index.yaml"), &workspace_config, &workspace_name)?;
 
-    // Write configuration files
-    write_config(&augent_dir.join("augent.yaml"), &workspace_config)?;
-    write_config(&augent_dir.join("augent.lock"), &lockfile)?;
-    write_config(&augent_dir.join("augent.index.yaml"), &workspace_lock)?;
-
-    Ok(Workspace { config: workspace_config, lockfile, workspace_lock })
+    Ok(Workspace { root: workspace_path, bundle_config, lockfile, workspace_config })
 }
 ```
 
-**Bundle name inference:**
+**Workspace name inference:**
 
-1. Check for git remote origin URL: extract `org/repo`
-2. Fallback to `{USERNAME}/{DIRECTORY_NAME}` if in home directory
-3. Fallback to `workspace` if neither available
+1. Check for git remote origin URL: extract `@owner/repo`
+2. Fallback to `@{USERNAME}/{DIRECTORY_NAME}` if in home directory
+3. Fallback to `@unknown/{DIRECTORY_NAME}` if neither available
+
+The inferred name is computed dynamically when needed and injected into config files during serialization. It is not stored in the config structs.
 
 #### 2. Workspace Detection
 
@@ -127,51 +119,43 @@ fn find_workspace(start_path: &Path) -> Result<PathBuf> {
 
 Three configuration files track different aspects:
 
-**augent.yaml** - User configuration:
+**augent.yaml** - User configuration (workspace name is inferred, not stored):
 
 ```yaml
-name: my-workspace
 bundles:
   - name: debug-tools
-    source: github:author/debug-tools
+    git: https://github.com/author/debug-tools.git
   - name: test-helpers
-    source: github:author/test-helpers
+    git: https://github.com/author/test-helpers.git
 ```
 
-**augent.lock** - Locked dependencies:
+**augent.lock** - Locked dependencies (workspace name injected during serialization):
 
 ```yaml
+name: '@owner/repo'
 bundles:
   - name: debug-tools
-    source:
-      Git:
-        url: https://github.com/author/debug-tools.git
-        ref: main
-        resolved_sha: abc123def456...
+    git: https://github.com/author/debug-tools.git
+    ref: main
+    resolved_sha: abc123def456...
     files:
       - rules/debug.md
       - skills/analyze.md
-    hash: blake3_hash_value
 ```
 
-**augent.index.yaml** - File tracking:
+**augent.index.yaml** - File tracking (workspace name injected during serialization):
 
 ```yaml
-name: my-workspace
+name: '@owner/repo'
 bundles:
-  - name: my-workspace
-    source:
-      Dir: .
-    files: []
   - name: debug-tools
-    source:
-      Git:
-        url: https://github.com/author/debug-tools.git
-        resolved_sha: abc123def456...
+    git: https://github.com/author/debug-tools.git
     files:
       - .claude/rules/debug.md
       - .claude/skills/analyze.md
 ```
+
+Note: In all three files, the `name:` field shown above is injected during serialization and is not part of the stored structure. When files are read from disk, the name is ignored and recomputed from workspace location.
 
 **Atomic updates:**
 
@@ -233,7 +217,9 @@ fn detect_modified_files(workspace: &Workspace, new_bundle: &Bundle) -> Result<V
 
 ```rust
 fn handle_modified_files(workspace: &mut Workspace, modified: Vec<ModifiedFile>) -> Result<()> {
-    let workspace_bundle_dir = workspace.path().join(".augent").join("bundles").join(workspace.name());
+    // Workspace name is inferred from workspace location
+    let workspace_name = workspace.get_workspace_name();
+    let workspace_bundle_dir = workspace.root.join(".augent").join("bundles").join(&workspace_name);
 
     for file in modified {
         // Create workspace bundle directory if needed
@@ -255,7 +241,7 @@ fn handle_modified_files(workspace: &mut Workspace, modified: Vec<ModifiedFile>)
 
 **Behavior:**
 
-- Modified files are copied to `.augent/bundles/<workspace-name>/`
+- Modified files are copied to `.augent/bundles/<workspace-name>/` where workspace-name is inferred from workspace location
 - Original bundle reference removed from file
 - File now belongs to workspace bundle (not managed by external bundles)
 - Prevents bundle updates from overwriting local modifications

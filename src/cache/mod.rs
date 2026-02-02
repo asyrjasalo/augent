@@ -23,7 +23,7 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
-use crate::config::{BundleConfig, MarketplaceConfig};
+use crate::config::MarketplaceConfig;
 use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::GitSource;
@@ -317,24 +317,25 @@ pub fn derive_marketplace_bundle_name(url: &str, plugin_name: &str) -> String {
     }
 }
 
-/// Read bundle name from content path (augent.yaml). Returns None if no augent.yaml or invalid.
-fn bundle_name_from_augent_yaml(content_path: &Path) -> Option<String> {
-    let config_path = content_path.join("augent.yaml");
-    let yaml = fs::read_to_string(&config_path).ok()?;
-    let config = BundleConfig::from_yaml(&yaml).ok()?;
-    Some(config.name)
+/// Read bundle name from directory name (subdirectory in repo). Returns None if cannot determine.
+/// Since augent.yaml no longer stores a top-level name, we derive it from the directory path.
+fn bundle_name_from_directory_path(content_path: &Path) -> Option<String> {
+    content_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_string())
 }
 
-/// Get bundle name for a source: from augent.yaml at content_path or derive for $claudeplugin
+/// Get bundle name for a source: derive from directory name or $claudeplugin path
 fn get_bundle_name_for_source(source: &GitSource, content_path: &Path) -> Result<String> {
     if let Some(ref path_val) = source.path {
         if let Some(plugin_name) = path_val.strip_prefix("$claudeplugin/") {
             return Ok(derive_marketplace_bundle_name(&source.url, plugin_name));
         }
     }
-    bundle_name_from_augent_yaml(content_path).ok_or_else(|| AugentError::CacheOperationFailed {
+    bundle_name_from_directory_path(content_path).ok_or_else(|| AugentError::CacheOperationFailed {
         message: format!(
-            "No augent.yaml found at {} (bundle name required for cache)",
+            "Cannot determine bundle name from {} (no augent.yaml directory name)",
             content_path.display()
         ),
     })

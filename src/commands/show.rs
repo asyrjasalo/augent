@@ -82,7 +82,7 @@ fn show_bundle(
     let bundle_config = if detailed {
         load_bundle_config(workspace_root, &locked_bundle.source)?
     } else {
-        BundleConfig::new("".to_string())
+        BundleConfig::new()
     };
 
     println!();
@@ -218,7 +218,7 @@ fn load_bundle_config(
     let config_path = bundle_path.join("augent.yaml");
 
     if !config_path.exists() {
-        return Ok(BundleConfig::new("".to_string()));
+        return Ok(BundleConfig::new());
     }
 
     let content =

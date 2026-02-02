@@ -152,7 +152,6 @@ impl MarketplaceConfig {
         };
 
         let config = BundleConfig {
-            name: bundle_name,
             version: bundle_def.version.clone(),
             description: Some(bundle_def.description.clone()),
             author: None,
@@ -160,12 +159,13 @@ impl MarketplaceConfig {
             homepage: None,
             bundles: vec![],
         };
-        let yaml_content = config
-            .to_yaml()
-            .map_err(|e| AugentError::ConfigReadFailed {
-                path: target_dir.join("augent.yaml").display().to_string(),
-                reason: format!("Failed to serialize config: {}", e),
-            })?;
+        let yaml_content =
+            config
+                .to_yaml(&bundle_name)
+                .map_err(|e| AugentError::ConfigReadFailed {
+                    path: target_dir.join("augent.yaml").display().to_string(),
+                    reason: format!("Failed to serialize config: {}", e),
+                })?;
         fs::write(target_dir.join("augent.yaml"), yaml_content).map_err(|e| {
             AugentError::FileWriteFailed {
                 path: target_dir.join("augent.yaml").display().to_string(),

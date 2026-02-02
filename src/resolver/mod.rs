@@ -438,10 +438,12 @@ impl Resolver {
                 if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
                     cache::derive_marketplace_bundle_name(&source.url, &bundle.name)
                 } else {
-                    self.load_bundle_config(&bundle.path)
-                        .ok()
-                        .flatten()
-                        .map(|c| c.name)
+                    // Use the bundle's directory name as the fallback
+                    bundle
+                        .path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.to_string())
                         .unwrap_or_else(|| bundle.name.clone())
                 };
 
@@ -720,14 +722,10 @@ impl Resolver {
                     format!("{}/{}", base_name, bundle_name)
                 }
                 Some(path_val) => {
-                    if let Some(cfg) = &config {
-                        // Subdir with augent.lock: use @owner/repo/bundle-name (bundle-name from that subdir's config)
-                        let suffix = if cfg.name.starts_with(&format!("{}/", base_name)) {
-                            cfg.name[base_name.len() + 1..].to_string()
-                        } else {
-                            cfg.name.clone()
-                        };
-                        format!("{}/{}", base_name, suffix)
+                    if let Some(_cfg) = &config {
+                        // Subdir with augent.lock: use @owner/repo/bundle-name (bundle-name derived from subdirectory name)
+                        let bundle_name = path_val.split('/').next_back().unwrap_or(path_val);
+                        format!("{}/{}", base_name, bundle_name)
                     } else {
                         // Subdir without augent.lock: name is @owner/repo:path (colon before path)
                         format!("{}:{}", base_name, path_val)
@@ -954,7 +952,6 @@ impl Resolver {
         };
 
         let config = BundleConfig {
-            name: bundle_name,
             version: bundle_def.version.clone(),
             description: Some(bundle_def.description.clone()),
             author: None,
@@ -963,12 +960,13 @@ impl Resolver {
             bundles: vec![], // Marketplace bundles have no dependencies
         };
 
-        let yaml_content = config
-            .to_yaml()
-            .map_err(|e| AugentError::ConfigReadFailed {
-                path: target_dir.join("augent.yaml").display().to_string(),
-                reason: format!("Failed to serialize config: {}", e),
-            })?;
+        let yaml_content =
+            config
+                .to_yaml(&bundle_name)
+                .map_err(|e| AugentError::ConfigReadFailed {
+                    path: target_dir.join("augent.yaml").display().to_string(),
+                    reason: format!("Failed to serialize config: {}", e),
+                })?;
 
         std::fs::write(target_dir.join("augent.yaml"), yaml_content).map_err(|e| {
             AugentError::FileWriteFailed {

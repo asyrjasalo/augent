@@ -2,39 +2,155 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::{AugentError, Result};
 
 /// Bundle configuration from augent.yaml
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct BundleConfig {
-    /// Bundle name (e.g., "@author/my-bundle")
-    pub name: String,
-
     /// Bundle description
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 
     /// Bundle version (for reference only, no semantic versioning)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
     /// Bundle author
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
 
     /// Bundle license
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub license: Option<String>,
 
     /// Bundle homepage URL
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub homepage: Option<String>,
 
     /// Bundle dependencies
-    #[serde(default)]
     pub bundles: Vec<BundleDependency>,
+}
+
+impl Serialize for BundleConfig {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        // Count fields: name (always serialized) + optional fields + bundles
+        let mut field_count = 2; // name + bundles
+        if self.description.is_some() {
+            field_count += 1;
+        }
+        if self.version.is_some() {
+            field_count += 1;
+        }
+        if self.author.is_some() {
+            field_count += 1;
+        }
+        if self.license.is_some() {
+            field_count += 1;
+        }
+        if self.homepage.is_some() {
+            field_count += 1;
+        }
+
+        let mut state = serializer.serialize_struct("BundleConfig", field_count)?;
+        // Note: name is injected externally during file write, we serialize empty string
+        state.serialize_field("name", "")?;
+
+        if let Some(ref description) = self.description {
+            state.serialize_field("description", description)?;
+        }
+        if let Some(ref version) = self.version {
+            state.serialize_field("version", version)?;
+        }
+        if let Some(ref author) = self.author {
+            state.serialize_field("author", author)?;
+        }
+        if let Some(ref license) = self.license {
+            state.serialize_field("license", license)?;
+        }
+        if let Some(ref homepage) = self.homepage {
+            state.serialize_field("homepage", homepage)?;
+        }
+        state.serialize_field("bundles", &self.bundles)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for BundleConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::MapAccess;
+        use serde::de::Visitor;
+        use std::fmt;
+
+        struct BundleConfigVisitor;
+
+        impl<'de> Visitor<'de> for BundleConfigVisitor {
+            type Value = BundleConfig;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a BundleConfig")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> std::result::Result<BundleConfig, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut description = None;
+                let mut version = None;
+                let mut author = None;
+                let mut license = None;
+                let mut homepage = None;
+                let mut bundles = Vec::new();
+
+                while let Some(key) = map.next_key()? {
+                    let key: String = key;
+                    match key.as_str() {
+                        "name" => {
+                            // Skip the name field - it's read from filesystem location
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                        "description" => {
+                            description = map.next_value()?;
+                        }
+                        "version" => {
+                            version = map.next_value()?;
+                        }
+                        "author" => {
+                            author = map.next_value()?;
+                        }
+                        "license" => {
+                            license = map.next_value()?;
+                        }
+                        "homepage" => {
+                            homepage = map.next_value()?;
+                        }
+                        "bundles" => {
+                            bundles = map.next_value()?;
+                        }
+                        _ => {
+                            // Skip unknown fields
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+
+                Ok(BundleConfig {
+                    description,
+                    version,
+                    author,
+                    license,
+                    homepage,
+                    bundles,
+                })
+            }
+        }
+
+        deserializer.deserialize_map(BundleConfigVisitor)
+    }
 }
 
 /// A dependency declaration in augent.yaml
@@ -44,23 +160,22 @@ pub struct BundleDependency {
     pub name: String,
 
     /// Git repository URL
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub git: Option<String>,
 
     /// Local path (for bundles in same repo)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
 
     /// Git ref (branch, tag, or SHA)
-    #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "ref", default, skip_serializing_if = "Option::is_none")]
     pub git_ref: Option<String>,
 }
 
 impl BundleConfig {
     /// Create a new bundle configuration
-    pub fn new(name: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         Self {
-            name: name.into(),
             description: None,
             version: None,
             author: None,
@@ -77,9 +192,13 @@ impl BundleConfig {
         Ok(config)
     }
 
-    /// Serialize bundle configuration to YAML string
-    pub fn to_yaml(&self) -> Result<String> {
-        let yaml = serde_yaml::to_string(self)?;
+    /// Serialize bundle configuration to YAML string with workspace name
+    pub fn to_yaml(&self, workspace_name: &str) -> Result<String> {
+        let mut yaml = serde_yaml::to_string(self)?;
+
+        // Replace the empty name with the actual workspace name
+        yaml = yaml.replace("name: ''", &format!("name: '{}'", workspace_name));
+
         // Insert empty line after name field for readability
         let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
         if parts.len() != 2 {
@@ -116,20 +235,6 @@ impl BundleConfig {
 
     /// Validate bundle configuration
     pub fn validate(&self) -> Result<()> {
-        // Validate bundle name format
-        if self.name.is_empty() {
-            return Err(AugentError::InvalidBundleName {
-                name: self.name.clone(),
-            });
-        }
-
-        // Validate name format: should be @author/name or author/name
-        if !self.name.contains('/') {
-            return Err(AugentError::InvalidBundleName {
-                name: self.name.clone(),
-            });
-        }
-
         // Validate dependencies
         for dep in &self.bundles {
             dep.validate()?;
@@ -301,8 +406,7 @@ mod tests {
 
     #[test]
     fn test_bundle_config_new() {
-        let config = BundleConfig::new("@author/my-bundle");
-        assert_eq!(config.name, "@author/my-bundle");
+        let config = BundleConfig::new();
         assert!(config.bundles.is_empty());
     }
 
@@ -318,7 +422,6 @@ bundles:
     ref: main
 "#;
         let config = BundleConfig::from_yaml(yaml).unwrap();
-        assert_eq!(config.name, "@author/my-bundle");
         assert_eq!(config.bundles.len(), 2);
         assert!(config.bundles[0].is_local());
         assert!(config.bundles[1].is_git());
@@ -326,9 +429,9 @@ bundles:
 
     #[test]
     fn test_bundle_config_to_yaml() {
-        let mut config = BundleConfig::new("@test/bundle");
+        let mut config = BundleConfig::new();
         config.add_dependency(BundleDependency::local("dep1", "bundles/dep1"));
-        let yaml = config.to_yaml().unwrap();
+        let yaml = config.to_yaml("@test/bundle").unwrap();
         assert!(yaml.contains("@test/bundle"));
         assert!(yaml.contains("dep1"));
         // Verify empty line after name field
@@ -338,14 +441,13 @@ bundles:
 
         // Verify round-trip works
         let parsed = BundleConfig::from_yaml(&yaml).unwrap();
-        assert_eq!(parsed.name, "@test/bundle");
         assert_eq!(parsed.bundles.len(), 1);
         assert_eq!(parsed.bundles[0].name, "dep1");
     }
 
     #[test]
     fn test_bundle_config_to_yaml_multiple_bundles() {
-        let mut config = BundleConfig::new("@test/bundle");
+        let mut config = BundleConfig::new();
 
         // Add multiple bundles
         let mut dep1 = BundleDependency::git(
@@ -364,7 +466,7 @@ bundles:
         dep2.path = Some("path/to/bundle2".to_string());
         config.add_dependency(dep2);
 
-        let yaml = config.to_yaml().unwrap();
+        let yaml = config.to_yaml("@test/bundle").unwrap();
 
         // Verify structure
         assert!(yaml.contains("name: '@test/bundle'"));
@@ -403,34 +505,12 @@ bundles:
 
         // Verify round-trip works
         let parsed = BundleConfig::from_yaml(&yaml).unwrap();
-        assert_eq!(parsed.name, "@test/bundle");
         assert_eq!(parsed.bundles.len(), 2);
     }
 
     #[test]
-    fn test_bundle_config_validation_empty_name() {
-        let config = BundleConfig {
-            name: String::new(),
-            ..Default::default()
-        };
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn test_bundle_config_validation_invalid_name() {
-        let config = BundleConfig {
-            name: "invalid-name".to_string(),
-            ..Default::default()
-        };
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
     fn test_bundle_config_validation_valid() {
-        let config = BundleConfig {
-            name: "@author/bundle".to_string(),
-            ..Default::default()
-        };
+        let config = BundleConfig::default();
         assert!(config.validate().is_ok());
     }
 
@@ -480,7 +560,7 @@ bundles:
 
     #[test]
     fn test_dependency_ordering_local_last() {
-        let mut config = BundleConfig::new("@test/bundle");
+        let mut config = BundleConfig::new();
 
         // Add dependencies in mixed order - should reorder so local deps come last
         // First add a git dependency

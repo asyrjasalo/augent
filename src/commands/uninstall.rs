@@ -463,8 +463,9 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     // Any remaining bundle that is not reachable from remaining roots is now an orphan
     // and can be safely removed (including transitive dependencies of the bundles
     // being explicitly uninstalled).
+    let workspace_name = workspace.get_workspace_name();
     for name in &remaining_bundles {
-        if !needed.contains(name) && name != &workspace.bundle_config.name {
+        if !needed.contains(name) && name != &workspace_name {
             bundles_to_uninstall.insert(name.clone());
         }
     }
@@ -858,7 +859,7 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_test_lockfile() -> Lockfile {
-        let mut lockfile = Lockfile::new("@test/workspace");
+        let mut lockfile = Lockfile::new();
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
@@ -919,7 +920,7 @@ mod tests {
 
         let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
-        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        workspace.workspace_config = crate::config::WorkspaceConfig::new();
 
         let files =
             determine_files_to_remove(&workspace, "bundle2", &["bundle2.txt".to_string()]).unwrap();
@@ -956,7 +957,7 @@ mod tests {
 
         let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
-        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        workspace.workspace_config = crate::config::WorkspaceConfig::new();
 
         let files = determine_files_to_remove(
             &workspace,
@@ -1080,7 +1081,7 @@ bundles:
 
         let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
-        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        workspace.workspace_config = crate::config::WorkspaceConfig::new();
 
         let result =
             determine_files_to_remove(&workspace, "nonexistent", &["test.txt".to_string()]);
@@ -1090,7 +1091,7 @@ bundles:
 
     #[test]
     fn test_check_file_conflicts_no_conflict() {
-        let mut lockfile = Lockfile::new("@test/workspace");
+        let mut lockfile = Lockfile::new();
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
@@ -1106,7 +1107,7 @@ bundles:
             files: vec!["file1.txt".to_string()],
         });
 
-        let mut workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        let mut workspace_config = crate::config::WorkspaceConfig::new();
 
         workspace_config.add_bundle(crate::config::WorkspaceBundle {
             name: "bundle2".to_string(),
@@ -1123,7 +1124,7 @@ bundles:
 
     #[test]
     fn test_check_file_conflicts_with_conflict() {
-        let mut lockfile = Lockfile::new("@test/workspace");
+        let mut lockfile = Lockfile::new();
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
@@ -1153,7 +1154,7 @@ bundles:
             files: vec!["shared.txt".to_string()],
         });
 
-        let mut workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        let mut workspace_config = crate::config::WorkspaceConfig::new();
 
         workspace_config.add_bundle(crate::config::WorkspaceBundle {
             name: "bundle1".to_string(),
@@ -1189,7 +1190,7 @@ bundles:
 
     #[test]
     fn test_find_dependent_bundles() {
-        let mut lockfile = Lockfile::new("@test/workspace");
+        let mut lockfile = Lockfile::new();
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "bundle1".to_string(),
@@ -1219,7 +1220,7 @@ bundles:
             files: vec!["file1.txt".to_string()],
         });
 
-        let mut workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        let mut workspace_config = crate::config::WorkspaceConfig::new();
 
         workspace_config.add_bundle(crate::config::WorkspaceBundle {
             name: "bundle1".to_string(),
@@ -1252,7 +1253,7 @@ bundles:
                 .to_path_buf(),
             augent_dir: std::path::PathBuf::from(".augent"),
             config_dir: std::path::PathBuf::from(".augent"),
-            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
+            bundle_config: crate::config::BundleConfig::new(),
             workspace_config,
             lockfile,
         };
@@ -1274,7 +1275,7 @@ bundles:
 
     #[test]
     fn test_filter_bundles_by_scope() {
-        let mut lockfile = Lockfile::new("@test/workspace");
+        let mut lockfile = Lockfile::new();
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "@wshobson/agents/accessibility".to_string(),
@@ -1342,7 +1343,7 @@ bundles:
 
         let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
-        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        workspace.workspace_config = crate::config::WorkspaceConfig::new();
 
         let matched = filter_bundles_by_scope(&workspace, "@wshobson/agents");
 
@@ -1353,7 +1354,7 @@ bundles:
 
     #[test]
     fn test_filter_bundles_by_scope_case_insensitive() {
-        let mut lockfile = Lockfile::new("@test/workspace");
+        let mut lockfile = Lockfile::new();
 
         lockfile.add_bundle(crate::config::LockedBundle {
             name: "@WSHobson/Agents/Accessibility".to_string(),
@@ -1393,7 +1394,7 @@ bundles:
 
         let mut workspace = crate::workspace::Workspace::open(workspace_path).unwrap();
         workspace.lockfile = lockfile;
-        workspace.workspace_config = crate::config::WorkspaceConfig::new("@test/workspace");
+        workspace.workspace_config = crate::config::WorkspaceConfig::new();
 
         let matched = filter_bundles_by_scope(&workspace, "@wshobson/agents");
 

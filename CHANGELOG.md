@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Workspace bundle names are now automatically inferred from workspace location (git remote or directory name) rather than stored in configuration files. This eliminates synchronization issues and simplifies workspace configuration management.
+
 ## [0.6.3](https://github.com/asyrjasalo/augent/releases/tag/v0.6.3) - 2026-02-01
 
 ### Changed

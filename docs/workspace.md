@@ -42,10 +42,14 @@ Config files are looked up in this order (first match wins): the current directo
 
 Defines **direct** bundles installed in the workspace. Each entry is stored in a canonical form (not the install source string). Bundle order is preserved; later bundles override earlier ones when files overlap.
 
+**The workspace name is not stored in augent.yaml**. It is automatically inferred from the workspace location:
+
+- Git repositories: `@owner/repo` (extracted from git remote)
+- Non-git directories: `@username/directory-name` (fallback)
+
 **Directory bundle** (name = directory name):
 
 ```yaml
-name: my-project
 bundles:
   - name: local-bundle
     path: ./local-bundle
@@ -54,9 +58,9 @@ bundles:
 **Git bundle** (name = `@owner/repo` or `@owner/repo/bundle-name` or `@owner/repo:path`; ref is stored in the lockfile, not in the name):
 
 ```yaml
+bundles:
   - name: '@owner/repo'
     git: https://github.com/owner/repo.git
-    path: .
 ```
 
 Dependencies of dependencies are not listed in `augent.yaml`; they appear only in `augent.lock`.

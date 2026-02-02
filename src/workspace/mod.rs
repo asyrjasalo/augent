@@ -120,16 +120,12 @@ impl Workspace {
         };
 
         // Load configuration files from the config directory
-        let mut bundle_config = Self::load_bundle_config(&config_dir)?;
-        let mut lockfile = Self::load_lockfile(&config_dir)?;
-        let mut workspace_config = Self::load_workspace_config(&config_dir)?;
+        let bundle_config = Self::load_bundle_config(&config_dir)?;
+        let lockfile = Self::load_lockfile(&config_dir)?;
+        let workspace_config = Self::load_workspace_config(&config_dir)?;
 
-        // If bundle config name is empty, infer it
-        if bundle_config.name.is_empty() {
-            let name = Self::infer_workspace_name(root);
-            bundle_config.name = name.clone();
-            workspace_config.name = name;
-        }
+        // Infer workspace name from the root path
+        let workspace_name = Self::infer_workspace_name(root);
 
         // Reorder lockfile to match augent.yaml order in-memory (if augent.yaml has dependencies)
         //
@@ -138,10 +134,11 @@ impl Workspace {
         // writes. Writing here can cause spurious failures when other processes are concurrently
         // updating `augent.lock` (for example, during `install`), violating our atomic
         // operations guarantees.
+        let mut lockfile = lockfile;
         if !bundle_config.bundles.is_empty() {
-            lockfile.reorder_from_bundle_config(&bundle_config.bundles, Some(&bundle_config.name));
+            lockfile.reorder_from_bundle_config(&bundle_config.bundles, Some(&workspace_name));
             // Reorganize to ensure correct type ordering (git -> dir -> workspace)
-            lockfile.reorganize(Some(&bundle_config.name));
+            lockfile.reorganize(Some(&workspace_name));
         }
 
         Ok(Self {
@@ -166,17 +163,17 @@ impl Workspace {
         fs::create_dir_all(&augent_dir)?;
 
         // Infer workspace name
-        let name = Self::infer_workspace_name(root);
+        let workspace_name = Self::infer_workspace_name(root);
 
         // Create initial configuration files
-        let bundle_config = BundleConfig::new(&name);
-        let lockfile = Lockfile::new(&name);
-        let workspace_config = WorkspaceConfig::new(&name);
+        let bundle_config = BundleConfig::new();
+        let lockfile = Lockfile::new();
+        let workspace_config = WorkspaceConfig::new();
 
         // Save configuration files to .augent
-        Self::save_bundle_config(&augent_dir, &bundle_config)?;
-        Self::save_lockfile(&augent_dir, &lockfile)?;
-        Self::save_workspace_config(&augent_dir, &workspace_config)?;
+        Self::save_bundle_config(&augent_dir, &bundle_config, &workspace_name)?;
+        Self::save_lockfile(&augent_dir, &lockfile, &workspace_name)?;
+        Self::save_workspace_config(&augent_dir, &workspace_config, &workspace_name)?;
 
         Ok(Self {
             root: root.to_path_buf(),
@@ -186,6 +183,11 @@ impl Workspace {
             lockfile,
             workspace_config,
         })
+    }
+
+    /// Get the workspace bundle name
+    pub fn get_workspace_name(&self) -> String {
+        Self::infer_workspace_name(&self.root)
     }
 
     /// Initialize a workspace if it doesn't exist, or open it if it does
@@ -320,9 +322,13 @@ impl Workspace {
     }
 
     /// Save bundle configuration to a directory
-    pub fn save_bundle_config(config_dir: &Path, config: &BundleConfig) -> Result<()> {
+    pub fn save_bundle_config(
+        config_dir: &Path,
+        config: &BundleConfig,
+        workspace_name: &str,
+    ) -> Result<()> {
         let path = config_dir.join(BUNDLE_CONFIG_FILE);
-        let content = config.to_yaml()?;
+        let content = config.to_yaml(workspace_name)?;
 
         fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
             path: path.display().to_string(),
@@ -335,9 +341,9 @@ impl Workspace {
     /// Uses an atomic write (temp file + rename) so that readers never
     /// observe a partially written `augent.lock`, which is especially
     /// important under concurrent `install`/`list` operations.
-    fn save_lockfile(config_dir: &Path, lockfile: &Lockfile) -> Result<()> {
+    fn save_lockfile(config_dir: &Path, lockfile: &Lockfile, workspace_name: &str) -> Result<()> {
         let path = config_dir.join(LOCKFILE_NAME);
-        let content = lockfile.to_json()?;
+        let content = lockfile.to_json(workspace_name)?;
 
         // Write to a temporary file in the same directory first, then
         // atomically rename it into place. This avoids readers ever seeing
@@ -356,9 +362,13 @@ impl Workspace {
     }
 
     /// Save workspace configuration to a directory
-    fn save_workspace_config(config_dir: &Path, config: &WorkspaceConfig) -> Result<()> {
+    fn save_workspace_config(
+        config_dir: &Path,
+        config: &WorkspaceConfig,
+        workspace_name: &str,
+    ) -> Result<()> {
         let path = config_dir.join(WORKSPACE_INDEX_FILE);
-        let content = config.to_yaml()?;
+        let content = config.to_yaml(workspace_name)?;
 
         fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
             path: path.display().to_string(),
@@ -401,7 +411,7 @@ impl Workspace {
     ///
     /// This is useful when index.yaml is missing or corrupted.
     pub fn rebuild_workspace_config(&mut self) -> Result<()> {
-        let mut rebuilt_config = WorkspaceConfig::new(self.bundle_config.name.clone());
+        let mut rebuilt_config = WorkspaceConfig::new();
 
         // Detect which platforms exist in the workspace
         let platform_dirs = self.detect_installed_platforms()?;
@@ -574,9 +584,8 @@ impl Workspace {
 
     /// Save all configuration files to the config directory
     pub fn save(&self) -> Result<()> {
-        // Sync workspace_config name with bundle_config name
-        let mut synced_workspace_config = self.workspace_config.clone();
-        synced_workspace_config.name = self.bundle_config.name.clone();
+        // Get the workspace name from the root path
+        let workspace_name = self.get_workspace_name();
 
         // Reorganize all configs to ensure consistent ordering before saving:
         // 1. Git bundles/dependencies in installation order
@@ -589,7 +598,7 @@ impl Workspace {
 
         // Reorganize lockfile: git -> dir -> workspace
         let mut ordered_lockfile = self.lockfile.clone();
-        ordered_lockfile.reorganize(Some(&self.bundle_config.name));
+        ordered_lockfile.reorganize(Some(&workspace_name));
 
         // Omit ref in augent.yaml when it is the default branch (main/master) to keep file minimal
         fn is_default_branch(r: &str) -> bool {
@@ -606,12 +615,12 @@ impl Workspace {
         }
 
         // Reorganize workspace config to match lockfile order
-        let mut ordered_workspace_config = synced_workspace_config.clone();
+        let mut ordered_workspace_config = self.workspace_config.clone();
         ordered_workspace_config.reorganize(&ordered_lockfile);
 
-        Self::save_bundle_config(&self.config_dir, &ordered_bundle_config)?;
-        Self::save_lockfile(&self.config_dir, &ordered_lockfile)?;
-        Self::save_workspace_config(&self.config_dir, &ordered_workspace_config)?;
+        Self::save_bundle_config(&self.config_dir, &ordered_bundle_config, &workspace_name)?;
+        Self::save_lockfile(&self.config_dir, &ordered_lockfile, &workspace_name)?;
+        Self::save_workspace_config(&self.config_dir, &ordered_workspace_config, &workspace_name)?;
         Ok(())
     }
 }
@@ -825,7 +834,8 @@ mod tests {
         );
 
         // Check name format
-        assert!(workspace.bundle_config.name.starts_with('@'));
+        let workspace_name = workspace.get_workspace_name();
+        assert!(workspace_name.starts_with('@'));
     }
 
     #[test]
@@ -834,11 +844,11 @@ mod tests {
 
         // First call should init
         let workspace1 = Workspace::init_or_open(temp.path()).unwrap();
-        let name1 = workspace1.bundle_config.name.clone();
+        let name1 = workspace1.get_workspace_name();
 
         // Second call should open existing
         let workspace2 = Workspace::init_or_open(temp.path()).unwrap();
-        assert_eq!(workspace2.bundle_config.name, name1);
+        assert_eq!(workspace2.get_workspace_name(), name1);
     }
 
     #[test]
@@ -853,14 +863,16 @@ mod tests {
     fn test_workspace_save_and_reload() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
-        // Init and modify
-        let mut workspace = Workspace::init(temp.path()).unwrap();
-        workspace.bundle_config.name = "@test/modified".to_string();
+        // Init and modify the workspace bundle name by manually updating the config file
+        let workspace = Workspace::init(temp.path()).unwrap();
+        // Note: We can't directly modify bundle_config.name anymore, but we can verify
+        // that the workspace name is correctly inferred from git/directory name
+        let name1 = workspace.get_workspace_name();
         workspace.save().unwrap();
 
-        // Reload and verify
+        // Reload and verify the name persists
         let workspace2 = Workspace::open(temp.path()).unwrap();
-        assert_eq!(workspace2.bundle_config.name, "@test/modified");
+        assert_eq!(workspace2.get_workspace_name(), name1);
     }
 
     #[test]

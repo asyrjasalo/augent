@@ -569,7 +569,7 @@ fn do_install_from_yaml(
         // This handles the case where the workspace bundle is in .augent/ and was named after the dir
         // OR when it's resolved from "." (workspace root) and named after the directory
         let mut resolved_bundles = resolved;
-        let workspace_bundle_name = workspace.bundle_config.name.clone();
+        let workspace_bundle_name = workspace.get_workspace_name();
         for bundle in &mut resolved_bundles {
             // Check if this is the workspace bundle by checking if its source path matches
             let bundle_source_path = workspace.get_bundle_source_path();
@@ -593,7 +593,7 @@ fn do_install_from_yaml(
     // If we detected modified files, ensure workspace bundle is in the resolved list
     // (append LAST so it overrides other bundles)
     let mut final_resolved_bundles = resolved_bundles;
-    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    let workspace_bundle_name = workspace.get_workspace_name();
     if has_modified_files
         && !final_resolved_bundles
             .iter()
@@ -791,8 +791,7 @@ fn do_install_from_yaml(
     let configs_updated =
         should_update_lockfile || !workspace_bundles_with_files.is_empty() || has_modified_files;
 
-    // Check if lockfile name needs fixing (before potential move)
-    let original_name_needs_fixing = original_lockfile.name != workspace.bundle_config.name;
+    // No longer need to check lockfile name (it's no longer stored in lockfile)
 
     if configs_updated && !args.dry_run {
         update_configs_from_yaml(
@@ -808,7 +807,7 @@ fn do_install_from_yaml(
     if !should_update_lockfile {
         if has_modified_files {
             // Keep the workspace bundle entry, but restore everything else
-            let workspace_bundle_name = workspace.bundle_config.name.clone();
+            let workspace_bundle_name = workspace.get_workspace_name();
             if let Some(workspace_bundle_entry) = workspace
                 .lockfile
                 .find_bundle(&workspace_bundle_name)
@@ -824,15 +823,12 @@ fn do_install_from_yaml(
         }
     }
 
-    // Always ensure lockfile name matches workspace bundle config (regardless of update flag)
-    workspace.lockfile.name = workspace.bundle_config.name.clone();
-
     // Check if workspace config is missing or empty - if so, rebuild it by scanning filesystem
     let needs_rebuild =
         workspace.workspace_config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
 
-    // Save workspace if configurations were updated or if lockfile name needed fixing
-    let needs_save = configs_updated || original_name_needs_fixing;
+    // Save workspace if configurations were updated
+    let needs_save = configs_updated;
     if needs_save && !args.dry_run {
         println!("Saving workspace...");
         workspace.save()?;
@@ -972,7 +968,7 @@ fn do_install(
     // Fix workspace bundle name: ensure it uses the workspace bundle name, not the directory name
     // This handles the case where the workspace bundle is in .augent/ and was named after the dir
     // OR when it's resolved from "." (workspace root) and named after the directory
-    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    let workspace_bundle_name = workspace.get_workspace_name();
     for bundle in &mut resolved_bundles {
         // Check if this is the workspace bundle by checking if its source path matches
         let bundle_source_path = workspace.get_bundle_source_path();
@@ -1202,7 +1198,7 @@ fn generate_lockfile(
     workspace: &Workspace,
     resolved_bundles: &[crate::resolver::ResolvedBundle],
 ) -> Result<crate::config::Lockfile> {
-    let mut lockfile = crate::config::Lockfile::new(&workspace.bundle_config.name);
+    let mut lockfile = crate::config::Lockfile::new();
 
     for bundle in resolved_bundles {
         let locked_bundle = create_locked_bundle(bundle, Some(&workspace.root))?;
@@ -1315,7 +1311,8 @@ fn update_configs(
     for bundle in resolved_bundles.iter() {
         if bundle.dependency.is_none() {
             // Skip the workspace bundle - it's not a normal dependency
-            if bundle.name == workspace.bundle_config.name {
+            let workspace_name = workspace.get_workspace_name();
+            if bundle.name == workspace_name {
                 continue;
             }
             // Root bundle (what user specified): add with original source specification
@@ -1423,19 +1420,16 @@ fn update_configs(
 
     // Reorganize lockfile to ensure correct ordering
     // (git bundles in install order -> dir bundles -> workspace bundle last)
-    workspace
-        .lockfile
-        .reorganize(Some(&workspace.bundle_config.name));
-
-    // Ensure lockfile name matches workspace bundle config
-    workspace.lockfile.name = workspace.bundle_config.name.clone();
+    let workspace_name = workspace.get_workspace_name();
+    workspace.lockfile.reorganize(Some(&workspace_name));
 
     // Reorder augent.yaml dependencies to match lockfile order (excluding workspace bundle)
+    let workspace_name = workspace.get_workspace_name();
     let lockfile_bundle_names: Vec<String> = workspace
         .lockfile
         .bundles
         .iter()
-        .filter(|b| b.name != workspace.bundle_config.name)
+        .filter(|b| b.name != workspace_name)
         .map(|b| b.name.clone())
         .collect();
     workspace
@@ -1481,15 +1475,14 @@ fn update_configs_from_yaml(
 ) -> Result<()> {
     // Update lockfile if we resolved new versions (--update was given)
     // OR if there's a workspace bundle (which should always be added/updated)
-    let has_workspace_bundle = workspace_bundles
-        .iter()
-        .any(|b| b.name == workspace.bundle_config.name);
+    let workspace_name = workspace.get_workspace_name();
+    let has_workspace_bundle = workspace_bundles.iter().any(|b| b.name == workspace_name);
 
     if should_update_lockfile || has_workspace_bundle {
         for bundle in resolved_bundles {
             // Always update workspace bundle in lockfile
             // Only update other bundles if should_update_lockfile is true
-            if should_update_lockfile || bundle.name == workspace.bundle_config.name {
+            if should_update_lockfile || bundle.name == workspace_name {
                 let locked_bundle = create_locked_bundle(bundle, Some(&workspace.root))?;
                 // Remove existing entry if present (to update it)
                 workspace.lockfile.remove_bundle(&locked_bundle.name);
@@ -1500,9 +1493,8 @@ fn update_configs_from_yaml(
 
     // Reorganize lockfile to ensure correct ordering
     // (git bundles in install order -> dir bundles -> workspace bundle last)
-    workspace
-        .lockfile
-        .reorganize(Some(&workspace.bundle_config.name));
+    let workspace_name = workspace.get_workspace_name();
+    workspace.lockfile.reorganize(Some(&workspace_name));
 
     // Always update workspace config (which files are installed where)
     for bundle in workspace_bundles {
@@ -1528,8 +1520,9 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
     let mut file_bundle_map: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
 
+    let workspace_name = workspace.get_workspace_name();
     for bundle in &workspace.workspace_config.bundles {
-        if bundle.name == workspace.bundle_config.name {
+        if bundle.name == workspace_name {
             continue;
         }
         for file_path in bundle.enabled.keys() {
@@ -1540,7 +1533,7 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
     // Remove files from earlier bundles if they're also in later bundles
     for i in 0..workspace.workspace_config.bundles.len() {
         // Skip workspace bundle when removing overridden files
-        if workspace.workspace_config.bundles[i].name == workspace.bundle_config.name {
+        if workspace.workspace_config.bundles[i].name == workspace_name {
             continue;
         }
 
@@ -1581,7 +1574,7 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
 fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()> {
     // Convert locked bundles back to bundle dependencies
     // Exclude workspace bundle entries (which have the workspace's own name or are from .augent dir)
-    let workspace_bundle_name = workspace.bundle_config.name.clone();
+    let workspace_bundle_name = workspace.get_workspace_name();
     let mut bundles = Vec::new();
 
     for locked in &workspace.lockfile.bundles {
@@ -1655,7 +1648,12 @@ fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()
     workspace.bundle_config.bundles = bundles;
 
     // Save the reconstructed augent.yaml
-    Workspace::save_bundle_config(&workspace.config_dir, &workspace.bundle_config)?;
+    let workspace_name = workspace.get_workspace_name();
+    Workspace::save_bundle_config(
+        &workspace.config_dir,
+        &workspace.bundle_config,
+        &workspace_name,
+    )?;
 
     println!("Successfully reconstructed augent.yaml from augent.lock.");
 
@@ -1933,14 +1931,13 @@ mod tests {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
             config_dir: temp.path().join(".augent"),
-            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
-            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
-            lockfile: crate::config::Lockfile::new("@test/workspace"),
+            bundle_config: crate::config::BundleConfig::new(),
+            workspace_config: crate::config::WorkspaceConfig::new(),
+            lockfile: crate::config::Lockfile::new(),
         };
 
         let lockfile = generate_lockfile(&workspace, &[]).unwrap();
 
-        assert_eq!(lockfile.name, "@test/workspace");
         assert!(lockfile.bundles.is_empty());
     }
 
@@ -1955,9 +1952,9 @@ mod tests {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
             config_dir: temp.path().join(".augent"),
-            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
-            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
-            lockfile: crate::config::Lockfile::new("@test/workspace"),
+            bundle_config: crate::config::BundleConfig::new(),
+            workspace_config: crate::config::WorkspaceConfig::new(),
+            lockfile: crate::config::Lockfile::new(),
         };
 
         let bundle = crate::resolver::ResolvedBundle {
@@ -1972,7 +1969,6 @@ mod tests {
 
         let lockfile = generate_lockfile(&workspace, &[bundle]).unwrap();
 
-        assert_eq!(lockfile.name, "@test/workspace");
         assert_eq!(lockfile.bundles.len(), 1);
         assert_eq!(lockfile.bundles[0].name, "@test/bundle");
     }
@@ -1985,9 +1981,9 @@ mod tests {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
             config_dir: temp.path().join(".augent"),
-            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
-            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
-            lockfile: crate::config::Lockfile::new("@test/workspace"),
+            bundle_config: crate::config::BundleConfig::new(),
+            workspace_config: crate::config::WorkspaceConfig::new(),
+            lockfile: crate::config::Lockfile::new(),
         };
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();
@@ -2031,9 +2027,9 @@ mod tests {
             root: temp.path().to_path_buf(),
             augent_dir: temp.path().join(".augent"),
             config_dir: temp.path().join(".augent"),
-            bundle_config: crate::config::BundleConfig::new("@test/workspace"),
-            workspace_config: crate::config::WorkspaceConfig::new("@test/workspace"),
-            lockfile: crate::config::Lockfile::new("@test/workspace"),
+            bundle_config: crate::config::BundleConfig::new(),
+            workspace_config: crate::config::WorkspaceConfig::new(),
+            lockfile: crate::config::Lockfile::new(),
         };
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();

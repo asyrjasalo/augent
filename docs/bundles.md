@@ -75,42 +75,39 @@ The `augent.yaml` file defines bundle metadata and dependencies.
 ### Minimal Example
 
 ```yaml
-name: my-bundle
 description: Useful debugging tools
 ```
 
 ### Full Example
 
 ```yaml
-name: debug-tools
 version: 1.0.0
 description: Collection of debugging rules and skills
-source: github:author/debug-tools
+author: "John Doe <john@example.com>"
+license: MIT
+homepage: https://github.com/author/debug-tools
 bundles:
-  - common-utilities
-  - test-helpers
-metadata:
-  author: "John Doe <john@example.com>"
-  license: MIT
-  homepage: https://github.com/author/debug-tools
-  platforms:
-    - claude
-    - cursor
-    - opencode
+  - name: common-utilities
+    path: ./common-utilities
+  - name: test-helpers
+    path: ./test-helpers
 ```
 
 ### Fields
 
 | Field | Type | Required | Description |
 |--------|--------|-----------|-------------|
-| `name` | string | Yes | Bundle name (used for uninstall/list/show) |
 | `description` | string | No | Human-readable description |
 | `version` | string | No | Semantic version (for reference only) |
+| `author` | string | No | Bundle author contact |
+| `license` | string | No | Bundle license |
+| `homepage` | string | No | Homepage URL |
 | `bundles` | array | No | List of bundle dependencies (other bundles this bundle depends on) |
-| `metadata.author` | string | No | Bundle author contact |
-| `metadata.license` | string | No | Bundle license |
-| `metadata.homepage` | string | No | Homepage URL |
-| `metadata.platforms` | array | No | Supported AI coding platforms |
+
+**Note:** The workspace bundle name is no longer stored in `augent.yaml`. It is automatically inferred from the workspace location:
+
+- For Git repositories: `@owner/repo` (extracted from git remote)
+- For non-git directories: `@username/directory-name` (fallback)
 
 ### Dependencies
 

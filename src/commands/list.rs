@@ -295,7 +295,7 @@ fn load_bundle_config(
     let config_path = bundle_path.join("augent.yaml");
 
     if !config_path.exists() {
-        return Ok(BundleConfig::new("".to_string()));
+        return Ok(BundleConfig::new());
     }
 
     let content =
