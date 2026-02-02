@@ -40,12 +40,13 @@ fn is_path_like(s: &str) -> bool {
 
 /// Run the install command
 pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
-    let current_dir = match workspace {
-        Some(path) => path,
-        None => std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
-        })?,
-    };
+    // Get the actual current directory (where the command is being run)
+    let actual_current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
+        message: format!("Failed to get current directory: {}", e),
+    })?;
+
+    // Use workspace parameter if provided, otherwise use actual current directory
+    let current_dir = workspace.unwrap_or(actual_current_dir.clone());
 
     // Handle three cases:
     // 1. User provides a source (path/URL) - existing behavior
@@ -57,28 +58,45 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
 
     // First, check if we're in a sub-bundle directory when no source is provided
     if args.source.is_none() {
-        if let Some(workspace_root) = Workspace::find_from(&current_dir) {
-            if let Ok(workspace) = Workspace::open(&workspace_root) {
-                if let Ok(Some(bundle_name)) = workspace.find_current_bundle(&current_dir) {
-                    // We're in a sub-bundle directory
-                    if let Some(bundle_path_str) = workspace
-                        .bundle_config
-                        .bundles
-                        .iter()
-                        .find(|b| b.name == bundle_name)
-                        .and_then(|b| b.path.clone())
-                    {
-                        // Resolve the path relative to config_dir, then make it relative to workspace root
-                        let resolved_path = workspace.config_dir.join(&bundle_path_str);
+        // Check if we're running from a subdirectory of the workspace
+        let in_subdirectory = actual_current_dir != current_dir;
 
-                        if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
-                            args.source = Some(relative_path.to_string_lossy().to_string());
-                        } else {
-                            args.source = Some(resolved_path.to_string_lossy().to_string());
-                        }
-                        installing_by_bundle_name = Some(bundle_name);
-                    }
+        if in_subdirectory {
+            // Don't treat the .augent directory itself as a bundle directory
+            let is_augent_dir = actual_current_dir.ends_with(".augent");
+
+            if !is_augent_dir {
+                // Check if actual current directory has bundle resources (augent.yaml, commands/, rules/, etc.)
+                use crate::installer::Installer;
+                let has_bundle_resources = Installer::discover_resources(&actual_current_dir)
+                    .map(|resources| !resources.is_empty())
+                    .unwrap_or(false);
+
+                if has_bundle_resources {
+                    // We're in a bundle directory - install just this bundle and its dependencies
+                    // Use absolute path to the bundle directory
+                    args.source = Some(actual_current_dir.to_string_lossy().to_string());
+                    // Set installing_by_bundle_name to skip workspace bundle during installation
+                    installing_by_bundle_name = Some(
+                        actual_current_dir
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("bundle")
+                            .to_string(),
+                    );
                 }
+            }
+        } else {
+            // Check if current directory has bundle resources (augent.yaml, commands/, rules/, etc.)
+            use crate::installer::Installer;
+            let has_bundle_resources = Installer::discover_resources(&current_dir)
+                .map(|resources| !resources.is_empty())
+                .unwrap_or(false);
+
+            if has_bundle_resources {
+                // We're in a bundle directory - install just this bundle and its dependencies
+                // Use "." to indicate current directory
+                args.source = Some(".".to_string());
             }
         }
     }
@@ -149,6 +167,15 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
 
         // Parse source and discover bundles BEFORE creating workspace or directory
         let source = BundleSource::parse(source_str)?;
+
+        // If source is a path and it's not the workspace root itself, skip workspace bundle
+        // This handles cases like "augent install ./my-bundle" where you only want that bundle, not workspace bundle
+        if is_path_like(source_str) {
+            let is_current_dir = source_str == "." || source_str == "./";
+            if !is_current_dir {
+                installing_by_bundle_name = Some("".to_string());
+            }
+        }
 
         // Print a nice message depending on whether we're installing by name or source
         if let Some(ref bundle_name) = installing_by_bundle_name {

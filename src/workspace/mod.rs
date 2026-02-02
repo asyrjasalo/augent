@@ -191,57 +191,6 @@ impl Workspace {
     }
 
     /// Find the bundle in the workspace that matches the current directory
-    ///
-    /// Returns the bundle name if the current directory is inside or equals a bundle's path.
-    /// Returns None if the current directory is not within any bundle directory.
-    /// Returns an error if the workspace has no bundles configured or path resolution fails.
-    pub fn find_current_bundle(&self, current_dir: &Path) -> Result<Option<String>> {
-        if self.bundle_config.bundles.is_empty() {
-            return Ok(None);
-        }
-
-        let current_canonical = self.canonicalize_path(current_dir)?;
-
-        for bundle_dep in &self.bundle_config.bundles {
-            // Only check bundles with a path field (local bundles)
-            if let Some(ref path_str) = bundle_dep.path {
-                let bundle_path = self.resolve_bundle_path(path_str)?;
-                let bundle_canonical = self.canonicalize_path(&bundle_path)?;
-
-                // Check if current directory equals bundle directory or is inside it
-                if current_canonical == bundle_canonical
-                    || current_canonical.starts_with(&bundle_canonical)
-                {
-                    return Ok(Some(bundle_dep.name.clone()));
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
-    /// Resolve a bundle path relative to the config directory
-    ///
-    /// Bundle paths in augent.yaml are relative to where augent.yaml is located (config_dir),
-    /// not relative to the workspace root. This handles `./my-bundle`, `../other-bundle`, etc.
-    fn resolve_bundle_path(&self, path_str: &str) -> Result<PathBuf> {
-        let path = std::path::Path::new(path_str);
-
-        if path.is_absolute() {
-            Ok(path.to_path_buf())
-        } else {
-            // Paths are relative to config_dir (where augent.yaml is located)
-            Ok(self.config_dir.join(path))
-        }
-    }
-
-    /// Canonicalize a path for comparison (resolve . and ..)
-    fn canonicalize_path(&self, path: &Path) -> Result<PathBuf> {
-        path.canonicalize().map_err(|e| AugentError::IoError {
-            message: format!("Failed to canonicalize path '{}': {}", path.display(), e),
-        })
-    }
-
     /// Initialize a workspace if it doesn't exist, or open it if it does
     pub fn init_or_open(root: &Path) -> Result<Self> {
         if Self::exists(root) {

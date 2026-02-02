@@ -80,6 +80,23 @@ Run `augent install` without arguments to install all bundles listed in the work
 
 **Note:** Removing a bundle from `augent.yaml` doesn't uninstall it. Use `augent uninstall <name>` to completely remove it. Uninstall by the bundle name (e.g. `@owner/repo` or `local-bundle`).
 
+### Installing from a subdirectory or local path
+
+When you run `augent install` from a subdirectory that contains bundle resources (like `augent.yaml`, `skills/`, `commands/`, etc.), or when you specify a local path (e.g., `augent install ./my-bundle`), Augent installs only that bundle and its dependencies. The workspace bundle is not installed in these cases.
+
+This behavior allows you to work on individual bundles within a workspace without reinstalling the entire workspace:
+
+```bash
+# Install only the bundle in the current directory and its dependencies
+cd tmp/my-library
+augent install
+
+# Install only a specific bundle and its dependencies
+augent install ./my-bundle
+```
+
+**Note:** The `.augent` directory itself is not treated as a bundle directory. Running `augent install` from the `.augent` directory will install all bundles from the workspace config.
+
 ---
 
 ## uninstall
