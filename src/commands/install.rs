@@ -1506,7 +1506,37 @@ fn update_configs(
                                 .and_then(|n| n.to_str())
                                 .unwrap_or(&bundle.name)
                                 .to_string();
-                            BundleDependency::local(&dir_name, path.to_string_lossy().to_string())
+
+                            // Convert path to relative from workspace root if possible
+                            let relative_path = match path.strip_prefix(&workspace.root) {
+                                Ok(rel_path) => {
+                                    let mut path_str =
+                                        rel_path.to_string_lossy().replace('\\', "/");
+                                    // Normalize the path - remove all redundant ./ segments
+                                    loop {
+                                        if let Some(pos) = path_str.find("/./") {
+                                            path_str = format!(
+                                                "{}{}",
+                                                &path_str[..pos],
+                                                &path_str[pos + 2..]
+                                            );
+                                        } else if path_str.starts_with("./") {
+                                            path_str = path_str[2..].to_string();
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                    // If path is empty (bundle is at root), use "."
+                                    if path_str.is_empty() {
+                                        ".".to_string()
+                                    } else {
+                                        path_str
+                                    }
+                                }
+                                Err(_) => path.to_string_lossy().to_string(),
+                            };
+
+                            BundleDependency::local(&dir_name, relative_path)
                         }
                         BundleSource::Git(git) => {
                             let ref_for_yaml = git
