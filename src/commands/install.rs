@@ -33,6 +33,11 @@ use crate::workspace::Workspace;
 use crate::workspace::modified;
 use indicatif::{ProgressBar, ProgressStyle};
 
+/// Check if a string looks like a path (contains path separators or relative path indicators)
+fn is_path_like(s: &str) -> bool {
+    s.contains('/') || s.contains('\\') || s.starts_with("./") || s.starts_with("../")
+}
+
 /// Run the install command
 pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
     let current_dir = match workspace {
@@ -42,13 +47,115 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         })?,
     };
 
-    // If source provided, discover and install
+    // Handle three cases:
+    // 1. User provides a source (path/URL) - existing behavior
+    // 2. User provides a bundle name to install by name from workspace
+    // 3. No source provided - check if we're in a sub-bundle directory
+
+    // Track if we're installing by bundle name (for better messaging)
+    let mut installing_by_bundle_name: Option<String> = None;
+
+    // First, check if we're in a sub-bundle directory when no source is provided
+    if args.source.is_none() {
+        if let Some(workspace_root) = Workspace::find_from(&current_dir) {
+            if let Ok(workspace) = Workspace::open(&workspace_root) {
+                if let Ok(Some(bundle_name)) = workspace.find_current_bundle(&current_dir) {
+                    // We're in a sub-bundle directory
+                    if let Some(bundle_path_str) = workspace
+                        .bundle_config
+                        .bundles
+                        .iter()
+                        .find(|b| b.name == bundle_name)
+                        .and_then(|b| b.path.clone())
+                    {
+                        // Resolve the path relative to config_dir, then make it relative to workspace root
+                        let resolved_path = workspace.config_dir.join(&bundle_path_str);
+
+                        if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
+                            args.source = Some(relative_path.to_string_lossy().to_string());
+                        } else {
+                            args.source = Some(resolved_path.to_string_lossy().to_string());
+                        }
+                        installing_by_bundle_name = Some(bundle_name);
+                    }
+                }
+            }
+        }
+    }
+
+    // Now check if we have a source argument and resolve bundle names to paths
     if let Some(source_str) = &args.source {
+        let source_str_ref = source_str.as_str();
+
+        // Check if this looks like a path or URL, or a bundle name
+        if !is_path_like(source_str_ref) {
+            // Looks like a bundle name - try to find it in workspace
+            if let Some(workspace_root) = Workspace::find_from(&current_dir) {
+                if let Ok(workspace) = Workspace::open(&workspace_root) {
+                    // Look for a bundle with this name in the workspace config
+                    if let Some(bundle_path_str) = workspace
+                        .bundle_config
+                        .bundles
+                        .iter()
+                        .find(|b| b.name == source_str_ref)
+                        .and_then(|b| b.path.clone())
+                    {
+                        // Bundle found - resolve the path relative to config_dir, then make it relative to workspace root
+                        let resolved_path = workspace.config_dir.join(&bundle_path_str);
+
+                        // Store the bundle name for better messaging
+                        installing_by_bundle_name = Some(source_str_ref.to_string());
+
+                        // Convert to path relative to workspace root for the resolver
+                        if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
+                            args.source = Some(relative_path.to_string_lossy().to_string());
+                        } else {
+                            // If it's absolute or can't be made relative, use as-is
+                            args.source = Some(resolved_path.to_string_lossy().to_string());
+                        }
+                    } else {
+                        // Bundle name not found in workspace
+                        // Only error if there are other bundles (meaning the user likely meant to use a bundle name)
+                        let available_bundles: Vec<&str> = workspace
+                            .bundle_config
+                            .bundles
+                            .iter()
+                            .map(|b| b.name.as_str())
+                            .collect();
+
+                        if !available_bundles.is_empty() {
+                            // There are bundles in the workspace, so this looks like a bundle name that doesn't exist
+                            return Err(AugentError::BundleNotFound {
+                                name: format!(
+                                    "Bundle '{}' not found in workspace. Available bundles: {}",
+                                    source_str_ref,
+                                    available_bundles.join(", ")
+                                ),
+                            });
+                        }
+                        // Otherwise, fall through and let normal source parsing handle it (will error as invalid source)
+                    }
+                }
+            }
+        }
+    }
+
+    // Now use the (possibly resolved) source for installation
+    let source_to_use = args.source.clone();
+
+    // If source provided (either directly or inferred), discover and install
+    if let Some(source_str) = source_to_use {
         let source_str = source_str.as_str();
 
         // Parse source and discover bundles BEFORE creating workspace or directory
         let source = BundleSource::parse(source_str)?;
-        println!("Installing from: {}", source.display_url());
+
+        // Print a nice message depending on whether we're installing by name or source
+        if let Some(ref bundle_name) = installing_by_bundle_name {
+            println!("Installing {} ({})", bundle_name, source_str);
+        } else {
+            println!("Installing from: {}", source.display_url());
+        }
 
         let resolver = Resolver::new(&current_dir);
         let discovered = resolver.discover_bundles(source_str)?;
@@ -98,6 +205,27 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             } else {
                 None
             };
+
+        // When installing by bundle name, filter out the workspace bundle itself
+        // The workspace bundle has a name like "@username/workspace-name"
+        let discovered = if installing_by_bundle_name.is_some() {
+            if let Some(workspace_root) = Workspace::find_from(&current_dir) {
+                if let Ok(workspace) = Workspace::open(&workspace_root) {
+                    let workspace_name = workspace.get_workspace_name();
+                    // Filter out the workspace bundle from discovered bundles
+                    discovered
+                        .into_iter()
+                        .filter(|b| b.name != workspace_name)
+                        .collect()
+                } else {
+                    discovered
+                }
+            } else {
+                discovered
+            }
+        } else {
+            discovered
+        };
 
         // Show interactive menu if multiple bundles, auto-select if one
         let discovered_count = discovered.len();
@@ -303,6 +431,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             &selected_bundles,
             &mut workspace,
             &mut transaction,
+            installing_by_bundle_name.is_some(), // Skip workspace bundle when installing by name
         ) {
             Ok(()) => {
                 // Commit installation
@@ -312,7 +441,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             Err(e) => Err(e),
         }
     } else {
-        // No source provided, load from augent.yaml in workspace
+        // No source provided - check if we're in a sub-bundle directory first
         let (workspace_root, was_initialized) = match Workspace::find_from(&current_dir) {
             Some(root) => (root, false),
             None => {
@@ -880,6 +1009,7 @@ fn do_install(
     selected_bundles: &[crate::resolver::DiscoveredBundle],
     workspace: &mut Workspace,
     transaction: &mut Transaction,
+    skip_workspace_bundle: bool,
 ) -> Result<()> {
     // Detect and preserve any modified files before reinstalling bundles
     let cache_dir = cache::bundles_cache_dir()?;
@@ -916,14 +1046,14 @@ fn do_install(
         if selected_bundles.is_empty() {
             // No bundles discovered - resolve source directly (might be a bundle itself)
             let source_str = args.source.as_ref().unwrap().as_str();
-            resolver.resolve(source_str)
+            resolver.resolve(source_str, false)
         } else if selected_bundles.len() == 1 {
             // Single bundle found
             // Check if discovered bundle has git source info
             if let Some(ref git_source) = selected_bundles[0].git_source {
                 // Use GitSource directly (already has resolved_sha from discovery)
                 // This avoids re-cloning the repository
-                Ok(vec![resolver.resolve_git(git_source, None)?])
+                Ok(vec![resolver.resolve_git(git_source, None, false)?])
             } else {
                 // Local directory, use discovered path
                 let bundle_path = selected_bundles[0].path.to_string_lossy().to_string();
@@ -940,7 +1070,7 @@ fn do_install(
                     if let Some(ref git_source) = discovered.git_source {
                         // Use GitSource directly (already has resolved_sha from discovery)
                         // This avoids re-cloning the repository
-                        let bundle = resolver.resolve_git(git_source, None)?;
+                        let bundle = resolver.resolve_git(git_source, None, false)?;
                         all_bundles.push(bundle);
                     } else {
                         // Local directory
@@ -983,13 +1113,15 @@ fn do_install(
     }
 
     // If we detected modified files, ensure workspace bundle is in the resolved list
+    // UNLESS we're installing a specific bundle by name (in which case skip the workspace bundle)
     if has_modified_files
+        && !skip_workspace_bundle
         && !resolved_bundles
             .iter()
             .any(|b| b.name == workspace_bundle_name)
     {
         let workspace_bundle = crate::resolver::ResolvedBundle {
-            name: workspace_bundle_name,
+            name: workspace_bundle_name.clone(),
             dependency: None,
             source_path: workspace.get_bundle_source_path(),
             resolved_sha: None,
@@ -998,6 +1130,11 @@ fn do_install(
             config: None,
         };
         resolved_bundles.push(workspace_bundle);
+    }
+
+    // Also filter out the workspace bundle from resolved_bundles if we're installing by bundle name
+    if skip_workspace_bundle {
+        resolved_bundles.retain(|b| b.name != workspace_bundle_name);
     }
 
     if resolved_bundles.is_empty() {
@@ -1692,27 +1829,28 @@ fn locked_bundles_to_resolved(
                 };
 
                 // Check cache by (url, sha, path); cache returns resources path
-                let (final_cache_path, final_source) =
-                    if let Some((resources_path, _, _)) = cache::get_cached(&git_src)? {
-                        (resources_path, Some(git_src))
-                    } else {
-                        // Reconstruct the source string and resolve (will fetch and cache)
-                        let mut source_string = url.clone();
-                        if let Some(git_ref) = git_ref {
-                            source_string.push('#');
-                            source_string.push_str(git_ref);
-                        }
-                        if let Some(subdir) = path {
-                            source_string.push(':');
-                            source_string.push_str(subdir);
-                        }
+                let (final_cache_path, final_source) = if let Some((resources_path, _, _)) =
+                    cache::get_cached(&git_src)?
+                {
+                    (resources_path, Some(git_src))
+                } else {
+                    // Reconstruct the source string and resolve (will fetch and cache)
+                    let mut source_string = url.clone();
+                    if let Some(git_ref) = git_ref {
+                        source_string.push('#');
+                        source_string.push_str(git_ref);
+                    }
+                    if let Some(subdir) = path {
+                        source_string.push(':');
+                        source_string.push_str(subdir);
+                    }
 
-                        // Parse the source string and resolve (this will fetch from git and cache it)
-                        let bundle_source = BundleSource::parse(&source_string)?;
-                        let resolved_bundle = resolver.resolve_source(&bundle_source, None)?;
+                    // Parse the source string and resolve (this will fetch from git and cache it)
+                    let bundle_source = BundleSource::parse(&source_string)?;
+                    let resolved_bundle = resolver.resolve_source(&bundle_source, None, false)?;
 
-                        (resolved_bundle.source_path, resolved_bundle.git_source)
-                    };
+                    (resolved_bundle.source_path, resolved_bundle.git_source)
+                };
 
                 (
                     final_cache_path,

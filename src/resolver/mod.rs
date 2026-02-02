@@ -175,17 +175,24 @@ impl Resolver {
     ///
     /// This is the main entry point for resolving a bundle and its dependencies.
     /// Returns resolved bundles in installation order (dependencies first).
-    pub fn resolve(&mut self, source: &str) -> Result<Vec<ResolvedBundle>> {
+    ///
+    /// If `skip_deps` is true, returns only the requested bundle without resolving
+    /// its dependencies. This is useful for installing individual sub-bundles.
+    pub fn resolve(&mut self, source: &str, skip_deps: bool) -> Result<Vec<ResolvedBundle>> {
         // Clear resolution order for fresh resolve
         self.resolution_order.clear();
 
         let bundle_source = BundleSource::parse(source)?;
-        self.resolve_source(&bundle_source, None)?;
+        let bundle = self.resolve_source(&bundle_source, None, skip_deps)?;
 
-        // Get all resolved bundles in topological order
-        let order = self.topological_sort()?;
-
-        Ok(order)
+        if skip_deps {
+            // Return only the requested bundle without dependencies
+            Ok(vec![bundle])
+        } else {
+            // Get all resolved bundles in topological order
+            let order = self.topological_sort()?;
+            Ok(order)
+        }
     }
 
     /// Resolve multiple bundles from source strings
@@ -200,7 +207,7 @@ impl Resolver {
 
         for source in sources {
             let bundle_source = BundleSource::parse(source)?;
-            let _bundle = self.resolve_source(&bundle_source, None)?;
+            let _bundle = self.resolve_source(&bundle_source, None, false)?;
         }
 
         // Get all resolved bundles in topological order, respecting source order
@@ -517,10 +524,11 @@ impl Resolver {
         &mut self,
         source: &BundleSource,
         dependency: Option<&BundleDependency>,
+        skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         match source {
-            BundleSource::Dir { path } => self.resolve_local(path, dependency),
-            BundleSource::Git(git_source) => self.resolve_git(git_source, dependency),
+            BundleSource::Dir { path } => self.resolve_local(path, dependency, skip_deps),
+            BundleSource::Git(git_source) => self.resolve_git(git_source, dependency, skip_deps),
         }
     }
 
@@ -530,11 +538,12 @@ impl Resolver {
         source: &BundleSource,
         dependency: Option<&BundleDependency>,
         context_path: &std::path::Path,
+        skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         let previous_context = self.current_context.clone();
         self.current_context = context_path.to_path_buf();
 
-        let result = self.resolve_source(source, dependency);
+        let result = self.resolve_source(source, dependency, skip_deps);
 
         self.current_context = previous_context;
         result
@@ -545,6 +554,7 @@ impl Resolver {
         &mut self,
         path: &Path,
         dependency: Option<&BundleDependency>,
+        skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         // Make path absolute relative to current context
         let mut full_path = if path.is_absolute() {
@@ -627,9 +637,12 @@ impl Resolver {
         }
 
         // Resolve dependencies first with with bundle's directory as context
-        if let Some(cfg) = &config {
-            for dep in &cfg.bundles {
-                self.resolve_dependency_with_context(dep, &source_path)?;
+        // Skip dependency resolution if skip_deps is true
+        if !skip_deps {
+            if let Some(cfg) = &config {
+                for dep in &cfg.bundles {
+                    self.resolve_dependency_with_context(dep, &source_path)?;
+                }
             }
         }
 
@@ -656,6 +669,7 @@ impl Resolver {
         &mut self,
         source: &GitSource,
         dependency: Option<&BundleDependency>,
+        skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
         // Show a spinner while cloning/fetching the git repository
@@ -757,9 +771,12 @@ impl Resolver {
         }
 
         // Resolve dependencies first with bundle's directory as context
-        if let Some(cfg) = &config {
-            for dep in &cfg.bundles {
-                self.resolve_dependency_with_context(dep, &content_path)?;
+        // Skip dependency resolution if skip_deps is true
+        if !skip_deps {
+            if let Some(cfg) = &config {
+                for dep in &cfg.bundles {
+                    self.resolve_dependency_with_context(dep, &content_path)?;
+                }
             }
         }
 
@@ -1007,7 +1024,8 @@ impl Resolver {
             });
         };
 
-        self.resolve_source_with_context(&source, Some(dep), context_path)
+        // Dependency resolution always resolves dependencies (skip_deps=false)
+        self.resolve_source_with_context(&source, Some(dep), context_path, false)
     }
 
     /// Check for circular dependencies
@@ -1220,7 +1238,7 @@ mod tests {
         .unwrap();
 
         let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./my-bundle");
+        let result = resolver.resolve("./my-bundle", false);
 
         assert!(result.is_ok());
         let bundles = result.unwrap();
@@ -1234,7 +1252,7 @@ mod tests {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./nonexistent");
+        let result = resolver.resolve("./nonexistent", false);
 
         assert!(result.is_err());
     }
@@ -1272,7 +1290,7 @@ bundles:
         .unwrap();
 
         let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./bundle-a");
+        let result = resolver.resolve("./bundle-a", false);
 
         assert!(result.is_err());
     }
@@ -1319,7 +1337,7 @@ bundles:
         .unwrap();
 
         let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./bundle-a");
+        let result = resolver.resolve("./bundle-a", false);
 
         let bundles = match result {
             Ok(bundles) => bundles,
@@ -1348,7 +1366,7 @@ bundles:
         std::fs::write(bundle_dir.join("README.md"), "# Simple Bundle").unwrap();
 
         let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./simple-bundle");
+        let result = resolver.resolve("./simple-bundle", false);
 
         assert!(result.is_ok());
         let bundles = result.unwrap();
@@ -1391,7 +1409,7 @@ bundles:
 
         let mut resolver = Resolver::new(temp.path());
 
-        let result = resolver.resolve("./bundle-a");
+        let result = resolver.resolve("./bundle-a", false);
         // Should detect circular dependency
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
@@ -1418,7 +1436,7 @@ bundles:
 
         let mut resolver = Resolver::new(temp.path());
 
-        let result = resolver.resolve("./bundle");
+        let result = resolver.resolve("./bundle", false);
         assert!(result.is_err());
     }
 
