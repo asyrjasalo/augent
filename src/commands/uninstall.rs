@@ -936,6 +936,7 @@ mod tests {
         let lockfile = create_test_lockfile();
 
         let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(workspace_root.path()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -973,6 +974,7 @@ mod tests {
         let lockfile = create_test_lockfile();
 
         let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(workspace_root.path()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1037,6 +1039,7 @@ mod tests {
     #[test]
     fn test_update_configs() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(temp.path()).unwrap();
         let workspace_path = temp.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1097,6 +1100,7 @@ bundles:
         let lockfile = create_test_lockfile();
 
         let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(workspace_root.path()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1361,6 +1365,7 @@ bundles:
         });
 
         let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(workspace_root.path()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();
@@ -1412,6 +1417,7 @@ bundles:
         });
 
         let workspace_root = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(workspace_root.path()).unwrap();
         let workspace_path = workspace_root.path();
         let augent_dir = workspace_path.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();

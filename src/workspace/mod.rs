@@ -6,12 +6,19 @@
 //!
 //! ## Workspace Structure
 //!
+//! Workspace is always located at git repository root.
+//!
 //! ```text
-//! .augent/
-//! ├── augent.yaml           # Workspace bundle config
-//! ├── augent.lock           # Resolved dependencies
-//! └── augent.index.yaml # Per-agent file mappings
+//! <git-repo-root>/
+//! ├── .augent/               # Workspace metadata directory
+//! │   ├── augent.yaml        # Workspace bundle config
+//! │   ├── augent.lock        # Resolved dependencies
+//! │   └── augent.index.yaml # Per-agent file mappings
+//! └── ...                   # Other repository files
 //! ```
+//!
+//! All paths in augent.yaml and augent.lock are relative to repository root.
+//! Paths cannot cross repository boundaries.
 //!
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -69,46 +76,51 @@ pub struct Workspace {
 impl Workspace {
     /// Detect if a workspace exists at the given path
     ///
-    /// A workspace exists if .augent directory exists
+    /// A workspace exists if .augent directory exists at git repository root
     pub fn exists(root: &Path) -> bool {
         root.join(WORKSPACE_DIR).is_dir()
     }
 
-    /// Find a workspace by searching for the git repository root, then checking for .augent there
-    /// If not in a git repository, fall back to searching upward for .augent
+    /// Find a workspace at the git repository root
+    ///
+    /// Workspace is always located at the git repository root.
+    /// Returns None if not in a git repository or if .augent doesn't exist there.
     pub fn find_from(start: &Path) -> Option<PathBuf> {
-        // First, try to find the git repository root and check for .augent there
-        if let Some(git_root) = Self::find_git_repository_root(start) {
-            if Self::exists(&git_root) {
-                return Some(git_root);
-            }
-        }
+        let git_root = Self::find_git_repository_root(start)?;
 
-        // Fall back to searching upward for .augent (for non-git directories)
-        let mut current = start.to_path_buf();
-
-        loop {
-            if Self::exists(&current) {
-                return Some(current);
-            }
-
-            if !current.pop() {
-                return None;
-            }
+        if Self::exists(&git_root) {
+            Some(git_root)
+        } else {
+            None
         }
     }
 
     /// Find the git repository root from a starting path
     fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
         let repo = git2::Repository::discover(start).ok()?;
-        repo.workdir().map(PathBuf::from)
+        repo.workdir().and_then(|p| std::fs::canonicalize(p).ok())
     }
 
-    /// Open an existing workspace
+    /// Open an existing workspace at the git repository root
     ///
     /// Loads workspace configuration from .augent/ directory.
     /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from .augent/
     pub fn open(root: &Path) -> Result<Self> {
+        // Verify we're at a git repository root
+        // Canonicalize root to handle symlinks (e.g., /var -> /private on macOS)
+        let canonical_root = std::fs::canonicalize(root).ok();
+        if let Some(git_root) = Self::find_git_repository_root(root) {
+            if canonical_root.as_ref() != Some(&git_root) {
+                return Err(AugentError::WorkspaceNotFound {
+                    path: root.display().to_string(),
+                });
+            }
+        } else {
+            return Err(AugentError::WorkspaceNotFound {
+                path: root.display().to_string(),
+            });
+        }
+
         let augent_dir = root.join(WORKSPACE_DIR);
 
         // Check if workspace exists (.augent directory)
@@ -153,12 +165,26 @@ impl Workspace {
         })
     }
 
-    /// Initialize a new workspace at the given path
+    /// Initialize a new workspace at the git repository root
     ///
     /// Creates the .augent directory structure and initial configuration files.
-    /// The workspace bundle name is inferred from the git remote URL if available,
-    /// otherwise falls back to USERNAME/WORKSPACE_DIR_NAME.
+    /// The workspace bundle name is inferred from the directory name.
     pub fn init(root: &Path) -> Result<Self> {
+        // Verify we're at a git repository root
+        // Canonicalize root to handle symlinks (e.g., /var -> /private on macOS)
+        let canonical_root = std::fs::canonicalize(root).ok();
+        if let Some(git_root) = Self::find_git_repository_root(root) {
+            if canonical_root.as_ref() != Some(&git_root) {
+                return Err(AugentError::WorkspaceNotFound {
+                    path: root.display().to_string(),
+                });
+            }
+        } else {
+            return Err(AugentError::WorkspaceNotFound {
+                path: root.display().to_string(),
+            });
+        }
+
         let augent_dir = root.join(WORKSPACE_DIR);
 
         // Create .augent directory
@@ -199,71 +225,13 @@ impl Workspace {
         }
     }
 
-    /// Infer the workspace bundle name from git remote or fallback
+    /// Infer the workspace bundle name from directory name
     fn infer_workspace_name(root: &Path) -> String {
-        // Try to get name from git remote
-        if let Some(name) = Self::name_from_git_remote(root) {
-            return name;
-        }
-
-        // Fallback to USERNAME/WORKSPACE_DIR_NAME
-        Self::fallback_name(root)
-    }
-
-    /// Extract workspace name from git remote URL
-    fn name_from_git_remote(root: &Path) -> Option<String> {
-        // Try to open the git repository
-        let repo = git2::Repository::discover(root).ok()?;
-
-        // Try to get the origin remote
-        let remote = repo.find_remote("origin").ok()?;
-        let url = remote.url()?;
-
-        // Parse the URL to extract owner/repo
-        Self::parse_git_url_to_name(url)
-    }
-
-    /// Parse a git URL to extract owner/repo format
-    fn parse_git_url_to_name(url: &str) -> Option<String> {
-        // Handle HTTPS URLs: https://github.com/owner/repo.git
-        if url.starts_with("https://") {
-            let path = url.strip_prefix("https://")?;
-            let parts: Vec<&str> = path.splitn(2, '/').collect();
-            if parts.len() == 2 {
-                let repo_path = parts[1].trim_end_matches('/').trim_end_matches(".git");
-                // Extract owner/repo
-                let segments: Vec<&str> = repo_path.split('/').collect();
-                if segments.len() >= 2 {
-                    return Some(format!("@{}/{}", segments[0], segments[1]));
-                }
-            }
-        }
-
-        // Handle SSH URLs: git@github.com:owner/repo.git
-        if url.starts_with("git@") {
-            let path = url.split(':').nth(1)?;
-            let repo_path = path.trim_end_matches('/').trim_end_matches(".git");
-            let segments: Vec<&str> = repo_path.split('/').collect();
-            if segments.len() >= 2 {
-                return Some(format!("@{}/{}", segments[0], segments[1]));
-            }
-        }
-
-        None
-    }
-
-    /// Generate fallback workspace name
-    fn fallback_name(root: &Path) -> String {
-        let dir_name = root
-            .file_name()
+        // Return just the directory name
+        root.file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("workspace");
-
-        let username = std::env::var("USER")
-            .or_else(|_| std::env::var("USERNAME"))
-            .unwrap_or_else(|_| "user".to_string());
-
-        format!("@{}/{}", username, dir_name)
+            .unwrap_or("workspace")
+            .to_string()
     }
 
     /// Load bundle configuration from a directory
@@ -784,6 +752,9 @@ mod tests {
     fn test_workspace_find_from() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
+
         // Create workspace directory
         fs::create_dir(temp.path().join(WORKSPACE_DIR)).unwrap();
 
@@ -794,12 +765,20 @@ mod tests {
         // Should find workspace from nested directory
         let found = Workspace::find_from(&nested);
         assert!(found.is_some());
-        assert_eq!(found.unwrap(), temp.path());
+
+        // Canonicalize both paths to handle macOS /private/ prefix
+        let found_canonical = std::fs::canonicalize(found.unwrap()).unwrap();
+        let temp_canonical = std::fs::canonicalize(temp.path()).unwrap();
+        assert_eq!(found_canonical, temp_canonical);
     }
 
     #[test]
     fn test_workspace_find_from_not_found() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
+
         let nested = temp.path().join("src/deep/nested");
         fs::create_dir_all(&nested).unwrap();
 
@@ -811,6 +790,9 @@ mod tests {
     #[test]
     fn test_workspace_init() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
 
         let workspace = Workspace::init(temp.path()).unwrap();
 
@@ -838,12 +820,15 @@ mod tests {
 
         // Check name format
         let workspace_name = workspace.get_workspace_name();
-        assert!(workspace_name.starts_with('@'));
+        assert!(!workspace_name.is_empty());
     }
 
     #[test]
     fn test_workspace_init_or_open() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
 
         // First call should init
         let workspace1 = Workspace::init_or_open(temp.path()).unwrap();
@@ -858,6 +843,9 @@ mod tests {
     fn test_workspace_open_not_found() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
+
         let result = Workspace::open(temp.path());
         assert!(result.is_err());
     }
@@ -866,47 +854,19 @@ mod tests {
     fn test_workspace_save_and_reload() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
+
         // Init and modify the workspace bundle name by manually updating the config file
         let workspace = Workspace::init(temp.path()).unwrap();
         // Note: We can't directly modify bundle_config.name anymore, but we can verify
-        // that the workspace name is correctly inferred from git/directory name
+        // that the workspace name is correctly inferred from directory name
         let name1 = workspace.get_workspace_name();
         workspace.save().unwrap();
 
         // Reload and verify the name persists
         let workspace2 = Workspace::open(temp.path()).unwrap();
         assert_eq!(workspace2.get_workspace_name(), name1);
-    }
-
-    #[test]
-    fn test_parse_git_url_https() {
-        let url = "https://github.com/owner/repo.git";
-        let name = Workspace::parse_git_url_to_name(url);
-        assert_eq!(name, Some("@owner/repo".to_string()));
-    }
-
-    #[test]
-    fn test_parse_git_url_https_no_git_suffix() {
-        let url = "https://github.com/owner/repo";
-        let name = Workspace::parse_git_url_to_name(url);
-        assert_eq!(name, Some("@owner/repo".to_string()));
-    }
-
-    #[test]
-    fn test_parse_git_url_ssh() {
-        let url = "git@github.com:owner/repo.git";
-        let name = Workspace::parse_git_url_to_name(url);
-        assert_eq!(name, Some("@owner/repo".to_string()));
-    }
-
-    #[test]
-    fn test_fallback_name() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let name = Workspace::fallback_name(temp.path());
-
-        // Should contain @ and /
-        assert!(name.starts_with('@'));
-        assert!(name.contains('/'));
     }
 }
 
@@ -919,6 +879,10 @@ mod modified_tests {
     #[test]
     fn test_detect_modified_files_empty() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
+
         let workspace = Workspace::init(temp.path()).unwrap();
         let cache_dir = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
@@ -929,6 +893,10 @@ mod modified_tests {
     #[test]
     fn test_preserve_modified_files() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+
+        // Initialize git repository
+        git2::Repository::init(temp.path()).unwrap();
+
         let mut workspace = Workspace::init(temp.path()).unwrap();
 
         // Create a mock modified file

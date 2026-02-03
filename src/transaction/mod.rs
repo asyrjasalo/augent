@@ -188,6 +188,7 @@ mod tests {
 
     fn create_test_workspace() -> (TempDir, PathBuf, PathBuf) {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        git2::Repository::init(temp.path()).unwrap();
         let workspace_root = temp.path().to_path_buf();
         let augent_dir = workspace_root.join(".augent");
         fs::create_dir_all(&augent_dir).unwrap();

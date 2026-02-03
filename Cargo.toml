@@ -50,7 +50,6 @@ git2 = { version = "0.19", default-features = false, features = ["ssh", "https",
 walkdir = "2"
 tempfile = "3"
 dirs = "5"
-path-clean = "0.1"
 
 # Hashing
 blake3 = "1"

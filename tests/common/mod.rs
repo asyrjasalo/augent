@@ -162,17 +162,15 @@ pub struct TestWorkspace {
 
 impl TestWorkspace {
     /// Create a new test workspace. Each call creates a unique directory; use exactly one
-    /// per test so workspaces are never shared. Never creates anything inside the repository.
+    /// per test so workspaces are never shared. Initializes a git repository at the root.
     pub fn new() -> Self {
         let base = ensure_workspace_base();
         let temp = TempDir::new_in(&base).expect("Failed to create temp directory");
         let path = temp.path().to_path_buf();
-        // Ensure we never run tests inside the repo (path must not be under CARGO_MANIFEST_DIR)
-        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        assert!(
-            path.strip_prefix(repo).is_err(),
-            "test workspace must not be inside the repository"
-        );
+
+        // Initialize git repository (workspace must be at git root)
+        git2::Repository::init(&path).expect("Failed to initialize git repository");
+
         Self { temp, path }
     }
 
