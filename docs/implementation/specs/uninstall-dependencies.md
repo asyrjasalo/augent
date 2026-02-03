@@ -13,90 +13,56 @@ This document describes:
 
 ## How It Works
 
-### Directory Bundle Cascade Uninstall
+### Directory Bundle Behavior
 
-**Note**: This section describes NEW behavior for dir bundles (installed from local directories).
+**Note**: Dir bundles (installed from local directories) do not have dependencies or augent.yaml files. They are treated like git bundles for uninstall purposes.
 
-When uninstalling a **dir bundle** (bundle installed from a local directory, not from Git), the uninstall command now also uninstalled its transitive dependencies, **unless those dependencies are also needed by other dir bundles**.
+**Dir bundle characteristics**:
 
-This is implemented by identifying which dir bundles are **roots** (not depended on by any other dir bundle):
+- Dir bundles contain only resource files and directories
+- Dir bundles do NOT have `augent.yaml` files
+- Dir bundles do NOT have dependencies
+- Dir bundles are NOT affected by cascade uninstall behavior
 
-- **Root dir bundle**: A dir bundle that no other dir bundle depends on
-  - These are treated as "explicitly installed"
-  - When a root dir bundle is uninstalled, its dependencies may be orphaned
-- **Dependency dir bundle**: A dir bundle that some other dir bundle depends on
-  - These are NOT treated as "explicitly installed"
-  - When a root dir bundle is uninstalled, a dependency dir bundle becomes an orphan IF no other root dir bundle also depends on it
+**Behavior**:
 
-**Examples**:
+When uninstalling a dir bundle:
 
-1. **Cascade to orphaned dependencies**:
-
-   ```text
-   # Setup: dir bundle A depends on B and C
-   bundle-a → [bundle-b, bundle-c]
-
-   # Uninstall A:
-   # - A is uninstalled (explicit)
-   # - B becomes orphan (nothing depends on it)
-   # - C becomes orphan (nothing depends on it)
-   # Result: A, B, and C are all uninstalled
-   ```
-
-2. **Keep shared dependencies**:
-
-   ```text
-   # Setup: dir bundle A and D both depend on B
-   bundle-a → [bundle-b]
-   bundle-d → [bundle-b]
-
-   # Uninstall A:
-   # - A is uninstalled (explicit)
-   # - B remains (needed by D, which is still installed)
-   # Result: Only A is uninstalled
-   ```
-
-**Implementation details**:
-
-- Dependency information is read from each dir bundle's `augent.yaml` file
-- A reverse dependency map is built to find which dir bundles are depended on by others
-- Only dir bundles that are NOT depended on by other dir bundles are considered roots
-- Git bundles and other bundle types are NOT affected by this behavior (they remain explicitly installed based on workspace config)
+1. **No cascade uninstall**: Dir bundles do not have dependencies, so there are no transitive dependencies to cascade
+2. **Direct uninstall only**: Only the specified dir bundle is removed
+3. **File safety**: The same file removal safety checks apply as for git bundles
 
 ### Dependency Detection
 
-The uninstall command now treats dependency cleanup as a **graph reachability** problem, using both the workspace config and each bundle’s own `augent.yaml`:
+The uninstall command treats bundle cleanup using the workspace config:
 
 1. **Workspace roots (direct installs)**:
-   - The workspace’s `.augent/augent.yaml` lists only the bundles you explicitly installed.
-   - These are treated as **root nodes** in the dependency graph. They are never auto-removed; they are only uninstalled if you explicitly name them on the command line.
+   - The workspace's `.augent/augent.yaml` lists only the bundles you explicitly installed.
+   - These are treated as **root nodes**. They are only uninstalled if you explicitly name them on the command line.
 
-2. **Per-bundle dependency graph**:
-   - For each bundle in `augent.lock` that comes from a local directory, Augent reads that bundle’s own `augent.yaml` (in the bundle directory) and collects its `bundles:` section.
-   - This builds a mapping:
-     \[
-     \text{bundle-name} \rightarrow [\text{its direct dependency names}]
-     \]
-   - This graph represents the same dependency structure the installer used when it originally resolved and locked the bundles.
+2. **Git bundles with dependencies**:
+   - Git bundles may have `augent.yaml` with dependencies
+   - For each git bundle in `augent.lock`, Augent reads that bundle's own `augent.yaml` (from cache) and collects its `bundles:` section.
+   - This builds a dependency graph to handle transitive dependencies.
 
 3. **Remaining bundles vs. explicitly removed bundles**:
    - Let **B<sub>all</sub>** be all bundles in `augent.lock`.
    - Let **B<sub>remove</sub>** be the set of bundles you explicitly asked to uninstall (CLI arguments, including scope patterns).
-   - Let **B<sub>remain</sub> = B<sub>all</sub> − B<sub>remove</sub>** be the bundles that would stay if we only removed the explicit ones.
+   - Let **B<sub>remain</sub> = B<sub>all</sub> − B<sub>remove</sub>** be bundles that would stay if we only removed the explicit ones.
 
-4. **Compute “needed” bundles by reachability**:
+4. **Compute "needed" bundles by reachability** (for git bundles with dependencies):
    - Let **R** be the set of **remaining roots**: bundles that are both in `.augent/augent.yaml` and in **B<sub>remain</sub>**.
    - Starting from every bundle in **R**, Augent walks the dependency graph (following `bundles:` edges) and marks every reachable bundle as **needed**.
    - Intuitively: if some bundle is still a direct install, all of its dependencies (and their dependencies, recursively) are considered needed and must not be auto-removed.
 
-5. **Determine which bundles can be auto-removed**:
-   - Any bundle in **B<sub>remain</sub>** that is **not** marked as needed, and is not the special workspace bundle, is now an **orphan dependency**:
+5. **Determine which bundles can be auto-removed** (for git bundles with dependencies):
+   - Any bundle in **B<sub>remain</sub>** that is **not** marked as needed, and is not a special workspace bundle, is now an **orphan dependency**:
      - No remaining root depends on it.
      - It exists only because it was (directly or indirectly) required by bundles you are now uninstalling.
    - These orphan bundles are added to the uninstall set so that their files and lockfile/index entries are removed together with the roots that required them.
 
 6. **Uninstall order**:
-   - Once the final set of bundles to uninstall is known (explicit roots + all newly discovered orphans), Augent still uses the lockfile’s dependency order to determine a safe **reverse topological order**:
+   - Once the final set of bundles to uninstall is known (explicit roots + all newly discovered orphans), Augent uses the lockfile's order to determine a safe **reverse topological order**:
      - Dependencies are uninstalled **after** their dependents, so that override/fallback semantics remain correct during removal.
 
 ### File Removal Safety

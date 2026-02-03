@@ -11,7 +11,6 @@ use std::fs;
 use std::path::Path;
 
 use crate::cli::UninstallArgs;
-use crate::config::LockedSource;
 use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
@@ -287,15 +286,13 @@ fn filter_bundles_by_scope(workspace: &Workspace, scope: &str) -> Vec<String> {
 
 /// Build a mapping from bundle name to the names of bundles it depends on,
 /// by reading each bundle's own `augent.yaml` (if present).
+/// NOTE: Only git bundles have augent.yaml; dir bundles do not.
 fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<String>>> {
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
     for locked in &workspace.lockfile.bundles {
+        // Only git bundles have augent.yaml; dir bundles do not
         let config_path = match &locked.source {
-            crate::config::LockedSource::Dir { path, .. } => {
-                // Local directory bundles have augent.yaml in the workspace
-                workspace.root.join(path).join("augent.yaml")
-            }
             crate::config::LockedSource::Git {
                 url,
                 sha,
@@ -317,6 +314,10 @@ fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<Str
                 };
                 bundle_resources_dir.join("augent.yaml")
             }
+            _ => {
+                // Dir bundles do not have augent.yaml
+                continue;
+            }
         };
 
         if !config_path.is_file() {
@@ -335,42 +336,6 @@ fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<Str
     }
 
     Ok(map)
-}
-
-/// Build a set of dir bundle names that are "roots" (not depended on by any other dir bundle).
-/// This allows cascade uninstall of dir bundle dependencies when a dir bundle is removed.
-fn build_dir_bundle_roots(
-    workspace: &Workspace,
-    dependency_map: &HashMap<String, Vec<String>>,
-) -> std::collections::HashSet<String> {
-    let mut all_dir_bundles: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut depended_on: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    // First pass: collect all dir bundle names
-    for locked in &workspace.lockfile.bundles {
-        if matches!(locked.source, LockedSource::Dir { .. }) {
-            all_dir_bundles.insert(locked.name.clone());
-        }
-    }
-
-    // Second pass: find which dir bundles are depended on by other dir bundles
-    for locked in &workspace.lockfile.bundles {
-        if matches!(locked.source, LockedSource::Dir { .. }) {
-            if let Some(deps) = dependency_map.get(&locked.name) {
-                for dep in deps {
-                    if all_dir_bundles.contains(dep) {
-                        depended_on.insert(dep.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    // A dir bundle is a root if it's not depended on by any other dir bundle
-    all_dir_bundles
-        .into_iter()
-        .filter(|name| !depended_on.contains(name))
-        .collect()
 }
 
 /// Run uninstall command
@@ -510,15 +475,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     // in augent.yaml and their dependencies are preserved
     explicitly_installed.insert(workspace_name.clone());
 
-    // Only include dir bundles that are roots (not depended on by other dir bundles)
-    // This enables cascade uninstall of dir bundle dependencies when a dir bundle is removed
-    // Dir bundles that are depended on by other dir bundles are NOT considered explicitly installed
-    let dir_bundle_roots = build_dir_bundle_roots(&workspace, &dependency_map);
-    for root in &dir_bundle_roots {
-        explicitly_installed.insert(root.clone());
-    }
-
-    // Roots that remain after explicit uninstall (bundles declared in augent.yaml + root dir bundles)
+    // Roots that remain after explicit uninstall (bundles declared in augent.yaml)
     let remaining_roots: std::collections::HashSet<String> = explicitly_installed
         .intersection(&remaining_bundles)
         .cloned()

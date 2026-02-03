@@ -554,7 +554,7 @@ impl Resolver {
         &mut self,
         path: &Path,
         dependency: Option<&BundleDependency>,
-        skip_deps: bool,
+        _skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         // Make path absolute relative to current context
         let mut full_path = if path.is_absolute() {
@@ -600,19 +600,19 @@ impl Resolver {
             full_path.clone()
         };
 
-        // Try to load augent.yaml from source path
-        let config = self.load_bundle_config(&source_path)?;
+        // IMPORTANT: For dir bundles, DO NOT read augent.yaml
+        // Dir bundles can only contain resource files and directories
+        let config: Option<BundleConfig> = None;
 
         // Determine bundle name.
         // If there's a dependency, use its name.
-        // Otherwise, use the name from augent.yaml if present (for workspace bundles and configured bundles).
         // Otherwise, per spec: dir bundle name is always dir-name.
         let name = match dependency {
             Some(dep) => dep.name.clone(),
             None => {
                 // For dir bundles (no dependency context), always use the directory name per spec.
                 // This ensures that when you install "./my-bundle", it's recorded as "my-bundle"
-                // in augent.yaml/lock/index, regardless of what name is in the bundle's augent.yaml.
+                // in augent.yaml/lock/index.
                 path.file_name()
                     .and_then(|n| n.to_str())
                     .map(|s| s.to_string())
@@ -636,15 +636,7 @@ impl Resolver {
             self.resolution_order.push(name.clone());
         }
 
-        // Resolve dependencies first with with bundle's directory as context
-        // Skip dependency resolution if skip_deps is true
-        if !skip_deps {
-            if let Some(cfg) = &config {
-                for dep in &cfg.bundles {
-                    self.resolve_dependency_with_context(dep, &source_path)?;
-                }
-            }
-        }
+        // NOTE: Dir bundles do not have dependencies, so no dependency resolution needed
 
         // Pop from resolution stack
         self.resolution_stack.pop();
@@ -1312,107 +1304,10 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_circular_dependency() {
+    fn test_dir_bundle_without_augent_yaml() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
-        // Create bundle A that depends on B
-        let bundle_a = temp.path().join("bundle-a");
-        std::fs::create_dir(&bundle_a).unwrap();
-        std::fs::write(
-            bundle_a.join("augent.yaml"),
-            r#"
-name: "@test/bundle-a"
-bundles:
-  - name: "@test/bundle-b"
-    path: bundle-b
-"#,
-        )
-        .unwrap();
-
-        // Create bundle B that depends on A (circular!)
-        let bundle_b = temp.path().join("bundle-b");
-        std::fs::create_dir(&bundle_b).unwrap();
-        std::fs::write(
-            bundle_b.join("augent.yaml"),
-            r#"
-name: "@test/bundle-b"
-bundles:
-  - name: "@test/bundle-a"
-    path: bundle-a
-"#,
-        )
-        .unwrap();
-
-        let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./bundle-a", false);
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_topological_sort_order() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        // Create bundle C (no dependencies)
-        let bundle_c = temp.path().join("bundle-c");
-        std::fs::create_dir(&bundle_c).unwrap();
-        std::fs::write(
-            bundle_c.join("augent.yaml"),
-            "name: \"@test/bundle-c\"\nbundles: []\n",
-        )
-        .unwrap();
-
-        // Create bundle B that depends on C
-        let bundle_b = temp.path().join("bundle-b");
-        std::fs::create_dir(&bundle_b).unwrap();
-        std::fs::write(
-            bundle_b.join("augent.yaml"),
-            r#"
-name: "@test/bundle-b"
-bundles:
-  - name: "bundle-c"
-    path: ../bundle-c
-"#,
-        )
-        .unwrap();
-
-        // Create bundle A that depends on B
-        let bundle_a = temp.path().join("bundle-a");
-        std::fs::create_dir(&bundle_a).unwrap();
-        std::fs::write(
-            bundle_a.join("augent.yaml"),
-            r#"
-name: "@test/bundle-a"
-bundles:
-  - name: "bundle-b"
-    path: ../bundle-b
-"#,
-        )
-        .unwrap();
-
-        let mut resolver = Resolver::new(temp.path());
-        let result = resolver.resolve("./bundle-a", false);
-
-        let bundles = match result {
-            Ok(bundles) => bundles,
-            Err(ref e) => {
-                panic!("Expected Ok result: {:?}", e);
-            }
-        };
-
-        // Should be in order: C, B, A (dependencies first)
-        assert_eq!(bundles.len(), 3);
-        assert_eq!(bundles[0].name, "bundle-c");
-        assert_eq!(bundles[1].name, "bundle-b");
-        // Per spec: dir bundle name is always the directory name
-        assert_eq!(bundles[2].name, "bundle-a");
-    }
-
-    #[test]
-    fn test_bundle_without_config() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        // Create a bundle without augent.yaml
+        // Create a simple dir bundle without augent.yaml
         let bundle_dir = temp.path().join("simple-bundle");
         std::fs::create_dir(&bundle_dir).unwrap();
 
@@ -1427,71 +1322,8 @@ bundles:
         assert_eq!(bundles.len(), 1);
         // Per spec: dir bundle name is always dir-name
         assert_eq!(bundles[0].name, "simple-bundle");
-    }
-
-    #[test]
-    fn test_circular_dependency_detection() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        // Create bundle A that depends on B
-        let bundle_a = temp.path().join("bundle-a");
-        std::fs::create_dir(&bundle_a).unwrap();
-        std::fs::write(
-            bundle_a.join("augent.yaml"),
-            r#"
-name: "@test/bundle-a"
-bundles:
-  - name: "@test/bundle-b"
-    path: ../bundle-b
-"#,
-        )
-        .unwrap();
-
-        // Create bundle B that depends on A (creates cycle)
-        let bundle_b = temp.path().join("bundle-b");
-        std::fs::create_dir(&bundle_b).unwrap();
-        std::fs::write(
-            bundle_b.join("augent.yaml"),
-            r#"
-name: "@test/bundle-b"
-bundles:
-  - name: "@test/bundle-a"
-    path: ../bundle-a
-"#,
-        )
-        .unwrap();
-
-        let mut resolver = Resolver::new(temp.path());
-
-        let result = resolver.resolve("./bundle-a", false);
-        // Should detect circular dependency
-        assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("Circular dependency"));
-    }
-
-    #[test]
-    fn test_nonexistent_dependency() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        // Create bundle with nonexistent dependency
-        let bundle = temp.path().join("bundle");
-        std::fs::create_dir(&bundle).unwrap();
-        std::fs::write(
-            bundle.join("augent.yaml"),
-            r#"
-name: "@test/bundle"
-bundles:
-  - name: "@nonexistent/bundle"
-    path: nonexistent
-"#,
-        )
-        .unwrap();
-
-        let mut resolver = Resolver::new(temp.path());
-
-        let result = resolver.resolve("./bundle", false);
-        assert!(result.is_err());
+        // Dir bundles do not have augent.yaml, so config should be None
+        assert!(bundles[0].config.is_none());
     }
 
     #[test]
@@ -1501,7 +1333,6 @@ bundles:
 
         std::fs::create_dir(&bundle_dir).unwrap();
         std::fs::create_dir(bundle_dir.join("commands")).unwrap();
-        std::fs::write(bundle_dir.join("augent.yaml"), "name: test\nbundles: []").unwrap();
 
         let resolver = Resolver::new(temp.path());
         assert!(resolver.is_bundle_directory(&bundle_dir));

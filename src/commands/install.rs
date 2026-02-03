@@ -1873,13 +1873,31 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
 fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()> {
     // First pass: Collect all transitive dependencies
     // A transitive dependency is any bundle that appears in another bundle's augent.yaml
+    // NOTE: Only git bundles have augent.yaml; dir bundles do not
     let mut transitive_dependencies = HashSet::new();
 
     for locked in &workspace.lockfile.bundles {
-        // Only dir bundles can have dependencies (git bundles are always top-level)
-        if let LockedSource::Dir { path, .. } = &locked.source {
-            let bundle_path = workspace.root.join(path);
-            let bundle_augent_yaml = bundle_path.join("augent.yaml");
+        // Only git bundles can have dependencies (dir bundles do not have augent.yaml)
+        if let LockedSource::Git {
+            url,
+            sha,
+            path: bundle_path,
+            git_ref: _,
+            hash: _,
+        } = &locked.source
+        {
+            let cache_entry = crate::cache::repo_cache_entry_path(url, sha).map_err(|e| {
+                AugentError::CacheOperationFailed {
+                    message: format!("Failed to get cache path for '{}': {}", url, e),
+                }
+            })?;
+            let bundle_cache_dir = crate::cache::entry_repository_path(&cache_entry);
+            let bundle_resources_dir = if let Some(path) = bundle_path {
+                bundle_cache_dir.join(path)
+            } else {
+                bundle_cache_dir
+            };
+            let bundle_augent_yaml = bundle_resources_dir.join("augent.yaml");
 
             if bundle_augent_yaml.exists() {
                 if let Ok(yaml_content) = std::fs::read_to_string(&bundle_augent_yaml) {

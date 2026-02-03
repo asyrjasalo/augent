@@ -955,6 +955,27 @@ See: [bundles.md](specs/bundles.md), [install-command.md](specs/install-command.
 
 ---
 
+## Phase 10: Dir Bundle Simplification
+
+### Epic 18: Remove dir bundle dependencies and augent.yaml support
+
+#### Feature 18.1: Remove augent.yaml and dependencies from dir bundles
+
+**Status:** [x] Complete
+
+Goal: Simplify dir bundles to only contain resource files and directories, removing support for dependencies and augent.yaml files.
+
+- [x] Remove augent.yaml loading for dir bundles in resolver
+- [x] Remove dir bundle dependency resolution logic
+- [x] Remove build_dir_bundle_roots function in uninstall.rs
+- [x] Remove augent.yaml reading for dir bundles in uninstall.rs
+- [x] Remove augent.yaml reading for dir bundles in reconstruct_augent_yaml_from_lockfile
+- [x] Update tests to reflect dir bundle simplification
+- [x] Update documentation
+- [x] Run clippy and tests
+
+---
+
 ## Universal format for project-specific files
 
 ### Epic: Universal resource frontmatter

@@ -68,17 +68,15 @@ dir bundles.
 
 ## Dir bundle(s)
 
-The workspace has at most one workspace bundle and zero or more dir bundles (each of which may or may not have a `augent.yaml` file). If workspace bundle does not have `augent.yaml`, only its resources are installed. The bundle is marked installed in the workspace `augent.lock` and `augent.index.yaml` in any case.
+The workspace has at most one workspace bundle and zero or more dir bundles. Dir bundles contain only resource files and directories; they do not have `augent.yaml` files or dependencies.
 
-Dir bundles may have dependencies on other bundles (either other dir bundles or git bundles) by having them listed in the dir's `augent.yaml` bundles section. This file is used to decide what bundles to install when installing the dir bundle, or when installing the dir bundle as dependency of the workspace bundle.
+**Important**: Dir bundles do not have dependencies, `augent.yaml`, `augent.lock`, or `augent.index.yaml` files. All installed dir bundles are tracked in the workspace `augent.lock` and `augent.index.yaml`.
 
-Very important: The dir bundles do not have their own `augent.lock` or `augent.index.yaml` files. All installed dir bundles (and their dependencies) are tracked in the workspace `augent.lock` and `augent.index.yaml`.
-
-This allows uninstall, list and show commands to work in the workspace. Similarly, there must be only one index which tracks all the effective resources per platforms on the workspace.
+This allows uninstall, list and show commands to work in the workspace. Similarly, there must be only one index which tracks all of the effective resources per platforms on the workspace.
 
 However, it is possible to install a dir bundle directly by its name or by its path without installing the workspace bundle.
 
-Installing a particular dir bundle updates the workspace `augent.lock` and `augent.index.yaml` (including its dependencies), but does not update the workspace `augent.yaml` (does not add it to the bundles section).
+Installing a particular dir bundle updates the workspace `augent.lock` and `augent.index.yaml` (the dir bundle itself, with no dependencies), but does not update the workspace `augent.yaml` (does not add it to the bundles section).
 
 **Important**: When installing a dir bundle directly:
 
@@ -114,9 +112,30 @@ cd my-dir-bundle/ && augent install
 
 does the following:
 -> updates `.augent/augent.lock`
-    - dependencies of my-dir-bundle-name come before my-dir-bundle
+    - my-dir-bundle is added
 -> updates `.augent/augent.index.yaml`
-    - dependencies of my-dir-bundle-name come before my-dir-bundle
+    - my-dir-bundle resources are tracked
+-> `.augent/augent.yaml` is not updated
+
+case b: if `.augent/augent.yaml` is already as such:
+
+```yaml
+bundles:
+- name: my-dir-bundle-name
+    path: ../my-dir-bundle
+```
+
+this:
+
+```bash
+augent install my-dir-bundle-name
+```
+
+does the following:
+-> updates `.augent/augent.lock`
+    - my-dir-bundle is added
+-> updates `.augent/augent.index.yaml`
+    - my-dir-bundle resources are tracked
 -> `.augent/augent.yaml` is not updated
 
 case b: if `.augent/augent.yaml` is already as such:
@@ -145,7 +164,7 @@ does the following:
 When installing a git bundle, only the workspace `augent.lock` file is read,
 neither the workspace `augent.yaml` nor any other `augent.yaml` in the repository.
 
-On install, git bundles are always added to the `augent.yaml` when augent install is run. If augent install <git-bundle> is run in the workspace, workspace `augent.yaml` is updated. If augent install <git-bundle> is run inside a dir bundle, the dir bundle's `augent.yaml` is updated.
+On install, git bundles are always added to `augent.yaml` when augent install is run. If augent install <git-bundle> is run in the workspace, workspace `augent.yaml` is updated.
 
 When installing a git bundle directly (via URL):
 

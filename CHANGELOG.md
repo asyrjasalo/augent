@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- `augent`: Dir bundles no longer support dependencies or `augent.yaml` files. Dir bundles can now only contain resource files and directories. This simplifies the bundle model and removes the complexity of cascade uninstall for dir bundles.
+
 ## [0.6.5](https://github.com/asyrjasalo/augent/releases/tag/v0.6.5) - 2026-02-03
 
 ### Fixed

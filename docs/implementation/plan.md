@@ -461,6 +461,30 @@ Scope:
 
 ---
 
+## Phase 10: Dir Bundle Simplification
+
+### Epic 18: Remove dir bundle dependencies and augent.yaml support
+
+**Status:** Complete
+
+#### Feature 18.1: Remove augent.yaml and dependencies from dir bundles
+
+**Status:** Complete
+
+Goal: Simplify dir bundles to only contain resource files and directories, removing support for dependencies and augent.yaml files.
+
+Scope:
+
+- Remove augent.yaml loading for dir bundles in resolver
+- Remove dir bundle dependency resolution logic
+- Remove build_dir_bundle_roots function in uninstall.rs
+- Remove augent.yaml reading for dir bundles in uninstall.rs
+- Remove augent.yaml reading for dir bundles in reconstruct_augent_yaml_from_lockfile
+- Update tests to reflect dir bundle simplification
+- Update documentation to reflect simplified dir bundle behavior
+
+---
+
 ## Phase 8: CLI Maintenance
 
 ### Epic 16: Cache Command UX Tweaks
