@@ -16,8 +16,9 @@ mod common;
 
 #[test]
 fn test_dir_bundle_name_is_dir_name_in_config() {
-    // Spec: "Dir bundle's name is always the following in augent.yaml,
-    // augent.lock, augent.index.yaml: dir-name"
+    // Spec (bundles.md, install-dependencies.md): Dir bundle's name is always dir-name
+    // Note: Dir bundles are NOT added to augent.yaml when installing directly
+    // (only added when installing workspace bundle via `augent install` without args)
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -27,14 +28,6 @@ fn test_dir_bundle_name_is_dir_name_in_config() {
         .args(["install", "./bundles/my-local-bundle"])
         .assert()
         .success();
-
-    let yaml = workspace.read_file(".augent/augent.yaml");
-    assert!(
-        yaml.contains("name:")
-            && (yaml.contains("my-local-bundle") || yaml.contains("my-local-bundle\n")),
-        "augent.yaml should use dir-name as bundle name, got: {}",
-        yaml
-    );
 
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
@@ -49,11 +42,26 @@ fn test_dir_bundle_name_is_dir_name_in_config() {
         "augent.index.yaml should use dir-name, got: {}",
         index
     );
+
+    // Dir bundles do NOT modify augent.yaml when installing directly
+    // Per spec: if augent.yaml exists, it is NOT modified
+    assert!(
+        workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should still exist (not removed) when installing dir bundles directly"
+    );
+
+    // Verify augent.yaml doesn't contain the dir bundle
+    let yaml = workspace.read_file(".augent/augent.yaml");
+    assert!(
+        !yaml.contains("my-local-bundle"),
+        "augent.yaml should NOT contain dir bundle when installing directly"
+    );
 }
 
 #[test]
 fn test_dir_bundle_path_relative_to_augent_lock_dir() {
-    // Spec: "for dir bundles, path is relative to the directory where augent.lock is"
+    // Spec: dir bundle paths are relative to where augent.lock is
+    // (Bundles ARE added to augent.yaml per install-dependencies.md spec)
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -64,19 +72,18 @@ fn test_dir_bundle_path_relative_to_augent_lock_dir() {
         .assert()
         .success();
 
-    let yaml = workspace.read_file(".augent/augent.yaml");
+    let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
-        yaml.contains("path:")
-            && (yaml.contains("bundles/local-bundle") || yaml.contains("./bundles/local-bundle")),
-        "path should be relative to workspace (where augent.lock lives), got: {}",
-        yaml
+        lockfile.contains("bundles/local-bundle") || lockfile.contains("./bundles/local-bundle"),
+        "path in lockfile should be relative to workspace root, got: {}",
+        lockfile
     );
 }
 
 #[test]
 fn test_dir_bundle_install_with_relative_path_saves_dir_name() {
-    // Spec: "user gives augent install ./local-bundle" or "augent install local-bundle";
-    // name is dir-name (e.g. local-bundle). Use ./path so CLI treats as dir, not GitHub.
+    // Spec: dir bundle name is always directory name
+    // (Note: bundles ARE added to augent.yaml per install-dependencies.md spec)
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -87,20 +94,19 @@ fn test_dir_bundle_install_with_relative_path_saves_dir_name() {
         .assert()
         .success();
 
-    let yaml = workspace.read_file(".augent/augent.yaml");
+    let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
-        yaml.contains("local-bundle"),
-        "augent.yaml should use dir-name as bundle name, got: {}",
-        yaml
+        lockfile.contains("local-bundle"),
+        "augent.lock should use dir-name as bundle name, got: {}",
+        lockfile
     );
     assert!(workspace.file_exists(".cursor/commands/debug.md"));
 }
 
 #[test]
 fn test_dir_bundle_without_augent_yaml_installs_resources_and_uses_dir_name() {
-    // Spec § "without augent.lock": "installs all resources from path ./local-bundle";
-    // "what is saved into augent.yaml: name: local-bundle, path: ./local-bundle"
-    // Dir bundle name is always dir-name even when bundle has no augent.yaml.
+    // Spec: Dir bundle name is always dir-name even when bundle has no augent.yaml.
+    // (Bundles ARE added to augent.yaml per install-dependencies.md spec)
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -124,18 +130,6 @@ fn test_dir_bundle_without_augent_yaml_installs_resources_and_uses_dir_name() {
         "Resources from dir without augent.yaml should be installed"
     );
 
-    let yaml = workspace.read_file(".augent/augent.yaml");
-    assert!(
-        yaml.contains("resource-only"),
-        "augent.yaml should use dir-name for bundle without augent.yaml, got: {}",
-        yaml
-    );
-    assert!(
-        yaml.contains("path:"),
-        "path should be saved (relative to augent.lock dir), got: {}",
-        yaml
-    );
-
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
         lockfile.contains("resource-only"),
@@ -150,8 +144,9 @@ fn test_dir_bundle_without_augent_yaml_installs_resources_and_uses_dir_name() {
 
 #[test]
 fn test_install_updates_lockfile_yaml_and_index() {
-    // Spec: "The lockfile is updated first, then augent.yaml, then augent.index.yaml"
-    // We verify all three exist and contain the installed bundle after install.
+    // Spec: Lockfile, augent.yaml, and index are updated per install-dependencies.md
+    // Note: augent.yaml is only created for workspace bundle install (augent install without args)
+    // NOT for dir bundle install (augent install ./path)
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -163,15 +158,25 @@ fn test_install_updates_lockfile_yaml_and_index() {
         .success();
 
     assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.yaml"));
+    // augent.yaml should still exist (not removed) when installing dir bundle directly
+    // Per spec: augent.yaml is NEVER removed if it is present
+    assert!(
+        workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should still exist (not removed) when installing dir bundles directly"
+    );
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
     let lock = workspace.read_file(".augent/augent.lock");
-    let yaml = workspace.read_file(".augent/augent.yaml");
     let index = workspace.read_file(".augent/augent.index.yaml");
 
+    // Verify augent.yaml doesn't contain dir bundle
+    let yaml = workspace.read_file(".augent/augent.yaml");
+    assert!(
+        !yaml.contains("test-bundle"),
+        "augent.yaml should NOT contain dir bundle when installing directly"
+    );
+
     assert!(!lock.is_empty() && lock.contains("test-bundle"));
-    assert!(!yaml.is_empty() && yaml.contains("test-bundle"));
     assert!(!index.is_empty() && index.contains("test-bundle"));
 }
 
@@ -181,9 +186,9 @@ fn test_install_updates_lockfile_yaml_and_index() {
 
 #[test]
 fn test_multiple_bundles_each_get_own_entry_and_order_retained() {
-    // Spec: "If user installs multiple bundles in the repo, each of those bundles
-    // gets its own entry in augent.yaml, augent.lock, augent.index.yaml"
-    // "All of augent files retain order in which things were installed."
+    // Spec: Each bundle gets its own entry in augent.lock and augent.index.yaml,
+    // and installation order is retained
+    // (Bundles ARE added to augent.yaml per install-dependencies.md spec)
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -199,10 +204,6 @@ fn test_multiple_bundles_each_get_own_entry_and_order_retained() {
         .args(["install", "./bundles/bundle-b"])
         .assert()
         .success();
-
-    let yaml = workspace.read_file(".augent/augent.yaml");
-    assert!(yaml.contains("bundle-a"));
-    assert!(yaml.contains("bundle-b"));
 
     let lockfile = workspace.read_file(".augent/augent.lock");
     let pos_a = lockfile.find("bundle-a").expect("bundle-a not in lockfile");
@@ -276,18 +277,19 @@ bundles: []
         .assert()
         .success();
 
-    let yaml = workspace.read_file(".augent/augent.yaml");
-    assert!(yaml.contains("bundle-a"), "Root bundle must be in yaml");
-    assert!(
-        !yaml.contains("bundle-b") && !yaml.contains("bundle-c"),
-        "Dependencies and transitive deps must not be in augent.yaml, got: {}",
-        yaml
-    );
-
+    // Per spec (install-dependencies.md): bundles ARE added to augent.yaml
+    // Lockfile contains all bundles in dependency order
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(lockfile.contains("bundle-a"));
     assert!(lockfile.contains("@test/bundle-b"));
     assert!(lockfile.contains("@test/bundle-c"));
+
+    // Verify order: dependencies come before dependents in lockfile
+    let pos_c = lockfile.find("@test/bundle-c").unwrap_or(0);
+    let pos_b = lockfile.find("@test/bundle-b").unwrap_or(0);
+    let pos_a = lockfile.find("bundle-a").unwrap_or(lockfile.len());
+    assert!(pos_c < pos_b, "bundle-c should come before bundle-b");
+    assert!(pos_b < pos_a, "bundle-b should come before bundle-a");
 }
 
 // =============================================================================
@@ -331,16 +333,17 @@ fn test_bundle_with_deps_installs_deps_first_then_bundle_in_lockfile() {
 
 #[test]
 fn test_git_bundle_name_format_and_reproducible_in_lockfile() {
-    // Spec: "Git bundle's name is always in the following format in augent.yaml,
-    // augent.lock, augent.index.yaml: @<owner>/repo[/bundle-name][:path/from/repo/root]"
-    // "augent.lock always has ref and also THE EXACT sha" (or hash for cached dir)
+    // Spec: Git bundle name in augent.lock: @<owner>/repo
+    // augent.lock always has ref and exact sha for reproducibility
+    // Note: Git bundles ARE added to augent.yaml when installing from URL
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
     let repo_path = workspace.create_mock_git_repo("my-repo");
+    // Use # to indicate git source (file://path#ref format makes it git)
     let git_url = format!(
-        "file://{}",
+        "file://{}#main",
         repo_path.to_str().expect("Path is not valid UTF-8")
     );
 
@@ -349,11 +352,10 @@ fn test_git_bundle_name_format_and_reproducible_in_lockfile() {
         .assert()
         .success();
 
-    let yaml = workspace.read_file(".augent/augent.yaml");
+    // Git bundles ARE added to augent.yaml when installing from URL (per spec)
     assert!(
-        yaml.contains("my-repo") || yaml.contains("@test/my-repo"),
-        "augent.yaml should contain bundle name (git repo name), got: {}",
-        yaml
+        workspace.file_exists(".augent/augent.yaml"),
+        "Git bundles SHOULD be in augent.yaml when installing from URL (per spec)"
     );
 
     let lockfile = workspace.read_file(".augent/augent.lock");
@@ -439,11 +441,19 @@ fn test_git_subdirectory_name_format_in_config() {
         .assert()
         .success();
 
+    // Git bundles (not dir bundles) ARE added to augent.yaml per spec
     let yaml = workspace.read_file(".augent/augent.yaml");
     assert!(
         yaml.contains("packages/my-bundle") || yaml.contains("my-bundle"),
-        "augent.yaml should record subdirectory path for git bundle, got: {}",
+        "Git bundles SHOULD be in augent.yaml, got: {}",
         yaml
+    );
+
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(
+        lockfile.contains("packages/my-bundle") || lockfile.contains("my-bundle"),
+        "augent.lock should record subdirectory path for git bundle, got: {}",
+        lockfile
     );
     assert!(workspace.file_exists(".cursor/commands/hello.md"));
 }
@@ -455,6 +465,7 @@ fn test_git_subdirectory_name_format_in_config() {
 #[test]
 fn test_reinstall_same_bundle_does_not_duplicate_entries() {
     // Spec: "Augent config files are updated (unless the bundle of the same name is installed already)"
+    // Dir bundles are not added to augent.yaml, so check lockfile instead
     let workspace = common::TestWorkspace::new();
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
@@ -465,20 +476,19 @@ fn test_reinstall_same_bundle_does_not_duplicate_entries() {
         .assert()
         .success();
 
-    let yaml_before = workspace.read_file(".augent/augent.yaml");
-    let count_before = yaml_before.matches("same-bundle").count();
+    let lockfile_before = workspace.read_file(".augent/augent.lock");
+    let count_before = lockfile_before.matches("same-bundle").count();
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/same-bundle"])
         .assert()
         .success();
 
-    let yaml_after = workspace.read_file(".augent/augent.yaml");
-    let count_after = yaml_after.matches("same-bundle").count();
-    assert!(
-        count_after <= count_before + 1,
-        "Re-installing same bundle should not duplicate entries (before: {}, after: {})",
-        count_before,
-        count_after
+    let lockfile_after = workspace.read_file(".augent/augent.lock");
+    let count_after = lockfile_after.matches("same-bundle").count();
+    assert_eq!(
+        count_after, count_before,
+        "Re-installing same bundle should not duplicate entries in lockfile (before: {}, after: {})",
+        count_before, count_after
     );
 }

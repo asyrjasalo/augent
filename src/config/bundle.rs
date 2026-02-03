@@ -349,6 +349,7 @@ impl BundleConfig {
 
 impl BundleDependency {
     /// Create a new local dependency
+    #[allow(dead_code)]
     pub fn local(name: impl Into<String>, path: impl Into<String>) -> Self {
         Self {
             name: name.into(),

@@ -176,12 +176,11 @@ bundles: []
     assert!(workspace.file_exists(".cursor/rules/b.mdc"));
     assert!(workspace.file_exists(".cursor/skills/c/SKILL.md"));
 
-    let config = workspace.read_file(".augent/augent.yaml");
-    // Only the root bundle (bundle-a) should be in workspace config; per spec dir name is dir-name
-    // Transitive dependencies (bundle-b, bundle-c) are NOT added to workspace config
-    assert!(config.contains("bundle-a"));
-    assert!(!config.contains("bundle-b"));
-    assert!(!config.contains("bundle-c"));
+    // Per spec: dir bundles are NOT added to augent.yaml, so augent.yaml should not exist
+    assert!(
+        !workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should not exist when only dir bundles are installed"
+    );
 
     // But they should be in the lockfile (root is dir-name, deps keep declared names)
     let lockfile = workspace.read_file(".augent/augent.lock");
@@ -230,14 +229,10 @@ bundles: []
         .assert()
         .success();
 
-    let config = workspace.read_file(".augent/augent.yaml");
-    // Bundle A should be in config (root bundle; per spec dir name is dir-name)
-    assert!(config.contains("bundle-a"));
-    // Bundle B should NOT be in config (it's a transitive dependency)
-    let bundle_b_count = config.matches("bundle-b").count();
-    assert_eq!(
-        bundle_b_count, 0,
-        "Bundle B should not appear in workspace config (it's a transitive dependency)"
+    // Per spec: dir bundles are NOT added to augent.yaml, so augent.yaml should not exist
+    assert!(
+        !workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should not exist when only dir bundles are installed"
     );
 
     // But bundle B should still be in the lockfile, de-duplicated

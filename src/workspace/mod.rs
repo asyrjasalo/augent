@@ -619,7 +619,27 @@ impl Workspace {
         let mut ordered_workspace_config = self.workspace_config.clone();
         ordered_workspace_config.reorganize(&ordered_lockfile);
 
-        Self::save_bundle_config(&self.config_dir, &ordered_bundle_config, &workspace_name)?;
+        // Save augent.yaml (including metadata like name, description, etc.)
+        // Per spec: NEVER remove augent.yaml if it exists
+        // Only create augent.yaml when there are bundles to save OR file already exists
+        // When installing dir bundles directly without existing file: don't create
+        let augent_yaml_path = self.config_dir.join("augent.yaml");
+        let has_workspace_bundle = ordered_bundle_config
+            .bundles
+            .iter()
+            .any(|b| b.name == workspace_name);
+        let file_already_exists = augent_yaml_path.exists();
+
+        // Save augent.yaml if:
+        // 1. File already exists (preserve metadata)
+        // 2. Has bundles to list (create new file)
+        // 3. Has workspace bundle (preserve metadata even if empty)
+        if file_already_exists || !ordered_bundle_config.bundles.is_empty() || has_workspace_bundle
+        {
+            Self::save_bundle_config(&self.config_dir, &ordered_bundle_config, &workspace_name)?;
+        }
+        // Else: installing dir bundles directly, no existing file -> don't create
+
         Self::save_lockfile(&self.config_dir, &ordered_lockfile, &workspace_name)?;
         Self::save_workspace_config(&self.config_dir, &ordered_workspace_config, &workspace_name)?;
         Ok(())

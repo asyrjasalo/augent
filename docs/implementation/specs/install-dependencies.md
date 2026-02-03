@@ -80,6 +80,22 @@ However, it is possible to install a dir bundle directly by its name or by its p
 
 Installing a particular dir bundle updates the workspace `augent.lock` and `augent.index.yaml` (including its dependencies), but does not update the workspace `augent.yaml` (does not add it to the bundles section).
 
+**Important**: When installing a dir bundle directly:
+
+- If `augent.yaml` does not exist, it is **not** created
+- If `augent.yaml` exists, it is **not** modified (preserving all existing content including workspace metadata)
+- **augent.yaml is NEVER removed if it is present** (to preserve workspace metadata)
+
+When installing a git bundle directly (via URL):
+
+- If `augent.yaml` does not exist, it is **created** with the git bundle added
+- If `augent.yaml` exists, it is **updated** by adding the git bundle (if not already present)
+- **augent.yaml is NEVER removed** (to preserve workspace metadata)
+
+When installing the workspace bundle (`augent install` without args):
+
+- `augent.yaml` is always created or updated (even if empty of dependencies, to preserve workspace metadata)
+
 To install dir bundles as part installing the workspace bundle, you need to explicitly add them to the workspace `augent.yaml` bundles section.
 
 ```yaml
@@ -90,10 +106,15 @@ bundles:
 
 ### example: dir bundle
 
-installing a dir bundle:
+case a:installing a dir bundle:
 
 ```bash
 augent install ./my-dir-bundle
+```
+
+or (equivalent):
+
+```bash
 cd my-dir-bundle/ && augent install
 ```
 
@@ -102,20 +123,9 @@ does the following:
     - dependencies of my-dir-bundle-name come before my-dir-bundle
 -> updates `.augent/augent.index.yaml`
     - dependencies of my-dir-bundle-name come before my-dir-bundle
--> updates `.augent/augent.yaml` as following:
-    - takes the bundle name from the dir name
-    - the dir bundle path is relative to dir where `augent.yaml` is
-    - only the bundle itself is added in `augent.yaml`, not its dependencies:
+-> `.augent/augent.yaml` is not updated
 
-```yaml
-bundles:
-- name: my-dir-bundle
-    path: ../my-dir-bundle
-```
-
-or:
-
-if `.augent/augent.yaml` is already as such:
+case b: if `.augent/augent.yaml` is already as such:
 
 ```yaml
 bundles:
@@ -134,11 +144,14 @@ does the following:
     - dependencies of my-dir-bundle-name come before my-dir-bundle
 -> updates `.augent/augent.index.yaml`
     - dependencies of my-dir-bundle-name come before my-dir-bundle
+-> `.augent/augent.yaml` is not updated
 
 ## git bundle
 
 When installing a git bundle, only the workspace `augent.lock` file is read,
 neither the workspace `augent.yaml` nor any other `augent.yaml` in the repository.
+
+On install, git bundles are always added to the `augent.yaml` when augent install is run. If augent install <git-bundle> is run in the workspace, workspace `augent.yaml` is updated. If augent install <git-bundle> is run inside a dir bundle, the dir bundle's `augent.yaml` is updated.
 
 ### example: git bundle
 

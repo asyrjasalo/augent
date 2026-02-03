@@ -159,9 +159,10 @@ bundles: []
         .assert()
         .success();
 
-    // Get config state before dry-run
-    let config_before = workspace.read_file(".augent/augent.yaml");
-    assert!(config_before.contains("test-bundle"));
+    // Get lockfile state before dry-run
+    // (Dir bundles are in lockfile, not in augent.yaml per spec)
+    let lockfile_before = workspace.read_file(".augent/augent.lock");
+    assert!(lockfile_before.contains("test-bundle"));
 
     // Run uninstall with --dry-run
     common::augent_cmd_for_workspace(&workspace.path)
@@ -169,10 +170,10 @@ bundles: []
         .assert()
         .success();
 
-    // Verify config was NOT updated (bundle should still be there)
-    let config_after = workspace.read_file(".augent/augent.yaml");
-    assert_eq!(config_before, config_after);
-    assert!(config_after.contains("test-bundle"));
+    // Verify lockfile was NOT updated (bundle should still be there)
+    let lockfile_after = workspace.read_file(".augent/augent.lock");
+    assert_eq!(lockfile_before, lockfile_after);
+    assert!(lockfile_after.contains("test-bundle"));
 }
 
 #[test]

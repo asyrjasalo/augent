@@ -11,6 +11,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::cli::UninstallArgs;
+use crate::config::LockedSource;
 use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
@@ -408,12 +409,22 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     }
 
     // Get list of bundles that were explicitly installed (from workspace config before modification)
-    let explicitly_installed: std::collections::HashSet<String> = workspace
+    let mut explicitly_installed: std::collections::HashSet<String> = workspace
         .bundle_config
         .bundles
         .iter()
         .map(|d| d.name.clone())
         .collect();
+
+    // Also include dir bundles from lockfile as explicitly installed
+    // Per spec: dir bundles aren't added to augent.yaml, so we need to track them from lockfile
+    // to avoid them being treated as orphans during uninstall
+    for locked_bundle in &workspace.lockfile.bundles {
+        if matches!(locked_bundle.source, LockedSource::Dir { .. }) {
+            // This is a directory bundle - consider it explicitly installed
+            explicitly_installed.insert(locked_bundle.name.clone());
+        }
+    }
 
     // Build a dependency graph from bundle augent.yaml files
     let dependency_map = build_dependency_map(&workspace)?;

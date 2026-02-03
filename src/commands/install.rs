@@ -1282,18 +1282,20 @@ fn do_install(
         }
     }
 
-    // Update configuration files
-    if args.dry_run {
-        println!("[DRY RUN] Would update configuration files...");
-    } else {
-        println!("Updating configuration files...");
-    }
+    let has_git_bundles = resolved_bundles.iter().any(|b| b.git_source.is_some());
+    let should_update_augent_yaml = has_git_bundles || !skip_workspace_bundle;
+
     let source_str = args.source.as_deref().unwrap_or("");
     if !args.dry_run {
-        update_configs(workspace, source_str, &resolved_bundles, workspace_bundles)?;
+        update_configs(
+            workspace,
+            source_str,
+            &resolved_bundles,
+            workspace_bundles,
+            should_update_augent_yaml,
+        )?;
     }
 
-    // Save workspace
     if args.dry_run {
         println!("[DRY RUN] Would save workspace...");
     } else {
@@ -1470,8 +1472,11 @@ fn update_configs(
     _source: &str,
     resolved_bundles: &[crate::resolver::ResolvedBundle],
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
+    update_augent_yaml: bool,
 ) -> Result<()> {
     // Add only direct/root bundles to workspace config (not transitive dependencies)
+    // Per spec: Git bundles are ALWAYS added to augent.yaml (even when installing directly)
+    // Dir bundles are only added when update_augent_yaml is true (workspace bundle install)
     for bundle in resolved_bundles.iter() {
         if bundle.dependency.is_none() {
             // Skip the workspace bundle - it's not a normal dependency
@@ -1479,6 +1484,16 @@ fn update_configs(
             if bundle.name == workspace_name {
                 continue;
             }
+
+            // Check if this bundle should be added to augent.yaml
+            // Git bundles: always add
+            // Dir bundles: only add when update_augent_yaml is true
+            let is_git_bundle = bundle.git_source.is_some();
+            if !is_git_bundle && !update_augent_yaml {
+                // Skip dir bundle when not doing workspace bundle install
+                continue;
+            }
+
             // Root bundle (what user specified): add with original source specification
             if !workspace.bundle_config.has_dependency(&bundle.name) {
                 // Use bundle.git_source directly to preserve subdirectory information
@@ -2215,7 +2230,16 @@ mod tests {
             vec![".cursor/commands/test.md".to_string()],
         );
 
-        update_configs(&mut workspace, "./", &[bundle], vec![workspace_bundle]).unwrap();
+        // Pass update_augent_yaml=true to test the case where bundles ARE added
+        // (workspace bundle install). In production, dir bundles would use update_augent_yaml=false
+        update_configs(
+            &mut workspace,
+            "./",
+            &[bundle],
+            vec![workspace_bundle],
+            true,
+        )
+        .unwrap();
 
         // Per spec: dir bundle name is the directory name. Since source is "./", the directory
         // name is extracted from the absolute path and would be the temp dir name.
@@ -2266,6 +2290,7 @@ mod tests {
             temp.path().to_string_lossy().to_string().as_str(),
             &[bundle],
             vec![workspace_bundle],
+            true, // update_augent_yaml=true for test
         )
         .unwrap();
 

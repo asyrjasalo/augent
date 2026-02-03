@@ -98,10 +98,11 @@ bundles: []
     );
 }
 
-/// Spec: "Only after `augent.lock` is created, and `augent.index.lock` has been
-/// populated, `augent.yaml` is created"
+/// Spec: "augent.yaml is only created when installing workspace bundle
+/// (running `augent install` without path argument), NOT when installing
+/// specific dir bundles directly (running `augent install ./path`)"
 #[test]
-fn test_workspace_augent_yaml_created_after_lockfile() {
+fn test_workspace_augent_yaml_not_created_for_dir_bundle_install() {
     let workspace = common::TestWorkspace::new();
     workspace.create_bundle("my-bundle");
     workspace.write_file(
@@ -117,22 +118,27 @@ bundles: []
     assert!(!workspace.file_exists(".augent/augent.yaml"));
     assert!(!workspace.file_exists("augent.yaml"));
 
+    // Install dir bundle directly (not workspace bundle)
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/my-bundle"])
         .assert()
         .success();
 
-    // After install, both lockfile and augent.yaml should exist
+    // After installing dir bundle directly, only lockfile and index should be updated
+    // augent.yaml should NOT be created when installing dir bundles directly
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
-    assert!(workspace.file_exists(".augent/augent.yaml"));
+    assert!(
+        !workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should NOT be created when installing dir bundles directly"
+    );
 }
 
 /// Spec: "If `augent.lock` exists in the `.augent/` directory, installing the
 /// workspace bundle... does the following:
 /// -> updates `.augent/augent.lock`
 /// -> creates or updates `./augent/.augent.index.yaml`
-/// -> creates or updates `./augent/.augent.yaml`"
+/// Note: augent.yaml is NOT created when installing dir bundles directly"
 #[test]
 fn test_workspace_bundle_with_augent_dir_lockfile() {
     let workspace = common::TestWorkspace::new();
@@ -173,7 +179,11 @@ bundles: []
     // All files should be in .augent/ directory
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
-    assert!(workspace.file_exists(".augent/augent.yaml"));
+    // augent.yaml should NOT be created when installing dir bundles directly
+    assert!(
+        !workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should NOT be created when installing dir bundles directly"
+    );
 
     // Root should not have these files
     assert!(!workspace.file_exists("augent.lock"));
@@ -189,9 +199,10 @@ bundles: []
 // DIR BUNDLE SCENARIOS
 // =============================================================================
 
-/// Spec: "Installing a particular dir bundle updates the workspace `augent.lock`
-/// and `augent.index.yaml` (including its dependencies), but does not update the
-/// workspace `augent.yaml` (does not add it to the bundles section)"
+/// Spec: "Installing a dir bundle updates the workspace `augent.lock`,
+/// `augent.index.yaml`, but does NOT update the workspace `augent.yaml`."
+/// This test verifies that when installing a dir bundle directly (not as part of
+/// workspace bundle installation), augent.yaml is NOT created or updated.
 #[test]
 fn test_dir_bundle_updates_lock_but_not_augent_yaml() {
     let workspace = common::TestWorkspace::new();
@@ -218,14 +229,10 @@ bundles: []
     assert!(workspace.file_exists(".augent/augent.lock"));
     assert!(workspace.file_exists(".augent/augent.index.yaml"));
 
-    // augent.yaml should be created (spec says it's created AFTER lock is populated)
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-
-    // But augent.yaml should contain the bundle
-    let augent_yaml = workspace.read_file(".augent/augent.yaml");
+    // augent.yaml should NOT be created when installing dir bundles directly
     assert!(
-        augent_yaml.contains("my-dir-bundle"),
-        "augent.yaml should contain the bundle name"
+        !workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should NOT exist when installing dir bundles directly (only when installing workspace bundle)"
     );
 }
 
@@ -295,8 +302,9 @@ bundles:
 }
 
 /// Spec: "Dir bundle's path is relative to the directory where `augent.yaml` is"
+/// Note: augent.yaml is only created for workspace bundle install, not dir bundle install
 #[test]
-fn test_dir_bundle_path_relative_to_augent_yaml_location() {
+fn test_dir_bundle_install_does_not_create_augent_yaml() {
     let workspace = common::TestWorkspace::new();
     workspace.create_bundle("my-bundle");
     workspace.write_file(
@@ -313,14 +321,20 @@ bundles: []
         .assert()
         .success();
 
-    let augent_yaml = workspace.read_file(".augent/augent.yaml");
+    // Debug: what's in lockfile?
+    if workspace.file_exists(".augent/augent.lock") {
+        let lock = workspace.read_file(".augent/augent.lock");
+        eprintln!("Lockfile: {}", lock);
+    }
 
-    // Path should be relative to .augent/ directory (where augent.yaml lives)
+    // augent.yaml should NOT be created when installing dir bundles directly
+    if workspace.file_exists(".augent/augent.yaml") {
+        let content = workspace.read_file(".augent/augent.yaml");
+        eprintln!("augent.yaml exists: {}", content);
+    }
     assert!(
-        augent_yaml.contains("../bundles/my-bundle")
-            || augent_yaml.contains("../bundles/my-bundle/"),
-        "Path should be relative to .augent/ directory, got:\n{}",
-        augent_yaml
+        !workspace.file_exists(".augent/augent.yaml"),
+        "augent.yaml should NOT be created when installing dir bundles directly"
     );
 }
 

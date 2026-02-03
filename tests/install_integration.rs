@@ -78,8 +78,18 @@ fn test_install_updates_config_files() {
         .assert()
         .success();
 
+    // Per spec: dir bundles are NOT added to augent.yaml when installing directly
+    // Only augent.lock and augent.index.yaml are updated
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(lockfile.contains("test-bundle"));
+
+    // augent.yaml should still exist but should NOT contain test-bundle
     let config = workspace.read_file(".augent/augent.yaml");
-    assert!(config.contains("test-bundle"));
+    assert!(!config.contains("test-bundle"));
+
+    // augent.index.yaml should contain the installed files
+    let index = workspace.read_file(".augent/augent.index.yaml");
+    assert!(index.contains("debug.md"));
 }
 
 #[test]
