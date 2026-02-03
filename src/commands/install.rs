@@ -46,6 +46,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
     })?;
 
     // Use workspace parameter if provided, otherwise use actual current directory
+    let workspace_explicitly_set = workspace.is_some();
     let current_dir = workspace.unwrap_or(actual_current_dir.clone());
 
     // Handle three cases:
@@ -468,6 +469,33 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             Err(e) => Err(e),
         }
     } else {
+        // No source provided - check if we're in a sub-bundle directory first
+
+        // First, check if we're running from a directory that's different from where we'll find the workspace
+        // This happens when:
+        // 1. User runs from a subdirectory of workspace without --workspace flag, or
+        // 2. User runs from outside workspace with --workspace pointing to it
+        // In either case, if the actual current directory has no resources, say nothing to install
+        // IMPORTANT: Only apply this check when workspace parameter was NOT explicitly set via --workspace flag
+        // When AUGENT_WORKSPACE env var is set AND we cd to that directory, paths should be the same
+        if !workspace_explicitly_set && actual_current_dir != current_dir {
+            // Don't treat the .augent directory itself as a bundle directory
+            let is_augent_dir = actual_current_dir.ends_with(".augent");
+
+            if !is_augent_dir {
+                use crate::installer::Installer;
+                let has_resources_in_actual_dir =
+                    Installer::discover_resources(&actual_current_dir)
+                        .map(|resources| !resources.is_empty())
+                        .unwrap_or(false);
+
+                if !has_resources_in_actual_dir {
+                    println!("Nothing to install.");
+                    return Ok(());
+                }
+            }
+        }
+
         // No source provided - check if we're in a sub-bundle directory first
         let (workspace_root, was_initialized) = match Workspace::find_from(&current_dir) {
             Some(root) => (root, false),

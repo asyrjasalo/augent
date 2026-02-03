@@ -261,3 +261,31 @@ fn test_install_skips_platform_prompt_when_no_bundles() {
         // Should not install anything or mention platforms
         .stdout(predicate::str::contains("Installing for").not());
 }
+
+#[test]
+fn test_install_in_subdirectory_with_no_resources_says_nothing_to_install() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    // Create a subdirectory with no resources and no augent.yaml
+    workspace.write_file("some/subdirectory/.gitkeep", "");
+
+    // Run install from the subdirectory
+    // Should exit early with "Nothing to install." since there's nothing to install in the subdirectory
+    common::augent_cmd_for_workspace(&workspace.path)
+        .current_dir(workspace.path.join("some/subdirectory"))
+        .args(["install"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Nothing to install"))
+        // Should not contain platform selection prompt message
+        .stdout(predicate::str::contains("Select platforms").not())
+        // Should not install anything or mention platforms
+        .stdout(predicate::str::contains("Installing for").not());
+
+    // The workspace should still exist but should not have been modified
+    assert!(workspace.file_exists(".augent/augent.yaml"));
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(lockfile.contains("bundles: []") || lockfile.contains("\"bundles\": []"));
+}
