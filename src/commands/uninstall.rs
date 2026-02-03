@@ -291,13 +291,34 @@ fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<Str
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
     for locked in &workspace.lockfile.bundles {
-        // Only local directory bundles have an accessible augent.yaml in the workspace
-        let bundle_dir = match &locked.source {
-            crate::config::LockedSource::Dir { path, .. } => workspace.root.join(path),
-            _ => continue,
+        let config_path = match &locked.source {
+            crate::config::LockedSource::Dir { path, .. } => {
+                // Local directory bundles have augent.yaml in the workspace
+                workspace.root.join(path).join("augent.yaml")
+            }
+            crate::config::LockedSource::Git {
+                url,
+                sha,
+                path: bundle_path,
+                git_ref: _,
+                hash: _,
+            } => {
+                // Git bundles: read augent.yaml from cache
+                let cache_entry = crate::cache::repo_cache_entry_path(url, sha).map_err(|e| {
+                    AugentError::CacheOperationFailed {
+                        message: format!("Failed to get cache path for '{}': {}", url, e),
+                    }
+                })?;
+                let bundle_cache_dir = crate::cache::entry_repository_path(&cache_entry);
+                let bundle_resources_dir = if let Some(path) = bundle_path {
+                    bundle_cache_dir.join(path)
+                } else {
+                    bundle_cache_dir
+                };
+                bundle_resources_dir.join("augent.yaml")
+            }
         };
 
-        let config_path = bundle_dir.join("augent.yaml");
         if !config_path.is_file() {
             continue;
         }
@@ -445,7 +466,18 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     }
 
     // Build a dependency graph from bundle augent.yaml files
-    let dependency_map = build_dependency_map(&workspace)?;
+    let mut dependency_map = build_dependency_map(&workspace)?;
+
+    // Add workspace bundle as a "virtual" parent of bundles in augent.yaml
+    // This ensures proper cascade uninstall when removing workspace bundle dependencies
+    let workspace_name = workspace.get_workspace_name();
+    let workspace_dependencies: Vec<String> = workspace
+        .bundle_config
+        .bundles
+        .iter()
+        .map(|d| d.name.clone())
+        .collect();
+    dependency_map.insert(workspace_name.clone(), workspace_dependencies);
 
     // Start with bundles explicitly requested for uninstall
     let mut bundles_to_uninstall: std::collections::HashSet<String> =
@@ -472,6 +504,11 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         .iter()
         .map(|d| d.name.clone())
         .collect();
+
+    // Add workspace bundle as a root to protect its dependencies (bundles in augent.yaml)
+    // This ensures that when uninstalling a bundle from augent.yaml, other bundles
+    // in augent.yaml and their dependencies are preserved
+    explicitly_installed.insert(workspace_name.clone());
 
     // Only include dir bundles that are roots (not depended on by other dir bundles)
     // This enables cascade uninstall of dir bundle dependencies when a dir bundle is removed
