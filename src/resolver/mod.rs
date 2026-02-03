@@ -1083,6 +1083,27 @@ impl Resolver {
             deps.insert(name.clone(), bundle_deps);
         }
 
+        // Validate that all dependencies exist in resolved bundles
+        // This catches cases where dependency names don't match resolved names
+        for (name, bundle_deps) in &deps {
+            for dep_name in bundle_deps {
+                if !self.resolved.contains_key(dep_name) {
+                    // Dependency not found - check if there's a case-mismatch or similar issue
+                    let resolved_names: Vec<&str> =
+                        self.resolved.keys().map(|k| k.as_str()).collect();
+                    return Err(AugentError::BundleValidationFailed {
+                        message: format!(
+                            "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
+                             Available bundles: {}",
+                            dep_name,
+                            name,
+                            resolved_names.join(", ")
+                        ),
+                    });
+                }
+            }
+        }
+
         // DFS topological sort using resolution_order as iteration order
         // This ensures bundles are processed in the order they were specified in augent.yaml
         for name in &self.resolution_order {
