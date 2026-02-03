@@ -44,13 +44,7 @@ pub struct Workspace {
     /// Path to the `.augent` directory (workspace metadata directory)
     pub augent_dir: PathBuf,
 
-    /// Path to the active configuration directory (where augent.yaml/augent.lock/augent.index.yaml are)
-    ///
-    /// Both layouts are first‑class and fully supported:
-    /// - Root layout: configuration files live next to the git root (augent.yaml in workspace root)
-    /// - `.augent` layout: configuration files live inside the `.augent` directory
-    ///
-    /// This field points to whichever location is currently authoritative for the workspace.
+    /// Path to the `.augent` directory (where augent.yaml/augent.lock/augent.index.yaml are)
     pub config_dir: PathBuf,
 
     /// Bundle configuration (augent.yaml)
@@ -75,13 +69,9 @@ pub struct Workspace {
 impl Workspace {
     /// Detect if a workspace exists at the given path
     ///
-    /// A workspace exists if either:
-    /// 1. A .augent directory exists (traditional workspace)
-    /// 2. An augent.yaml or augent.lock file exists in the root (root-level workspace config)
+    /// A workspace exists if .augent directory exists
     pub fn exists(root: &Path) -> bool {
         root.join(WORKSPACE_DIR).is_dir()
-            || root.join(BUNDLE_CONFIG_FILE).exists()
-            || root.join(LOCKFILE_NAME).exists()
     }
 
     /// Find a workspace by searching upward from the given path
@@ -101,35 +91,20 @@ impl Workspace {
 
     /// Open an existing workspace
     ///
-    /// Loads workspace configuration with the following precedence:
-    /// 1. If augent.yaml or augent.lock exists in the root, use that (root layout takes precedence)
-    /// 2. Otherwise, use .augent/ directory (.augent layout)
-    ///
-    /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from the same
-    /// directory (either root or .augent/).
+    /// Loads workspace configuration from .augent/ directory.
+    /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from .augent/
     pub fn open(root: &Path) -> Result<Self> {
         let augent_dir = root.join(WORKSPACE_DIR);
 
-        // Check if workspace exists (either .augent or root augent.yaml)
-        let has_augent_dir = augent_dir.is_dir();
-        let has_root_config = root.join(BUNDLE_CONFIG_FILE).exists();
-        let has_root_lockfile = root.join(LOCKFILE_NAME).exists();
-
-        if !has_augent_dir && !has_root_config && !has_root_lockfile {
+        // Check if workspace exists (.augent directory)
+        if !augent_dir.is_dir() {
             return Err(AugentError::WorkspaceNotFound {
                 path: root.display().to_string(),
             });
         }
 
-        // Determine config directory based on where augent.yaml or augent.lock exists
-        // Root layout takes precedence if either augent.yaml or augent.lock is in root
-        let config_dir = if has_root_config || has_root_lockfile {
-            root.to_path_buf()
-        } else {
-            augent_dir.clone()
-        };
-
-        // Load configuration files from the config directory
+        // Load configuration files from .augent/ directory
+        let config_dir = augent_dir.clone();
         let bundle_config = Self::load_bundle_config(&config_dir)?;
         let lockfile = Self::load_lockfile(&config_dir)?;
         let workspace_config = Self::load_workspace_config(&config_dir)?;
@@ -388,28 +363,16 @@ impl Workspace {
 
     /// Get the source path for the workspace bundle configuration
     ///
-    /// Returns the path to use for resolving the workspace bundle:
-    /// - If root augent.yaml exists, returns "." (current directory / root layout)
-    /// - Otherwise, returns "./.augent" (`.augent` layout)
+    /// Returns "./.augent" since all configuration files are in .augent/
     pub fn get_config_source_path(&self) -> String {
-        if self.root.join(BUNDLE_CONFIG_FILE).exists() {
-            ".".to_string()
-        } else {
-            "./.augent".to_string()
-        }
+        "./.augent".to_string()
     }
 
     /// Get the actual filesystem path for the workspace bundle
     ///
-    /// Returns the filesystem path where augent.yaml is loaded from:
-    /// - If root augent.yaml exists, returns the root directory
-    /// - Otherwise, returns the .augent directory
+    /// Returns the .augent directory where augent.yaml is loaded from
     pub fn get_bundle_source_path(&self) -> PathBuf {
-        if self.root.join(BUNDLE_CONFIG_FILE).exists() {
-            self.root.clone()
-        } else {
-            self.augent_dir.clone()
-        }
+        self.augent_dir.clone()
     }
 
     /// Rebuild workspace configuration by scanning filesystem for installed files

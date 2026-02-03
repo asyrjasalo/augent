@@ -36,7 +36,7 @@ my-project/
 
 ## Configuration Files
 
-Config files are looked up in this order (first match wins): the current directory if it contains `augent.lock`, then `./augent.lock` (repo root), then `./.augent/augent.lock` (created by default on first install). See [Bundles spec](implementation/specs/bundles.md) for details.
+Configuration files are located in `.augent/` directory. See [Bundles spec](implementation/specs/bundles.md) for details.
 
 ### augent.yaml
 

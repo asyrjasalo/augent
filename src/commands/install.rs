@@ -602,12 +602,8 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             return Ok(());
         }
 
-        // Determine which augent.yaml file we're using
-        let augent_yaml_path = if workspace_root.join("augent.yaml").exists() {
-            workspace_root.join("augent.yaml")
-        } else {
-            workspace_root.join(".augent/augent.yaml")
-        };
+        // augent.yaml is in .augent/
+        let augent_yaml_path = workspace_root.join(".augent/augent.yaml");
 
         // Calculate relative path for display
         let display_path = augent_yaml_path
@@ -689,7 +685,7 @@ fn do_install_from_yaml(
 
         // Resolve workspace bundle which will automatically resolve its declared dependencies
         // from augent.yaml. All bundles are treated uniformly by the resolver.
-        // Use root augent.yaml if it exists, otherwise fall back to .augent
+        // augent.yaml is in .augent/
         let bundle_sources = vec![workspace.get_config_source_path()];
 
         println!("Resolving workspace bundle and its dependencies...");
@@ -751,7 +747,7 @@ fn do_install_from_yaml(
 
             // Resolve workspace bundle which will automatically resolve its declared dependencies
             // from augent.yaml. All bundles are treated uniformly by the resolver.
-            // Use root augent.yaml if it exists, otherwise fall back to .augent
+            // augent.yaml is in .augent/
             // If workspace was just initialized with local resources, resolve from root to discover them
             let bundle_sources = if was_initialized && has_local_resources {
                 vec![".".to_string()]
