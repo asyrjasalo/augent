@@ -65,6 +65,11 @@ pub struct Workspace {
     /// Whether to create augent.yaml during save (set by install command)
     /// This distinguishes between installing workspace bundle vs. dir bundle
     pub should_create_augent_yaml: bool,
+
+    /// Path to the directory where bundle's augent.yaml should be written
+    /// When set, augent.yaml is written to this directory instead of workspace.config_dir
+    /// This is used when installing from a subdirectory that is itself a bundle
+    pub bundle_config_dir: Option<PathBuf>,
 }
 
 impl Workspace {
@@ -154,6 +159,7 @@ impl Workspace {
             lockfile,
             workspace_config,
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         })
     }
 
@@ -184,6 +190,7 @@ impl Workspace {
             lockfile,
             workspace_config,
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         })
     }
 
@@ -627,7 +634,10 @@ impl Workspace {
         // This distinguishes between installing workspace bundle (create augent.yaml) and
         // installing dir bundles (don't create augent.yaml)
         if self.should_create_augent_yaml {
-            Self::save_bundle_config(&self.config_dir, &ordered_bundle_config, &workspace_name)?;
+            // Use bundle_config_dir if set (for installing from subdirectory bundles),
+            // otherwise use config_dir (workspace's .augent/ or root)
+            let augent_yaml_dir = self.bundle_config_dir.as_ref().unwrap_or(&self.config_dir);
+            Self::save_bundle_config(augent_yaml_dir, &ordered_bundle_config, &workspace_name)?;
         }
 
         Self::save_lockfile(&self.config_dir, &ordered_lockfile, &workspace_name)?;

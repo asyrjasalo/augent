@@ -1339,6 +1339,7 @@ bundles:
             workspace_config,
             lockfile,
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         };
 
         let dependents = find_dependent_bundles(&workspace, "bundle1").unwrap();

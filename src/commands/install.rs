@@ -45,9 +45,33 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         message: format!("Failed to get current directory: {}", e),
     })?;
 
+    // Check if workspace is explicitly provided (CLI flag, not AUGENT_WORKSPACE env var)
+    let workspace_is_explicit = workspace.is_some();
+
     // Use workspace parameter if provided, otherwise use actual current directory
-    let workspace_explicitly_set = workspace.is_some();
     let current_dir = workspace.unwrap_or(actual_current_dir.clone());
+
+    // Check if we're in a subdirectory with no resources
+    // This happens when:
+    // 1. User runs from a subdirectory of workspace (actual_current_dir != current_dir)
+    // 2. The subdirectory has no resources (not a bundle)
+    // Only apply when we're running from a different directory than current_dir
+    if actual_current_dir != current_dir {
+        // Don't treat the .augent directory itself as a bundle directory
+        let is_augent_dir = actual_current_dir.ends_with(".augent");
+
+        if !is_augent_dir {
+            use crate::installer::Installer;
+            let has_resources_in_actual_dir = Installer::discover_resources(&actual_current_dir)
+                .map(|resources| !resources.is_empty())
+                .unwrap_or(false);
+
+            if !has_resources_in_actual_dir {
+                println!("Nothing to install.");
+                return Ok(());
+            }
+        }
+    }
 
     // Handle three cases:
     // 1. User provides a source (path/URL) - existing behavior
@@ -95,9 +119,16 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                 .unwrap_or(false);
 
             if has_bundle_resources {
-                // We're in a bundle directory - install just this bundle and its dependencies
-                // Use "." to indicate current directory
-                args.source = Some(".".to_string());
+                // Don't treat the workspace root itself as a bundle when there's an existing workspace
+                // The workspace root might have resources (commands/, skills/, etc.) but if there's an
+                // existing .augent/ directory with a lockfile, we should use that, not treat root as a bundle.
+                // Only skip if workspace exists AND we're not providing an explicit source path
+                let workspace_exists = Workspace::find_from(&current_dir).is_some();
+                if !workspace_exists {
+                    // We're in a bundle directory (not a workspace root) - install just this bundle and its dependencies
+                    // Use "." to indicate current directory
+                    args.source = Some(".".to_string());
+                }
             }
         }
     }
@@ -316,6 +347,27 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // Initialize or open workspace (after bundle and platform selection)
         let mut workspace = Workspace::init_or_open(&current_dir)?;
 
+        // Check if we're installing from a subdirectory that is itself a bundle
+        // When a source is provided and we're in a subdirectory with bundle resources,
+        // we should create augent.yaml in that subdirectory, not in workspace's .augent/
+        if args.source.is_some() && actual_current_dir != current_dir {
+            // Don't treat the .augent directory itself as a bundle directory
+            let is_augent_dir = actual_current_dir.ends_with(".augent");
+
+            if !is_augent_dir {
+                use crate::installer::Installer;
+                let has_bundle_resources = Installer::discover_resources(&actual_current_dir)
+                    .map(|resources| !resources.is_empty())
+                    .unwrap_or(false);
+
+                if has_bundle_resources {
+                    // We're installing from a subdirectory that is a bundle
+                    // Set bundle_config_dir to write augent.yaml to this subdirectory
+                    workspace.bundle_config_dir = Some(actual_current_dir.clone());
+                }
+            }
+        }
+
         // If some bundles were deselected that are already installed, handle uninstall FIRST.
         // Only if the uninstall succeeds (or is confirmed) do we proceed to install.
         if !deselected_bundle_names.is_empty() {
@@ -471,27 +523,32 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
     } else {
         // No source provided - check if we're in a sub-bundle directory first
 
-        // First, check if we're running from a directory that's different from where we'll find the workspace
-        // This happens when:
-        // 1. User runs from a subdirectory of workspace without --workspace flag, or
-        // 2. User runs from outside workspace with --workspace pointing to it
-        // In either case, if the actual current directory has no resources, say nothing to install
-        // IMPORTANT: Only apply this check when workspace parameter was NOT explicitly set via --workspace flag
-        // When AUGENT_WORKSPACE env var is set AND we cd to that directory, paths should be the same
-        if !workspace_explicitly_set && actual_current_dir != current_dir {
-            // Don't treat the .augent directory itself as a bundle directory
-            let is_augent_dir = actual_current_dir.ends_with(".augent");
+        // IMPORTANT: Check if we're in a subdirectory (of workspace root or where workspace would be created) with no resources
+        // This prevents installing from parent workspace when running from a subdirectory
+        // Only skip this check when running with --workspace flag OR AUGENT_WORKSPACE env var
+        if !workspace_is_explicit && std::env::var("AUGENT_WORKSPACE").is_err() {
+            // Find where the workspace is (or would be)
+            let workspace_root_opt = Workspace::find_from(&current_dir);
+            let workspace_root = workspace_root_opt.as_ref().unwrap_or(&current_dir);
 
-            if !is_augent_dir {
-                use crate::installer::Installer;
-                let has_resources_in_actual_dir =
-                    Installer::discover_resources(&actual_current_dir)
-                        .map(|resources| !resources.is_empty())
-                        .unwrap_or(false);
+            // Check if we're in a subdirectory with no resources
+            let in_subdirectory = actual_current_dir != *workspace_root;
 
-                if !has_resources_in_actual_dir {
-                    println!("Nothing to install.");
-                    return Ok(());
+            if in_subdirectory {
+                // Don't treat the .augent directory itself as a bundle directory
+                let is_augent_dir = actual_current_dir.ends_with(".augent");
+
+                if !is_augent_dir {
+                    use crate::installer::Installer;
+                    let has_resources_in_actual_dir =
+                        Installer::discover_resources(&actual_current_dir)
+                            .map(|resources| !resources.is_empty())
+                            .unwrap_or(false);
+
+                    if !has_resources_in_actual_dir {
+                        println!("Nothing to install.");
+                        return Ok(());
+                    }
                 }
             }
         }
@@ -2225,6 +2282,7 @@ mod tests {
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         };
 
         let lockfile = generate_lockfile(&workspace, &[]).unwrap();
@@ -2247,6 +2305,7 @@ mod tests {
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         };
 
         let bundle = crate::resolver::ResolvedBundle {
@@ -2277,6 +2336,7 @@ mod tests {
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         };
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();
@@ -2333,6 +2393,7 @@ mod tests {
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
             should_create_augent_yaml: false,
+            bundle_config_dir: None,
         };
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();
