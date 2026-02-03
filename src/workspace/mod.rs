@@ -74,8 +74,17 @@ impl Workspace {
         root.join(WORKSPACE_DIR).is_dir()
     }
 
-    /// Find a workspace by searching upward from the given path
+    /// Find a workspace by searching for the git repository root, then checking for .augent there
+    /// If not in a git repository, fall back to searching upward for .augent
     pub fn find_from(start: &Path) -> Option<PathBuf> {
+        // First, try to find the git repository root and check for .augent there
+        if let Some(git_root) = Self::find_git_repository_root(start) {
+            if Self::exists(&git_root) {
+                return Some(git_root);
+            }
+        }
+
+        // Fall back to searching upward for .augent (for non-git directories)
         let mut current = start.to_path_buf();
 
         loop {
@@ -87,6 +96,12 @@ impl Workspace {
                 return None;
             }
         }
+    }
+
+    /// Find the git repository root from a starting path
+    fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
+        let repo = git2::Repository::discover(start).ok()?;
+        repo.workdir().map(PathBuf::from)
     }
 
     /// Open an existing workspace
