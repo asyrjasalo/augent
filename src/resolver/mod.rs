@@ -1071,13 +1071,35 @@ impl Resolver {
         let mut visited = HashSet::new();
         let mut temp_visited = HashSet::new();
 
-        // Build adjacency list
+        // Build adjacency list with actual resolved bundle names
+        // This handles cases where dependency names don't match resolved names (e.g., platform-specific name derivation)
         let mut deps: HashMap<String, Vec<String>> = HashMap::new();
         for (name, bundle) in &self.resolved {
             let mut bundle_deps = Vec::new();
             if let Some(cfg) = &bundle.config {
                 for dep in &cfg.bundles {
-                    bundle_deps.push(dep.name.clone());
+                    // Look up the dependency by name first
+                    if self.resolved.contains_key(&dep.name) {
+                        bundle_deps.push(dep.name.clone());
+                    } else {
+                        // If dependency name not found, try to find it by looking for a bundle
+                        // resolved from the same dependency. Search by dependency object reference.
+                        let mut found = false;
+                        for (resolved_name, resolved_bundle) in &self.resolved {
+                            if let Some(dep_obj) = &resolved_bundle.dependency {
+                                if dep_obj.name == dep.name {
+                                    bundle_deps.push(resolved_name.clone());
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if !found {
+                            // Last resort: use the dependency name as-is
+                            // (will cause validation to fail if it doesn't exist)
+                            bundle_deps.push(dep.name.clone());
+                        }
+                    }
                 }
             }
             deps.insert(name.clone(), bundle_deps);
