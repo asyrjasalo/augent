@@ -83,14 +83,8 @@ Installing a particular dir bundle updates the workspace `augent.lock` and `auge
 **Important**: When installing a dir bundle directly:
 
 - If `augent.yaml` does not exist, it is **not** created
-- If `augent.yaml` exists, it is **not** modified (preserving all existing content including workspace metadata)
-- **augent.yaml is NEVER removed if it is present** (to preserve workspace metadata)
-
-When installing a git bundle directly (via URL):
-
-- If `augent.yaml` does not exist, it is **created** with the git bundle added
-- If `augent.yaml` exists, it is **updated** by adding the git bundle (if not already present)
-- **augent.yaml is NEVER removed** (to preserve workspace metadata)
+- If `augent.yaml` exists, it is **not** modified
+- **augent.yaml is NEVER removed if it is present**
 
 When installing the workspace bundle (`augent install` without args):
 
@@ -152,6 +146,12 @@ When installing a git bundle, only the workspace `augent.lock` file is read,
 neither the workspace `augent.yaml` nor any other `augent.yaml` in the repository.
 
 On install, git bundles are always added to the `augent.yaml` when augent install is run. If augent install <git-bundle> is run in the workspace, workspace `augent.yaml` is updated. If augent install <git-bundle> is run inside a dir bundle, the dir bundle's `augent.yaml` is updated.
+
+When installing a git bundle directly (via URL):
+
+- If `augent.yaml` does not exist, it is **created** with the git bundle added
+- If `augent.yaml` exists, it is **updated** by adding the git bundle (if not already in bundles)
+- **augent.yaml is NEVER removed** once it has been created
 
 ### example: git bundle
 
