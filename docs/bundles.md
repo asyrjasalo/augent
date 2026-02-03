@@ -350,7 +350,7 @@ Bundle names in the workspace follow the [Bundles spec](implementation/specs/bun
 | **GitHub short-form** | `author/repo` or `@owner/repo` or `github:owner/repo` | GitHub repository (name stored as `@owner/repo`) |
 | **Git URL** | `https://github.com/owner/repo.git` or `git@github.com:owner/repo.git` | Any Git repository |
 | **GitHub Web UI URL** | `https://github.com/owner/repo/tree/main` or `.../tree/main/path/from/repo/root` | Copy from browser (auto-extracts ref and path) |
-| **Local directory** | `./local-bundle` or `local-bundle` | Local path (name = directory name) |
+ | **Local directory** | `./local-bundle` or `local-bundle` | Local path (name defined in augent.yaml dependency, not directory name) |
 | **Subdirectory** | `owner/repo:path/from/repo/root` or `@owner/repo:path/from/repo/root` | Repository subdirectory (path after `:`) |
 | **Specific ref** | `owner/repo` with ref in lockfile | Tag, branch, or SHA; stored in lockfile with exact SHA for reproducibility |
 

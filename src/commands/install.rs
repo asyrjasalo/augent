@@ -85,120 +85,77 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
     if let Some(source_str) = &args.source {
         let source_str_ref = source_str.as_str();
 
-        // Check if this looks like a path - if so, reject it for directory bundles
-        if is_path_like(source_str_ref) {
-            // For directory bundles, require using augent.yaml
-            // First check if this is a bundle name that resolves to a path from augent.yaml
-            if let Some(workspace_root) = Workspace::find_from(&current_dir) {
-                if let Ok(workspace) = Workspace::open(&workspace_root) {
-                    // Look for a bundle with this name in the workspace config
-                    // (bundle names are not path-like, so we'd get here if source_str was like "./my-bundle")
-                    if let Some(bundle_path_str) = workspace
-                        .bundle_config
-                        .bundles
-                        .iter()
-                        .find(|b| b.name == source_str_ref)
-                        .and_then(|b| b.path.clone())
-                    {
-                        // Bundle found - resolve the path relative to config_dir, then make it relative to workspace root
-                        let resolved_path = workspace.config_dir.join(&bundle_path_str);
-
-                        // Store the bundle name for better messaging
-                        installing_by_bundle_name = Some(source_str_ref.to_string());
-
-                        // Convert to path relative to workspace root for the resolver
-                        if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
-                            args.source = Some(relative_path.to_string_lossy().to_string());
-                        } else {
-                            // If it's absolute or can't be made relative, use as-is
-                            args.source = Some(resolved_path.to_string_lossy().to_string());
-                        }
-                    } else {
-                        // This is a path but not a bundle name in augent.yaml
-                        // Reject direct path installation for directory bundles
-                        return Err(AugentError::BundleValidationFailed {
-                            message: format!(
-                                "Directory bundles must be added to augent.yaml before installing. \
-                                 To install '{}', add it to your augent.yaml and run 'augent install'. \
-                                 \n\n\
-                                 Example:\n\
-                                 1. Edit augent.yaml and add:\n\
-                                    bundles:\n\
-                                      - name: my-local-bundle\n\
-                                        path: {}\n\
-                                 2. Run: augent install",
-                                source_str_ref, source_str_ref
-                            ),
-                        });
+        // For directory bundles, require using augent.yaml
+        // Check if this source matches a dependency in augent.yaml (by name or by path)
+        if let Some(workspace_root) = Workspace::find_from(&current_dir) {
+            if let Ok(workspace) = Workspace::open(&workspace_root) {
+                // Look for a bundle with this name or path in the workspace config
+                let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
+                    // Match by name first
+                    if b.name == source_str_ref {
+                        return true;
                     }
-                }
-            } else {
-                // No workspace found - reject direct path installation
-                return Err(AugentError::BundleValidationFailed {
-                    message: format!(
-                        "Directory bundles require an augent.yaml workspace. \
-                         To install '{}', first initialize a workspace and add the bundle to augent.yaml. \
-                         \n\n\
-                         Example:\n\
-                         1. Create augent.yaml in your project directory\n\
-                         2. Add the bundle:\n\
-                            bundles:\n\
-                              - name: my-local-bundle\n\
-                                path: {}\n\
-                         3. Run: augent install",
-                        source_str_ref, source_str_ref
-                    ),
+
+                    // Also match by path (normalized - strip ./ and ../ prefixes)
+                    if let Some(ref path_val) = b.path {
+                        // Normalize both paths for comparison
+                        let normalized_source = source_str_ref
+                            .strip_prefix("./")
+                            .or_else(|| source_str_ref.strip_prefix("../"))
+                            .unwrap_or(source_str_ref);
+                        let normalized_path = path_val
+                            .strip_prefix("./")
+                            .or_else(|| path_val.strip_prefix("../"))
+                            .unwrap_or(path_val);
+                        return normalized_source == normalized_path;
+                    }
+
+                    false
                 });
-            }
-        } else {
-            // Not path-like - try to resolve as a bundle name
-            if let Some(workspace_root) = Workspace::find_from(&current_dir) {
-                if let Ok(workspace) = Workspace::open(&workspace_root) {
-                    // Look for a bundle with this name in the workspace config
-                    if let Some(bundle_path_str) = workspace
-                        .bundle_config
-                        .bundles
-                        .iter()
-                        .find(|b| b.name == source_str_ref)
-                        .and_then(|b| b.path.clone())
-                    {
-                        // Bundle found - resolve the path relative to config_dir, then make it relative to workspace root
-                        let resolved_path = workspace.config_dir.join(&bundle_path_str);
 
-                        // Store the bundle name for better messaging
-                        installing_by_bundle_name = Some(source_str_ref.to_string());
+                if let Some(bundle_dep) = found_bundle {
+                    // Bundle found in augent.yaml - use its path and name
+                    let bundle_path_str = bundle_dep
+                        .path
+                        .clone()
+                        .unwrap_or_else(|| source_str_ref.to_string());
+                    let bundle_name = bundle_dep.name.clone();
 
-                        // Convert to path relative to workspace root for the resolver
-                        if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
-                            args.source = Some(relative_path.to_string_lossy().to_string());
-                        } else {
-                            // If it's absolute or can't be made relative, use as-is
-                            args.source = Some(resolved_path.to_string_lossy().to_string());
-                        }
+                    // Resolve to path relative to config_dir, then make it relative to workspace root
+                    let resolved_path = workspace.config_dir.join(&bundle_path_str);
+
+                    // Store the bundle name for better messaging
+                    installing_by_bundle_name = Some(bundle_name.clone());
+
+                    // Convert to path relative to workspace root for the resolver
+                    if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
+                        args.source = Some(relative_path.to_string_lossy().to_string());
                     } else {
-                        // Bundle name not found in workspace
-                        // Only error if there are other bundles (meaning the user likely meant to use a bundle name)
-                        let available_bundles: Vec<&str> = workspace
-                            .bundle_config
-                            .bundles
-                            .iter()
-                            .map(|b| b.name.as_str())
-                            .collect();
-
-                        if !available_bundles.is_empty() {
-                            // There are bundles in the workspace, so this looks like a bundle name that doesn't exist
-                            return Err(AugentError::BundleNotFound {
-                                name: format!(
-                                    "Bundle '{}' not found in workspace. Available bundles: {}",
-                                    source_str_ref,
-                                    available_bundles.join(", ")
-                                ),
-                            });
-                        }
-                        // Otherwise, fall through and let normal source parsing handle it (will error as invalid source)
+                        // If it's absolute or can't be made relative, use as-is
+                        args.source = Some(resolved_path.to_string_lossy().to_string());
                     }
                 }
+
+                // If not found in augent.yaml, continue to resolve as a source string
+                // (e.g., git URL or bundle name that will be discovered)
             }
+        } else if is_path_like(source_str_ref) {
+            // No workspace found - reject direct path installation
+            return Err(AugentError::BundleValidationFailed {
+                message: format!(
+                    "Directory bundles require an augent.yaml workspace. \
+                     To install '{}', first initialize a workspace and add the bundle to augent.yaml. \
+                     \n\n\
+                     Example:\n\
+                     1. Create augent.yaml in your project directory\n\
+                     2. Add the bundle:\n\
+                        bundles:\n\
+                          - name: my-local-bundle\n\
+                            path: {}\n\
+                     3. Run: augent install",
+                    source_str_ref, source_str_ref
+                ),
+            });
         }
     }
 
@@ -1237,6 +1194,41 @@ fn do_install(
             // Rename it to use the workspace bundle name
             bundle.name = workspace_bundle_name.clone();
         }
+
+        // Fix dir bundle names from augent.yaml: preserve custom bundle names
+        // This handles cases like:
+        //   augent.yaml: { name: "my-library-name", path: "my-library" }
+        //   Command: augent install my-library  <- matches PATH, not NAME
+        // Expected: ResolvedBundle and lockfile should have name: "my-library-name", not "my-library"
+        if bundle.git_source.is_none() {
+            // This is a local directory bundle - check if there's an existing dependency with this path
+            if let Ok(rel_from_config) = bundle.source_path.strip_prefix(&workspace.config_dir) {
+                // Bundle is under config_dir - construct relative path for comparison
+                let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+                let normalized_path = if path_str.is_empty() {
+                    ".".to_string()
+                } else {
+                    path_str
+                };
+
+                // Check if any existing dependency has this path in augent.yaml
+                if let Some(existing_dep) = workspace.bundle_config.bundles.iter().find(|dep| {
+                    dep.path.as_ref().is_some_and(|p| {
+                        // Normalize both paths for comparison
+                        let normalized_existing = p
+                            .strip_prefix("./")
+                            .or_else(|| p.strip_prefix("../"))
+                            .unwrap_or(p);
+                        normalized_existing == normalized_path
+                    })
+                }) {
+                    // Use the name from the existing dependency (preserves custom bundle name)
+                    if bundle.name != existing_dep.name {
+                        bundle.name = existing_dep.name.clone();
+                    }
+                }
+            }
+        }
     }
 
     // If we detected modified files, ensure workspace bundle is in the resolved list
@@ -1619,12 +1611,51 @@ fn update_configs(
                     // Local directory - use the resolved bundle's source_path (which is absolute)
                     let bundle_path = &bundle.source_path;
 
-                    // Per spec: dir bundle name is always the directory name
-                    let dir_name = bundle_path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or(&bundle.name)
-                        .to_string();
+                    // Check if there's already a dependency with this path in augent.yaml
+                    // If so, use the name from augent.yaml instead of the directory name
+                    // This preserves the custom bundle name when installing by path
+                    let dir_name = if let Ok(rel_from_config) =
+                        bundle_path.strip_prefix(&workspace.config_dir)
+                    {
+                        // Bundle is under config_dir - construct relative path for comparison
+                        let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+                        let normalized_path = if path_str.is_empty() {
+                            ".".to_string()
+                        } else {
+                            path_str
+                        };
+
+                        // Check if any existing dependency has this path
+                        if let Some(existing_dep) =
+                            workspace.bundle_config.bundles.iter().find(|dep| {
+                                dep.path.as_ref().is_some_and(|p| {
+                                    // Normalize both paths for comparison
+                                    let normalized_existing = p
+                                        .strip_prefix("./")
+                                        .or_else(|| p.strip_prefix("../"))
+                                        .unwrap_or(p);
+                                    normalized_existing == normalized_path
+                                })
+                            })
+                        {
+                            // Use the name from the existing dependency
+                            existing_dep.name.clone()
+                        } else {
+                            // No existing dependency with this path - use directory name
+                            bundle_path
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or(&bundle.name)
+                                .to_string()
+                        }
+                    } else {
+                        // Bundle is not under config_dir - use directory name
+                        bundle_path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or(&bundle.name)
+                            .to_string()
+                    };
 
                     // Convert path to relative from config_dir (where augent.yaml is)
                     let relative_path = if let Ok(rel_from_config) =

@@ -35,7 +35,7 @@ The **workspace bundle name** is no longer stored in config files. It is automat
 
 ## install bundle from directory (type: dir)
 
-Dir bundle's name is always the following in `augent.yaml`, `augent.lock`, `augent.index.yaml`: dir-name
+Dir bundle's name in `augent.yaml`, `augent.lock`, and `augent.index.yaml` is the name defined in the `augent.yaml` dependency, not the directory name.
 
 ### without augent.lock
 
