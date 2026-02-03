@@ -1087,7 +1087,10 @@ impl Resolver {
         }
 
         // Process any bundles not in resolution_order (e.g., transitive dependencies)
-        for name in self.resolved.keys() {
+        // Sort to ensure deterministic order regardless of HashMap iteration order
+        let mut remaining: Vec<_> = self.resolved.keys().collect();
+        remaining.sort();
+        for name in remaining {
             if !visited.contains(name) {
                 self.topo_dfs(name, &deps, &mut visited, &mut temp_visited, &mut result)?;
             }
