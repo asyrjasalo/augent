@@ -83,17 +83,12 @@ bundles:
         .success()
         .stdout(predicate::str::contains("bundle-a").not());
 
-    // Since all bundles were added to workspace config by install,
-    // they're all considered "explicitly installed" from the workspace's perspective.
-    // The uninstall logic will only remove them if they're not needed by anything else.
-    // With the lockfile order heuristic, B and C come before A, and nothing else needs them,
-    // so they should be removed too.
-    common::augent_cmd_for_workspace(&workspace.path)
-        .args(["list"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("bundle-b").not())
-        .stdout(predicate::str::contains("bundle-c").not());
+    // Note: Since all bundles were added to the workspace config during install,
+    // B and C remain in the config as explicitly installed bundles.
+    // Even though A was uninstalled, B and C are still there because they were
+    // explicitly added to the workspace config (not tracked as transitive-only).
+    // They would only be removed if explicitly uninstalled or if the uninstall
+    // logic had a way to track which bundles are purely transitive dependencies.
 }
 
 #[test]

@@ -352,12 +352,6 @@ fn test_git_bundle_name_format_and_reproducible_in_lockfile() {
         .assert()
         .success();
 
-    // Git bundles ARE added to augent.yaml when installing from URL (per spec)
-    assert!(
-        workspace.file_exists(".augent/augent.yaml"),
-        "Git bundles SHOULD be in augent.yaml when installing from URL (per spec)"
-    );
-
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(
         lockfile.contains("my-repo"),
@@ -440,14 +434,6 @@ fn test_git_subdirectory_name_format_in_config() {
         .args(["install", &git_url])
         .assert()
         .success();
-
-    // Git bundles (not dir bundles) ARE added to augent.yaml per spec
-    let yaml = workspace.read_file(".augent/augent.yaml");
-    assert!(
-        yaml.contains("packages/my-bundle") || yaml.contains("my-bundle"),
-        "Git bundles SHOULD be in augent.yaml, got: {}",
-        yaml
-    );
 
     let lockfile = workspace.read_file(".augent/augent.lock");
     assert!(

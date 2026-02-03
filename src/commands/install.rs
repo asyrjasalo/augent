@@ -20,7 +20,7 @@ use std::path::Path;
 use crate::cache;
 use crate::cli::InstallArgs;
 use crate::commands::menu::{select_bundles_interactively, select_platforms_interactively};
-use crate::config::{BundleDependency, LockedBundle, LockedSource};
+use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
@@ -575,7 +575,6 @@ fn do_install_from_yaml(
         modified::preserve_modified_files(workspace, &modified_files)?;
     }
 
-    // Check if augent.yaml is missing but augent.lock exists with bundles
     let augent_yaml_missing =
         workspace.bundle_config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
 
@@ -1286,7 +1285,9 @@ fn do_install(
     let should_update_augent_yaml = has_git_bundles || !skip_workspace_bundle;
 
     let source_str = args.source.as_deref().unwrap_or("");
-    if !args.dry_run {
+    if args.dry_run {
+        println!("[DRY RUN] Would update configuration files...");
+    } else {
         update_configs(
             workspace,
             source_str,
@@ -1774,8 +1775,28 @@ fn cleanup_overridden_files(workspace: &mut Workspace) -> Result<()> {
 ///
 /// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
 fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()> {
-    // Convert locked bundles back to bundle dependencies
-    // Exclude workspace bundle entries (which have the workspace's own name or are from .augent dir)
+    // First pass: Collect all transitive dependencies
+    // A transitive dependency is any bundle that appears in another bundle's augent.yaml
+    let mut transitive_dependencies = HashSet::new();
+
+    for locked in &workspace.lockfile.bundles {
+        // Only dir bundles can have dependencies (git bundles are always top-level)
+        if let LockedSource::Dir { path, .. } = &locked.source {
+            let bundle_path = workspace.root.join(path);
+            let bundle_augent_yaml = bundle_path.join("augent.yaml");
+
+            if bundle_augent_yaml.exists() {
+                if let Ok(yaml_content) = std::fs::read_to_string(&bundle_augent_yaml) {
+                    if let Ok(bundle_config) = BundleConfig::from_yaml(&yaml_content) {
+                        for dep in &bundle_config.bundles {
+                            transitive_dependencies.insert(dep.name.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let workspace_bundle_name = workspace.get_workspace_name();
     let mut bundles = Vec::new();
 
@@ -1792,6 +1813,11 @@ fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()
             if path == ".augent" {
                 continue;
             }
+        }
+
+        // Skip transitive dependencies (bundles that are dependencies of other bundles)
+        if transitive_dependencies.contains(&locked.name) {
+            continue;
         }
 
         let dependency = match &locked.source {

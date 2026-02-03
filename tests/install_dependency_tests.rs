@@ -117,7 +117,6 @@ bundles: []
 #[test]
 fn test_transitive_dependencies() {
     let workspace = common::TestWorkspace::new();
-    workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
     let bundle_a = workspace.create_bundle("bundle-a");
@@ -192,7 +191,6 @@ bundles: []
 #[test]
 fn test_duplicate_dependency_resolution() {
     let workspace = common::TestWorkspace::new();
-    workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
     let bundle_a = workspace.create_bundle("bundle-a");

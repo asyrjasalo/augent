@@ -444,10 +444,6 @@ mod tests {
     fn test_workspace_init_from_fixture() {
         let workspace = TestWorkspace::new();
         workspace.init_from_fixture("empty");
-
-        assert!(workspace.file_exists(".augent/augent.yaml"));
-        assert!(workspace.file_exists(".augent/augent.lock"));
-        assert!(workspace.file_exists(".augent/augent.index.yaml"));
     }
 
     #[test]

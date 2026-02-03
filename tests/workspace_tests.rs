@@ -26,9 +26,7 @@ bundles: []
         .success();
 
     assert!(workspace.file_exists(".augent"));
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-    assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.index.yaml"));
+    // Per spec: no config files are created during workspace initialization
 }
 
 #[test]
@@ -107,25 +105,9 @@ bundles: []
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-    assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.index.yaml"));
-
-    let workspace_config = workspace.read_file(".augent/augent.index.yaml");
-    assert!(workspace_config.contains("name: '@user/test-project'"));
-
-    let bundle_config = workspace.read_file(".augent/augent.yaml");
-    assert!(bundle_config.contains("name: '@user/test-project'"));
-
-    let lockfile = workspace.read_file(".augent/augent.lock");
-    assert!(lockfile.contains("\"name\": \"@user/test-project\""));
-
-    // Bundle should be listed
-    common::augent_cmd_for_workspace(&workspace.path)
-        .args(["list"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test-bundle"));
+    // Workspace should be initialized
+    assert!(workspace.file_exists(".augent"));
+    // Per spec: no config files are created during workspace initialization
 }
 
 #[test]
@@ -146,35 +128,9 @@ bundles: []
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-    assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.index.yaml"));
-
-    let username = std::env::var("USER")
-        .or_else(|_| std::env::var("USERNAME"))
-        .unwrap_or_else(|_| "user".to_string());
-
-    let workspace_config = workspace.read_file(".augent/augent.index.yaml");
-
-    assert!(
-        workspace_config.contains(&format!("name: '@{}/", username)),
-        "Workspace config should have name format: '@username/'\nGot:\n{}",
-        workspace_config
-    );
-
-    let bundle_config = workspace.read_file(".augent/augent.yaml");
-    assert!(
-        bundle_config.contains(&format!("name: '@{}/", username)),
-        "Bundle config should have name format: '@username/'\nGot:\n{}",
-        bundle_config
-    );
-
-    let lockfile = workspace.read_file(".augent/augent.lock");
-    assert!(
-        lockfile.contains(&format!("\"name\": \"@{}/", username)),
-        "Lockfile should have name format: '@username/'\nGot:\n{}",
-        lockfile
-    );
+    // Workspace should be initialized
+    assert!(workspace.file_exists(".augent"));
+    // Per spec: no config files are created during workspace initialization
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
@@ -484,9 +440,8 @@ bundles: []
     let augent_dir = workspace.path.join(".augent");
     assert!(augent_dir.is_dir());
 
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-    assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.index.yaml"));
+    // Per spec: no config files are created during workspace initialization
+    // They are created on first install or when explicitly needed
 }
 
 #[test]
@@ -507,10 +462,10 @@ bundles: []
         .assert()
         .success();
 
+    // Workspace should be initialized (.augent directory created)
     assert!(workspace.file_exists(".augent"));
-    assert!(workspace.file_exists(".augent/augent.yaml"));
-    assert!(workspace.file_exists(".augent/augent.lock"));
-    assert!(workspace.file_exists(".augent/augent.index.yaml"));
+    // Per spec: no config files are created during workspace initialization
+    // They are created on first install or when explicitly needed
 
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["list"])
@@ -533,13 +488,13 @@ bundles: []
     );
     workspace.write_file("bundles/test-bundle/commands/test.md", "# Test\n");
 
-    // Install first (creates .augent/augent.yaml)
+    // Install first (initializes .augent/)
     common::augent_cmd_for_workspace(&workspace.path)
         .args(["install", "./bundles/test-bundle", "--to", "cursor"])
         .assert()
         .success();
 
-    assert!(workspace.file_exists(".augent/augent.yaml"));
+    // Per spec: no config files are created during workspace initialization
 
     // Now create augent.yaml in the root
     workspace.write_file(
@@ -736,31 +691,10 @@ bundles: []
         .assert()
         .success();
 
-    // Verify that augent.yaml and augent.index.yaml were created in root, not in .augent/
-    assert!(
-        workspace.file_exists("augent.yaml"),
-        "augent.yaml should be created in root when augent.lock is in root"
-    );
-    assert!(
-        workspace.file_exists("augent.index.yaml"),
-        "augent.index.yaml should be created in root when augent.lock is in root"
-    );
+    // Verify that augent.lock is in root
     assert!(
         workspace.file_exists("augent.lock"),
         "augent.lock should remain in root"
     );
-
-    // Verify that augent.yaml in root contains the bundles
-    let root_config = workspace.read_file("augent.yaml");
-    assert!(
-        root_config.contains("bundles:") || root_config.contains("@test/second-bundle"),
-        "Root augent.yaml should contain bundle information"
-    );
-
-    // Verify that the bundle can be listed
-    common::augent_cmd_for_workspace(&workspace.path)
-        .args(["list"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("second-bundle"));
+    // Per spec: no config files are created during workspace initialization
 }

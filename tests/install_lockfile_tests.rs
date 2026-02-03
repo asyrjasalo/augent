@@ -308,10 +308,9 @@ fn test_install_with_only_lockfile_creates_augent_yaml_and_index_yaml() {
 
     // Now simulate the scenario where only lockfile exists
     // Delete augent.yaml and augent.index.yaml (augent.lock stays)
-    std::fs::remove_file(workspace.path.join(".augent/augent.yaml"))
-        .expect("Failed to delete augent.yaml");
-    std::fs::remove_file(workspace.path.join(".augent/augent.index.yaml"))
-        .expect("Failed to delete augent.index.yaml");
+    // Note: augent.yaml may not exist if it wasn't created during the first install
+    let _ = std::fs::remove_file(workspace.path.join(".augent/augent.yaml"));
+    let _ = std::fs::remove_file(workspace.path.join(".augent/augent.index.yaml"));
 
     // Verify they're gone
     assert!(!workspace.file_exists(".augent/augent.yaml"));
@@ -349,4 +348,143 @@ fn test_install_with_only_lockfile_creates_augent_yaml_and_index_yaml() {
     assert!(workspace.file_exists(".augent/augent.lock"));
     let new_lockfile = workspace.read_file(".augent/augent.lock");
     assert!(!new_lockfile.is_empty(), "augent.lock should not be empty");
+}
+
+#[test]
+fn test_reconstruct_augent_yaml_filters_transitive_dependencies() {
+    let workspace = common::TestWorkspace::new();
+    workspace.init_from_fixture("empty");
+    workspace.create_agent_dir("cursor");
+
+    // Create bundle-a (direct dependency that will depend on bundle-b)
+    let bundle_a = workspace.create_bundle("bundle-a");
+    std::fs::create_dir_all(bundle_a.join("commands")).unwrap();
+    std::fs::write(
+        bundle_a.join("commands").join("command-a.md"),
+        "# Command A",
+    )
+    .expect("Failed to write command");
+    workspace.write_file(
+        "bundles/bundle-a/augent.yaml",
+        "name: \"bundle-a\"\nbundles:\n  - name: bundle-b\n    path: ../bundle-b\n",
+    );
+
+    // Create bundle-b (depends on bundle-c, making bundle-c a transitive dependency)
+    let bundle_b = workspace.create_bundle("bundle-b");
+    std::fs::create_dir_all(bundle_b.join("commands")).unwrap();
+    std::fs::write(
+        bundle_b.join("commands").join("command-b.md"),
+        "# Command B",
+    )
+    .expect("Failed to write command");
+    workspace.write_file(
+        "bundles/bundle-b/augent.yaml",
+        "name: \"bundle-b\"\nbundles:\n  - name: bundle-c\n    path: ../bundle-c\n",
+    );
+
+    // Create bundle-c (leaf dependency, no further dependencies)
+    let bundle_c = workspace.create_bundle("bundle-c");
+    std::fs::create_dir_all(bundle_c.join("commands")).unwrap();
+    std::fs::write(
+        bundle_c.join("commands").join("command-c.md"),
+        "# Command C",
+    )
+    .expect("Failed to write command");
+    workspace.write_file(
+        "bundles/bundle-c/augent.yaml",
+        "name: \"bundle-c\"\nbundles: []\n",
+    );
+
+    // Install bundle-a (should install bundle-b and bundle-c as dependencies)
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install", "./bundles/bundle-a"])
+        .assert()
+        .success();
+
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(
+        lockfile.contains("bundle-a"),
+        "Lockfile should contain bundle-a"
+    );
+    assert!(
+        lockfile.contains("bundle-b"),
+        "Lockfile should contain bundle-b"
+    );
+    assert!(
+        lockfile.contains("bundle-c"),
+        "Lockfile should contain bundle-c"
+    );
+
+    std::fs::remove_file(workspace.path.join(".augent/augent.yaml"))
+        .expect("Failed to delete augent.yaml");
+    std::fs::remove_file(workspace.path.join(".augent/augent.index.yaml"))
+        .expect("Failed to delete augent.index.yaml");
+
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install"])
+        .assert()
+        .success();
+
+    // Verify all three bundles are in lockfile
+    let lockfile = workspace.read_file(".augent/augent.lock");
+    assert!(
+        lockfile.contains("bundle-a"),
+        "Lockfile should contain bundle-a"
+    );
+    assert!(
+        lockfile.contains("bundle-b"),
+        "Lockfile should contain bundle-b"
+    );
+    assert!(
+        lockfile.contains("bundle-c"),
+        "Lockfile should contain bundle-c"
+    );
+
+    // Verify augent.yaml contains only bundle-a (direct dependency)
+    let original_augent_yaml = workspace.read_file(".augent/augent.yaml");
+    assert!(
+        original_augent_yaml.contains("bundle-a"),
+        "augent.yaml should contain bundle-a"
+    );
+    assert!(
+        !original_augent_yaml.contains("bundle-b"),
+        "augent.yaml should NOT contain bundle-b (transitive)"
+    );
+    assert!(
+        !original_augent_yaml.contains("bundle-c"),
+        "augent.yaml should NOT contain bundle-c (transitive)"
+    );
+
+    // Delete augent.yaml and index.yaml to trigger reconstruction
+    std::fs::remove_file(workspace.path.join(".augent/augent.yaml"))
+        .expect("Failed to delete augent.yaml");
+    std::fs::remove_file(workspace.path.join(".augent/augent.index.yaml"))
+        .expect("Failed to delete augent.index.yaml");
+
+    // Run install again (should reconstruct augent.yaml from lockfile)
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install"])
+        .assert()
+        .success();
+
+    // Verify augent.yaml was reconstructed
+    assert!(workspace.file_exists(".augent/augent.yaml"));
+    let reconstructed_augent_yaml = workspace.read_file(".augent/augent.yaml");
+
+    // The key assertion: reconstructed augent.yaml should contain ONLY bundle-a
+    // bundle-b and bundle-c should NOT be in the reconstructed augent.yaml
+    // because they are transitive dependencies (bundle-b is in bundle-a's augent.yaml,
+    // bundle-c is in bundle-b's augent.yaml)
+    assert!(
+        reconstructed_augent_yaml.contains("bundle-a"),
+        "Reconstructed augent.yaml should contain bundle-a (direct dependency)"
+    );
+    assert!(
+        !reconstructed_augent_yaml.contains("bundle-b"),
+        "Reconstructed augent.yaml should NOT contain bundle-b (transitive dependency)"
+    );
+    assert!(
+        !reconstructed_augent_yaml.contains("bundle-c"),
+        "Reconstructed augent.yaml should NOT contain bundle-c (transitive dependency)"
+    );
 }

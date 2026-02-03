@@ -162,18 +162,13 @@ impl Workspace {
         // Create .augent directory
         fs::create_dir_all(&augent_dir)?;
 
-        // Infer workspace name
-        let workspace_name = Self::infer_workspace_name(root);
-
         // Create initial configuration files
         let bundle_config = BundleConfig::new();
         let lockfile = Lockfile::new();
         let workspace_config = WorkspaceConfig::new();
 
-        // Save configuration files to .augent
-        Self::save_bundle_config(&augent_dir, &bundle_config, &workspace_name)?;
-        Self::save_lockfile(&augent_dir, &lockfile, &workspace_name)?;
-        Self::save_workspace_config(&augent_dir, &workspace_config, &workspace_name)?;
+        // Note: Per spec, no config files are created during workspace initialization
+        // They are created on first install or when explicitly needed
 
         Ok(Self {
             root: root.to_path_buf(),
@@ -621,21 +616,13 @@ impl Workspace {
 
         // Save augent.yaml (including metadata like name, description, etc.)
         // Per spec: NEVER remove augent.yaml if it exists
-        // Only create augent.yaml when there are bundles to save OR file already exists
+        // Only create augent.yaml when file already exists (preserve metadata)
         // When installing dir bundles directly without existing file: don't create
         let augent_yaml_path = self.config_dir.join("augent.yaml");
-        let has_workspace_bundle = ordered_bundle_config
-            .bundles
-            .iter()
-            .any(|b| b.name == workspace_name);
         let file_already_exists = augent_yaml_path.exists();
 
-        // Save augent.yaml if:
-        // 1. File already exists (preserve metadata)
-        // 2. Has bundles to list (create new file)
-        // 3. Has workspace bundle (preserve metadata even if empty)
-        if file_already_exists || !ordered_bundle_config.bundles.is_empty() || has_workspace_bundle
-        {
+        // Save augent.yaml only if it already exists (to preserve workspace metadata)
+        if file_already_exists {
             Self::save_bundle_config(&self.config_dir, &ordered_bundle_config, &workspace_name)?;
         }
         // Else: installing dir bundles directly, no existing file -> don't create
@@ -840,15 +827,19 @@ mod tests {
         assert!(temp.path().join(WORKSPACE_DIR).is_dir());
 
         // Check config files
+        // Per spec: no config files are created during workspace initialization
+        // They are created on first install or when explicitly needed
         assert!(
-            temp.path()
+            !temp
+                .path()
                 .join(WORKSPACE_DIR)
                 .join(BUNDLE_CONFIG_FILE)
                 .exists()
         );
-        assert!(temp.path().join(WORKSPACE_DIR).join(LOCKFILE_NAME).exists());
+        assert!(!temp.path().join(WORKSPACE_DIR).join(LOCKFILE_NAME).exists());
         assert!(
-            temp.path()
+            !temp
+                .path()
                 .join(WORKSPACE_DIR)
                 .join(WORKSPACE_INDEX_FILE)
                 .exists()
