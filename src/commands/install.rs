@@ -1467,7 +1467,7 @@ fn create_locked_bundle(
 /// Update workspace configuration files
 fn update_configs(
     workspace: &mut Workspace,
-    source: &str,
+    _source: &str,
     resolved_bundles: &[crate::resolver::ResolvedBundle],
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
 ) -> Result<()> {
@@ -1496,64 +1496,50 @@ fn update_configs(
                     dep.path = git_source.path.clone();
                     dep
                 } else {
-                    // Local directory - parse original source string
-                    let bundle_source = BundleSource::parse(source)?;
-                    match bundle_source {
-                        BundleSource::Dir { path } => {
-                            // Per spec: dir bundle name is always the directory name
-                            let dir_name = path
-                                .file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or(&bundle.name)
-                                .to_string();
+                    // Local directory - use the resolved bundle's source_path (which is absolute)
+                    let bundle_path = &bundle.source_path;
 
-                            // Convert path to relative from config_dir (where augent.yaml is)
-                            let relative_path = if let Ok(rel_from_config) =
-                                path.strip_prefix(&workspace.config_dir)
-                            {
-                                // Bundle is under config_dir
-                                let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-                                if path_str.is_empty() {
-                                    ".".to_string()
-                                } else {
-                                    path_str
-                                }
-                            } else if let Ok(rel_from_root) = path.strip_prefix(&workspace.root) {
-                                // Bundle is under workspace root but not under config_dir
-                                // Need to construct path with .. segments
-                                let rel_from_root_str =
-                                    rel_from_root.to_string_lossy().replace('\\', "/");
+                    // Per spec: dir bundle name is always the directory name
+                    let dir_name = bundle_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(&bundle.name)
+                        .to_string();
 
-                                // Find how deep config_dir is relative to workspace root
-                                if let Ok(config_rel) =
-                                    workspace.config_dir.strip_prefix(&workspace.root)
-                                {
-                                    let config_depth = config_rel.components().count();
-                                    let mut parts = vec!["..".to_string(); config_depth];
-                                    if !rel_from_root_str.is_empty() {
-                                        parts.push(rel_from_root_str);
-                                    }
-                                    parts.join("/")
-                                } else {
-                                    // config_dir is not under root (shouldn't happen), use absolute path
-                                    path.to_string_lossy().to_string()
-                                }
-                            } else {
-                                // Bundle is outside workspace - use absolute path
-                                path.to_string_lossy().to_string()
-                            };
-
-                            BundleDependency::local(&dir_name, relative_path)
+                    // Convert path to relative from config_dir (where augent.yaml is)
+                    let relative_path = if let Ok(rel_from_config) =
+                        bundle_path.strip_prefix(&workspace.config_dir)
+                    {
+                        // Bundle is under config_dir
+                        let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+                        if path_str.is_empty() {
+                            ".".to_string()
+                        } else {
+                            path_str
                         }
-                        BundleSource::Git(git) => {
-                            let ref_for_yaml = git
-                                .git_ref
-                                .clone()
-                                .or_else(|| bundle.resolved_ref.clone())
-                                .filter(|r| r != "main" && r != "master");
-                            BundleDependency::git(&bundle.name, &git.url, ref_for_yaml)
+                    } else if let Ok(rel_from_root) = bundle_path.strip_prefix(&workspace.root) {
+                        // Bundle is under workspace root but not under config_dir
+                        // Need to construct path with .. segments
+                        let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
+
+                        // Find how deep config_dir is relative to workspace root
+                        if let Ok(config_rel) = workspace.config_dir.strip_prefix(&workspace.root) {
+                            let config_depth = config_rel.components().count();
+                            let mut parts = vec!["..".to_string(); config_depth];
+                            if !rel_from_root_str.is_empty() {
+                                parts.push(rel_from_root_str);
+                            }
+                            parts.join("/")
+                        } else {
+                            // config_dir is not under root (shouldn't happen), use absolute path
+                            bundle_path.to_string_lossy().to_string()
                         }
-                    }
+                    } else {
+                        // Bundle is outside workspace - use absolute path
+                        bundle_path.to_string_lossy().to_string()
+                    };
+
+                    BundleDependency::local(&dir_name, relative_path)
                 };
                 workspace.bundle_config.add_dependency(dependency);
             }
@@ -1807,19 +1793,41 @@ fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()
                     });
                 }
 
-                // Normalize path to be relative to augent.yaml location
-                // If path is ".augent/./my-local-bundle", convert to "./my-local-bundle"
-                // If path is ".augent/my-local-bundle", convert to "./my-local-bundle"
-                let normalized_path = if path.starts_with(".augent/") {
-                    // Remove ".augent/" prefix and ensure it starts with "./"
-                    let without_augent = path.strip_prefix(".augent/").unwrap();
-                    if without_augent.starts_with("./") {
-                        without_augent.to_string()
+                // Convert path from workspace-root-relative to config-dir-relative
+                // Path in lockfile is relative to workspace root (e.g., "bundles/my-bundle")
+                // Need to convert to be relative to where augent.yaml lives (config_dir)
+                let normalized_path = {
+                    let bundle_path = workspace.root.join(path);
+
+                    if let Ok(rel_from_config) = bundle_path.strip_prefix(&workspace.config_dir) {
+                        // Bundle is under config_dir (relative path is straightforward)
+                        let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+                        if path_str.is_empty() {
+                            ".".to_string()
+                        } else {
+                            path_str
+                        }
+                    } else if let Ok(rel_from_root) = bundle_path.strip_prefix(&workspace.root) {
+                        // Bundle is under workspace root but not under config_dir
+                        // Need to construct path with .. segments
+                        let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
+
+                        // Find how deep config_dir is relative to workspace root
+                        if let Ok(config_rel) = workspace.config_dir.strip_prefix(&workspace.root) {
+                            let config_depth = config_rel.components().count();
+                            let mut parts = vec!["..".to_string(); config_depth];
+                            if !rel_from_root_str.is_empty() {
+                                parts.push(rel_from_root_str);
+                            }
+                            parts.join("/")
+                        } else {
+                            // config_dir is not under root (shouldn't happen), use original path
+                            path.clone()
+                        }
                     } else {
-                        format!("./{}", without_augent)
+                        // Bundle is outside workspace - use original path
+                        path.clone()
                     }
-                } else {
-                    path.clone()
                 };
 
                 // For directory sources, use the normalized path
