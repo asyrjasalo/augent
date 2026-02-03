@@ -1336,8 +1336,9 @@ bundles:
             augent_dir: std::path::PathBuf::from(".augent"),
             config_dir: std::path::PathBuf::from(".augent"),
             bundle_config: crate::config::BundleConfig::new(),
-            workspace_config,
-            lockfile,
+            workspace_config: crate::config::WorkspaceConfig::new(),
+            lockfile: crate::config::Lockfile::new(),
+            should_create_augent_yaml: false,
         };
 
         let dependents = find_dependent_bundles(&workspace, "bundle1").unwrap();

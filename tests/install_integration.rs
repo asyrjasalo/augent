@@ -149,6 +149,33 @@ bundles:
         );
 }
 
+/// Simulate the user's exact scenario: workspace root has commands/ and .opencode/
+/// No augent.yaml exists initially. Running augent install should create it.
+#[test]
+fn test_install_creates_augent_yaml_for_workspace_root_resources() {
+    let workspace = common::TestWorkspace::new();
+    // Create .augent directory manually (simulating workspace init without config files)
+    workspace.create_augent_dir();
+    // Create resources in the workspace root (user's scenario)
+    workspace.create_agent_dir("opencode");
+    workspace.write_file("commands/test.md", "# Test command\n");
+    workspace.write_file("commands/another.md", "# Another command\n");
+
+    // Run install with no source - should create augent.yaml
+    common::augent_cmd_for_workspace(&workspace.path)
+        .args(["install"])
+        .assert()
+        .success();
+
+    // Verify augent.yaml was created
+    assert!(workspace.file_exists(".augent/augent.yaml"));
+
+    // Verify it has the correct format with workspace name
+    let config = workspace.read_file(".augent/augent.yaml");
+    assert!(config.contains("name:"));
+    assert!(config.contains("bundles: []"));
+}
+
 #[test]
 fn test_install_auto_initializes_workspace_when_missing() {
     let workspace = common::TestWorkspace::new();

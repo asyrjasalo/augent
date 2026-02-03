@@ -36,6 +36,7 @@ pub const WORKSPACE_INDEX_FILE: &str = "augent.index.yaml";
 
 /// Represents an Augent workspace
 #[derive(Debug)]
+#[allow(dead_code)] // Allow should_create_augent_yaml field for now
 pub struct Workspace {
     /// Root directory of the workspace (where .augent is located)
     pub root: PathBuf,
@@ -60,6 +61,10 @@ pub struct Workspace {
 
     /// Workspace configuration (augent.index.yaml)
     pub workspace_config: WorkspaceConfig,
+
+    /// Whether to create augent.yaml during save (set by install command)
+    /// This distinguishes between installing workspace bundle vs. dir bundle
+    pub should_create_augent_yaml: bool,
 }
 
 impl Workspace {
@@ -148,6 +153,7 @@ impl Workspace {
             bundle_config,
             lockfile,
             workspace_config,
+            should_create_augent_yaml: false,
         })
     }
 
@@ -177,6 +183,7 @@ impl Workspace {
             bundle_config,
             lockfile,
             workspace_config,
+            should_create_augent_yaml: false,
         })
     }
 
@@ -616,16 +623,12 @@ impl Workspace {
 
         // Save augent.yaml (including metadata like name, description, etc.)
         // Per spec: NEVER remove augent.yaml if it exists
-        // Only create augent.yaml when file already exists (preserve metadata)
-        // When installing dir bundles directly without existing file: don't create
-        let augent_yaml_path = self.config_dir.join("augent.yaml");
-        let file_already_exists = augent_yaml_path.exists();
-
-        // Save augent.yaml only if it already exists (to preserve workspace metadata)
-        if file_already_exists {
+        // Only create augent.yaml when should_create_augent_yaml flag is true
+        // This distinguishes between installing workspace bundle (create augent.yaml) and
+        // installing dir bundles (don't create augent.yaml)
+        if self.should_create_augent_yaml {
             Self::save_bundle_config(&self.config_dir, &ordered_bundle_config, &workspace_name)?;
         }
-        // Else: installing dir bundles directly, no existing file -> don't create
 
         Self::save_lockfile(&self.config_dir, &ordered_lockfile, &workspace_name)?;
         Self::save_workspace_config(&self.config_dir, &ordered_workspace_config, &workspace_name)?;

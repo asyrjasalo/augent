@@ -954,6 +954,9 @@ fn do_install_from_yaml(
     // No longer need to check lockfile name (it's no longer stored in lockfile)
 
     if configs_updated && !args.dry_run {
+        // Set flag to create augent.yaml during workspace bundle install
+        workspace.should_create_augent_yaml = true;
+
         update_configs_from_yaml(
             workspace,
             &resolved_bundles,
@@ -1293,6 +1296,9 @@ fn do_install(
     if args.dry_run {
         println!("[DRY RUN] Would update configuration files...");
     } else {
+        // Set flag to create/update augent.yaml during bundle install
+        workspace.should_create_augent_yaml = should_update_augent_yaml;
+
         update_configs(
             workspace,
             source_str,
@@ -2190,6 +2196,7 @@ mod tests {
             bundle_config: crate::config::BundleConfig::new(),
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
+            should_create_augent_yaml: false,
         };
 
         let lockfile = generate_lockfile(&workspace, &[]).unwrap();
@@ -2211,6 +2218,7 @@ mod tests {
             bundle_config: crate::config::BundleConfig::new(),
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
+            should_create_augent_yaml: false,
         };
 
         let bundle = crate::resolver::ResolvedBundle {
@@ -2240,6 +2248,7 @@ mod tests {
             bundle_config: crate::config::BundleConfig::new(),
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
+            should_create_augent_yaml: false,
         };
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();
@@ -2295,6 +2304,7 @@ mod tests {
             bundle_config: crate::config::BundleConfig::new(),
             workspace_config: crate::config::WorkspaceConfig::new(),
             lockfile: crate::config::Lockfile::new(),
+            should_create_augent_yaml: false,
         };
 
         std::fs::create_dir(temp.path().join("commands")).unwrap();
