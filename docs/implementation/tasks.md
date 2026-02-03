@@ -354,9 +354,11 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ### Epic 7: Uninstall Command
 
-**Status:** Complete
+**Status:** In Progress
 
 **Goal:** Implement the `uninstall` command with safe removal.
+
+**Working on:** Feature 7.5 - Directory Bundle Cascade Uninstall
 
 #### Feature 7.1: Bundle Dependency Analysis
 
@@ -390,6 +392,13 @@ See: [CLAUDE.md](../../CLAUDE.md)
 - [x] Implement rollback function on error
 - [x] Restore backups on failure
 - [x] Write tests for rollback scenarios
+
+#### Feature 7.5: Directory Bundle Cascade Uninstall
+
+- [x] Implement build_dir_bundle_roots function to identify root dir bundles
+- [x] Modify explicitly_installed calculation to only include root dir bundles
+- [x] Write tests for dir bundle cascade uninstall behavior
+- [x] Update uninstall-dependencies.md spec with dir bundle behavior
 
 ### Epic 8: List Command
 

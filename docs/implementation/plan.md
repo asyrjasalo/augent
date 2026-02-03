@@ -286,6 +286,18 @@ Uninstall command, query commands (list, show), help and version.
 
 **Status:** Complete
 
+#### Feature 7.5: Directory Bundle Cascade Uninstall
+
+**Status:** Complete
+
+**Goal:** Implement cascade uninstall of dir bundle dependencies when a dir bundle is removed.
+
+Scope:
+
+- When uninstalling a dir bundle, also uninstall its dependencies
+- Unless those dependencies are also needed by other dir bundles
+- Only dir bundles are affected by this behavior (git bundles remain unchanged)
+
 ### Epic 8: List Command
 
 **Status:** Complete

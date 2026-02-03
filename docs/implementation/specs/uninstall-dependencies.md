@@ -13,6 +13,56 @@ This document describes:
 
 ## How It Works
 
+### Directory Bundle Cascade Uninstall
+
+**Note**: This section describes NEW behavior for dir bundles (installed from local directories).
+
+When uninstalling a **dir bundle** (bundle installed from a local directory, not from Git), the uninstall command now also uninstalled its transitive dependencies, **unless those dependencies are also needed by other dir bundles**.
+
+This is implemented by identifying which dir bundles are **roots** (not depended on by any other dir bundle):
+
+- **Root dir bundle**: A dir bundle that no other dir bundle depends on
+  - These are treated as "explicitly installed"
+  - When a root dir bundle is uninstalled, its dependencies may be orphaned
+- **Dependency dir bundle**: A dir bundle that some other dir bundle depends on
+  - These are NOT treated as "explicitly installed"
+  - When a root dir bundle is uninstalled, a dependency dir bundle becomes an orphan IF no other root dir bundle also depends on it
+
+**Examples**:
+
+1. **Cascade to orphaned dependencies**:
+
+   ```text
+   # Setup: dir bundle A depends on B and C
+   bundle-a → [bundle-b, bundle-c]
+
+   # Uninstall A:
+   # - A is uninstalled (explicit)
+   # - B becomes orphan (nothing depends on it)
+   # - C becomes orphan (nothing depends on it)
+   # Result: A, B, and C are all uninstalled
+   ```
+
+2. **Keep shared dependencies**:
+
+   ```text
+   # Setup: dir bundle A and D both depend on B
+   bundle-a → [bundle-b]
+   bundle-d → [bundle-b]
+
+   # Uninstall A:
+   # - A is uninstalled (explicit)
+   # - B remains (needed by D, which is still installed)
+   # Result: Only A is uninstalled
+   ```
+
+**Implementation details**:
+
+- Dependency information is read from each dir bundle's `augent.yaml` file
+- A reverse dependency map is built to find which dir bundles are depended on by others
+- Only dir bundles that are NOT depended on by other dir bundles are considered roots
+- Git bundles and other bundle types are NOT affected by this behavior (they remain explicitly installed based on workspace config)
+
 ### Dependency Detection
 
 The uninstall command now treats dependency cleanup as a **graph reachability** problem, using both the workspace config and each bundle’s own `augent.yaml`:
