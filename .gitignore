@@ -8,6 +8,9 @@ bin/
 .rumdl_cache/
 
 # coding agents
+.claude/
+.cursor/
+.opencode/
 *.bak
 
 # development workspace
