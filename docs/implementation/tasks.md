@@ -21,8 +21,8 @@ Update when you have started a feature and completed a feature (in **Status:** a
 
 ## Task Statistics
 
-- **Total Tasks:** 447
-- **Completed:** 447 (All phases complete)
+- **Total Tasks:** 453
+- **Completed:** 453 (All phases complete)
 - **Pending:** 0
 
 ---
@@ -989,5 +989,33 @@ See: [bundles.md](../bundles.md) (Universal resource format), [platforms_schema.
 - [x] Refactor OpenCode and Gemini conversions to accept merged frontmatter + body; keep backward compatibility for files without frontmatter
 - [x] Document universal format and examples in docs/bundles.md
 - [x] Add integration test for multi-platform install with platform blocks (universal-frontmatter-bundle fixture)
+
+---
+
+## Phase 11: CLI Enhancements
+
+### Epic 19: Git Repository Validation
+
+#### Feature 19.1: Enforce git repository requirement for commands
+
+**Status:** [x] Complete
+
+Goal: Add validation to ensure augent commands can only be run when in a git repository.
+
+Scope:
+
+- Add new error type `NotInGitRepository` in error module
+- Add check function to verify if current directory is in a git repository
+- Apply git repository check to commands that require it (install, uninstall, list, show)
+- Allow cache, version, and completions commands to run outside git repository
+- Write tests for git repository check
+- Run clippy and tests to verify implementation
+
+- [x] Add new error type `NotInGitRepository` in error module
+- [x] Add check function to verify if current directory is in a git repository
+- [x] Apply git repository check to commands that require it (install, uninstall, list, show)
+- [x] Write tests for git repository check
+- [x] Run clippy to verify code quality
+- [x] Run tests to verify implementation
 
 ---

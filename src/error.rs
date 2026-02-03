@@ -83,6 +83,15 @@ pub enum AugentError {
     #[allow(dead_code, unused_assignments)]
     GitOpenFailed { path: String, reason: String },
 
+    #[error("Not in a git repository")]
+    #[diagnostic(
+        code(augent::git::not_in_repo),
+        help(
+            "Augent commands must be run from within a git repository. Run 'git init' to create a repository."
+        )
+    )]
+    NotInGitRepository,
+
     // Workspace errors
     #[error("Workspace not found at: {path}")]
     #[diagnostic(
@@ -318,6 +327,12 @@ mod tests {
         };
         assert!(err.to_string().contains("Git operation failed"));
         assert!(err.to_string().contains("connection timed out"));
+    }
+
+    #[test]
+    fn test_not_in_git_repository_error() {
+        let err = AugentError::NotInGitRepository;
+        assert!(err.to_string().contains("Not in a git repository"));
     }
 
     #[test]

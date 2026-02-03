@@ -31,6 +31,7 @@ This plan covers both pre-implementation planning and actual implementation of A
 - [Complete] Phase 5: Quality Assurance (Epics 11-13) - Complete
 - [Complete] Phase 6: Release (Epic 14) - Complete
 - [Complete] Phase 7: Post-Release Maintenance & Cleanup (Epic 15) - Complete
+- [Complete] Phase 11: CLI Enhancements (Epic 19) - Complete
 
 ---
 
@@ -512,3 +513,26 @@ Goal: Simplify cache command UX by making `augent cache` show only cache statist
 Goal: Adopt a universal frontmatter format for bundle resources (commands, rules, skills, agents): YAML frontmatter with common fields and optional platform-specific blocks keyed by Augent platform id. At install time, merge common + platform block and emit platform-native content for OpenCode and Gemini; other platforms keep current behavior. Backward compatible: files without frontmatter unchanged.
 
 See: [bundles.md](../bundles.md#universal-resource-format), [tasks.md](tasks.md).
+
+---
+
+## Phase 11: CLI Enhancements
+
+### Epic 19: Git Repository Validation
+
+**Status:** Complete
+
+#### Feature 19.1: Enforce git repository requirement for commands
+
+**Status:** Complete
+
+Goal: Add validation to ensure augent commands can only be run when in a git repository.
+
+Scope:
+
+- Add new error type `NotInGitRepository` in error module
+- Add check function to verify if current directory is in a git repository
+- Apply git repository check to commands that require it (install, uninstall, list, show)
+- Allow cache, version, and completions commands to run outside git repository
+- Write tests for git repository check
+- Run clippy and tests to verify implementation
