@@ -705,8 +705,11 @@ impl Resolver {
             });
         }
 
-        // Try to load augent.yaml
-        let config = self.load_bundle_config(&content_path)?;
+        // IMPORTANT: For git bundles, DO NOT read augent.yaml from the repository
+        // Per spec: "When installing a git bundle, only the workspace augent.lock file is read,
+        // neither the workspace augent.yaml nor any other augent.yaml in the repository."
+        // The workspace lockfile already has all bundles and their dependencies.
+        let config: Option<BundleConfig> = None;
 
         // Derive base name from URL - format as @owner/repo
         let url_clean = source.url.trim_end_matches(".git");
@@ -772,6 +775,8 @@ impl Resolver {
 
         // Resolve dependencies first with bundle's directory as context
         // Skip dependency resolution if skip_deps is true
+        // For git bundles: config is None (we don't read augent.yaml from repos),
+        // so dependencies are already in workspace lockfile - no need to resolve from repo's augent.yaml
         if !skip_deps {
             if let Some(cfg) = &config {
                 for dep in &cfg.bundles {
