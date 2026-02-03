@@ -375,6 +375,15 @@ impl TestWorkspace {
             .status()
             .expect("Failed to commit");
 
+        // Ensure the branch is named "main" (git init might use "master" as default)
+        std::process::Command::new("git")
+            .args(["branch", "-M", "main"])
+            .current_dir(&repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("Failed to rename branch to main");
+
         repo_path
     }
 
