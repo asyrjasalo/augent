@@ -1066,13 +1066,18 @@ impl Resolver {
         let mut visited = HashSet::new();
         let mut temp_visited = HashSet::new();
 
-        // Build adjacency list
+        // Build adjacency list with deterministic iteration order
+        let mut bundle_names: Vec<_> = self.resolved.keys().cloned().collect();
+        bundle_names.sort(); // Deterministic order
+
         let mut deps: HashMap<String, Vec<String>> = HashMap::new();
-        for (name, bundle) in &self.resolved {
+        for name in &bundle_names {
             let mut bundle_deps = Vec::new();
-            if let Some(cfg) = &bundle.config {
-                for dep in &cfg.bundles {
-                    bundle_deps.push(dep.name.clone());
+            if let Some(bundle) = self.resolved.get(name) {
+                if let Some(cfg) = &bundle.config {
+                    for dep in &cfg.bundles {
+                        bundle_deps.push(dep.name.clone());
+                    }
                 }
             }
             deps.insert(name.clone(), bundle_deps);
@@ -1087,7 +1092,8 @@ impl Resolver {
         }
 
         // Process any bundles not in resolution_order (e.g., transitive dependencies)
-        for name in self.resolved.keys() {
+        // Use sorted order for determinism
+        for name in &bundle_names {
             if !visited.contains(name) {
                 self.topo_dfs(name, &deps, &mut visited, &mut temp_visited, &mut result)?;
             }

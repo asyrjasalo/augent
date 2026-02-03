@@ -46,7 +46,7 @@ It does NOT:
 10. **Run any other checks** - If any
 11. **Update documentation** - Update relevant @docs/
 12. **Run pre-commit** - Check documentation and other files:
-    - `pre-commit run --all-files`
+    - `prek run --all-files`
 13. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation, then update corresponding Epic/Feature status in plan.md
 14. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
