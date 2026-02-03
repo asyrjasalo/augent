@@ -18,8 +18,14 @@ bundles: []
 "#,
     );
 
+    // Add bundle to augent.yaml (required for directory bundles)
+    workspace.write_file(
+        ".augent/augent.yaml",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+    );
+
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
+        .args(["install", "--to", "cursor"])
         .assert()
         .success();
 
@@ -43,8 +49,14 @@ bundles: []
 "#,
     );
 
+    // Add bundle to augent.yaml (required for directory bundles)
+    workspace.write_file(
+        ".augent/augent.yaml",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+    );
+
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
+        .args(["install", "--to", "cursor"])
         .assert()
         .success();
 
@@ -82,8 +94,14 @@ bundles: []
 "#,
     );
 
+    // Add bundle to augent.yaml (required for directory bundles)
+    workspace.write_file(
+        ".augent/augent.yaml",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+    );
+
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
+        .args(["install", "--to", "cursor"])
         .assert()
         .success();
 
@@ -107,8 +125,14 @@ bundles: []
 "#,
     );
 
+    // Add bundle to augent.yaml (required for directory bundles)
+    workspace.write_file(
+        ".augent/augent.yaml",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+    );
+
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./bundles/test-bundle", "--to", "cursor"])
+        .args(["install", "--to", "cursor"])
         .assert()
         .success();
 

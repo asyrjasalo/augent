@@ -33,18 +33,24 @@ bundles: []
     );
     workspace.write_file("bundles/bundle-2/commands/test2.md", "# Test 2\n");
 
+    // Add bundles to augent.yaml (required for directory bundles)
+    workspace.write_file(
+        ".augent/augent.yaml",
+        "bundles:\n  - name: \"@test/bundle-1\"\n    path: \"../bundles/bundle-1\"\n  - name: \"@test/bundle-2\"\n    path: \"../bundles/bundle-2\"\n",
+    );
+
     // Install both bundles simultaneously using different commands
     let path1 = workspace.path.clone();
     let path2 = workspace.path.clone();
     let result1 = std::thread::spawn(move || {
         common::augent_cmd_for_workspace(&path1)
-            .args(["install", "./bundles/bundle-1", "--to", "cursor"])
+            .args(["install", "@test/bundle-1", "--to", "cursor"])
             .output()
     });
 
     let result2 = std::thread::spawn(move || {
         common::augent_cmd_for_workspace(&path2)
-            .args(["install", "./bundles/bundle-2", "--to", "cursor"])
+            .args(["install", "@test/bundle-2", "--to", "cursor"])
             .output()
     });
 
@@ -91,18 +97,23 @@ bundles: []
         );
     }
 
+    // Add bundles to augent.yaml (required for directory bundles)
+    let mut augent_yaml_content = "bundles:\n".to_string();
+    for i in 1..=5 {
+        augent_yaml_content.push_str(&format!(
+            "  - name: \"@test/bundle-{}\"\n    path: \"../bundles/bundle-{}\"\n",
+            i, i
+        ));
+    }
+    workspace.write_file(".augent/augent.yaml", &augent_yaml_content);
+
     // Install and list concurrently
     let install_path = workspace.path.clone();
     let list_path = workspace.path.clone();
     let install_handle = std::thread::spawn(move || {
         for i in 1..=5 {
             common::augent_cmd_for_workspace(&install_path)
-                .args([
-                    "install",
-                    &format!("./bundles/bundle-{}", i),
-                    "--to",
-                    "cursor",
-                ])
+                .args(["install", &format!("@test/bundle-{}", i), "--to", "cursor"])
                 .assert()
                 .success();
             // Small delay to reduce race conditions between installs

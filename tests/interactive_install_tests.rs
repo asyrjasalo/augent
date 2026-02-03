@@ -46,10 +46,16 @@ fn test_install_with_menu_selects_all_bundles() {
         );
         workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
+        // Add bundles to augent.yaml (required for directory bundles)
+        workspace.write_file(
+            ".augent/augent.yaml",
+            "bundles:\n  - name: \"@test/bundle-a\"\n    path: \"../bundles/bundle-a\"\n  - name: \"@test/bundle-b\"\n    path: \"../bundles/bundle-b\"\n",
+        );
+
         let augent_path = augent_bin_path();
         let mut test = InteractiveTest::new(
             augent_path.to_str().unwrap(),
-            &["install", "./bundles", "--to", "cursor"],
+            &["install", "--to", "cursor"],
             &workspace.path,
         )
         .expect("Failed to create interactive test");
@@ -148,9 +154,15 @@ fn test_install_menu_deselect_all_uninstalls_all() {
         );
         workspace.write_file("bundles/bundle-b/commands/b.md", "# Bundle B\n");
 
+        // Add bundles to augent.yaml (required for directory bundles)
+        workspace.write_file(
+            ".augent/augent.yaml",
+            "bundles:\n  - name: \"@test/bundle-a\"\n    path: \"../bundles/bundle-a\"\n  - name: \"@test/bundle-b\"\n    path: \"../bundles/bundle-b\"\n",
+        );
+
         // First install all bundles non-interactively
         common::augent_cmd_for_workspace(&workspace.path)
-            .args(["install", "./bundles", "--to", "cursor", "--all-bundles"])
+            .args(["install", "--to", "cursor", "--all-bundles"])
             .assert()
             .success();
 
@@ -164,7 +176,7 @@ fn test_install_menu_deselect_all_uninstalls_all() {
         let augent_path = augent_bin_path();
         let mut test = InteractiveTest::new(
             augent_path.to_str().unwrap(),
-            &["install", "./bundles", "--to", "cursor"],
+            &["install", "--to", "cursor"],
             &workspace.path,
         )
         .expect("Failed to create interactive test");
@@ -194,7 +206,7 @@ fn test_install_menu_deselect_all_uninstalls_all() {
         test.wait_for_completion(std::time::Duration::from_secs(3))
             .expect("Failed to wait for process completion");
 
-        // After deselecting all preselected bundles, the install menu should
+        // After deselecting all preselected bundles, install menu should
         // perform an uninstall-only operation for those bundles.
         assert!(
             !workspace.file_exists(".cursor/commands/a.md"),
