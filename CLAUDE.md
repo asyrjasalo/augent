@@ -35,20 +35,13 @@ It does NOT:
 2. **Create task** - If not already there, add a task to the end of @docs/implementation/tasks.md before starting work
 3. **Write tests first** - Write tests before implementation (TDD approach)
 4. **Write implementation** - Write the implementation code
-5. **Run tests** - Verify implementation with tests
-6. **Iterate** - Repeat steps 3-5 (write test → write implementation → run test) until tests pass
-7. **Run formatters** - Fix formatting issues:
-   - `cargo fmt`
-8. **Run linters** - Ensure code quality (must use same arguments as CI):
+5. **Run linters** - Ensure code quality (must use same arguments as CI):
    - `cargo clippy --all-targets --all-features -- -D warnings`
-9. **Run security audit** - Check for vulnerabilities:
-   - `cargo audit`
-10. **Run any other checks** - If any
-11. **Update documentation** - Update relevant @docs/
-12. **Run pre-commit** - Check documentation and other files:
-    - `prek run --all-files`
-13. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation, then update corresponding Epic/Feature status in plan.md
-14. **Update CHANGELOG.md** - For user-facing features or bug fixes only
+6. **Run tests** - Verify implementation with tests
+7. **Iterate** - Repeat steps 3-6 (write test → write implementation → run test) until tests pass
+8. **Update documentation** - Update relevant @docs/
+9. **Mark task complete** - Mark task as `[x]` in tasks.md and link to relevant documentation, then update corresponding Epic/Feature status in plan.md
+10. **Update CHANGELOG.md** - For user-facing features or bug fixes only
 
 ## Development Guidelines
 
