@@ -543,6 +543,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             &mut transaction,
             was_initialized,
             has_local_resources,
+            has_workspace_resources,
         ) {
             Ok(()) => {
                 transaction.commit();
@@ -560,6 +561,7 @@ fn do_install_from_yaml(
     transaction: &mut Transaction,
     was_initialized: bool,
     has_local_resources: bool,
+    has_workspace_resources: bool,
 ) -> Result<()> {
     // Detect and preserve any modified files before reinstalling bundles
     let cache_dir = cache::bundles_cache_dir()?;
@@ -745,11 +747,11 @@ fn do_install_from_yaml(
         )
     };
 
-    // If we detected modified files, ensure workspace bundle is in the resolved list
+    // If we detected modified files OR if workspace has resources, ensure workspace bundle is in the resolved list
     // (append LAST so it overrides other bundles)
     let mut final_resolved_bundles = resolved_bundles;
     let workspace_bundle_name = workspace.get_workspace_name();
-    if has_modified_files
+    if (has_modified_files || has_workspace_resources)
         && !final_resolved_bundles
             .iter()
             .any(|b| b.name == workspace_bundle_name)
@@ -942,9 +944,12 @@ fn do_install_from_yaml(
     // Only update configurations if changes were made:
     // - If --update flag was given (lockfile needs updating), OR
     // - If files were actually installed (workspace_bundles has entries with files), OR
-    // - If modified files were detected and preserved
-    let configs_updated =
-        should_update_lockfile || !workspace_bundles_with_files.is_empty() || has_modified_files;
+    // - If modified files were detected and preserved, OR
+    // - If workspace has resources that need to be installed
+    let configs_updated = should_update_lockfile
+        || !workspace_bundles_with_files.is_empty()
+        || has_modified_files
+        || has_workspace_resources;
 
     // No longer need to check lockfile name (it's no longer stored in lockfile)
 
@@ -958,9 +963,9 @@ fn do_install_from_yaml(
     }
 
     // If --update was not given, restore the original lockfile (don't modify it)
-    // UNLESS modified files were detected, in which case keep the workspace bundle entry
+    // UNLESS modified files were detected OR workspace has resources, in which case keep the workspace bundle entry
     if !should_update_lockfile {
-        if has_modified_files {
+        if has_modified_files || has_workspace_resources {
             // Keep the workspace bundle entry, but restore everything else
             let workspace_bundle_name = workspace.get_workspace_name();
             if let Some(workspace_bundle_entry) = workspace
