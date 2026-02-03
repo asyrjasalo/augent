@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5](https://github.com/asyrjasalo/augent/releases/tag/v0.6.5) - 2026-02-03
+
+### Fixed
+
+- `augent uninstall`: Uninstalling a directory bundle now correctly cascades to uninstall its dependencies, unless those dependencies are also needed by other installed directory bundles.
+- Dependency resolution now ensures deterministic order across platforms and when removing bundles from the dependency graph.
+- Bundle dependency names are now resolved correctly, fixing errors when bundles reference each other.
+- `augent install` from git repositories no longer reads `augent.yaml` from the cached git checkout, ensuring behavior is consistent with the bundles specification.
+- `augent uninstall` now correctly reads `augent.yaml` from the git cache, allowing proper resolution of dependencies when uninstalling git bundles.
+- Workspace resources are now consistently discovered during install operations, preventing errors when only local root resources exist.
+
 ## [0.6.4](https://github.com/asyrjasalo/augent/releases/tag/v0.6.4) - 2026-02-02
 
 ### Changed
