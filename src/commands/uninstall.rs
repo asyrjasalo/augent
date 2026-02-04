@@ -364,8 +364,43 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
 
     let bundle_names = match args.name {
         Some(name) => {
-            // Check if this is a scope pattern
-            if is_scope_pattern(&name) {
+            // Check if this is the special "." argument for current directory
+            if name == "." {
+                // Find the bundle that corresponds to the current directory
+                let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
+                    message: format!("Failed to get current directory: {}", e),
+                })?;
+
+                // Canonicalize current directory for comparison
+                let canonical_current_dir =
+                    std::fs::canonicalize(&current_dir).unwrap_or_else(|_| current_dir.clone());
+
+                // Look for a bundle with a path that matches the current directory
+                let matching_bundle = workspace.bundle_config.bundles.iter().find(|b| {
+                    if let Some(ref path_val) = b.path {
+                        let bundle_path = workspace.root.join(path_val);
+                        let canonical_bundle_path = std::fs::canonicalize(&bundle_path)
+                            .unwrap_or_else(|_| bundle_path.clone());
+
+                        canonical_bundle_path == canonical_current_dir
+                    } else {
+                        false
+                    }
+                });
+
+                if let Some(bundle_dep) = matching_bundle {
+                    // Found a bundle matching the current directory
+                    println!("Uninstalling current directory bundle: {}", bundle_dep.name);
+                    vec![bundle_dep.name.clone()]
+                } else {
+                    // No bundle found for current directory
+                    return Err(AugentError::BundleNotFound {
+                        name: "Current directory is not installed as a bundle. \
+                             To uninstall, specify a bundle name from augent.yaml."
+                            .to_string(),
+                    });
+                }
+            } else if is_scope_pattern(&name) {
                 let matching_bundles = filter_bundles_by_scope(&workspace, &name);
 
                 if matching_bundles.is_empty() {

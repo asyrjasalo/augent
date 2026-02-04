@@ -269,6 +269,7 @@ impl TestWorkspace {
             .expect("Failed to copy augent.index.yaml");
         }
 
+        // Ensure bundles directory exists (required for saving augent.yaml)
         std::fs::create_dir_all(augent_dir.join("bundles"))
             .expect("Failed to create bundles directory");
     }
