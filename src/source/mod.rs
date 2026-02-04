@@ -111,12 +111,14 @@ impl BundleSource {
         // - Starts with . but doesn't look like a git URL (no :// after the .)
         //   (e.g., .augent, .cursor, .claude are local paths, not git sources)
         // - Is absolute (/ on Unix, C:\ on Windows, etc.)
+        // - Starts with / (Unix-style absolute path, even on Windows)
         let is_local_path = input.starts_with("./")
             || input.starts_with("../")
             || input == "."
             || input == ".."
             || (input.starts_with(".") && !input.contains("://"))
-            || path.is_absolute();
+            || path.is_absolute()
+            || input.starts_with('/');
 
         if is_local_path {
             return Ok(BundleSource::Dir {
@@ -821,7 +823,7 @@ mod tests {
 
     #[test]
     fn test_ssh_url_preserves_at_sign() {
-        // SSH URLs with git@ should not treat the @ as a ref separator
+        // SSH URLs with git@ should not treat @ as a ref separator
         let source = BundleSource::parse("git@github.com:author/repo.git").unwrap();
         assert!(source.is_git());
         let git = source.as_git().unwrap();
@@ -833,8 +835,21 @@ mod tests {
     #[test]
     fn test_github_implicit_with_at_ref_sha() {
         let source = BundleSource::parse("author/repo@abc123def456").unwrap();
+        assert!(source.is_git());
         let git = source.as_git().unwrap();
         assert_eq!(git.url, "https://github.com/author/repo.git");
         assert_eq!(git.git_ref, Some("abc123def456".to_string()));
+    }
+
+    #[test]
+    fn test_parse_unix_absolute_path() {
+        // Unix-style absolute paths (starting with /) should be parsed as local paths
+        // even on Windows where Path::is_absolute() requires a drive letter
+        let source = BundleSource::parse("/some/absolute/path/bundle").unwrap();
+        assert!(source.is_local());
+        assert_eq!(
+            source.as_local_path(),
+            Some(&PathBuf::from("/some/absolute/path/bundle"))
+        );
     }
 }
