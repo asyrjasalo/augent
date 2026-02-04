@@ -15,6 +15,15 @@ backend = "aqua:j178/prek"
 "platforms.macos-x64" = { checksum = "sha256:53ddbc9c6aea7afb6ff9e0b41303881844a0ec956f803f751365f5c3c45d373c", url = "https://github.com/j178/prek/releases/download/v0.3.0/prek-x86_64-apple-darwin.tar.gz"}
 "platforms.windows-x64" = { checksum = "sha256:cff9e2f372f7f5a31578e402938a629e45567c8f0ae3a098d269c776d97e43c8", url = "https://github.com/j178/prek/releases/download/v0.3.0/prek-x86_64-pc-windows-msvc.zip"}
 
+[[tools.prek]]
+version = "0.3.1"
+backend = "aqua:j178/prek"
+"platforms.linux-arm64" = { checksum = "sha256:8c14e721fa283be03a582048255c1e6815163ad11d0b0608d03bfbdb69977dc2", url = "https://github.com/j178/prek/releases/download/v0.3.1/prek-aarch64-unknown-linux-musl.tar.gz"}
+"platforms.linux-x64" = { checksum = "sha256:dd04fb0c261528c5b00a49c70845d5eb32b09c50fff81f53f742e6a36b5299fe", url = "https://github.com/j178/prek/releases/download/v0.3.1/prek-x86_64-unknown-linux-musl.tar.gz"}
+"platforms.macos-arm64" = { checksum = "sha256:a22c879109ba89c260b16602737ffb81c35eb493e988124a4c2875c549390ede", url = "https://github.com/j178/prek/releases/download/v0.3.1/prek-aarch64-apple-darwin.tar.gz"}
+"platforms.macos-x64" = { checksum = "sha256:cfd25f3b2ce65ad26274e3a20cc53308614d1b6f46d8c18429673aa4dcff6528", url = "https://github.com/j178/prek/releases/download/v0.3.1/prek-x86_64-apple-darwin.tar.gz"}
+"platforms.windows-x64" = { checksum = "sha256:1e7f41acb2ad26f691b2cabe2d8283539fb030d33885da537c4203099716b75f", url = "https://github.com/j178/prek/releases/download/v0.3.1/prek-x86_64-pc-windows-msvc.zip"}
+
 [[tools.rust]]
 version = "1.93.0"
 backend = "core:rust"
@@ -22,4 +31,8 @@ backend = "core:rust"
 [[tools.rust-analyzer]]
 version = "2026-01-26"
 backend = "aqua:rust-lang/rust-analyzer"
+"platforms.linux-arm64" = { checksum = "sha256:88a69f50ab6f4660372b15a3557666e63f128d11008df5fd4e084aed6645b2d5", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-01-26/rust-analyzer-aarch64-unknown-linux-gnu.gz"}
+"platforms.linux-x64" = { checksum = "sha256:45a5080b39e46cf7dd7ba597b1c758efd15338fdfa736af4d265bbc5d5628696", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-01-26/rust-analyzer-x86_64-unknown-linux-gnu.gz"}
 "platforms.macos-arm64" = { checksum = "sha256:d67bc67233240de7825a76291999a1ad10e744b5d5d6ca56d7e050576963a153", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-01-26/rust-analyzer-aarch64-apple-darwin.gz"}
+"platforms.macos-x64" = { checksum = "sha256:ecda0e1a6802d443010b0e1a1de436e7229e9e294850bd2a13c935c2daeaf01a", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-01-26/rust-analyzer-x86_64-apple-darwin.gz"}
+"platforms.windows-x64" = { checksum = "sha256:b0537dcdefa3cb413fc47b98a74803cd234ec998c7d8f02a93f63f663ccd2121", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-01-26/rust-analyzer-x86_64-pc-windows-msvc.zip"}
