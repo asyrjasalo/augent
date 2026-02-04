@@ -1071,4 +1071,25 @@ Scope:
 - [x] Fix workspace::save() to use correct order: lock, yaml, index
 - [x] Run cargo clippy and tests to verify fix
 
+### Epic 22: Fix dir bundle name in lockfile
+
+**Status:** Complete
+
+**Working on:** Feature 22.1 - Fix dir bundle name in lockfile and index
+
+Goal: When installing a dir bundle with a custom name in augent.yaml (e.g., `name: my-library-name, path: my-library`), the lockfile and augent.index.yaml should preserve the custom name instead of using the directory name as the bundle name.
+
+Scope:
+
+- Fix source path resolution in install command to correctly resolve bundle paths from workspace root
+- Preserve custom bundle names from augent.yaml in lockfile and index files
+
+#### Feature 22.1: Fix dir bundle name in lockfile and index
+
+**Status:** Complete
+
+- [x] Identify bug: install command was resolving bundle paths relative to `config_dir` instead of `workspace_root`
+- [x] Fix bug: Change line 125 in src/commands/install.rs to use `workspace_root` instead of `workspace.config_dir`
+- [x] Run cargo clippy and tests to verify fix
+
 ---

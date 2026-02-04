@@ -574,3 +574,11 @@ Scope:
 - Ensure both install and uninstall commands use correct update order
 - Write test to verify config files are updated in correct order
 - Run clippy and tests to verify implementation
+
+### Epic 22: Fix Dir Bundle Name in Lockfile
+
+**Status:** Complete
+
+**Goal:** When installing a dir bundle with a custom name in augent.yaml (e.g., `name: my-library-name, path: my-library`), the lockfile and augent.index.yaml should preserve the custom name instead of using the directory name as the bundle name.
+
+See: [tasks.md](tasks.md)

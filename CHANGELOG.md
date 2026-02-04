@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix dir bundle name preservation in lockfile and index files. When installing a dir bundle with a custom name in `augent.yaml` (e.g., `name: my-library-name, path: my-library`), the bundle name is now correctly preserved instead of using the directory name as the bundle name in `augent.lock` and `augent.index.yaml`.
+
 ### Removed
 
 - `augent`: Dir bundles no longer support dependencies or `augent.yaml` files. Dir bundles can now only contain resource files and directories. This simplifies the bundle model and removes the complexity of cascade uninstall for dir bundles.
