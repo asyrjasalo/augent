@@ -378,21 +378,25 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // If source is a path and it's not the workspace root itself, skip workspace bundle
         // This handles cases like "augent install ./my-bundle" where you only want that bundle, not workspace bundle
         if is_path_like(source_str) {
-            // Resolve the source to check if it's the workspace root
+            // Resolve to source to check if it's a workspace root
             let source = BundleSource::parse(source_str)?;
-            let resolved_source_path_for_check = if source.as_local_path().unwrap().is_absolute() {
-                source.as_local_path().unwrap().clone()
-            } else {
-                current_dir.join(source.as_local_path().unwrap())
-            };
 
-            let is_workspace_root = std::fs::canonicalize(&resolved_source_path_for_check)
-                .ok()
-                .and_then(|p| std::fs::canonicalize(&current_dir).ok().map(|cwd| p == cwd))
-                .unwrap_or(false);
+            // Only check if it's actually a local path (not a git URL that looks like a path)
+            if let Some(source_path) = source.as_local_path() {
+                let resolved_source_path_for_check = if source_path.is_absolute() {
+                    source_path.clone()
+                } else {
+                    current_dir.join(source_path)
+                };
 
-            if is_workspace_root {
-                installing_by_bundle_name = Some("".to_string());
+                let is_workspace_root = std::fs::canonicalize(&resolved_source_path_for_check)
+                    .ok()
+                    .and_then(|p| std::fs::canonicalize(&current_dir).ok().map(|cwd| p == cwd))
+                    .unwrap_or(false);
+
+                if is_workspace_root {
+                    installing_by_bundle_name = Some("".to_string());
+                }
             }
         }
 
