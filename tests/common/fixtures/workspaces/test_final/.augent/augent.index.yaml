@@ -1,0 +1,7 @@
+name: 'test_final'
+
+bundles:
+- name: my-library-name
+  enabled:
+    commands/test.md:
+    - .cursor/commands/test.md

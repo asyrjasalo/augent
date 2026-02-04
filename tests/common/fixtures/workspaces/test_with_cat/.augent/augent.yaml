@@ -1,0 +1,5 @@
+name: 'tmp'
+
+bundles:
+- name: my-library-name
+  path: my-library
