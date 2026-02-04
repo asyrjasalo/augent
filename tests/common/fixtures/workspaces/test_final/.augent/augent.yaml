@@ -1,5 +1,0 @@
-name: 'test_final'
-
-bundles:
-- name: my-library-name
-  path: my-library

@@ -1,6 +1,0 @@
-name: "@test/workspace"
-bundles:
-  - name: "@test/simple-bundle"
-    enabled:
-      commands/debug.md:
-        - .opencode/commands/debug.md
