@@ -553,7 +553,7 @@ impl Resolver {
         &mut self,
         path: &Path,
         dependency: Option<&BundleDependency>,
-        _skip_deps: bool,
+        skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         // Make path absolute relative to current context
         let full_path = if path.is_absolute() {
@@ -578,6 +578,10 @@ impl Resolver {
         let marketplace_json = full_path.join(".claude-plugin/marketplace.json");
         let is_plugin_bundle = marketplace_json.is_file();
 
+        // Check if this is a bundle with augent.yaml (workspace bundle or bundle with dependencies)
+        let bundle_config_path = full_path.join("augent.yaml");
+        let has_bundle_config = bundle_config_path.is_file();
+
         let source_path = if is_plugin_bundle {
             // Determine bundle name first
             let bundle_name = match dependency {
@@ -595,9 +599,20 @@ impl Resolver {
             full_path.clone()
         };
 
-        // IMPORTANT: For dir bundles, DO NOT read augent.yaml
-        // Dir bundles can only contain resource files and directories
-        let config: Option<BundleConfig> = None;
+        // For dir bundles with augent.yaml, read the config to get dependencies
+        // This handles workspace bundle (.augent/) and bundles that declare dependencies
+        let config: Option<BundleConfig> = if has_bundle_config {
+            Some(self.load_bundle_config(&full_path)?.ok_or_else(|| {
+                AugentError::BundleNotFound {
+                    name: format!(
+                        "Failed to load bundle config from path '{}'",
+                        full_path.display()
+                    ),
+                }
+            })?)
+        } else {
+            None
+        };
 
         // Determine bundle name.
         // If there's a dependency, use its name.
@@ -631,7 +646,19 @@ impl Resolver {
             self.resolution_order.push(name.clone());
         }
 
-        // NOTE: Dir bundles do not have dependencies, so no dependency resolution needed
+        // Resolve dependencies from augent.yaml if present
+        // For bundles with augent.yaml (like workspace bundle), resolve declared dependencies
+        if !skip_deps {
+            if let Some(cfg) = &config {
+                // IMPORTANT: Use workspace root as context for resolving workspace bundle dependencies
+                // This ensures paths in augent.yaml are resolved relative to workspace root,
+                // not relative to the .augent directory itself
+                let workspace_root = self.workspace_root.clone();
+                for dep in &cfg.bundles {
+                    self.resolve_dependency_with_context(dep, &workspace_root)?;
+                }
+            }
+        }
 
         // Pop from resolution stack
         self.resolution_stack.pop();
