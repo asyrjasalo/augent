@@ -30,9 +30,8 @@ fn test_install_with_menu_selects_all_bundles() {
         workspace.init_from_fixture("empty");
         workspace.create_agent_dir("cursor");
 
-        workspace.create_bundle("bundles");
-        workspace.create_bundle("bundles/bundle-a");
-        workspace.create_bundle("bundles/bundle-b");
+        workspace.create_bundle("bundle-a");
+        workspace.create_bundle("bundle-b");
 
         workspace.write_file(
             "bundles/bundle-a/augent.yaml",
@@ -49,7 +48,7 @@ fn test_install_with_menu_selects_all_bundles() {
         // Add bundles to augent.yaml (required for directory bundles)
         workspace.write_file(
             ".augent/augent.yaml",
-            "bundles:\n  - name: \"@test/bundle-a\"\n    path: \"../bundles/bundle-a\"\n  - name: \"@test/bundle-b\"\n    path: \"../bundles/bundle-b\"\n",
+            "bundles:\n  - name: \"@test/bundle-a\"\n    path: \"bundles/bundle-a\"\n  - name: \"@test/bundle-b\"\n    path: \"bundles/bundle-b\"\n",
         );
 
         let augent_path = augent_bin_path();

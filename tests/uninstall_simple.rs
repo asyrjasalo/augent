@@ -21,7 +21,7 @@ bundles: []
     // Add bundle to augent.yaml (required for directory bundles)
     workspace.write_file(
         ".augent/augent.yaml",
-        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"bundles/test-bundle\"\n",
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
@@ -52,7 +52,7 @@ bundles: []
     // Add bundle to augent.yaml (required for directory bundles)
     workspace.write_file(
         ".augent/augent.yaml",
-        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"bundles/test-bundle\"\n",
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
@@ -97,7 +97,7 @@ bundles: []
     // Add bundle to augent.yaml (required for directory bundles)
     workspace.write_file(
         ".augent/augent.yaml",
-        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"bundles/test-bundle\"\n",
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
@@ -128,7 +128,7 @@ bundles: []
     // Add bundle to augent.yaml (required for directory bundles)
     workspace.write_file(
         ".augent/augent.yaml",
-        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"../bundles/test-bundle\"\n",
+        "bundles:\n  - name: \"@test/test-bundle\"\n    path: \"bundles/test-bundle\"\n",
     );
 
     common::augent_cmd_for_workspace(&workspace.path)
