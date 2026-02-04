@@ -705,57 +705,115 @@ fn do_install_from_yaml(
         };
 
         let resolved = if lockfile_is_empty || augent_yaml_changed {
-            // Lockfile doesn't exist, is empty, or augent.yaml has changed - resolve dependencies
+            // Lockfile doesn't exist, is empty, or augent.yaml has changed
             if lockfile_is_empty {
                 println!("Lockfile not found or empty. Resolving dependencies...");
+
+                let mut resolver = Resolver::new(&workspace.root);
+
+                // If workspace was just initialized with local resources, resolve from root to discover them
+                let bundle_sources = if was_initialized && has_local_resources {
+                    vec![".".to_string()]
+                } else {
+                    vec![workspace.get_config_source_path()]
+                };
+
+                println!("Resolving workspace bundle and its dependencies...");
+
+                // Show progress while resolving dependencies
+                let pb = if !args.dry_run {
+                    let pb = ProgressBar::new_spinner();
+                    pb.set_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner} Resolving dependencies...")
+                            .unwrap()
+                            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+                    );
+                    pb.enable_steady_tick(std::time::Duration::from_millis(80));
+                    Some(pb)
+                } else {
+                    None
+                };
+
+                // Resolve all bundles uniformly through the resolver
+                let resolved = resolver.resolve_multiple(&bundle_sources)?;
+
+                if let Some(pb) = pb {
+                    pb.finish_and_clear();
+                }
+
+                if resolved.is_empty() {
+                    return Err(AugentError::BundleNotFound {
+                        name: "No bundles found in augent.yaml".to_string(),
+                    });
+                }
+
+                println!("Resolved {} bundle(s)", resolved.len());
+                resolved
             } else {
-                println!("augent.yaml has changed. Re-resolving dependencies...");
+                // augent.yaml has changed but lockfile exists
+                // Sync lockfile with augent.yaml: remove removed bundles, keep existing bundles (preserve SHAs)
+                println!("augent.yaml has changed. Syncing with lockfile...");
+                let new_bundle_deps = sync_lockfile_from_augent_yaml(workspace)?;
+
+                if !new_bundle_deps.is_empty() {
+                    println!("Resolving {} new bundle(s)...", new_bundle_deps.len());
+
+                    let mut resolver = Resolver::new(&workspace.root);
+
+                    // Show progress while resolving dependencies
+                    let pb = if !args.dry_run {
+                        let pb = ProgressBar::new_spinner();
+                        pb.set_style(
+                            ProgressStyle::default_spinner()
+                                .template("{spinner} Resolving new bundles...")
+                                .unwrap()
+                                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+                        );
+                        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+                        Some(pb)
+                    } else {
+                        None
+                    };
+
+                    // Resolve ONLY the new bundles from augent.yaml
+                    let mut resolved_new_bundles = Vec::new();
+                    for dep in new_bundle_deps {
+                        let source = if let Some(ref git_url) = dep.git {
+                            git_url.clone()
+                        } else if let Some(ref path) = dep.path {
+                            // Convert config-dir-relative path to workspace-root-relative
+                            let config_dir = workspace.root.join(".augent");
+                            let abs_path = config_dir.join(path);
+                            abs_path.to_string_lossy().to_string()
+                        } else {
+                            return Err(AugentError::BundleNotFound {
+                                name: format!("Bundle {} has no source", dep.name),
+                            });
+                        };
+
+                        let mut resolved = resolver.resolve(&source, true)?;
+                        resolved_new_bundles.append(&mut resolved);
+                    }
+
+                    if let Some(pb) = pb {
+                        pb.finish_and_clear();
+                    }
+
+                    println!("Resolved {} new bundle(s)", resolved_new_bundles.len());
+
+                    // Combine existing locked bundles with newly resolved bundles
+                    let existing_locked =
+                        locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
+                    let mut all_resolved = existing_locked;
+                    all_resolved.extend(resolved_new_bundles);
+                    all_resolved
+                } else {
+                    // No new bundles, just use existing lockfile
+                    println!("No new bundles to resolve. Using existing lockfile.");
+                    locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?
+                }
             }
-
-            let mut resolver = Resolver::new(&workspace.root);
-
-            // Resolve workspace bundle which will automatically resolve its declared dependencies
-            // from augent.yaml. All bundles are treated uniformly by the resolver.
-            // augent.yaml is in .augent/
-            // If workspace was just initialized with local resources, resolve from root to discover them
-            let bundle_sources = if was_initialized && has_local_resources {
-                vec![".".to_string()]
-            } else {
-                vec![workspace.get_config_source_path()]
-            };
-
-            println!("Resolving workspace bundle and its dependencies...");
-
-            // Show progress while resolving dependencies
-            let pb = if !args.dry_run {
-                let pb = ProgressBar::new_spinner();
-                pb.set_style(
-                    ProgressStyle::default_spinner()
-                        .template("{spinner} Resolving dependencies...")
-                        .unwrap()
-                        .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-                );
-                pb.enable_steady_tick(std::time::Duration::from_millis(80));
-                Some(pb)
-            } else {
-                None
-            };
-
-            // Resolve all bundles uniformly through the resolver
-            let resolved = resolver.resolve_multiple(&bundle_sources)?;
-
-            if let Some(pb) = pb {
-                pb.finish_and_clear();
-            }
-
-            if resolved.is_empty() {
-                return Err(AugentError::BundleNotFound {
-                    name: "No bundles found in augent.yaml".to_string(),
-                });
-            }
-
-            println!("Resolved {} bundle(s)", resolved.len());
-            resolved
         } else {
             // Lockfile exists and matches augent.yaml - use it, but fetch missing bundles from cache
             println!("Using locked versions from augent.lock.");
@@ -2166,6 +2224,59 @@ fn has_augent_yaml_changed(workspace: &Workspace) -> Result<bool> {
 
     // If the sets differ, augent.yaml has changed
     Ok(current_bundles != locked_bundles)
+}
+
+/// Sync augent.lock with augent.yaml without changing existing SHAs
+///
+/// This function:
+/// - Removes bundles from lockfile that are not in augent.yaml
+/// - Keeps existing bundles in lockfile unchanged (preserving their exact SHAs)
+/// - Returns the list of bundle names that need to be resolved (new bundles)
+///
+/// This is used when augent.yaml has changed but --update is NOT given.
+/// The caller should resolve only the new bundles, not re-resolve existing ones.
+fn sync_lockfile_from_augent_yaml(
+    workspace: &mut Workspace,
+) -> Result<Vec<crate::config::BundleDependency>> {
+    let lockfile_bundles: std::collections::HashSet<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    let mut new_bundles = Vec::new();
+
+    // Collect names of bundles to remove (avoid borrow issues)
+    let bundles_to_remove: Vec<String> = workspace
+        .lockfile
+        .bundles
+        .iter()
+        .filter(|locked_bundle| {
+            !workspace
+                .bundle_config
+                .bundles
+                .iter()
+                .any(|b| b.name == locked_bundle.name)
+        })
+        .map(|b| b.name.clone())
+        .collect();
+
+    // Remove bundles from lockfile that are not in augent.yaml
+    for bundle_name in bundles_to_remove {
+        println!("Removing bundle from lockfile: {}", bundle_name);
+        workspace.lockfile.remove_bundle(&bundle_name);
+    }
+
+    // Find new bundles in augent.yaml that need to be resolved
+    for dep in &workspace.bundle_config.bundles {
+        if !lockfile_bundles.contains(&dep.name) {
+            println!("Found new bundle in augent.yaml: {}", dep.name);
+            new_bundles.push(dep.clone());
+        }
+    }
+
+    Ok(new_bundles)
 }
 
 #[cfg(test)]

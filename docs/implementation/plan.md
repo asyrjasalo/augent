@@ -536,3 +536,24 @@ Scope:
 - Allow cache, version, and completions commands to run outside git repository
 - Write tests for git repository check
 - Run clippy and tests to verify implementation
+
+---
+
+## Post-Release Bug Fixes
+
+### Epic 20: Lockfile sync without SHA changes
+
+**Status:** Complete
+
+#### Feature 20.1: Lockfile sync from augent.yaml
+
+**Status:** Complete
+
+Goal: When augent.yaml exists and has changed, sync augent.lock to add or remove bundles without changing the exact git SHAs (only resolve and update SHAs when `--update` is explicitly used).
+
+Scope:
+
+- Add bundles from augent.yaml that are not in augent.lock
+- Remove bundles from augent.lock that are not in augent.yaml
+- Preserve existing SHAs for bundles that are in both files
+- Only resolve new SHAs when `--update` flag is used

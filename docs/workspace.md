@@ -271,16 +271,17 @@ cat .augent/augent.lock
 
 Add to `augent.yaml` and run `augent install`:
 
-- Bundle resolved and added to `augent.lock` and `augent.index.yaml`
+- New bundles are resolved and added to `augent.lock` and `augent.index.yaml`
 - Resources installed to platform directories
+- Existing bundles in `augent.lock` are preserved with their exact SHAs (unless `--update` is used)
 
 ### Removing from Configuration
 
 Removing from `augent.yaml` and running `augent install`:
 
-- Bundle **NOT** removed from lockfile or workspace config
-- Files **NOT** uninstalled
-- Allows temporary disabling without losing configuration
+- Bundle **IS** removed from lockfile and workspace config
+- Files **ARE** uninstalled
+- Use `--update` flag to re-resolve and update SHAs for all bundles
 
 ### Explicit Removal
 

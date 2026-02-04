@@ -25,6 +25,7 @@ augent install [OPTIONS] <SOURCE>
 | Option | Description |
 |--------|-------------|
 | `--to <PLATFORM>...`, `-t` | Install only for specific platforms (e.g., `--to cursor opencode`) |
+| `--update` | Re-resolve all bundles to get latest SHAs (default: preserve existing SHAs) |
 | `--frozen` | Fail if lockfile would change (useful for CI/CD) |
 | `-w, --workspace <PATH>` | Workspace directory (defaults to current directory) |
 | `-v, --verbose` | Enable verbose output |
@@ -55,6 +56,9 @@ augent install ./my-bundle
 # Install for specific platforms
 augent install ./bundle --to cursor opencode
 
+# Update all bundles to latest versions
+augent install --update
+
 # Install with frozen lockfile (CI/CD)
 augent install github:author/bundle --frozen
 
@@ -78,7 +82,12 @@ augent install owner/repo/bundle-name
 
 Run `augent install` without arguments to install all bundles listed in the workspace config (lockfile defines what is actually installed when present). Entries in `augent.yaml` are stored in canonical form (e.g. `name: '@owner/repo'`, `git: ...`, `path: .` for Git; `name: local-bundle`, `path: ./local-bundle` for directory). See [Bundles spec](implementation/specs/bundles.md).
 
-**Note:** Removing a bundle from `augent.yaml` doesn't uninstall it. Use `augent uninstall <name>` to completely remove it. Uninstall by the bundle name (e.g. `@owner/repo` or `local-bundle`).
+When `augent.yaml` has changed:
+
+- **Without `--update`**: New bundles are added and removed bundles are removed, but existing SHAs are preserved (reproducible)
+- **With `--update`**: All bundles are re-resolved to get the latest SHAs (including existing bundles)
+
+**Note:** Removing a bundle from `augent.yaml` and running `augent install` will remove it from the lockfile and uninstall its files. Use `augent uninstall <name>` to completely remove it. Uninstall by the bundle name (e.g. `@owner/repo` or `local-bundle`).
 
 ### Installing from a subdirectory or local path
 

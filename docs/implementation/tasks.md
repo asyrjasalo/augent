@@ -1019,3 +1019,32 @@ Scope:
 - [x] Run tests to verify implementation
 
 ---
+
+## Post-Release Bug Fixes
+
+### Epic 20: Lockfile sync without SHA changes
+
+**Status:** In Progress
+
+**Working on:** Feature 20.1 - Lockfile sync from augent.yaml
+
+Goal: When augent.yaml exists and has changed, sync augent.lock to add or remove bundles without changing the exact git SHAs (only resolve and update SHAs when `--update` is explicitly used).
+
+Scope:
+
+- Add bundles from augent.yaml that are not in augent.lock
+- Remove bundles from augent.lock that are not in augent.yaml
+- Preserve existing SHAs for bundles that are in both files
+- Only resolve new SHAs when `--update` flag is used
+
+#### Feature 20.1: Lockfile sync from augent.yaml
+
+**Status:** Complete
+
+- [x] Write tests for lockfile sync without SHA changes
+- [x] Implement sync_lockfile_from_augent_yaml() function to add/remove bundles without resolving SHAs
+- [x] Update do_install_from_yaml() to use sync logic when augent.yaml changed (without --update)
+- [x] Run clippy and tests to verify implementation
+- [x] Update documentation
+
+---
