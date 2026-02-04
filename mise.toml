@@ -30,7 +30,7 @@ ag = "augent"
 [tasks.check]
 description = "Run all checks"
 alias = "c"
-run = [{ task = "hooks" }, { task = "lint" }, { task = "test" }]
+run = [{ task = "lint" }, { task = "test" }, { task = "hooks" }]
 
 [tasks.lint]
 description = "Run clippy"
