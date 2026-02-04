@@ -24,13 +24,13 @@ use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
-use crate::platform::{self, Platform, detection};
+use crate::platform::{self, detection, Platform};
 use crate::progress::ProgressDisplay;
 use crate::resolver::Resolver;
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
-use crate::workspace::Workspace;
 use crate::workspace::modified;
+use crate::workspace::Workspace;
 use indicatif::{ProgressBar, ProgressStyle};
 
 /// Check if a string looks like a path (contains path separators or relative path indicators)
@@ -269,15 +269,26 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                         .expect("Failed to extract bundle name from path")
                 };
 
-                // Special case: if source is "." (current directory), use "." as the path
+                // Preserve the original relative path format (with ./ or ../ prefix)
+                // This is important because "bundles/my-bundle" would be parsed as a git URL
+                // but "./bundles/my-bundle" is correctly parsed as a local path
                 let relative_path_for_save = if source_str_ref == "." {
                     ".".to_string()
                 } else {
                     // Calculate the path relative to the workspace root
-                    resolved_source_path
+                    let relative = resolved_source_path
                         .strip_prefix(&workspace_root)
                         .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|_| source_str_ref.to_string())
+                        .unwrap_or_else(|_| source_str_ref.to_string());
+
+                    // Preserve ./ or ../ prefix from original source
+                    if source_str_ref.starts_with("./") {
+                        format!("./{}", relative)
+                    } else if source_str_ref.starts_with("../") {
+                        format!("../{}", relative)
+                    } else {
+                        relative
+                    }
                 };
 
                 println!("Adding bundle '{}' to augent.yaml", bundle_name);
@@ -2772,12 +2783,10 @@ mod tests {
         // name is extracted from the absolute path and would be the temp dir name.
         // For this test, we just verify that the dependency was added.
         assert!(!workspace.bundle_config.bundles.is_empty());
-        assert!(
-            workspace
-                .workspace_config
-                .find_bundle("@external/bundle")
-                .is_some()
-        );
+        assert!(workspace
+            .workspace_config
+            .find_bundle("@external/bundle")
+            .is_some());
     }
 
     #[test]
@@ -2823,11 +2832,9 @@ mod tests {
         )
         .unwrap();
 
-        assert!(
-            workspace
-                .workspace_config
-                .find_bundle("@existing/bundle")
-                .is_some()
-        );
+        assert!(workspace
+            .workspace_config
+            .find_bundle("@existing/bundle")
+            .is_some());
     }
 }
