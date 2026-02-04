@@ -28,9 +28,9 @@ ag = "augent"
 # Usage: mise <task-name> [task-args]
 
 [tasks.check]
-description = "Run lint and tests"
+description = "Run all checks"
 alias = "c"
-run = [{ task = "lint" }, { task = "test" }]
+run = [{ task = "hooks" }, { task = "lint" }, { task = "test" }]
 
 [tasks.lint]
 description = "Run clippy"
@@ -42,7 +42,10 @@ run = "cargo test"
 
 [tasks.hooks]
 description = "Run pre-commit hooks"
-run = "prek run --all-files"
+run = [
+    "prek install --hook-type pre-commit --hook-type commit-msg",
+    "prek run --all-files"
+]
 
 [tasks.cov]
 description = "Run tests with coverage"
