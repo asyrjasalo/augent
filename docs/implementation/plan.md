@@ -557,3 +557,20 @@ Scope:
 - Remove bundles from augent.lock that are not in augent.yaml
 - Preserve existing SHAs for bundles that are in both files
 - Only resolve new SHAs when `--update` flag is used
+
+### Epic 21: Config file update order
+
+**Status:** Complete
+
+#### Feature 21.1: Fix config file update order in workspace::save()
+
+**Status:** Complete
+
+Goal: Per spec, configuration files should be updated in the correct order during install/uninstall: augent.lock first, then augent.yaml, then augent.index.yaml.
+
+Scope:
+
+- Fix workspace::save() to use correct order: lockfile, yaml, index
+- Ensure both install and uninstall commands use correct update order
+- Write test to verify config files are updated in correct order
+- Run clippy and tests to verify implementation

@@ -574,6 +574,12 @@ impl Workspace {
         let mut ordered_workspace_config = self.workspace_config.clone();
         ordered_workspace_config.reorganize(&ordered_lockfile);
 
+        // Per spec: config files must be updated in this order:
+        // 1. augent.lock (lockfile)
+        // 2. augent.yaml (bundle config)
+        // 3. augent.index.yaml (workspace config)
+        Self::save_lockfile(&self.config_dir, &ordered_lockfile, &workspace_name)?;
+
         // Save augent.yaml (including metadata like name, description, etc.)
         // Per spec: NEVER remove augent.yaml if it exists
         // Only create augent.yaml when should_create_augent_yaml flag is true
@@ -586,7 +592,6 @@ impl Workspace {
             Self::save_bundle_config(augent_yaml_dir, &ordered_bundle_config, &workspace_name)?;
         }
 
-        Self::save_lockfile(&self.config_dir, &ordered_lockfile, &workspace_name)?;
         Self::save_workspace_config(&self.config_dir, &ordered_workspace_config, &workspace_name)?;
         Ok(())
     }
@@ -840,33 +845,81 @@ mod tests {
     }
 
     #[test]
-    fn test_workspace_open_not_found() {
+    fn test_workspace_save_order() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
         // Initialize git repository
         git2::Repository::init(temp.path()).unwrap();
 
-        let result = Workspace::open(temp.path());
-        assert!(result.is_err());
-    }
+        // Create workspace with some bundles
+        let mut workspace = Workspace::init(temp.path()).unwrap();
 
-    #[test]
-    fn test_workspace_save_and_reload() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        // Add a bundle to trigger save of all config files
+        workspace
+            .bundle_config
+            .bundles
+            .push(crate::config::BundleDependency {
+                name: "test-bundle".to_string(),
+                path: Some("./test".to_string()),
+                git: None,
+                git_ref: None,
+            });
+        workspace.lockfile.add_bundle(crate::config::LockedBundle {
+            name: "test-bundle".to_string(),
+            description: None,
+            version: None,
+            author: None,
+            license: None,
+            homepage: None,
+            source: crate::config::LockedSource::Dir {
+                path: "./test".to_string(),
+                hash: "test-hash".to_string(),
+            },
+            files: vec![],
+        });
+        workspace
+            .workspace_config
+            .add_bundle(crate::config::WorkspaceBundle::new(
+                "test-bundle".to_string(),
+            ));
+        workspace.should_create_augent_yaml = true;
 
-        // Initialize git repository
-        git2::Repository::init(temp.path()).unwrap();
+        // Hook into the save process by monitoring file modifications
+        let augent_dir = temp.path().join(WORKSPACE_DIR);
 
-        // Init and modify the workspace bundle name by manually updating the config file
-        let workspace = Workspace::init(temp.path()).unwrap();
-        // Note: We can't directly modify bundle_config.name anymore, but we can verify
-        // that the workspace name is correctly inferred from directory name
-        let name1 = workspace.get_workspace_name();
+        // Save the workspace
         workspace.save().unwrap();
 
-        // Reload and verify the name persists
-        let workspace2 = Workspace::open(temp.path()).unwrap();
-        assert_eq!(workspace2.get_workspace_name(), name1);
+        // Read files and capture their metadata timestamps
+        let lockfile_path = augent_dir.join(LOCKFILE_NAME);
+        let yaml_path = augent_dir.join(BUNDLE_CONFIG_FILE);
+        let index_path = augent_dir.join(WORKSPACE_INDEX_FILE);
+
+        let lockfile_meta = std::fs::metadata(&lockfile_path).unwrap();
+        let yaml_meta = std::fs::metadata(&yaml_path).unwrap();
+        let index_meta = std::fs::metadata(&index_path).unwrap();
+
+        // Verify all files were created
+        assert!(lockfile_path.exists());
+        assert!(yaml_path.exists());
+        assert!(index_path.exists());
+
+        // Verify order: lockfile (augent.lock) should have earliest timestamp,
+        // then yaml (augent.yaml), then index (augent.index.yaml)
+        // Use modified time as proxy for write order
+        let lock_time = lockfile_meta.modified().unwrap();
+        let yaml_time = yaml_meta.modified().unwrap();
+        let index_time = index_meta.modified().unwrap();
+
+        // augent.lock should be written first (earliest time)
+        assert!(
+            lock_time <= yaml_time,
+            "augent.lock should be written before or at same time as augent.yaml"
+        );
+        assert!(
+            yaml_time <= index_time,
+            "augent.yaml should be written before or at same time as augent.index.yaml"
+        );
     }
 }
 

@@ -782,9 +782,8 @@ fn do_install_from_yaml(
                         let source = if let Some(ref git_url) = dep.git {
                             git_url.clone()
                         } else if let Some(ref path) = dep.path {
-                            // Convert config-dir-relative path to workspace-root-relative
-                            let config_dir = workspace.root.join(".augent");
-                            let abs_path = config_dir.join(path);
+                            // Paths in augent.yaml are relative to repository root
+                            let abs_path = workspace.root.join(path);
                             abs_path.to_string_lossy().to_string()
                         } else {
                             return Err(AugentError::BundleNotFound {

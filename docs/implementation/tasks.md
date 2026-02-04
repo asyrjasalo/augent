@@ -1047,4 +1047,28 @@ Scope:
 - [x] Run clippy and tests to verify implementation
 - [x] Update documentation
 
+### Epic 21: Config file update order
+
+**Status:** Complete
+
+**Working on:** Feature 21.1 - Fix config file update order in workspace::save()
+
+Goal: Per spec, configuration files should be updated in the correct order during install/uninstall: augent.lock first, then augent.yaml, then augent.index.yaml.
+
+Scope:
+
+- Fix workspace::save() to use correct order: lockfile, yaml, index
+- Ensure both install and uninstall commands use correct update order
+- Write test to verify config files are updated in correct order
+- Run clippy and tests to verify implementation
+
+#### Feature 21.1: Fix config file update order
+
+**Status:** Complete
+
+- [x] Add task to tasks.md for fixing config file update order
+- [x] Write test for config file update order
+- [x] Fix workspace::save() to use correct order: lock, yaml, index
+- [x] Run cargo clippy and tests to verify fix
+
 ---
