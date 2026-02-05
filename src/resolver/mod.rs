@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use indicatif::{ProgressBar, ProgressStyle};
+use normpath::PathExt;
 
 use crate::cache;
 use crate::config::{BundleConfig, BundleDependency, MarketplaceBundle, MarketplaceConfig};
@@ -1231,20 +1232,24 @@ impl Resolver {
             });
         }
 
-        // Resolve the full path and workspace root to absolute canonical paths
+        // Resolve the full path and workspace root to absolute normalized paths
         // This handles symlinks and relative path components safely
-        let full_canonical =
-            std::fs::canonicalize(full_path).map_err(|_| AugentError::BundleValidationFailed {
+        let full_canonical = full_path
+            .normalize()
+            .map_err(|_| AugentError::BundleValidationFailed {
                 message: format!(
                     "Local bundle path '{}' cannot be resolved.",
                     user_path.display()
                 ),
-            })?;
-        let workspace_canonical = std::fs::canonicalize(&self.workspace_root).map_err(|_| {
-            AugentError::BundleValidationFailed {
+            })?
+            .into_path_buf();
+        let workspace_canonical = self
+            .workspace_root
+            .normalize()
+            .map_err(|_| AugentError::BundleValidationFailed {
                 message: "Workspace root cannot be resolved.".to_string(),
-            }
-        })?;
+            })?
+            .into_path_buf();
 
         // Check if the bundle path is within the repository
         if !full_canonical.starts_with(&workspace_canonical) {

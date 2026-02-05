@@ -14,6 +14,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Once;
 use tempfile::TempDir;
 
+use normpath::PathExt;
+
 /// Enforce isolated test env when spawning the augent binary: clear inherited workspace/cache/temp
 /// and set them so each workspace has its own cache and nothing touches the repo or dev env.
 #[allow(dead_code)]
@@ -63,13 +65,16 @@ fn repo_root() -> PathBuf {
 /// (e.g. TMPDIR=tmp or TMPDIR=./tmp when cwd is repo), use a platform-specific fallback.
 fn safe_temp_base(candidate: PathBuf) -> PathBuf {
     let repo = repo_root();
-    let repo_abs = repo.canonicalize().unwrap_or(repo.clone());
+    let repo_abs = repo
+        .normalize()
+        .map(|np| np.into_path_buf())
+        .unwrap_or_else(|_| repo.clone());
     // Relative paths are resolved from cwd (often the repo) → treat as unsafe
     if !candidate.is_absolute() {
         return platform_temp_fallback();
     }
-    let candidate_abs = match candidate.canonicalize() {
-        Ok(p) => p,
+    let candidate_abs = match candidate.normalize() {
+        Ok(p) => p.into_path_buf(),
         Err(_) => candidate,
     };
     if candidate_abs.strip_prefix(&repo_abs).is_ok() {

@@ -15,6 +15,7 @@ use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use inquire::{Confirm, MultiSelect};
+use normpath::PathExt;
 
 /// Scorer that matches only the bundle name (before " ("), so filtering by typing
 /// does not match words in platform lists.
@@ -371,15 +372,19 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
                     message: format!("Failed to get current directory: {}", e),
                 })?;
 
-                // Canonicalize current directory for comparison
-                let canonical_current_dir =
-                    std::fs::canonicalize(&current_dir).unwrap_or_else(|_| current_dir.clone());
+                // Normalize current directory for comparison
+                let canonical_current_dir = current_dir
+                    .normalize()
+                    .map(|np| np.into_path_buf())
+                    .unwrap_or_else(|_| current_dir.clone());
 
                 // Look for a bundle with a path that matches the current directory
                 let matching_bundle = workspace.bundle_config.bundles.iter().find(|b| {
                     if let Some(ref path_val) = b.path {
                         let bundle_path = workspace.root.join(path_val);
-                        let canonical_bundle_path = std::fs::canonicalize(&bundle_path)
+                        let canonical_bundle_path = bundle_path
+                            .normalize()
+                            .map(|np| np.into_path_buf())
                             .unwrap_or_else(|_| bundle_path.clone());
 
                         canonical_bundle_path == canonical_current_dir

@@ -23,6 +23,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use normpath::PathExt;
 use wax::{CandidatePath, Glob, Pattern};
 
 use crate::config::{BundleConfig, Lockfile, WorkspaceConfig};
@@ -98,7 +99,8 @@ impl Workspace {
     /// Find the git repository root from a starting path
     pub fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
         let repo = git2::Repository::discover(start).ok()?;
-        repo.workdir().and_then(|p| std::fs::canonicalize(p).ok())
+        repo.workdir()
+            .and_then(|p| p.normalize().ok().map(|np| np.into_path_buf()))
     }
 
     /// Open an existing workspace at the git repository root
@@ -107,8 +109,8 @@ impl Workspace {
     /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from .augent/
     pub fn open(root: &Path) -> Result<Self> {
         // Verify we're at a git repository root
-        // Canonicalize root to handle symlinks (e.g., /var -> /private on macOS)
-        let canonical_root = std::fs::canonicalize(root).ok();
+        // Normalize root to handle symlinks (e.g., /var -> /private on macOS)
+        let canonical_root = root.normalize().ok().map(|np| np.into_path_buf());
         if let Some(git_root) = Self::find_git_repository_root(root) {
             if canonical_root.as_ref() != Some(&git_root) {
                 return Err(AugentError::WorkspaceNotFound {
@@ -171,8 +173,8 @@ impl Workspace {
     /// The workspace bundle name is inferred from the directory name.
     pub fn init(root: &Path) -> Result<Self> {
         // Verify we're at a git repository root
-        // Canonicalize root to handle symlinks (e.g., /var -> /private on macOS)
-        let canonical_root = std::fs::canonicalize(root).ok();
+        // Normalize root to handle symlinks (e.g., /var -> /private on macOS)
+        let canonical_root = root.normalize().ok().map(|np| np.into_path_buf());
         if let Some(git_root) = Self::find_git_repository_root(root) {
             if canonical_root.as_ref() != Some(&git_root) {
                 return Err(AugentError::WorkspaceNotFound {
@@ -771,9 +773,9 @@ mod tests {
         let found = Workspace::find_from(&nested);
         assert!(found.is_some());
 
-        // Canonicalize both paths to handle macOS /private/ prefix
-        let found_canonical = std::fs::canonicalize(found.unwrap()).unwrap();
-        let temp_canonical = std::fs::canonicalize(temp.path()).unwrap();
+        // Normalize both paths to handle macOS /private/ prefix
+        let found_canonical = found.unwrap().normalize().unwrap().into_path_buf();
+        let temp_canonical = temp.path().normalize().unwrap().into_path_buf();
         assert_eq!(found_canonical, temp_canonical);
     }
 

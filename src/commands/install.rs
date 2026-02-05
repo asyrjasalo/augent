@@ -32,6 +32,7 @@ use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use crate::workspace::modified;
 use indicatif::{ProgressBar, ProgressStyle};
+use normpath::PathExt;
 
 /// Check if a string looks like a path (contains path separators or relative path indicators)
 fn is_path_like(s: &str) -> bool {
@@ -103,11 +104,15 @@ fn check_subdirectory_resources(
     current_dir: &Path,
     _workspace_is_explicit: bool,
 ) -> Result<bool> {
-    // Canonicalize both paths to handle macOS /private/var symlinks
-    let canonical_actual = std::fs::canonicalize(actual_current_dir)
+    // Normalize both paths to handle macOS /private/var symlinks
+    let canonical_actual = actual_current_dir
+        .normalize()
+        .map(|np| np.into_path_buf())
         .unwrap_or_else(|_| actual_current_dir.to_path_buf());
-    let canonical_current =
-        std::fs::canonicalize(current_dir).unwrap_or_else(|_| current_dir.to_path_buf());
+    let canonical_current = current_dir
+        .normalize()
+        .map(|np| np.into_path_buf())
+        .unwrap_or_else(|_| current_dir.to_path_buf());
 
     if canonical_actual == canonical_current {
         return Ok(true);
@@ -383,13 +388,17 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 current_dir.join(source_path)
             };
 
-            // Canonicalize both paths for comparison
-            let canonical_source_path = std::fs::canonicalize(&resolved_source_path)
+            // Normalize both paths for comparison
+            let canonical_source_path = resolved_source_path
+                .normalize()
+                .map(|np| np.into_path_buf())
                 .unwrap_or_else(|_| resolved_source_path.clone());
-            let canonical_workspace_root =
-                std::fs::canonicalize(&workspace_root).unwrap_or_else(|_| workspace_root.clone());
+            let canonical_workspace_root = workspace_root
+                .normalize()
+                .map(|np| np.into_path_buf())
+                .unwrap_or_else(|_| workspace_root.clone());
 
-            // Check if the path is within the repository
+            // Check if path is within the repository
             if !canonical_source_path.starts_with(&canonical_workspace_root) {
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
@@ -405,7 +414,9 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
             let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
                 if let Some(ref path_val) = b.path {
                     let normalized_bundle_path = workspace_root.join(path_val);
-                    let canonical_bundle_path = std::fs::canonicalize(&normalized_bundle_path)
+                    let canonical_bundle_path = normalized_bundle_path
+                        .normalize()
+                        .map(|np| np.into_path_buf())
                         .unwrap_or_else(|_| normalized_bundle_path.clone());
 
                     canonical_bundle_path == canonical_source_path
@@ -625,9 +636,15 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
                     current_dir.join(source_path)
                 };
 
-                let is_workspace_root = std::fs::canonicalize(&resolved_source_path_for_check)
+                let is_workspace_root = resolved_source_path_for_check
+                    .normalize()
                     .ok()
-                    .and_then(|p| std::fs::canonicalize(&current_dir).ok().map(|cwd| p == cwd))
+                    .and_then(|p| {
+                        current_dir
+                            .normalize()
+                            .ok()
+                            .map(|cwd| p.into_path_buf() == cwd.into_path_buf())
+                    })
                     .unwrap_or(false);
 
                 if is_workspace_root {
