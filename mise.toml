@@ -4,7 +4,6 @@
 
 [tools]
 rust = "1.93"
-rust-analyzer = "latest"
 prek = "latest"
 'cargo:cargo-tarpaulin' = "latest"
 
