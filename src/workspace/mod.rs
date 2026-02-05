@@ -118,11 +118,18 @@ impl Workspace {
         // If normalization fails, use the path as-is (can happen on Windows with temp paths)
         let canonical_root = root.normalize().ok().map(|np| np.into_path_buf());
 
+        // Normalize git_root as well for consistent comparison on Windows
+        let git_root_normalized = Self::find_git_repository_root(root)
+            .as_ref()
+            .and_then(|p| p.normalize().ok().map(|np| np.into_path_buf()));
+
         if let Some(git_root) = Self::find_git_repository_root(root) {
             // Compare both as-is and normalized versions to handle different path representations
             let paths_match = canonical_root.as_ref() == Some(&git_root)
                 || root == git_root
-                || canonical_root.as_ref().is_some_and(|cr| cr == root);
+                || canonical_root.as_ref() == git_root_normalized.as_ref()
+                || canonical_root.as_ref().is_some_and(|cr| cr == root)
+                || git_root_normalized.as_ref().is_some_and(|gr| gr == root);
             if !paths_match {
                 return Err(AugentError::WorkspaceNotFound {
                     path: root.display().to_string(),
@@ -188,11 +195,18 @@ impl Workspace {
         // If normalization fails, use the path as-is (can happen on Windows with temp paths)
         let canonical_root = root.normalize().ok().map(|np| np.into_path_buf());
 
+        // Normalize git_root as well for consistent comparison on Windows
+        let git_root_normalized = Self::find_git_repository_root(root)
+            .as_ref()
+            .and_then(|p| p.normalize().ok().map(|np| np.into_path_buf()));
+
         if let Some(git_root) = Self::find_git_repository_root(root) {
             // Compare both as-is and normalized versions to handle different path representations
             let paths_match = canonical_root.as_ref() == Some(&git_root)
                 || root == git_root
-                || canonical_root.as_ref().is_some_and(|cr| cr == root);
+                || canonical_root.as_ref() == git_root_normalized.as_ref()
+                || canonical_root.as_ref().is_some_and(|cr| cr == root)
+                || git_root_normalized.as_ref().is_some_and(|gr| gr == root);
             if !paths_match {
                 return Err(AugentError::WorkspaceNotFound {
                     path: root.display().to_string(),
