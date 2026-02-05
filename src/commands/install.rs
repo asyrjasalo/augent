@@ -388,7 +388,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 current_dir.join(source_path)
             };
 
-            // Normalize both paths for comparison
+            // Normalize both paths for comparison using normpath (cross-platform)
             let canonical_source_path = resolved_source_path
                 .normalize()
                 .map(|np| np.into_path_buf())
@@ -402,8 +402,8 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
             if !canonical_source_path.starts_with(&canonical_workspace_root) {
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
-                        "Path '{}' is outside the repository root '{}'. \
-                         Directory bundles must be within the repository.",
+                        "Path '{}' is outside of repository root '{}'. \
+                         Directory bundles must be within of repository.",
                         source_str_ref,
                         canonical_workspace_root.display()
                     ),
