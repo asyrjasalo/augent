@@ -8,6 +8,7 @@ bin/
 .rumdl_cache/
 
 # coding agents
+.sisyphus/
 *.bak
 
 # development workspace
