@@ -17,6 +17,9 @@
 use std::collections::HashSet;
 use std::path::Path;
 
+#[cfg(windows)]
+use std::path::PathBuf;
+
 use crate::cache;
 use crate::cli::InstallArgs;
 use crate::commands::menu::{select_bundles_interactively, select_platforms_interactively};
