@@ -311,11 +311,23 @@ mod tests {
 
     #[test]
     fn test_resolve_relative_to_absolute() {
-        let base = Path::new("/home/user");
-        let absolute = Path::new("/etc/config");
+        #[cfg(windows)]
+        {
+            let base = Path::new("C:\\Users\\user");
+            let absolute = Path::new("D:\\etc\\config");
 
-        let result = resolve_relative_to(absolute, base).unwrap();
-        assert_eq!(result, PathBuf::from("/etc/config"));
+            let result = resolve_relative_to(absolute, base).unwrap();
+            assert_eq!(result, PathBuf::from("D:\\etc\\config"));
+        }
+
+        #[cfg(not(windows))]
+        {
+            let base = Path::new("/home/user");
+            let absolute = Path::new("/etc/config");
+
+            let result = resolve_relative_to(absolute, base).unwrap();
+            assert_eq!(result, PathBuf::from("/etc/config"));
+        }
     }
 
     #[test]
