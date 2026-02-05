@@ -491,6 +491,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
 
                 // Compute relative path from workspace root
                 // Always add ./ prefix for consistency with BundleSource::parse
+                // Normalize to forward slashes for cross-platform consistency
                 let relative_path_for_save = resolved_source_path
                     .strip_prefix(&workspace_root)
                     .map(|p| {
@@ -498,7 +499,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                         if path_str.is_empty() {
                             ".".to_string()
                         } else {
-                            format!("./{}", path_str)
+                            format!("./{}", path_str.replace('\\', "/"))
                         }
                     })
                     .unwrap_or_else(|_| source_str_ref.to_string());
