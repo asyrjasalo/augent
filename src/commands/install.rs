@@ -23,7 +23,7 @@ use crate::commands::menu::{select_bundles_interactively, select_platforms_inter
 use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
-use crate::installer::Installer;
+use crate::installer::{Installer, discover_resources};
 use crate::path_utils;
 use crate::platform::{self, Platform, detection};
 use crate::resolver::Resolver;
@@ -124,8 +124,8 @@ fn check_subdirectory_resources(
         return Ok(true);
     }
 
-    let has_resources_in_actual_dir = Installer::discover_resources(actual_current_dir)
-        .map(|resources| !resources.is_empty())
+    let has_resources_in_actual_dir = discover_resources(actual_current_dir)
+        .map(|resources: Vec<_>| !resources.is_empty())
         .unwrap_or(false);
 
     if !has_resources_in_actual_dir {
@@ -720,8 +720,8 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         // When a source is provided and we're in a subdirectory with bundle resources,
         // we should create augent.yaml in that subdirectory, not in workspace's .augent/
         if args.source.is_some()
-            && !Installer::discover_resources(&actual_current_dir)
-                .map(|resources| resources.is_empty())
+            && !discover_resources(&actual_current_dir)
+                .map(|resources: Vec<_>| resources.is_empty())
                 .unwrap_or(false)
         {
             workspace.bundle_config_dir = Some(actual_current_dir.clone());
@@ -790,9 +790,8 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             Some(root) => (root, false),
             None => {
                 // No workspace — only create .augent/ if current dir has bundle resources to install
-                use crate::installer::Installer;
-                let has_resources_in_current_dir = Installer::discover_resources(&current_dir)
-                    .map(|resources| !resources.is_empty())
+                let has_resources_in_current_dir = discover_resources(&current_dir)
+                    .map(|resources: Vec<_>| !resources.is_empty())
                     .unwrap_or(false);
                 if !has_resources_in_current_dir {
                     println!("Nothing to install.");
@@ -811,18 +810,16 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         let has_bundles_in_config =
             !workspace.bundle_config.bundles.is_empty() || !workspace.lockfile.bundles.is_empty();
         let has_workspace_resources = {
-            use crate::installer::Installer;
             let workspace_bundle_path = workspace.get_bundle_source_path();
-            Installer::discover_resources(&workspace_bundle_path)
-                .map(|resources| !resources.is_empty())
+            discover_resources(&workspace_bundle_path)
+                .map(|resources: Vec<_>| !resources.is_empty())
                 .unwrap_or(false)
         };
 
         // If workspace was just initialized, also check workspace root for local resources
         let has_local_resources = if was_initialized {
-            use crate::installer::Installer;
-            Installer::discover_resources(&workspace_root)
-                .map(|resources| !resources.is_empty())
+            discover_resources(&workspace_root)
+                .map(|resources: Vec<_>| !resources.is_empty())
                 .unwrap_or(false)
         } else {
             false
@@ -1148,10 +1145,9 @@ fn ensure_workspace_bundle_in_list(
 fn check_bundles_have_resources(
     resolved_bundles: &[crate::domain::ResolvedBundle],
 ) -> Result<bool> {
-    use crate::installer::Installer;
     let has_resources = resolved_bundles.iter().any(|bundle| {
-        Installer::discover_resources(&bundle.source_path)
-            .map(|resources| !resources.is_empty())
+        discover_resources(&bundle.source_path)
+            .map(|resources: Vec<_>| !resources.is_empty())
             .unwrap_or(false)
     });
     Ok(has_resources)
@@ -1887,7 +1883,7 @@ fn create_locked_bundle(
     workspace_root: Option<&Path>,
 ) -> Result<LockedBundle> {
     // Discover files in the bundle
-    let resources = Installer::discover_resources(&bundle.source_path)?;
+    let resources = discover_resources(&bundle.source_path)?;
     // Normalize paths to always use forward slashes (Unix-style) for cross-platform consistency
     let files: Vec<String> = resources
         .iter()

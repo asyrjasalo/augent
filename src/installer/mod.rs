@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 use wax::{CandidatePath, Glob, Pattern};
 
 use crate::config::WorkspaceBundle;
-use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
+use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};
 use crate::platform::{MergeStrategy, Platform, TransformRule};
 use crate::ui::ProgressReporter;
@@ -26,6 +26,30 @@ const RESOURCE_DIRS: &[&str] = &["commands", "rules", "agents", "skills", "root"
 
 /// Known resource files in bundles (at root level)
 const RESOURCE_FILES: &[&str] = &["mcp.jsonc", "AGENTS.md"];
+
+/// A discovered resource file in a bundle
+#[derive(Debug, Clone)]
+pub struct DiscoveredResource {
+    /// Relative path within the bundle (e.g., "commands/debug.md")
+    pub bundle_path: PathBuf,
+
+    /// Absolute path to the file
+    pub absolute_path: PathBuf,
+
+    /// Resource type (commands, rules, agents, skills, root, or file name)
+    pub resource_type: String,
+}
+
+/// Result of installing a file
+#[derive(Debug, Clone)]
+pub struct InstalledFile {
+    /// Original bundle path (e.g., "commands/debug.md")
+    pub bundle_path: String,
+    /// Resource type (commands, rules, agents, skills, root, or file name)
+    pub resource_type: String,
+    /// Target paths per platform (e.g., ".cursor/rules/debug.mdc")
+    pub target_paths: Vec<String>,
+}
 
 /// File installer for a workspace
 pub struct Installer<'a> {
@@ -106,7 +130,7 @@ impl<'a> Installer<'a> {
     }
 
     /// Discover all resource files in a bundle directory
-    pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
+    pub fn discover_resources_internal(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
         let mut resources = Vec::new();
 
         // Discover files in resource directories
@@ -278,7 +302,7 @@ impl<'a> Installer<'a> {
     /// Install a single bundle
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
         let resources =
-            Self::filter_skills_resources(Self::discover_resources(&bundle.source_path)?);
+            Self::filter_skills_resources(Self::discover_resources_internal(&bundle.source_path)?);
 
         self.leaf_skill_dirs = Some(Self::compute_leaf_skill_dirs(&resources));
 
@@ -341,7 +365,7 @@ impl<'a> Installer<'a> {
             bundles
                 .iter()
                 .map(|b| {
-                    Self::discover_resources(&b.source_path)
+                    Self::discover_resources_internal(&b.source_path)
                         .map(|resources| {
                             let filtered = Self::filter_skills_resources(resources);
                             filtered.len() * self.platforms.len()
@@ -1674,6 +1698,11 @@ fn deep_merge(target: &mut serde_json::Value, source: &serde_json::Value) {
     }
 }
 
+/// Discover all resource files in a bundle directory
+pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
+    Installer::discover_resources_internal(bundle_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1682,7 +1711,7 @@ mod tests {
     #[test]
     fn test_discover_resources_empty() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let resources = Installer::discover_resources(temp.path()).unwrap();
+        let resources = Installer::discover_resources_internal(temp.path()).unwrap();
         assert!(resources.is_empty());
     }
 
@@ -1696,7 +1725,7 @@ mod tests {
         fs::write(commands_dir.join("debug.md"), "# Debug command").unwrap();
         fs::write(commands_dir.join("test.md"), "# Test command").unwrap();
 
-        let resources = Installer::discover_resources(temp.path()).unwrap();
+        let resources = Installer::discover_resources_internal(temp.path()).unwrap();
         assert_eq!(resources.len(), 2);
         assert!(
             resources
@@ -1718,7 +1747,7 @@ mod tests {
         fs::write(temp.path().join("AGENTS.md"), "# Agents").unwrap();
         fs::write(temp.path().join("mcp.jsonc"), "{}").unwrap();
 
-        let resources = Installer::discover_resources(temp.path()).unwrap();
+        let resources = Installer::discover_resources_internal(temp.path()).unwrap();
         assert_eq!(resources.len(), 2);
     }
 
