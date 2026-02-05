@@ -11,17 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `augent uninstall`: Updates `augent.yaml` when uninstalling bundles, keeping configuration in sync.
-- `augent install`: Now uses `./` prefix for relative paths to ensure consistency.
-- `augent install`: Handles local bundle workspace initialization correctly.
-- `augent install`: Preserves relative source paths when installing bundles.
-- `augent install`: Supports installing directory bundles directly from local paths.
 - Directory bundle names are now preserved correctly in `augent.yaml` and `augent.lock` when using custom names.
+- `augent install`: Handles local bundle workspace initialization correctly.
+- `augent install`: Supports installing directory bundles directly from local paths.
+- `augent install`: Now uses `./` prefix for relative paths to ensure consistency.
+- `augent install`: Uses canonical workspace paths to handle symlinks correctly on macOS.
+- `augent uninstall`: Updates `augent.yaml` when uninstalling bundles, keeping configuration in sync.
+- `augent uninstall`: Normalizes path comparisons to work correctly with symlinks and cross-platform paths.
 
 ### Changed
 
-- Workspace commands now enforce that the workspace directory must be a Git repository.
 - Workspace configuration files are now stored in the `.augent` directory.
+- Workspace commands now enforce that the workspace directory must be a Git repository.
 
 ### Removed
 
