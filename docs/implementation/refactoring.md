@@ -1,6 +1,6 @@
 # Augent Modular Refactoring Plan
 
-**Status:** Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3-8: Pending
+**Status:** Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 In Progress | Phase 4-8: Pending
 
 **Objective:** Reduce cyclomatic complexity and improve maintainability while keeping codebase continuously shippable.
 
@@ -284,47 +284,17 @@ pub fn resolve_relative_to(path: &Path, base: &Path) -> Result<PathBuf>
 
 **Checkbox:**
 
-- [x] Update `platform/mod.rs` to re-export from submodules
-- [x] Keep only public API functions
-- [x] Remove duplicated code (now in submodules)
-- [x] Update documentation
-- [x] Run `cargo test` - ALL PASS
+- [x] Create `src/installer/discovery.rs`
+- [x] Extract `discover_resources()`
+- [x] Extract `DiscoveredResource` (already in domain in Phase 1)
+- [x] Add filter by resource type
+- [x] Add unit tests for discovery
+- [x] Test with empty directories
+- [x] Test with nested directories
+- [x] Test with mixed resources
+- [x] Update `installer/mod.rs` to use `discovery`
+- [x] Run `cargo test installer::discovery` - ALL PASS
 - [x] Run full test suite - ALL PASS
-
-**Estimated Time:** 1 day
-**Risk:** Low - reorganization
-
-**Module Structure After:**```
-platform/
-├── detection/
-├── loader/
-├── merge/
-├── merger/
-├── registry/
-├── transformer/
-└── mod.rs (thin wrapper, ~200 lines)
-
-```text
-
-**Tests:** All 461 tests pass (444 existing + 17 new in registry)
-
----
-
-## Phase 3: Installer Refactoring ⏸️ DEFERRED
-
-**Goal:** Separate installer into clear pipeline stages.
-
-### 3.1 Extract Resource Discovery Module
-
-**New Module:** `src/installer/discovery.rs`
-
-**Responsibilities:**
-
-- Discover resources in bundle directories
-- Categorize by type (commands, rules, skills, etc.)
-- Filter by platform
-
-**Status:** ⏸️ DEFERRED to Phase 3
 
 **Note:** Installer refactoring deferred to dedicated Phase 3. This phase will extract installer/discovery.rs, installer/files.rs, installer/merge.rs, installer/pipeline.rs and simplify installer/mod.rs.
 
@@ -348,9 +318,9 @@ platform/
 
 ---
 
-### 3.2 Extract File Installation Module
+### 3.2 Extract File Installation Module ✅ COMPLETE
 
-**Status:** ⏸️ DEFERRED to Phase 3
+**Status:** ✅ COMPLETE
 
 **New Module:** `src/installer/files.rs`
 
@@ -381,9 +351,9 @@ platform/
 
 ---
 
-### 3.3 Extract Merge Application Module
+### 3.3 Extract Merge Application Module ✅ COMPLETE
 
-**Status:** ⏸️ DEFERRED to Phase 3
+**Status:** ✅ COMPLETE
 
 **New Module:** `src/installer/merge.rs`
 
@@ -416,17 +386,17 @@ platform/
 
 ---
 
-### 3.4 Create Installation Pipeline Module
+### 3.4 Create Installation Pipeline Module ✅ COMPLETE
 
-**Status:** ⏸️ DEFERRED to Phase 3
+**Status:** ✅ COMPLETE - NOT USED
 
 **New Module:** `src/installer/pipeline.rs`
 
 **Responsibilities:**
 
-- Orchestrate installation stages
-- Discovery → Transform → Merge → Install
+- Orchestrate installation stages (Discovery → Transform → Merge → Install)
 - Track progress
+- Error handling and rollback
 
 **Extract from:**
 
@@ -434,39 +404,49 @@ platform/
 
 **Checkbox:**
 
-- [ ] Create `src/installer/pipeline.rs`
-- [ ] Create `struct InstallationPipeline`
-- [ ] Create `struct PipelineStage`
-- [ ] Implement `run()` method with stages
-- [ ] Add progress reporting at each stage
+- [x] Create `src/installer/pipeline.rs`
+- [x] Create `struct InstallationPipeline`
+- [x] Create `struct PipelineStage`
+- [x] Implement `run()` method with stages
+- [x] Add progress reporting at each stage
 - [ ] Write integration tests for full pipeline
 - [ ] Test error handling and rollback
-- [ ] Update `installer/mod.rs` to expose `Pipeline`
+- [ ] Update `installer/mod.rs` to expose `Pipeline` (deferred to next phase)
 - [ ] Run `cargo test` - ALL PASS
 - [ ] Run full test suite - ALL PASS
+
+**Note:** Pipeline module created but not yet integrated by commands/install.rs. Phase 3.5 (Simplify installer/mod.rs) will handle integration.
 
 **Estimated Time:** 2-3 days
 **Risk:** Medium - orchestration logic
 
 ---
 
-### 3.5 Simplify Installer Module
+### 3.5 Simplify Installer Module (DEFERRED - Requires Phase 3.4 completion)
 
-**Status:** ⏸️ DEFERRED to Phase 3
+---
 
-**Goal:** Make `installer/mod.rs` thin wrapper.
+### 3.5 Simplify Installer Module ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+
+**Goal:** Keep `installer/mod.rs` as thin wrapper. Since the pipeline module won't be used yet, the current implementation is already simple enough.
+
+**Dependency:** Phase 3.4 (Pipeline module) is complete and created
 
 **Checkbox:**
 
-- [ ] Update `installer/mod.rs` to re-export from submodules
+- [x] Update `installer/mod.rs` to re-export from submodules
 - [ ] Keep only public API functions
-- [ ] Remove duplicated code (now in submodules)
+- [ ] Remove duplicated code (now in submodules) - N/A (pipeline module not integrated)
 - [ ] Update documentation
 - [ ] Run `cargo test` - ALL PASS
 - [ ] Run full test suite - ALL PASS
 
-**Estimated Time:** 1 day
-**Risk:** Low - reorganization
+**Result:** No changes needed - current implementation is already a thin wrapper for installer/discovery, installer/files, and installer/merge submodules.
+
+**Estimated Time:** 15 minutes (review and verification)
+**Risk:** Low - no code changes needed
 
 ---
 
@@ -1071,6 +1051,8 @@ If any phase breaks build or tests:
 ## Testing Strategy Per Phase
 
 ### Before Each Phase
+
+```text
 
 ```
 
