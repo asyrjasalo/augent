@@ -917,11 +917,31 @@ fn is_dir_empty(path: &Path) -> Result<bool> {
 
 /// Update workspace configuration files
 fn update_configs(workspace: &mut Workspace, bundle_name: &str) -> Result<()> {
-    workspace.bundle_config.remove_dependency(bundle_name);
+    let dependency_was_removed = workspace
+        .bundle_config
+        .remove_dependency(bundle_name)
+        .is_some();
 
     workspace.lockfile.remove_bundle(bundle_name);
 
     workspace.workspace_config.remove_bundle(bundle_name);
+
+    // If we removed a dependency from augent.yaml, we need to ensure augent.yaml is updated
+    // during save to persist this change. Per spec: NEVER remove augent.yaml if it exists,
+    // even when bundles list becomes empty - it should persist with empty bundles: [].
+    if dependency_was_removed {
+        // Check if augent.yaml file exists
+        let augent_yaml_path = workspace
+            .config_dir
+            .join(crate::workspace::BUNDLE_CONFIG_FILE);
+        let augent_yaml_exists = augent_yaml_path.exists();
+
+        // Ensure augent.yaml is updated during save (either to remove the bundle entry
+        // or to persist with empty bundles list if no dependencies remain)
+        if augent_yaml_exists {
+            workspace.should_create_augent_yaml = true;
+        }
+    }
 
     Ok(())
 }
