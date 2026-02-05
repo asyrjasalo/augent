@@ -99,8 +99,13 @@ impl Workspace {
     /// Find the git repository root from a starting path
     pub fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
         let repo = git2::Repository::discover(start).ok()?;
-        repo.workdir()
-            .and_then(|p| p.normalize().ok().map(|np| np.into_path_buf()))
+        // Try to normalize the path for symlink handling (macOS /var -> /private)
+        // If normalization fails (can happen on Windows with temp paths), use the path as-is
+        repo.workdir().map(|p| {
+            p.normalize()
+                .map(|np| np.into_path_buf())
+                .unwrap_or_else(|_| p.to_path_buf())
+        })
     }
 
     /// Open an existing workspace at the git repository root
@@ -109,10 +114,16 @@ impl Workspace {
     /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from .augent/
     pub fn open(root: &Path) -> Result<Self> {
         // Verify we're at a git repository root
-        // Normalize root to handle symlinks (e.g., /var -> /private on macOS)
+        // Try to normalize root to handle symlinks (e.g., /var -> /private on macOS)
+        // If normalization fails, use the path as-is (can happen on Windows with temp paths)
         let canonical_root = root.normalize().ok().map(|np| np.into_path_buf());
+
         if let Some(git_root) = Self::find_git_repository_root(root) {
-            if canonical_root.as_ref() != Some(&git_root) {
+            // Compare both as-is and normalized versions to handle different path representations
+            let paths_match = canonical_root.as_ref() == Some(&git_root)
+                || root == git_root
+                || canonical_root.as_ref().is_some_and(|cr| cr == root);
+            if !paths_match {
                 return Err(AugentError::WorkspaceNotFound {
                     path: root.display().to_string(),
                 });
@@ -173,10 +184,16 @@ impl Workspace {
     /// The workspace bundle name is inferred from the directory name.
     pub fn init(root: &Path) -> Result<Self> {
         // Verify we're at a git repository root
-        // Normalize root to handle symlinks (e.g., /var -> /private on macOS)
+        // Try to normalize root to handle symlinks (e.g., /var -> /private on macOS)
+        // If normalization fails, use the path as-is (can happen on Windows with temp paths)
         let canonical_root = root.normalize().ok().map(|np| np.into_path_buf());
+
         if let Some(git_root) = Self::find_git_repository_root(root) {
-            if canonical_root.as_ref() != Some(&git_root) {
+            // Compare both as-is and normalized versions to handle different path representations
+            let paths_match = canonical_root.as_ref() == Some(&git_root)
+                || root == git_root
+                || canonical_root.as_ref().is_some_and(|cr| cr == root);
+            if !paths_match {
                 return Err(AugentError::WorkspaceNotFound {
                     path: root.display().to_string(),
                 });
@@ -773,9 +790,18 @@ mod tests {
         let found = Workspace::find_from(&nested);
         assert!(found.is_some());
 
-        // Normalize both paths to handle macOS /private/ prefix
-        let found_canonical = found.unwrap().normalize().unwrap().into_path_buf();
-        let temp_canonical = temp.path().normalize().unwrap().into_path_buf();
+        // Try to normalize both paths to handle macOS /private/ prefix
+        // If normalization fails (Windows temp paths), compare as-is
+        let found_path = found.unwrap();
+        let found_canonical = found_path
+            .normalize()
+            .map(|np| np.into_path_buf())
+            .unwrap_or_else(|_| found_path.to_path_buf());
+        let temp_canonical = temp
+            .path()
+            .normalize()
+            .map(|np| np.into_path_buf())
+            .unwrap_or_else(|_| temp.path().to_path_buf());
         assert_eq!(found_canonical, temp_canonical);
     }
 
