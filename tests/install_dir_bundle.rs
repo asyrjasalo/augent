@@ -67,7 +67,7 @@ fn test_install_current_directory_as_bundle() {
     let augent_yaml = std::fs::read_to_string(workspace.path.join(".augent/augent.yaml"))
         .expect("Failed to read augent.yaml");
     assert!(augent_yaml.contains("name: my-bundle"));
-    assert!(augent_yaml.contains("path: ."));
+    assert!(augent_yaml.contains("path: ./my-bundle"));
 
     // Verify the file was installed
     assert!(workspace.path.join(".cursor/commands/test.md").exists());

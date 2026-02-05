@@ -489,17 +489,19 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                         .expect("Failed to extract bundle name from path")
                 };
 
-                // For relative paths with ./ or ../ prefix, use the original source string directly
-                let relative_path_for_save = if source_str_ref == "." {
-                    ".".to_string()
-                } else if source_str_ref.starts_with("./") || source_str_ref.starts_with("../") {
-                    source_str_ref.to_string()
-                } else {
-                    resolved_source_path
-                        .strip_prefix(&workspace_root)
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|_| source_str_ref.to_string())
-                };
+                // Compute relative path from workspace root
+                // Always add ./ prefix for consistency with BundleSource::parse
+                let relative_path_for_save = resolved_source_path
+                    .strip_prefix(&workspace_root)
+                    .map(|p| {
+                        let path_str = p.to_string_lossy().to_string();
+                        if path_str.is_empty() {
+                            ".".to_string()
+                        } else {
+                            format!("./{}", path_str)
+                        }
+                    })
+                    .unwrap_or_else(|_| source_str_ref.to_string());
 
                 println!("Adding bundle '{}' to augent.yaml", bundle_name);
 
