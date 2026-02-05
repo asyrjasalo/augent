@@ -398,7 +398,21 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 .map(|np| np.into_path_buf())
                 .unwrap_or_else(|_| workspace_root.clone());
 
-            // Check if path is within the repository
+            // Windows-only workaround: normpath may return mixed slash separators
+            // causing starts_with() comparison to fail. Normalize both to use same separator.
+            #[cfg(windows)]
+            let (canonical_source_path, canonical_workspace_root) = {
+                // Use Display to get consistent separator (forward slashes)
+                let source_str = canonical_source_path.to_string_lossy();
+                let root_str = canonical_workspace_root.to_string_lossy();
+                // Replace all backslashes with forward slashes for consistency
+                (
+                    PathBuf::from(source_str.replace('\\', "/")),
+                    PathBuf::from(root_str.replace('\\', "/")),
+                )
+            };
+
+            // Check if path is within of repository
             if !canonical_source_path.starts_with(&canonical_workspace_root) {
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
@@ -418,6 +432,18 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                         .normalize()
                         .map(|np| np.into_path_buf())
                         .unwrap_or_else(|_| normalized_bundle_path.clone());
+
+                    // Windows-only workaround: path equality comparison may fail due to
+                    // inconsistent slash separators after normpath
+                    #[cfg(windows)]
+                    let (canonical_bundle_path, canonical_source_path) = {
+                        let bundle_str = canonical_bundle_path.to_string_lossy();
+                        let source_str = canonical_source_path.to_string_lossy();
+                        (
+                            PathBuf::from(bundle_str.replace('\\', "/")),
+                            PathBuf::from(source_str.replace('\\', "/")),
+                        )
+                    };
 
                     canonical_bundle_path == canonical_source_path
                 } else {
