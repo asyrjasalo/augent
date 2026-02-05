@@ -3,7 +3,8 @@
 ### Development dependencies ###################################################
 
 [tools]
-rust = { version = "1.93", postinstall = "~/.cargo/bin/rustup component add rust-analyzer || true" }
+
+rust = { version = "1.93", components = "rust-analyzer" }
 prek = "latest"
 'cargo:cargo-tarpaulin' = "latest"
 
