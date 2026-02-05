@@ -1,6 +1,6 @@
+use crate::domain::DiscoveredBundle;
 use crate::error::Result;
 use crate::platform::Platform;
-use crate::resolver::DiscoveredBundle;
 use console::Style;
 use inquire::MultiSelect;
 use std::collections::HashSet;

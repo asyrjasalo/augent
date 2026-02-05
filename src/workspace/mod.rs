@@ -29,6 +29,7 @@ use wax::{CandidatePath, Glob, Pattern};
 use crate::config::{BundleConfig, Lockfile, WorkspaceConfig};
 use crate::error::{AugentError, Result};
 use crate::hash;
+use crate::path_utils;
 
 /// Augent workspace directory name
 pub const WORKSPACE_DIR: &str = ".augent";
@@ -532,7 +533,7 @@ impl Workspace {
     /// Paths are normalized to forward slashes for consistent matching across platforms.
     fn matches_glob(&self, pattern: &str, file_path: &str) -> bool {
         // Normalize path to forward slashes for platform-independent matching
-        let normalized_path = file_path.replace('\\', "/");
+        let normalized_path = path_utils::to_forward_slashes(Path::new(file_path));
         let candidate = CandidatePath::from(normalized_path.as_str());
 
         // Use wax for proper glob pattern matching

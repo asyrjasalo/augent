@@ -24,11 +24,12 @@ use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::Installer;
+use crate::path_utils;
 use crate::platform::{self, Platform, detection};
-use crate::progress::ProgressDisplay;
 use crate::resolver::Resolver;
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
+use crate::ui::{self, ProgressReporter};
 use crate::workspace::Workspace;
 use crate::workspace::modified;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -41,7 +42,7 @@ fn is_path_like(s: &str) -> bool {
 
 fn get_installed_bundle_names_for_menu(
     current_dir: &Path,
-    discovered: &[crate::resolver::DiscoveredBundle],
+    discovered: &[crate::domain::DiscoveredBundle],
 ) -> Option<std::collections::HashSet<String>> {
     use std::collections::HashSet;
 
@@ -77,9 +78,9 @@ fn get_installed_bundle_names_for_menu(
 
 fn filter_workspace_bundle_from_discovered(
     current_dir: &Path,
-    discovered: &[crate::resolver::DiscoveredBundle],
+    discovered: &[crate::domain::DiscoveredBundle],
     installing_by_bundle_name: &Option<String>,
-) -> Vec<crate::resolver::DiscoveredBundle> {
+) -> Vec<crate::domain::DiscoveredBundle> {
     if installing_by_bundle_name.is_none() {
         return discovered.to_vec();
     }
@@ -140,7 +141,7 @@ fn check_subdirectory_resources(
 fn handle_deselected_bundles(
     workspace: &mut Workspace,
     deselected_bundle_names: &[String],
-    selected_bundles: &[crate::resolver::DiscoveredBundle],
+    selected_bundles: &[crate::domain::DiscoveredBundle],
     dry_run: bool,
     yes: bool,
 ) -> Result<bool> {
@@ -404,29 +405,8 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 .or_else(|_| workspace_root.normalize().map(|np| np.into_path_buf()))
                 .unwrap_or_else(|_| workspace_root.clone());
 
-            // Windows-specific: Compare normalized string representations instead of using
-            // PathBuf::starts_with(), as PathBuf component comparison can fail with
-            // mixed slash representations
-            #[cfg(windows)]
-            let path_is_within_repo = {
-                let source_str = canonical_source_path
-                    .to_string_lossy()
-                    .replace('\\', "/")
-                    .to_lowercase();
-                let root_str = canonical_workspace_root
-                    .to_string_lossy()
-                    .replace('\\', "/")
-                    .trim_end_matches('/')
-                    .to_lowercase();
-                source_str.starts_with(&root_str)
-            };
-
-            // Unix: Use PathBuf::starts_with() which works reliably
-            #[cfg(not(windows))]
-            let path_is_within_repo = canonical_source_path.starts_with(&canonical_workspace_root);
-
             // Check if path is within of repository
-            if !path_is_within_repo {
+            if !path_utils::is_path_within(&canonical_source_path, &canonical_workspace_root) {
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
                         "Path '{}' is outside of repository root '{}'. \
@@ -450,25 +430,8 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                         })
                         .unwrap_or_else(|_| normalized_bundle_path.clone());
 
-                    // Windows-specific: Compare normalized string representations for equality
-                    #[cfg(windows)]
-                    let paths_equal = {
-                        let bundle_str = canonical_bundle_path
-                            .to_string_lossy()
-                            .replace('\\', "/")
-                            .to_lowercase();
-                        let source_str = canonical_source_path
-                            .to_string_lossy()
-                            .replace('\\', "/")
-                            .to_lowercase();
-                        bundle_str == source_str
-                    };
-
-                    // Unix: Use PathBuf equality which works reliably
-                    #[cfg(not(windows))]
-                    let paths_equal = canonical_bundle_path == canonical_source_path;
-
-                    paths_equal
+                    path_utils::normalize_path_for_comparison(&canonical_bundle_path)
+                        == path_utils::normalize_path_for_comparison(&canonical_source_path)
                 } else {
                     false
                 }
@@ -928,7 +891,7 @@ fn resolve_bundles_for_yaml_install(
     augent_yaml_missing: bool,
     was_initialized: bool,
     has_local_resources: bool,
-) -> Result<(Vec<crate::resolver::ResolvedBundle>, bool)> {
+) -> Result<(Vec<crate::domain::ResolvedBundle>, bool)> {
     if args.update {
         resolve_with_update(args, workspace)
     } else {
@@ -945,7 +908,7 @@ fn resolve_bundles_for_yaml_install(
 fn resolve_with_update(
     args: &InstallArgs,
     workspace: &Workspace,
-) -> Result<(Vec<crate::resolver::ResolvedBundle>, bool)> {
+) -> Result<(Vec<crate::domain::ResolvedBundle>, bool)> {
     println!("Checking for updates...");
 
     let mut resolver = Resolver::new(&workspace.root);
@@ -977,7 +940,7 @@ fn resolve_from_lockfile(
     augent_yaml_missing: bool,
     was_initialized: bool,
     has_local_resources: bool,
-) -> Result<(Vec<crate::resolver::ResolvedBundle>, bool)> {
+) -> Result<(Vec<crate::domain::ResolvedBundle>, bool)> {
     let lockfile_is_empty = workspace.lockfile.bundles.is_empty();
     let _augent_yaml_changed =
         !augent_yaml_missing && !lockfile_is_empty && has_augent_yaml_changed(workspace)?;
@@ -1008,7 +971,7 @@ fn resolve_with_changes(
     _augent_yaml_changed: bool,
     was_initialized: bool,
     has_local_resources: bool,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     if lockfile_is_empty {
         resolve_new_install(args, workspace, was_initialized, has_local_resources)
     } else {
@@ -1021,7 +984,7 @@ fn resolve_new_install(
     workspace: &Workspace,
     was_initialized: bool,
     has_local_resources: bool,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     println!("Lockfile not found or empty. Resolving dependencies...");
 
     let mut resolver = Resolver::new(&workspace.root);
@@ -1052,7 +1015,7 @@ fn resolve_new_install(
 fn sync_and_resolve_new_bundles(
     args: &InstallArgs,
     workspace: &mut Workspace,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     let new_bundle_deps = sync_lockfile_from_augent_yaml(workspace)?;
     if new_bundle_deps.is_empty() {
         println!("No new bundles to resolve. Using existing lockfile.");
@@ -1083,7 +1046,7 @@ fn sync_and_resolve_new_bundles(
 
 fn resolve_from_existing_lockfile(
     workspace: &Workspace,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     println!("Using locked versions from augent.lock.");
     let resolved = locked_bundles_to_resolved(&workspace.lockfile.bundles, &workspace.root)?;
 
@@ -1116,8 +1079,8 @@ fn resolve_bundle_source(
 /// Workspace bundles get resolved from directory names, but should use workspace names.
 fn fix_workspace_bundle_names(
     workspace: &Workspace,
-    mut resolved_bundles: Vec<crate::resolver::ResolvedBundle>,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+    mut resolved_bundles: Vec<crate::domain::ResolvedBundle>,
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     let workspace_bundle_name = workspace.get_workspace_name();
     for bundle in &mut resolved_bundles {
         let bundle_source_path = workspace.get_bundle_source_path();
@@ -1153,10 +1116,10 @@ fn finish_progress_bar(pb: Option<ProgressBar>) {
 }
 
 fn ensure_workspace_bundle_in_list(
-    mut resolved_bundles: Vec<crate::resolver::ResolvedBundle>,
+    mut resolved_bundles: Vec<crate::domain::ResolvedBundle>,
     workspace: &Workspace,
     should_include: bool,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     if !should_include {
         return Ok(resolved_bundles);
     }
@@ -1169,7 +1132,7 @@ fn ensure_workspace_bundle_in_list(
         return Ok(resolved_bundles);
     }
 
-    let workspace_bundle = crate::resolver::ResolvedBundle {
+    let workspace_bundle = crate::domain::ResolvedBundle {
         name: workspace_bundle_name,
         dependency: None,
         source_path: workspace.get_bundle_source_path(),
@@ -1183,7 +1146,7 @@ fn ensure_workspace_bundle_in_list(
 }
 
 fn check_bundles_have_resources(
-    resolved_bundles: &[crate::resolver::ResolvedBundle],
+    resolved_bundles: &[crate::domain::ResolvedBundle],
 ) -> Result<bool> {
     use crate::installer::Installer;
     let has_resources = resolved_bundles.iter().any(|bundle| {
@@ -1223,7 +1186,7 @@ fn print_platform_info(args: &InstallArgs, platforms: &[Platform]) {
 #[allow(dead_code)]
 fn track_installed_files(
     workspace_root: &Path,
-    installed_files_map: &std::collections::HashMap<String, crate::installer::InstalledFile>,
+    installed_files_map: &std::collections::HashMap<String, crate::domain::InstalledFile>,
     transaction: &mut Transaction,
 ) {
     for installed in installed_files_map.values() {
@@ -1237,8 +1200,8 @@ fn track_installed_files(
 /// Print final installation summary
 #[allow(dead_code)]
 fn print_final_summary(
-    resolved_bundles: &[crate::resolver::ResolvedBundle],
-    installed_files_map: &std::collections::HashMap<String, crate::installer::InstalledFile>,
+    resolved_bundles: &[crate::domain::ResolvedBundle],
+    installed_files_map: &std::collections::HashMap<String, crate::domain::InstalledFile>,
 ) {
     let total_files: usize = installed_files_map
         .values()
@@ -1383,7 +1346,9 @@ fn do_install_from_yaml(
 
     // Create progress display if not in dry-run mode
     let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
-        Some(ProgressDisplay::new(resolved_bundles.len() as u64))
+        Some(ui::InteractiveProgressReporter::new(
+            resolved_bundles.len() as u64
+        ))
     } else {
         None
     };
@@ -1541,7 +1506,7 @@ fn do_install_from_yaml(
 /// Perform the actual installation
 fn do_install(
     args: &mut InstallArgs,
-    selected_bundles: &[crate::resolver::DiscoveredBundle],
+    selected_bundles: &[crate::domain::DiscoveredBundle],
     workspace: &mut Workspace,
     transaction: &mut Transaction,
     skip_workspace_bundle: bool,
@@ -1577,7 +1542,7 @@ fn do_install(
         None
     };
 
-    let mut resolved_bundles = (|| -> Result<Vec<crate::resolver::ResolvedBundle>> {
+    let mut resolved_bundles = (|| -> Result<Vec<crate::domain::ResolvedBundle>> {
         if selected_bundles.is_empty() {
             // No bundles discovered - resolve source directly (might be a bundle itself)
             let source_str = args.source.as_ref().unwrap().as_str();
@@ -1690,7 +1655,7 @@ fn do_install(
             .iter()
             .any(|b| b.name == workspace_bundle_name)
     {
-        let workspace_bundle = crate::resolver::ResolvedBundle {
+        let workspace_bundle = crate::domain::ResolvedBundle {
             name: workspace_bundle_name.clone(),
             dependency: None,
             source_path: workspace.get_bundle_source_path(),
@@ -1734,7 +1699,9 @@ fn do_install(
 
     // Create progress display if not in dry-run mode
     let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
-        Some(ProgressDisplay::new(resolved_bundles.len() as u64))
+        Some(ui::InteractiveProgressReporter::new(
+            resolved_bundles.len() as u64
+        ))
     } else {
         None
     };
@@ -1902,7 +1869,7 @@ fn get_or_select_platforms(
 /// Generate a new lockfile from resolved bundles
 fn generate_lockfile(
     workspace: &Workspace,
-    resolved_bundles: &[crate::resolver::ResolvedBundle],
+    resolved_bundles: &[crate::domain::ResolvedBundle],
 ) -> Result<crate::config::Lockfile> {
     let mut lockfile = crate::config::Lockfile::new();
 
@@ -1916,7 +1883,7 @@ fn generate_lockfile(
 
 /// Create a LockedBundle from a ResolvedBundle
 fn create_locked_bundle(
-    bundle: &crate::resolver::ResolvedBundle,
+    bundle: &crate::domain::ResolvedBundle,
     workspace_root: Option<&Path>,
 ) -> Result<LockedBundle> {
     // Discover files in the bundle
@@ -2010,7 +1977,7 @@ fn create_locked_bundle(
 fn update_configs(
     workspace: &mut Workspace,
     _source: &str,
-    resolved_bundles: &[crate::resolver::ResolvedBundle],
+    resolved_bundles: &[crate::domain::ResolvedBundle],
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
     update_augent_yaml: bool,
 ) -> Result<()> {
@@ -2250,7 +2217,7 @@ fn update_configs(
 /// Update workspace configuration files when installing from augent.yaml
 fn update_configs_from_yaml(
     workspace: &mut Workspace,
-    resolved_bundles: &[crate::resolver::ResolvedBundle],
+    resolved_bundles: &[crate::domain::ResolvedBundle],
     workspace_bundles: Vec<crate::config::WorkspaceBundle>,
     should_update_lockfile: bool,
 ) -> Result<()> {
@@ -2509,7 +2476,7 @@ fn reconstruct_augent_yaml_from_lockfile(workspace: &mut Workspace) -> Result<()
 fn locked_bundles_to_resolved(
     locked_bundles: &[LockedBundle],
     workspace_root: &std::path::Path,
-) -> Result<Vec<crate::resolver::ResolvedBundle>> {
+) -> Result<Vec<crate::domain::ResolvedBundle>> {
     use crate::resolver::Resolver;
     use crate::source::BundleSource;
     use crate::source::GitSource;
@@ -2570,7 +2537,7 @@ fn locked_bundles_to_resolved(
             }
         };
 
-        let resolved_bundle = crate::resolver::ResolvedBundle {
+        let resolved_bundle = crate::domain::ResolvedBundle {
             name: locked.name.clone(),
             dependency: None,
             source_path,
@@ -2722,7 +2689,7 @@ mod tests {
         std::fs::create_dir(temp.path().join("commands")).unwrap();
         std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
 
-        let bundle = crate::resolver::ResolvedBundle {
+        let bundle = crate::domain::ResolvedBundle {
             name: "@test/bundle".to_string(),
             dependency: None,
             source_path: temp.path().to_path_buf(),
@@ -2753,7 +2720,7 @@ mod tests {
             resolved_sha: Some("abc123".to_string()),
         };
 
-        let bundle = crate::resolver::ResolvedBundle {
+        let bundle = crate::domain::ResolvedBundle {
             name: "@test/bundle".to_string(),
             dependency: None,
             source_path: temp.path().to_path_buf(),
@@ -2789,7 +2756,7 @@ mod tests {
             resolved_sha: Some("abc123".to_string()),
         };
 
-        let bundle = crate::resolver::ResolvedBundle {
+        let bundle = crate::domain::ResolvedBundle {
             name: "@test/repo".to_string(),
             dependency: None,
             source_path: temp.path().to_path_buf(),
@@ -2861,7 +2828,7 @@ mod tests {
             bundle_config_dir: None,
         };
 
-        let bundle = crate::resolver::ResolvedBundle {
+        let bundle = crate::domain::ResolvedBundle {
             name: "@test/bundle".to_string(),
             dependency: None,
             source_path: temp.path().to_path_buf(),
@@ -2895,7 +2862,7 @@ mod tests {
         std::fs::create_dir(temp.path().join("commands")).unwrap();
         std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
 
-        let bundle = crate::resolver::ResolvedBundle {
+        let bundle = crate::domain::ResolvedBundle {
             name: "@external/bundle".to_string(),
             dependency: None,
             source_path: temp.path().to_path_buf(),
@@ -2952,7 +2919,7 @@ mod tests {
         std::fs::create_dir(temp.path().join("commands")).unwrap();
         std::fs::write(temp.path().join("commands/test.md"), "# Test").unwrap();
 
-        let bundle = crate::resolver::ResolvedBundle {
+        let bundle = crate::domain::ResolvedBundle {
             name: "@existing/bundle".to_string(),
             dependency: None,
             source_path: temp.path().to_path_buf(),

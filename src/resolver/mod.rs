@@ -5,140 +5,19 @@
 //! - Topological sorting to determine installation order
 //! - Circular dependency detection
 //! - Resolving dependencies recursively
-
+//!
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use normpath::PathExt;
 
 use crate::cache;
-use crate::config::{BundleConfig, BundleDependency, MarketplaceBundle, MarketplaceConfig};
+use crate::config::{BundleConfig, BundleDependency, MarketplaceConfig};
+use crate::domain::{DiscoveredBundle, ResolvedBundle, ResourceCounts};
 use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::{BundleSource, GitSource};
-
-/// Count of resources by type for a bundle
-#[derive(Debug, Clone, Default)]
-pub struct ResourceCounts {
-    pub commands: usize,
-    pub rules: usize,
-    pub agents: usize,
-    pub skills: usize,
-    pub mcp_servers: usize,
-}
-
-impl ResourceCounts {
-    /// Create from marketplace bundle definition
-    pub fn from_marketplace(bundle: &MarketplaceBundle) -> Self {
-        ResourceCounts {
-            commands: bundle.commands.len(),
-            rules: bundle.rules.len(),
-            agents: bundle.agents.len(),
-            skills: bundle.skills.len(),
-            mcp_servers: bundle.mcp_servers.len(),
-        }
-    }
-
-    /// Count resources from a bundle directory path
-    pub fn from_path(path: &Path) -> Self {
-        ResourceCounts {
-            commands: count_files_in_dir(path.join("commands")),
-            rules: count_files_in_dir(path.join("rules")),
-            agents: count_files_in_dir(path.join("agents")),
-            skills: count_files_in_dir(path.join("skills")),
-            mcp_servers: count_files_in_dir(path.join("mcp_servers")),
-        }
-    }
-
-    /// Format counts for display (e.g., "5 commands, 2 agents")
-    pub fn format(&self) -> Option<String> {
-        let parts = [
-            ("command", self.commands),
-            ("rule", self.rules),
-            ("agent", self.agents),
-            ("skill", self.skills),
-            ("MCP server", self.mcp_servers),
-        ];
-
-        let non_zero: Vec<String> = parts
-            .iter()
-            .filter(|(_, count)| *count > 0)
-            .map(|(name, count)| {
-                if *count == 1 {
-                    format!("1 {}", name)
-                } else {
-                    format!("{} {}s", count, name)
-                }
-            })
-            .collect();
-
-        if non_zero.is_empty() {
-            None
-        } else {
-            Some(non_zero.join(", "))
-        }
-    }
-}
-
-/// Count files recursively in a directory
-fn count_files_in_dir(dir: PathBuf) -> usize {
-    if !dir.is_dir() {
-        return 0;
-    }
-
-    match std::fs::read_dir(dir) {
-        Ok(entries) => entries
-            .filter_map(std::result::Result::ok)
-            .filter(|entry| entry.file_type().map(|ft| ft.is_file()).unwrap_or(false))
-            .count(),
-        Err(_) => 0,
-    }
-}
-
-/// A resolved bundle with all information needed for installation
-#[derive(Debug, Clone)]
-pub struct ResolvedBundle {
-    /// Bundle name
-    pub name: String,
-
-    /// Original dependency declaration (if from a dependency)
-    pub dependency: Option<BundleDependency>,
-
-    /// Resolved source location (local path or cached git path)
-    pub source_path: std::path::PathBuf,
-
-    /// For git sources: the resolved SHA
-    pub resolved_sha: Option<String>,
-
-    /// For git sources: the resolved ref name (e.g., "main", "master", or None if detached)
-    pub resolved_ref: Option<String>,
-
-    /// For git sources: the original source info
-    pub git_source: Option<GitSource>,
-
-    /// Bundle configuration (if augent.yaml exists)
-    pub config: Option<BundleConfig>,
-}
-
-/// A discovered bundle before selection
-#[derive(Debug, Clone)]
-pub struct DiscoveredBundle {
-    /// Bundle name
-    pub name: String,
-
-    /// Bundle source path
-    pub path: std::path::PathBuf,
-
-    /// Optional bundle description
-    pub description: Option<String>,
-
-    /// For git sources: the original git source info
-    pub git_source: Option<GitSource>,
-
-    /// Resource counts for this bundle
-    pub resource_counts: ResourceCounts,
-}
 
 /// Dependency resolver for bundles
 pub struct Resolver {

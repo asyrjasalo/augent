@@ -15,10 +15,10 @@ use walkdir::WalkDir;
 use wax::{CandidatePath, Glob, Pattern};
 
 use crate::config::WorkspaceBundle;
+use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
 use crate::error::{AugentError, Result};
 use crate::platform::{MergeStrategy, Platform, TransformRule};
-use crate::progress::ProgressDisplay;
-use crate::resolver::ResolvedBundle;
+use crate::ui::ProgressReporter;
 use crate::universal;
 
 /// Known resource directories in bundles
@@ -26,30 +26,6 @@ const RESOURCE_DIRS: &[&str] = &["commands", "rules", "agents", "skills", "root"
 
 /// Known resource files in bundles (at root level)
 const RESOURCE_FILES: &[&str] = &["mcp.jsonc", "AGENTS.md"];
-
-/// A discovered resource file in a bundle
-#[derive(Debug, Clone)]
-pub struct DiscoveredResource {
-    /// Relative path within the bundle (e.g., "commands/debug.md")
-    pub bundle_path: PathBuf,
-
-    /// Absolute path to the file
-    pub absolute_path: PathBuf,
-
-    /// Resource type (commands, rules, agents, skills, root, or file name)
-    pub resource_type: String,
-}
-
-/// Result of installing a file
-#[derive(Debug, Clone)]
-pub struct InstalledFile {
-    /// Original bundle path (e.g., "commands/debug.md")
-    pub bundle_path: String,
-    /// Resource type (commands, rules, agents, skills, root, or file name)
-    pub resource_type: String,
-    /// Target paths per platform (e.g., ".cursor/rules/debug.mdc")
-    pub target_paths: Vec<String>,
-}
 
 /// File installer for a workspace
 pub struct Installer<'a> {
@@ -66,7 +42,7 @@ pub struct Installer<'a> {
     dry_run: bool,
 
     /// Optional progress display for showing installation progress
-    progress: Option<&'a mut ProgressDisplay>,
+    progress: Option<&'a mut dyn ProgressReporter>,
 
     /// Leaf skill dirs (e.g. skills/claude.ai/vercel-deploy-claimable) for {name} and path resolution
     pub(super) leaf_skill_dirs: Option<std::collections::HashSet<String>>,
@@ -117,7 +93,7 @@ impl<'a> Installer<'a> {
         workspace_root: &'a Path,
         platforms: Vec<Platform>,
         dry_run: bool,
-        progress: Option<&'a mut ProgressDisplay>,
+        progress: Option<&'a mut dyn ProgressReporter>,
     ) -> Self {
         Self {
             workspace_root,

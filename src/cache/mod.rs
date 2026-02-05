@@ -26,6 +26,7 @@ use walkdir::WalkDir;
 use crate::config::MarketplaceConfig;
 use crate::error::{AugentError, Result};
 use crate::git;
+use crate::path_utils;
 use crate::source::GitSource;
 
 /// Default cache directory name under user's cache directory
@@ -102,34 +103,10 @@ pub fn bundles_cache_dir() -> Result<PathBuf> {
 
 /// Characters invalid in path segments on Windows (and problematic elsewhere).
 /// Replaced with `-` so cache keys work on all platforms.
-const PATH_UNSAFE_CHARS: &[char] = &['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
-
 /// Convert bundle name to a path-safe cache key (e.g. @author/repo -> author-repo).
 /// Sanitizes characters invalid on Windows so file:// URLs and names with colons work.
 pub fn bundle_name_to_cache_key(name: &str) -> String {
-    let key: String = name
-        .trim_start_matches('@')
-        .chars()
-        .map(|c| {
-            if PATH_UNSAFE_CHARS.contains(&c) {
-                '-'
-            } else {
-                c
-            }
-        })
-        .collect();
-    let key = key
-        .split('-')
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
-        .trim_matches('-')
-        .to_string();
-    if key.is_empty() {
-        "unknown".to_string()
-    } else {
-        key
-    }
+    path_utils::make_path_safe(name)
 }
 
 /// Derive repo name from URL (e.g. https://github.com/davila7/claude-code-templates.git -> @davila7/claude-code-templates)
