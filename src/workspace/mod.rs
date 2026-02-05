@@ -804,17 +804,17 @@ mod tests {
         let found = Workspace::find_from(&nested);
         assert!(found.is_some());
 
-        // Try to normalize both paths to handle macOS /private/ prefix
-        // If normalization fails (Windows temp paths), compare as-is
+        // Compare paths using canonicalize() which resolves:
+        // - macOS /private/ prefix
+        // - Windows short filenames (8.3 format like RUNNER~1)
+        // - Symlinks
+        // If canonicalize fails (e.g., path doesn't exist), fall back to normalized paths
         let found_path = found.unwrap();
-        let found_canonical = found_path
-            .normalize()
-            .map(|np| np.into_path_buf())
+        let found_canonical = fs::canonicalize(&found_path)
+            .or_else(|_| found_path.normalize().map(|np| np.into_path_buf()))
             .unwrap_or_else(|_| found_path.to_path_buf());
-        let temp_canonical = temp
-            .path()
-            .normalize()
-            .map(|np| np.into_path_buf())
+        let temp_canonical = fs::canonicalize(temp.path())
+            .or_else(|_| temp.path().normalize().map(|np| np.into_path_buf()))
             .unwrap_or_else(|_| temp.path().to_path_buf());
         assert_eq!(found_canonical, temp_canonical);
     }
