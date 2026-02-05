@@ -391,32 +391,45 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 current_dir.join(source_path)
             };
 
-            // Normalize both paths for comparison using normpath (cross-platform)
+            // Normalize both paths for comparison
+            // Prefer fs::canonicalize for existing paths (resolves symlinks, Windows short names, etc.)
+            // Fall back to normpath for non-existing paths
             let canonical_source_path = resolved_source_path
-                .normalize()
-                .map(|np| np.into_path_buf())
+                .canonicalize()
+                .or_else(|_| {
+                    resolved_source_path
+                        .normalize()
+                        .map(|np| np.into_path_buf())
+                })
                 .unwrap_or_else(|_| resolved_source_path.clone());
             let canonical_workspace_root = workspace_root
-                .normalize()
-                .map(|np| np.into_path_buf())
+                .canonicalize()
+                .or_else(|_| workspace_root.normalize().map(|np| np.into_path_buf()))
                 .unwrap_or_else(|_| workspace_root.clone());
 
-            // Windows-only workaround: normpath may return mixed slash separators
-            // causing starts_with() comparison to fail. Normalize both to use same separator.
+            // Windows-specific: Compare normalized string representations instead of using
+            // PathBuf::starts_with(), as PathBuf component comparison can fail with
+            // mixed slash representations
             #[cfg(windows)]
-            let (canonical_source_path, canonical_workspace_root) = {
-                // Use Display to get consistent separator (forward slashes)
-                let source_str = canonical_source_path.to_string_lossy();
-                let root_str = canonical_workspace_root.to_string_lossy();
-                // Replace all backslashes with forward slashes for consistency
-                (
-                    PathBuf::from(source_str.replace('\\', "/")),
-                    PathBuf::from(root_str.replace('\\', "/")),
-                )
+            let path_is_within_repo = {
+                let source_str = canonical_source_path
+                    .to_string_lossy()
+                    .replace('\\', "/")
+                    .to_lowercase();
+                let root_str = canonical_workspace_root
+                    .to_string_lossy()
+                    .replace('\\', "/")
+                    .trim_end_matches('/')
+                    .to_lowercase();
+                source_str.starts_with(&root_str)
             };
 
+            // Unix: Use PathBuf::starts_with() which works reliably
+            #[cfg(not(windows))]
+            let path_is_within_repo = canonical_source_path.starts_with(&canonical_workspace_root);
+
             // Check if path is within of repository
-            if !canonical_source_path.starts_with(&canonical_workspace_root) {
+            if !path_is_within_repo {
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
                         "Path '{}' is outside of repository root '{}'. \
@@ -432,23 +445,33 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 if let Some(ref path_val) = b.path {
                     let normalized_bundle_path = workspace_root.join(path_val);
                     let canonical_bundle_path = normalized_bundle_path
-                        .normalize()
-                        .map(|np| np.into_path_buf())
+                        .canonicalize()
+                        .or_else(|_| {
+                            normalized_bundle_path
+                                .normalize()
+                                .map(|np| np.into_path_buf())
+                        })
                         .unwrap_or_else(|_| normalized_bundle_path.clone());
 
-                    // Windows-only workaround: path equality comparison may fail due to
-                    // inconsistent slash separators after normpath
+                    // Windows-specific: Compare normalized string representations for equality
                     #[cfg(windows)]
-                    let (canonical_bundle_path, canonical_source_path) = {
-                        let bundle_str = canonical_bundle_path.to_string_lossy();
-                        let source_str = canonical_source_path.to_string_lossy();
-                        (
-                            PathBuf::from(bundle_str.replace('\\', "/")),
-                            PathBuf::from(source_str.replace('\\', "/")),
-                        )
+                    let paths_equal = {
+                        let bundle_str = canonical_bundle_path
+                            .to_string_lossy()
+                            .replace('\\', "/")
+                            .to_lowercase();
+                        let source_str = canonical_source_path
+                            .to_string_lossy()
+                            .replace('\\', "/")
+                            .to_lowercase();
+                        bundle_str == source_str
                     };
 
-                    canonical_bundle_path == canonical_source_path
+                    // Unix: Use PathBuf equality which works reliably
+                    #[cfg(not(windows))]
+                    let paths_equal = canonical_bundle_path == canonical_source_path;
+
+                    paths_equal
                 } else {
                     false
                 }
