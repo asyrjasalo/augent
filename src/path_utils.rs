@@ -3,7 +3,6 @@
 //! This module provides utilities for handling paths across different platforms
 //! (Windows, macOS, Linux) with consistent behavior.
 
-use normpath::PathExt;
 use std::path::{Path, PathBuf};
 
 /// Characters that are unsafe in filesystem paths
@@ -67,37 +66,29 @@ pub fn normalize_path_for_comparison(path: &Path) -> String {
 /// assert!(is_path_within(&path, &base));
 /// ```
 pub fn is_path_within(path: &Path, base: &Path) -> bool {
-    // Try to canonicalize paths to resolve symlinks
-    let canonical_path = path
-        .canonicalize()
-        .or_else(|_| path.normalize().map(|np| np.into_path_buf()))
-        .unwrap_or_else(|_| path.to_path_buf());
+    // Convert to strings for comparison. We don't use canonicalize() because:
+    // 1. It fails for non-existent paths
+    // 2. Symlink resolution is inconsistent between existing and non-existent paths on macOS
+    // 3. We just need to check logical containment, not resolve all symlinks
+    let path_str = path.to_string_lossy().to_string();
+    let mut base_str = base.to_string_lossy().to_string();
 
-    let canonical_base = base
-        .canonicalize()
-        .or_else(|_| base.normalize().map(|np| np.into_path_buf()))
-        .unwrap_or_else(|_| base.to_path_buf());
-
-    // Windows-specific: Compare normalized string representations
+    // Normalize slashes and case for Windows
     #[cfg(windows)]
     {
-        let path_str = canonical_path
-            .to_string_lossy()
-            .replace('\\', "/")
-            .to_lowercase();
-        let base_str = canonical_base
-            .to_string_lossy()
+        let normalized_path = path_str.replace('\\', "/").to_lowercase();
+        let normalized_base = base_str
             .replace('\\', "/")
             .trim_end_matches('/')
             .to_lowercase();
-
-        path_str.starts_with(&base_str)
+        normalized_path.starts_with(&normalized_base)
     }
 
-    // Unix: Use PathBuf::starts_with() which works reliably
+    // Unix: Trim trailing separator and compare
     #[cfg(not(windows))]
     {
-        canonical_path.starts_with(&canonical_base)
+        base_str = base_str.trim_end_matches('/').to_string();
+        path_str.starts_with(&base_str) || path_str.starts_with(&format!("{}/", base_str))
     }
 }
 
@@ -212,12 +203,13 @@ pub fn resolve_relative_to(path: &Path, base: &Path) -> Result<PathBuf, std::io:
     if path.is_absolute() {
         Ok(path.to_path_buf())
     } else {
-        let normalized_base = base
-            .canonicalize()
-            .or_else(|_| base.normalize().map(|np| np.into_path_buf()))
-            .unwrap_or_else(|_| base.to_path_buf());
-
-        Ok(normalized_base.join(path))
+        // If base is relative (like "."), resolve it to an absolute path first
+        let absolute_base = if base.is_absolute() {
+            base.to_path_buf()
+        } else {
+            std::env::current_dir()?.join(base)
+        };
+        Ok(absolute_base.join(path))
     }
 }
 
@@ -335,7 +327,19 @@ mod tests {
         let result = resolve_relative_to(relative, base).unwrap();
 
         assert!(result.is_absolute());
-        assert!(result.starts_with(base));
+
+        // On Windows, PathBuf::starts_with is case-sensitive, but paths are case-insensitive
+        #[cfg(windows)]
+        {
+            let result_str = result.to_string_lossy().to_lowercase();
+            let base_str = base.to_string_lossy().to_lowercase();
+            assert!(result_str.starts_with(&base_str));
+        }
+
+        #[cfg(not(windows))]
+        {
+            assert!(result.starts_with(base));
+        }
     }
 
     #[test]
