@@ -7,9 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.6](https://github.com/asyrjasalo/augent/releases/tag/v0.6.6) - 2026-02-05
+
 ### Fixed
 
-- Fix dir bundle name preservation in lockfile and index files. When installing a dir bundle with a custom name in `augent.yaml` (e.g., `name: my-library-name, path: my-library`), the bundle name is now correctly preserved instead of using the directory name as the bundle name in `augent.lock` and `augent.index.yaml`.
+- `augent uninstall`: Updates `augent.yaml` when uninstalling bundles, keeping configuration in sync.
+- `augent install`: Now uses `./` prefix for relative paths to ensure consistency.
+- `augent install`: Handles local bundle workspace initialization correctly.
+- `augent install`: Preserves relative source paths when installing bundles.
+- `augent install`: Supports installing directory bundles directly from local paths.
+- Directory bundle names are now preserved correctly in `augent.yaml` and `augent.lock` when using custom names.
+
+### Changed
+
+- Workspace commands now enforce that the workspace directory must be a Git repository.
+- Workspace configuration files are now stored in the `.augent` directory.
 
 ### Removed
 
