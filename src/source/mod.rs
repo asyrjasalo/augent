@@ -108,17 +108,19 @@ impl BundleSource {
         // Check if this looks like a local path:
         // - Starts with ./ or ../
         // - Is . or ..
-        // - Starts with . but doesn't look like a git URL (no :// after the .)
+        // - Starts with . but doesn't look like a git URL (no :// after)
         //   (e.g., .augent, .cursor, .claude are local paths, not git sources)
         // - Is absolute (/ on Unix, C:\ on Windows, etc.)
         // - Starts with / (Unix-style absolute path, even on Windows)
+        // - Existing directory in current working directory
         let is_local_path = input.starts_with("./")
             || input.starts_with("../")
             || input == "."
             || input == ".."
             || (input.starts_with(".") && !input.contains("://"))
             || path.is_absolute()
-            || input.starts_with('/');
+            || input.starts_with('/')
+            || Path::new(input).is_dir() && !input.contains(':');
 
         if is_local_path {
             return Ok(BundleSource::Dir {
@@ -851,5 +853,26 @@ mod tests {
             source.as_local_path(),
             Some(&PathBuf::from("/some/absolute/path/bundle"))
         );
+    }
+
+    #[test]
+    fn test_parse_existing_directory_name() {
+        let temp_dir = std::env::temp_dir().join("test-bundle");
+        std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
+
+        let original_dir = std::env::current_dir().expect("Failed to get current dir");
+        std::env::set_current_dir(&temp_dir).expect("Failed to set current dir");
+
+        let library_dir = temp_dir.join("my-library");
+        std::fs::create_dir(&library_dir).expect("Failed to create library dir");
+
+        let source = BundleSource::parse("my-library");
+        assert!(source.is_ok(), "Failed to parse 'my-library': {:?}", source);
+        let source = source.unwrap();
+        assert!(source.is_local(), "Expected local path for 'my-library'");
+        assert_eq!(source.as_local_path(), Some(&PathBuf::from("my-library")));
+
+        std::env::set_current_dir(&original_dir).expect("Failed to restore current dir");
+        std::fs::remove_dir_all(&temp_dir).expect("Failed to clean up temp dir");
     }
 }

@@ -11,6 +11,7 @@ bin/
 .claude/
 .cursor/
 .opencode/
+*.bak
 
 # development workspace
 tmp/

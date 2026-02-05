@@ -335,10 +335,6 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
     let mut installing_by_bundle_name: Option<String> = None;
 
     if let Some(source_str) = &args.source {
-        eprintln!(
-            "DEBUG: Entering source handling block, source_str={:?}",
-            source_str
-        );
         let source_str_ref = source_str.as_str();
 
         // Parse the source to determine if it's a local path
@@ -346,24 +342,35 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
         let is_local_path = source.is_local();
 
         // For directory bundles, add to augent.yaml if not present
-        eprintln!("DEBUG: is_local_path={}", is_local_path);
         if is_local_path {
             // Get the repository root from actual current directory
             let actual_current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
                 message: format!("Failed to get current directory: {}", e),
             })?;
             let workspace_root_opt = Workspace::find_from(&actual_current_dir);
-            if workspace_root_opt.is_none() {
-                return Err(AugentError::BundleValidationFailed {
-                    message: format!(
-                        "Directory bundles require an augent.yaml workspace. \
-                         To install '{}', first initialize a workspace in this repository (run from repository root).",
-                        source_str_ref
-                    ),
-                });
-            }
 
-            let workspace_root = workspace_root_opt.unwrap();
+            // Initialize workspace if it doesn't exist
+            let workspace_root = match workspace_root_opt {
+                Some(root) => root,
+                None => {
+                    // Check if we're in a git repository (workspaces must be in git repos)
+                    if let Some(repo_root) =
+                        Workspace::find_git_repository_root(&actual_current_dir)
+                    {
+                        // Initialize the workspace
+                        let _ = Workspace::init_or_open(&repo_root)?;
+                        repo_root
+                    } else {
+                        return Err(AugentError::BundleValidationFailed {
+                            message: format!(
+                                "Directory bundles require an augent.yaml workspace in a git repository. \
+                                 To install '{}', first run 'augent init' in a git repository.",
+                                source_str_ref
+                            ),
+                        });
+                    }
+                }
+            };
             let mut workspace = Workspace::open(&workspace_root)?;
 
             // Validate the path is within the repository
@@ -395,10 +402,6 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
             }
 
             // Look for a bundle with this path in the workspace config
-            eprintln!(
-                "DEBUG: Looking for bundle in workspace config, has {} bundles",
-                workspace.bundle_config.bundles.len()
-            );
             let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
                 if let Some(ref path_val) = b.path {
                     let normalized_bundle_path = workspace_root.join(path_val);
@@ -427,11 +430,6 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                         workspace.config_dir.join(&bundle_path_str)
                     };
 
-                eprintln!(
-                    "DEBUG: bundle_path_str={:?}, resolved_path={:?}",
-                    bundle_path_str, resolved_path
-                );
-
                 // Store the bundle name for better messaging
                 installing_by_bundle_name = Some(bundle_name.clone());
 
@@ -444,24 +442,16 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                     } else {
                         relative_path.to_string_lossy().to_string()
                     };
-                    eprintln!("DEBUG: Setting args.source to {:?}", final_source);
                     args.source = Some(final_source);
                 } else {
                     let final_source = resolved_path.to_string_lossy().to_string();
-                    eprintln!("DEBUG: Setting args.source to {:?}", final_source);
                     args.source = Some(final_source);
                 }
             } else {
-                eprintln!("DEBUG: Bundle not found, adding to augent.yaml");
                 // Bundle not found - add it to augent.yaml
 
                 // Check if the bundle directory has an augent.yaml file
-                eprintln!(
-                    "DEBUG: Checking if augent.yaml exists at {:?}",
-                    resolved_source_path.join("augent.yaml")
-                );
                 let bundle_name = if resolved_source_path.join("augent.yaml").exists() {
-                    eprintln!("DEBUG: augent.yaml exists, reading name from it");
                     let bundle_augent_yaml = resolved_source_path.join("augent.yaml");
                     let yaml_content =
                         std::fs::read_to_string(&bundle_augent_yaml).map_err(|e| {
@@ -484,7 +474,6 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                                 })
                             })
                     });
-                    eprintln!("DEBUG: Parsed name: {:?}", parsed_name);
                     parsed_name.map(|name| name.to_string()).unwrap_or_else(|| {
                         resolved_source_path
                             .file_name()
@@ -529,12 +518,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 workspace.should_create_augent_yaml = true;
 
                 // Save the workspace to persist the new bundle entry
-                eprintln!(
-                    "DEBUG: Saving workspace with {} bundles",
-                    workspace.bundle_config.bundles.len()
-                );
                 workspace.save()?;
-                eprintln!("DEBUG: Saved workspace successfully");
             }
         } else {
             // Check if this source matches a dependency in augent.yaml (by name or by path)
@@ -590,10 +574,6 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
 
 /// Run the install command
 pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
-    eprintln!(
-        "DEBUG: Entering install run function, args.source={:?}",
-        args.source
-    );
     // Get the actual current directory (where the command is being run)
     let actual_current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
         message: format!("Failed to get current directory: {}", e),

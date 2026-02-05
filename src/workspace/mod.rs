@@ -96,7 +96,7 @@ impl Workspace {
     }
 
     /// Find the git repository root from a starting path
-    fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
+    pub fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
         let repo = git2::Repository::discover(start).ok()?;
         repo.workdir().and_then(|p| std::fs::canonicalize(p).ok())
     }
