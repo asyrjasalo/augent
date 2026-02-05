@@ -373,21 +373,48 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
                 })?;
 
                 // Normalize current directory for comparison
+                // Prefer fs::canonicalize for existing paths (resolves symlinks, Windows short names, etc.)
+                // Fall back to normpath for non-existing paths
                 let canonical_current_dir = current_dir
-                    .normalize()
-                    .map(|np| np.into_path_buf())
+                    .canonicalize()
+                    .or_else(|_| current_dir.normalize().map(|np| np.into_path_buf()))
                     .unwrap_or_else(|_| current_dir.clone());
+
+                // Canonicalize workspace root for consistent path comparisons
+                let canonical_workspace_root = workspace
+                    .root
+                    .canonicalize()
+                    .or_else(|_| workspace.root.normalize().map(|np| np.into_path_buf()))
+                    .unwrap_or_else(|_| workspace.root.clone());
 
                 // Look for a bundle with a path that matches the current directory
                 let matching_bundle = workspace.bundle_config.bundles.iter().find(|b| {
                     if let Some(ref path_val) = b.path {
-                        let bundle_path = workspace.root.join(path_val);
+                        let bundle_path = canonical_workspace_root.join(path_val);
                         let canonical_bundle_path = bundle_path
-                            .normalize()
-                            .map(|np| np.into_path_buf())
+                            .canonicalize()
+                            .or_else(|_| bundle_path.normalize().map(|np| np.into_path_buf()))
                             .unwrap_or_else(|_| bundle_path.clone());
 
-                        canonical_bundle_path == canonical_current_dir
+                        // Windows-specific: Compare normalized string representations for equality
+                        #[cfg(windows)]
+                        let paths_equal = {
+                            let bundle_str = canonical_bundle_path
+                                .to_string_lossy()
+                                .replace('\\', "/")
+                                .to_lowercase();
+                            let current_str = canonical_current_dir
+                                .to_string_lossy()
+                                .replace('\\', "/")
+                                .to_lowercase();
+                            bundle_str == current_str
+                        };
+
+                        // Unix: Use PathBuf equality which works reliably
+                        #[cfg(not(windows))]
+                        let paths_equal = canonical_bundle_path == canonical_current_dir;
+
+                        paths_equal
                     } else {
                         false
                     }
