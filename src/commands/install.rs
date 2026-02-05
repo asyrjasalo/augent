@@ -17,9 +17,6 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-#[cfg(windows)]
-use std::path::PathBuf;
-
 use crate::cache;
 use crate::cli::InstallArgs;
 use crate::commands::menu::{select_bundles_interactively, select_platforms_interactively};
@@ -443,7 +440,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
             // Look for a bundle with this path in the workspace config
             let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
                 if let Some(ref path_val) = b.path {
-                    let normalized_bundle_path = workspace_root.join(path_val);
+                    let normalized_bundle_path = canonical_workspace_root.join(path_val);
                     let canonical_bundle_path = normalized_bundle_path
                         .canonicalize()
                         .or_else(|_| {
@@ -488,7 +485,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 // Resolve to path relative to workspace root
                 let resolved_path =
                     if bundle_path_str.starts_with("./") || bundle_path_str.starts_with("../") {
-                        workspace_root.join(&bundle_path_str)
+                        canonical_workspace_root.join(&bundle_path_str)
                     } else {
                         workspace.config_dir.join(&bundle_path_str)
                     };
@@ -497,7 +494,7 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 installing_by_bundle_name = Some(bundle_name.clone());
 
                 // Convert to path relative to workspace root for the resolver
-                if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
+                if let Ok(relative_path) = resolved_path.strip_prefix(&canonical_workspace_root) {
                     let final_source = if bundle_path_str.starts_with("./") {
                         format!("./{}", relative_path.to_string_lossy())
                     } else if bundle_path_str.starts_with("../") {
@@ -555,8 +552,8 @@ fn handle_source_argument(args: &mut InstallArgs, current_dir: &Path) -> Result<
                 // Compute relative path from workspace root
                 // Always add ./ prefix for consistency with BundleSource::parse
                 // Normalize to forward slashes for cross-platform consistency
-                let relative_path_for_save = resolved_source_path
-                    .strip_prefix(&workspace_root)
+                let relative_path_for_save = canonical_source_path
+                    .strip_prefix(&canonical_workspace_root)
                     .map(|p| {
                         let path_str = p.to_string_lossy().to_string();
                         if path_str.is_empty() {
