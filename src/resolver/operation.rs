@@ -10,6 +10,7 @@ use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::{BundleSource, GitSource};
 use crate::workspace;
+use normpath::PathExt;
 
 /// High-level resolve operation that orchestrates resolution
 pub struct ResolveOperation {
@@ -71,7 +72,7 @@ impl ResolveOperation {
     }
 
     /// Discover all potential bundles in a source directory
-    pub fn discover_bundles(&self, source: &str) -> Result<Vec<DiscoveredBundle>> {
+    pub fn discover_bundles(&mut self, source: &str) -> Result<Vec<DiscoveredBundle>> {
         let bundle_source = BundleSource::parse(source)?;
 
         let mut discovered = match bundle_source {
@@ -86,7 +87,7 @@ impl ResolveOperation {
     }
 
     /// Resolve a bundle source to a ResolvedBundle
-    fn resolve_source(
+    pub fn resolve_source(
         &mut self,
         source: &BundleSource,
         dependency: Option<&BundleDependency>,
@@ -221,14 +222,14 @@ impl ResolveOperation {
     }
 
     /// Resolve a git bundle
-    fn resolve_git(
+    pub fn resolve_git(
         &mut self,
         source: &GitSource,
         dependency: Option<&BundleDependency>,
         skip_deps: bool,
     ) -> Result<ResolvedBundle> {
         // Cache the bundle (clone if needed, resolve SHA, get resolved ref)
-        let cache_result = cache::cache_bundle(source)?;
+        let cache_result = cache::cache_bundle(source);
 
         // cache_bundle returns (resources_path, sha, resolved_ref)
         let (content_path, sha, resolved_ref) = cache_result?;
@@ -534,11 +535,7 @@ impl ResolveOperation {
         }
 
         // Clone to temp and discover; then ensure cache entry per bundle
-        let temp_dir = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).map_err(|e| {
-            AugentError::IoError {
-                message: format!("Failed to create temp dir: {}", e),
-            }
-        })?;
+        let (temp_dir, sha, resolved_ref) = cache::clone_and_checkout(source)?;
         let repo_path = temp_dir.path();
         let content_path = cache::content_path_in_repo(repo_path, source);
 
@@ -601,7 +598,7 @@ impl ResolveOperation {
 
             cache::ensure_bundle_cached(
                 &bundle_name_for_cache,
-                &sha.clone().unwrap_or_default(),
+                &sha,
                 &source.url,
                 path_for_cache,
                 repo_path,
@@ -945,9 +942,9 @@ impl ResolveOperation {
                                 resource_counts,
                             });
                         }
+                    } else {
+                        self.scan_directory_recursively(&entry_path, discovered);
                     }
-                } else {
-                    self.scan_directory_recursively(&entry_path, discovered);
                 }
             }
         }

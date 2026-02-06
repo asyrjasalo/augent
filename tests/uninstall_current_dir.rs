@@ -48,7 +48,7 @@ fn test_uninstall_dot_with_confirmation() {
 
     // Add and install the bundle
     workspace.write_file(
-        ".augent/augent.yaml",
+        ".augent.yaml",
         "bundles:\n  - name: \"test-bundle\"\n    path: \"test-bundle\"\n",
     );
 
@@ -82,9 +82,13 @@ fn test_uninstall_dot_updates_augent_yaml() {
     std::fs::write(bundle_dir.join("commands/test.md"), "# Test\n")
         .expect("Failed to write test file");
 
-    // Add and install the bundle (this creates augent.yaml)
+    workspace.write_file(
+        ".augent/augent.yaml",
+        "bundles:\n  - name: \"my-library\"\n    path: \"./my-library\"\n",
+    );
+
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "./my-library", "--to", "cursor", "-y"])
+        .args(["install", "--to", "cursor", "-y"])
         .assert()
         .success();
 
@@ -104,26 +108,33 @@ fn test_uninstall_dot_updates_augent_yaml() {
     cmd.current_dir(&bundle_dir);
     cmd.args(["uninstall", ".", "-y"]).assert().success();
 
-    // Verify augent.yaml was updated (bundle entry removed)
-    // Per spec: augent.yaml should persist even when empty
-    let augent_yaml_content = workspace.read_file(".augent/augent.yaml");
+    // In new architecture, augent.yaml contains workspace metadata/dependencies,
+    // NOT installed bundles. Installed bundles are in augent.index.yaml.
+    // Uninstalling removes from augent.index.yaml and augent.lock only.
+    // augent.yaml should NOT be created or modified by uninstall operations.
+    // After uninstalling last bundle with no bundles left, .augent.yaml should not exist.
+
+    // Verify augent.yaml does NOT exist (workspace metadata file is not for installed bundles)
+    let augent_yaml_path = workspace.path.join(".augent.yaml");
     assert!(
-        !augent_yaml_content.contains("my-library"),
-        "Bundle should be removed from augent.yaml"
-    );
-    assert!(
-        augent_yaml_content.contains("bundles:"),
-        "bundles: should still exist"
-    );
-    assert!(
-        augent_yaml_content.contains("[]") || augent_yaml_content.contains("name:"),
-        "Should have empty bundles or workspace metadata"
+        !augent_yaml_path.exists(),
+        ".augent.yaml should not exist (uninstall doesn't create workspace metadata files)"
     );
 
-    // Verify lockfile and index were also updated
-    let lockfile_content = workspace.read_file(".augent/augent.lock");
-    assert!(!lockfile_content.contains("my-library"));
+    // Verify lockfile and index were updated (bundle removed from both)
+    let lockfile_path = workspace.path.join(".augent/augent.lock");
+    let lockfile_content =
+        std::fs::read_to_string(&lockfile_path).expect("Failed to read augent.lock");
+    assert!(
+        !lockfile_content.contains("my-library"),
+        "Bundle should be removed from augent.lock"
+    );
 
-    let index_content = workspace.read_file(".augent/augent.index.yaml");
-    assert!(!index_content.contains("my-library"));
+    let index_path = workspace.path.join(".augent/augent.index.yaml");
+    let index_content =
+        std::fs::read_to_string(&index_path).expect("Failed to read augent.index.yaml");
+    assert!(
+        !index_content.contains("my-library"),
+        "Bundle should be removed from augent.index.yaml"
+    );
 }

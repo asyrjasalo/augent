@@ -10,6 +10,7 @@ bin/
 # coding agents
 .sisyphus/
 *.bak
+*.backup
 
 # development workspace
 tmp/

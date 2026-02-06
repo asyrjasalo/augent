@@ -25,28 +25,11 @@ pub struct IndexEntry {
 /// One cache entry for (url, sha): path within repo, bundle name, resources dir, resolved ref.
 pub type CachedEntryForUrlSha = (Option<String>, String, std::path::PathBuf, Option<String>);
 
-/// Cache module provides these utilities
-struct CachePaths;
-
-impl CachePaths {
-    fn bundles_cache_dir() -> Result<std::path::PathBuf> {
-        super::bundles_cache_dir()
-    }
-
-    fn entry_repository_path(entry_path: &Path) -> std::path::PathBuf {
-        super::entry_repository_path(entry_path)
-    }
-
-    fn entry_resources_path(entry_path: &Path) -> std::path::PathBuf {
-        super::entry_resources_path(entry_path)
-    }
-}
-
 /// File name for cache index at cache root
-const INDEX_FILE: &str = ".augent_cache_index.json";
+pub const INDEX_FILE: &str = ".augent_cache_index.json";
 
 /// Subdirectory for marketplace synthetic bundle content under repo-level resources
-const SYNTHETIC_DIR: &str = ".claude-plugin";
+pub const SYNTHETIC_DIR: &str = ".claude-plugin";
 
 /// In-memory cache of index to avoid repeated disk reads during a run
 type IndexCacheState = Option<Vec<IndexEntry>>;
@@ -68,7 +51,7 @@ pub fn read_index() -> Result<Vec<IndexEntry>> {
         return Ok(cached.clone());
     }
 
-    let index_path = CachePaths::bundles_cache_dir()?.join(INDEX_FILE);
+    let index_path = super::bundles_cache_dir()?.join(INDEX_FILE);
 
     if !index_path.exists() {
         return Ok(Vec::new());
@@ -90,7 +73,7 @@ pub fn read_index() -> Result<Vec<IndexEntry>> {
 
 /// Write index to disk
 pub fn write_index(entries: &[IndexEntry]) -> Result<()> {
-    let index_path = CachePaths::bundles_cache_dir()?.join(INDEX_FILE);
+    let index_path = super::bundles_cache_dir()?.join(INDEX_FILE);
 
     let content =
         serde_json::to_string_pretty(entries).map_err(|e| AugentError::CacheOperationFailed {
@@ -134,7 +117,7 @@ fn marketplace_plugin_name(path: Option<&str>) -> Option<&str> {
 /// Returns (path, bundle_name, content_path, resolved_ref) for each entry.
 pub fn list_cached_entries_for_url_sha(url: &str, sha: &str) -> Result<Vec<CachedEntryForUrlSha>> {
     let entry_path = super::repo_cache_entry_path(url, sha)?;
-    let resources = CachePaths::entry_resources_path(&entry_path);
+    let resources = super::entry_resources_path(&entry_path);
 
     if !resources.is_dir() {
         return Ok(Vec::new());

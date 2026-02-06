@@ -10,12 +10,13 @@ use std::fs;
 use std::path::Path;
 
 use crate::error::{AugentError, Result};
+use crate::installer::pipeline::PendingInstallation;
 use crate::platform::MergeStrategy;
 
 /// Merge multiple installations into a single target
 pub fn merge_multiple_installations(
     target_path: &Path,
-    installations: &[crate::installer::PendingInstallation],
+    installations: &[PendingInstallation],
     strategy: &MergeStrategy,
 ) -> Result<()> {
     if installations.is_empty() {
@@ -66,7 +67,7 @@ pub fn merge_single_installation(
 /// Merge multiple JSON files into a single target
 pub fn merge_multiple_json_files(
     target_path: &Path,
-    installations: &[crate::installer::PendingInstallation],
+    installations: &[PendingInstallation],
     strategy: &MergeStrategy,
 ) -> Result<()> {
     let mut result_value: serde_json::Value = if target_path.exists() {
@@ -136,7 +137,7 @@ pub fn merge_multiple_json_files(
 /// Merge multiple text files into a single target
 pub fn merge_multiple_text_files(
     target_path: &Path,
-    installations: &[crate::installer::PendingInstallation],
+    installations: &[PendingInstallation],
 ) -> Result<()> {
     let mut result = if target_path.exists() {
         fs::read_to_string(target_path).map_err(|e| AugentError::FileReadFailed {
@@ -351,22 +352,16 @@ pub fn deep_merge(target: &mut serde_json::Value, source: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::installer::PendingInstallation;
+    use crate::installer::pipeline::PendingInstallation;
     use tempfile::TempDir;
 
-    fn make_installation(
-        bundle_path: &str,
-        resource_type: &str,
-        source_path: &Path,
-        target_path: &Path,
-        merge_strategy: MergeStrategy,
-    ) -> PendingInstallation {
+    fn make_installation(source_path: &Path) -> PendingInstallation {
         PendingInstallation {
             source_path: source_path.to_path_buf(),
-            target_path: target_path.to_path_buf(),
-            merge_strategy: merge_strategy.clone(),
-            bundle_path: bundle_path.to_string(),
-            resource_type: resource_type.to_string(),
+            target_path: source_path.to_path_buf(),
+            merge_strategy: MergeStrategy::Replace,
+            bundle_path: String::new(),
+            resource_type: String::new(),
         }
     }
 
@@ -450,13 +445,7 @@ mod tests {
 
         fs::write(&target, r#"{"a": 1}"#).unwrap();
 
-        let installation1 = make_installation(
-            "bundle1/b.json",
-            "commands",
-            &temp.path().join("source1.json"),
-            &target,
-            MergeStrategy::Shallow,
-        );
+        let installation1 = make_installation(&temp.path().join("source1.json"));
 
         let source1_content = r#"{"b": 2}"#;
         fs::write(&installation1.source_path, source1_content).unwrap();
@@ -477,13 +466,7 @@ mod tests {
 
         fs::write(&target, "# Original content\n").unwrap();
 
-        let installation1 = make_installation(
-            "bundle1/test.md",
-            "commands",
-            &temp.path().join("source1.md"),
-            &target,
-            MergeStrategy::Composite,
-        );
+        let installation1 = make_installation(&temp.path().join("source1.md"));
 
         let source1_content = "# Source content 1\n";
         fs::write(&installation1.source_path, source1_content).unwrap();

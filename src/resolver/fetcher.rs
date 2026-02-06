@@ -14,6 +14,7 @@ use crate::config::MarketplaceConfig;
 use crate::domain::{DiscoveredBundle, ResourceCounts};
 use crate::error::{AugentError, Result};
 use crate::git;
+use crate::source::BundleSource;
 use crate::source::GitSource;
 use crate::universal;
 

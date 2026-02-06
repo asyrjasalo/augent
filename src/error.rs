@@ -11,7 +11,7 @@ use thiserror::Error;
 #[derive(Error, Diagnostic, Debug)]
 pub enum AugentError {
     // Bundle errors
-    #[error("{name}")]
+    #[error("Bundle '{name}' not found")]
     #[diagnostic(
         code(augent::bundle::not_found),
         help("Check that bundle name is correct and source is accessible")
@@ -253,7 +253,7 @@ mod tests {
         let err = AugentError::BundleNotFound {
             name: "test-bundle".to_string(),
         };
-        assert_eq!(err.to_string(), "test-bundle");
+        assert_eq!(err.to_string(), "Bundle 'test-bundle' not found");
     }
 
     #[test]

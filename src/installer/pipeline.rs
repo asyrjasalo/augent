@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::config::WorkspaceBundle;
-use crate::domain::ResolvedBundle;
+use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
 use crate::error::Result;
 use crate::installer::discovery::{
     compute_leaf_skill_dirs, discover_resources, filter_skills_resources,
@@ -24,6 +24,15 @@ pub enum PipelineStage {
     Transform,
     Merge,
     Install,
+}
+
+#[derive(Debug, Clone)]
+pub struct PendingInstallation {
+    pub source_path: std::path::PathBuf,
+    pub target_path: std::path::PathBuf,
+    pub merge_strategy: crate::platform::MergeStrategy,
+    pub bundle_path: String,
+    pub resource_type: String,
 }
 
 /// Installation pipeline for orchestrating bundle installation
@@ -63,20 +72,13 @@ impl<'a> InstallationPipeline<'a> {
         self.report_stage(PipelineStage::Merge);
         self.report_stage(PipelineStage::Install);
         let progress = self.progress.take();
-        let mut installer = crate::installer::Installer::new_with_progress(
+        let mut pipeline = crate::installer::Installer::new_with_progress(
             self.workspace_root,
             self.platforms.clone(),
             self.dry_run,
             progress,
         );
-        installer.leaf_skill_dirs = self.leaf_skill_dirs.clone();
-
-        let workspace_bundle = installer.install_bundle(bundle)?;
-
-        self.installed_files = installer.installed_files().clone();
-        self.leaf_skill_dirs = None;
-
-        Ok(workspace_bundle)
+        pipeline.install_bundle(bundle)
     }
 
     pub fn install_bundles(&mut self, bundles: &[ResolvedBundle]) -> Result<Vec<WorkspaceBundle>> {
