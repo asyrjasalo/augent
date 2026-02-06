@@ -107,6 +107,7 @@ impl Transaction {
     }
 
     /// Track a directory that was created during this transaction
+    #[allow(dead_code)]
     pub fn track_dir_created(&mut self, path: impl Into<PathBuf>) {
         self.created_dirs.insert(path.into());
     }

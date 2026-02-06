@@ -19,7 +19,6 @@ use std::path::Path;
 use crate::config::WorkspaceBundle;
 use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
 use crate::error::Result;
-use crate::installer::pipeline::InstallationPipeline;
 use crate::platform::Platform;
 use crate::ui::ProgressReporter;
 
@@ -29,10 +28,12 @@ pub struct Installer<'a> {
     platforms: Vec<Platform>,
     installed_files: HashMap<String, crate::installer::InstalledFile>,
     dry_run: bool,
+    #[allow(dead_code)]
     progress: Option<&'a mut dyn ProgressReporter>,
 }
 
 impl<'a> Installer<'a> {
+    #[allow(dead_code)]
     pub fn new(workspace_root: &'a Path, platforms: Vec<Platform>) -> Self {
         Self {
             workspace_root,
@@ -98,7 +99,7 @@ impl<'a> Installer<'a> {
                     files::copy_file(
                         &resource.absolute_path,
                         &target_path,
-                        &[platform.clone()],
+                        std::slice::from_ref(platform),
                         self.workspace_root,
                     )?;
 
@@ -125,7 +126,6 @@ impl<'a> Installer<'a> {
     }
 
     pub fn install_bundles(&mut self, bundles: &[ResolvedBundle]) -> Result<Vec<WorkspaceBundle>> {
-        use crate::installer::merge;
         let mut results = Vec::new();
 
         for bundle in bundles {

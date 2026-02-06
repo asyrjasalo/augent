@@ -34,7 +34,6 @@ pub mod graph;
 pub mod operation;
 
 // Re-export submodules
-pub use graph::DependencyGraph;
 pub use operation::ResolveOperation;
 
 /// Main resolver type - alias to ResolveOperation

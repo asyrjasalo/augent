@@ -10,15 +10,8 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 use crate::error::{AugentError, Result};
-use crate::path_utils;
 
 use super::{BUNDLE_NAME_FILE, bundle_name_to_cache_key, repo_name_from_url};
-
-/// Subdirectory for the git clone
-pub const REPOSITORY_DIR: &str = "repository";
-
-/// Subdirectory for extracted resources (agents, commands, etc.)
-pub const RESOURCES_DIR: &str = "resources";
 
 /// Cached bundle information (by bundle name)
 #[derive(Debug, Clone)]

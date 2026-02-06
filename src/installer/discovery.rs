@@ -125,6 +125,7 @@ pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<Discov
 }
 
 /// Compute leaf skill dirs from filtered resources (for {name} and path-under-skill resolution).
+#[allow(dead_code)]
 pub fn compute_leaf_skill_dirs(resources: &[DiscoveredResource]) -> HashSet<String> {
     const SKILLS_PREFIX: &str = "skills/";
     const SKILL_MD_NAME: &str = "SKILL.md";
@@ -179,22 +180,18 @@ mod tests {
         let filtered = filter_skills_resources(resources);
 
         // b.md is standalone file directly under base/ -> kept (not under skills/)
-        assert!(
-            filtered
-                .iter()
-                .any(|r| r.bundle_path == PathBuf::from("b.md"))
-        );
+        assert!(filtered.iter().any(|r| r.bundle_path == Path::new("b.md")));
         // skills/b.md is standalone file directly under skills/ (no subdirectory) -> filtered out
         assert!(
             !filtered
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("skills/b.md"))
+                .any(|r| r.bundle_path == Path::new("skills/b.md"))
         );
         // skills/a.md is standalone file directly under skills/ (no subdirectory) -> filtered out
         assert!(
             !filtered
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("skills/a.md"))
+                .any(|r| r.bundle_path == Path::new("skills/a.md"))
         );
     }
 
@@ -212,12 +209,12 @@ mod tests {
         assert!(
             resources
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("commands/debug.md"))
+                .any(|r| r.bundle_path == Path::new("commands/debug.md"))
         );
         assert!(
             resources
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("commands/test.md"))
+                .any(|r| r.bundle_path == Path::new("commands/test.md"))
         );
     }
 
@@ -278,13 +275,13 @@ mod tests {
         assert!(
             !filtered
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("skills/claude.ai/SKILL.md"))
+                .any(|r| r.bundle_path == Path::new("skills/claude.ai/SKILL.md"))
         );
         // claude.ai (parent) should be skipped
         assert!(
             !filtered
                 .iter()
-                .any(|r| r.bundle_path == PathBuf::from("skills/claude.ai/SKILL.md"))
+                .any(|r| r.bundle_path == Path::new("skills/claude.ai/SKILL.md"))
         );
     }
 

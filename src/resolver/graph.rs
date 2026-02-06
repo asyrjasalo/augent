@@ -5,7 +5,6 @@
 //! - Topological sorting for installation order
 //! - Circular dependency detection
 
-use crate::config::{BundleConfig, BundleDependency, WorkspaceConfig};
 use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};
 
@@ -16,6 +15,7 @@ pub struct DependencyGraph {
 }
 
 impl DependencyGraph {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             bundles: Vec::new(),
@@ -23,6 +23,7 @@ impl DependencyGraph {
         }
     }
 
+    #[allow(dead_code)]
     pub fn add_bundle(&mut self, bundle: &ResolvedBundle) {
         let name = &bundle.name;
         let mut dependencies = Vec::new();
@@ -64,6 +65,7 @@ impl DependencyGraph {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn topo_dfs(
         &self,
         name: &str,
@@ -97,6 +99,7 @@ impl DependencyGraph {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn check_cycle_internal(
         &self,
         name: &str,
@@ -109,6 +112,7 @@ impl DependencyGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{BundleConfig, BundleDependency};
 
     #[test]
     fn test_new_graph() {

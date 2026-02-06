@@ -4,12 +4,11 @@
 //! the dependency graph (from graph module) and bundle fetching (from cache module).
 
 use crate::cache;
-use crate::config::{BundleDependency, MarketplaceConfig, WorkspaceConfig};
+use crate::config::{BundleDependency, MarketplaceConfig};
 use crate::domain::{DiscoveredBundle, ResolvedBundle};
 use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::{BundleSource, GitSource};
-use crate::workspace;
 use normpath::PathExt;
 
 /// High-level resolve operation that orchestrates resolution
@@ -734,9 +733,9 @@ impl ResolveOperation {
             let file_name = entry.file_name();
 
             if path.is_dir() {
-                Self::copy_dir_all(&path, &dst.join(&file_name))?;
+                Self::copy_dir_all(path.as_path(), dst.join(&file_name).as_path())?;
             } else {
-                std::fs::copy(&path, &dst.join(&file_name))?;
+                std::fs::copy(path.as_path(), dst.join(&file_name).as_path())?;
             }
         }
         Ok(())
@@ -812,7 +811,7 @@ impl ResolveOperation {
                         path: source.display().to_string(),
                     })?;
 
-                let dest = target_path.join(&file_name);
+                let dest = target_path.join(file_name);
 
                 // For skill directories that might contain SKILL.md, copy entire directory
                 if source.is_dir() {
@@ -821,7 +820,7 @@ impl ResolveOperation {
                         .ok_or_else(|| AugentError::FileNotFound {
                             path: source.display().to_string(),
                         })?;
-                    Self::copy_dir_all(&source, &target_path.join(&dir_name))?;
+                    Self::copy_dir_all(source.as_path(), target_path.join(dir_name).as_path())?;
                 } else {
                     std::fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
                         message: format!(

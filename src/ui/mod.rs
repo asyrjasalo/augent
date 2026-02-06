@@ -18,15 +18,19 @@ use indicatif::{ProgressBar, ProgressStyle};
 /// - Verbose logging with detailed output
 pub trait ProgressReporter: Send + Sync {
     /// Initialize file progress with total file count
+    #[allow(dead_code)]
     fn init_file_progress(&mut self, total_files: u64);
 
     /// Update to show current bundle being installed
+    #[allow(dead_code)]
     fn update_bundle(&mut self, bundle_name: &str, current: usize, total: usize);
 
     /// Increment bundle progress
+    #[allow(dead_code)]
     fn inc_bundle(&mut self);
 
     /// Update file progress
+    #[allow(dead_code)]
     fn update_file(&mut self, file_path: &str);
 
     /// Finish file progress

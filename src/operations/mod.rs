@@ -19,7 +19,5 @@ pub mod list;
 pub mod show;
 pub mod uninstall;
 
-pub use install::{InstallOperation, InstallOptions};
 pub use list::{ListOperation, ListOptions};
 pub use show::ShowOperation;
-pub use uninstall::{UninstallOperation, UninstallOptions};

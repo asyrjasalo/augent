@@ -6,7 +6,7 @@
 use crate::cli::InstallArgs;
 use crate::error::Result;
 use crate::operations::install::{
-    self, InstallOperation, InstallOptions, check_subdirectory_resources,
+    InstallOperation, InstallOptions, check_subdirectory_resources,
     filter_workspace_bundle_from_discovered, get_installed_bundle_names_for_menu,
     handle_source_argument,
 };
@@ -42,11 +42,12 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         let source_str = args.source.as_ref().unwrap().as_str();
 
         // Parse source and discover bundles
-        let source = BundleSource::parse(source_str)?;
+        let _source = BundleSource::parse(source_str)?;
         let mut resolver = crate::resolver::Resolver::new(&current_dir);
         let discovered = resolver.discover_bundles(source_str)?;
 
-        let installed_bundle_names = get_installed_bundle_names_for_menu(&current_dir, &discovered);
+        let _installed_bundle_names =
+            get_installed_bundle_names_for_menu(&current_dir, &discovered);
         let discovered = filter_workspace_bundle_from_discovered(
             &current_dir,
             &discovered,

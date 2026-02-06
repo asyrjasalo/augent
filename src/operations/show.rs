@@ -669,7 +669,7 @@ mod tests {
 
     #[test]
     fn test_strip_ansi() {
-        let styled = format!("\x1b[1m\x1b[32mHello\x1b[0m");
+        let styled = "\x1b[1m\x1b[32mHello\x1b[0m".to_string();
         assert_eq!(ShowOperation::strip_ansi(&styled), "Hello");
     }
 }

@@ -4,7 +4,7 @@
 //! compared to their original source bundle.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::config::lockfile::LockedSource;
 use crate::error::Result;
@@ -28,10 +28,7 @@ pub struct ModifiedFile {
 ///
 /// Compares installed files with their original versions from cached bundles.
 /// Returns a list of files that have been modified.
-pub fn detect_modified_files(
-    workspace: &Workspace,
-    cache_dir: &PathBuf,
-) -> Result<Vec<ModifiedFile>> {
+pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Result<Vec<ModifiedFile>> {
     let mut modified = Vec::new();
 
     // Iterate through all bundles in workspace config
@@ -80,8 +77,8 @@ pub fn detect_modified_files(
 fn get_original_hash(
     source_path: &str,
     locked_bundle: Option<&crate::config::LockedBundle>,
-    cache_dir: &PathBuf,
-    workspace_root: &PathBuf,
+    cache_dir: &Path,
+    workspace_root: &Path,
 ) -> Option<String> {
     let locked = locked_bundle?;
 
@@ -155,7 +152,7 @@ mod tests {
         let workspace = Workspace::init(temp.path()).unwrap();
         let cache_dir = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
 
-        let modified = detect_modified_files(&workspace, &cache_dir.path().to_path_buf()).unwrap();
+        let modified = detect_modified_files(&workspace, cache_dir.path()).unwrap();
         assert!(modified.is_empty());
     }
 

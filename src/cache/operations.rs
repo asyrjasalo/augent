@@ -11,7 +11,6 @@ use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::GitSource;
 
-use super::INDEX_FILE;
 use super::index::IndexEntry;
 
 /// Subdirectory for marketplace synthetic bundle content under repo-level resources.

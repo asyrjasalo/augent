@@ -324,6 +324,7 @@ impl BundleConfig {
     }
 
     /// Remove dependency by name
+    #[allow(dead_code)]
     pub fn remove_dependency(&mut self, name: &str) -> Option<BundleDependency> {
         if let Some(pos) = self.bundles.iter().position(|dep| {
             // Check if this is a simple name match

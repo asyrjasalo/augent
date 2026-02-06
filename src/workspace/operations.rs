@@ -33,6 +33,7 @@ pub fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
 }
 
 /// Validate that a path is a valid git repository root
+#[allow(dead_code)]
 pub fn validate_git_repository_root(path: &Path) -> Result<()> {
     let repo = git2::Repository::discover(path).map_err(|_| AugentError::WorkspaceNotFound {
         path: path.display().to_string(),
@@ -72,6 +73,7 @@ pub fn infer_workspace_name(path: &Path) -> String {
 }
 
 /// Check if a workspace bundle should be included in installation
+#[allow(dead_code)]
 pub fn should_include_workspace_bundle(
     lockfile: &Lockfile,
     workspace_root: &Path,
@@ -89,6 +91,7 @@ pub fn should_include_workspace_bundle(
 }
 
 /// Check if workspace root has resources to install
+#[allow(dead_code)]
 fn has_workspace_resources(workspace_root: &Path) -> bool {
     use crate::installer;
 
@@ -99,6 +102,7 @@ fn has_workspace_resources(workspace_root: &Path) -> bool {
 }
 
 /// Get workspace bundle source path
+#[allow(dead_code)]
 pub fn get_workspace_bundle_source(workspace_root: &Path) -> PathBuf {
     workspace_root.to_path_buf()
 }
@@ -374,7 +378,7 @@ mod tests {
     fn test_init_or_open_workspace_new() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         git2::Repository::init(temp.path()).unwrap();
-        let workspace = init_or_open_workspace(temp.path()).unwrap();
+        let _workspace = init_or_open_workspace(temp.path()).unwrap();
         assert!(temp.path().join(".augent").exists());
     }
 
@@ -383,7 +387,7 @@ mod tests {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         git2::Repository::init(temp.path()).unwrap();
         crate::workspace::Workspace::init(temp.path()).unwrap();
-        let workspace = init_or_open_workspace(temp.path()).unwrap();
+        let _workspace = init_or_open_workspace(temp.path()).unwrap();
         assert!(temp.path().join(".augent").exists());
     }
 

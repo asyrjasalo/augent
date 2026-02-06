@@ -455,6 +455,7 @@ pub fn convert_opencode_agent(content: &str, target: &Path) -> Result<()> {
 }
 
 /// Convert OpenCode frontmatter only (for merge operations)
+#[allow(dead_code)]
 pub fn convert_opencode_frontmatter_only(content: &str) -> Result<String> {
     let lines: Vec<&str> = content.lines().collect();
 

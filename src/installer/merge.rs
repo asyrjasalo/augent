@@ -14,6 +14,7 @@ use crate::installer::pipeline::PendingInstallation;
 use crate::platform::MergeStrategy;
 
 /// Merge multiple installations into a single target
+#[allow(dead_code)]
 pub fn merge_multiple_installations(
     target_path: &Path,
     installations: &[PendingInstallation],
@@ -40,6 +41,7 @@ pub fn merge_multiple_installations(
 }
 
 /// Merge a single installation into target
+#[allow(dead_code)]
 pub fn merge_single_installation(
     target_path: &Path,
     source_path: &Path,
@@ -65,6 +67,7 @@ pub fn merge_single_installation(
 }
 
 /// Merge multiple JSON files into a single target
+#[allow(dead_code)]
 pub fn merge_multiple_json_files(
     target_path: &Path,
     installations: &[PendingInstallation],
@@ -135,6 +138,7 @@ pub fn merge_multiple_json_files(
 }
 
 /// Merge multiple text files into a single target
+#[allow(dead_code)]
 pub fn merge_multiple_text_files(
     target_path: &Path,
     installations: &[PendingInstallation],
@@ -187,6 +191,7 @@ pub fn merge_multiple_text_files(
 }
 
 /// Merge JSON files (for shallow/deep merge)
+#[allow(dead_code)]
 pub fn merge_json_files(source: &Path, target: &Path, strategy: &MergeStrategy) -> Result<()> {
     // Read source JSON
     let source_content = fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
@@ -242,6 +247,7 @@ pub fn merge_json_files(source: &Path, target: &Path, strategy: &MergeStrategy) 
 }
 
 /// Merge text files (for composite merge - append with delimiter)
+#[allow(dead_code)]
 pub fn merge_text_files(source: &Path, target: &Path) -> Result<()> {
     let source_content = fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
         path: source.display().to_string(),
@@ -268,6 +274,7 @@ pub fn merge_text_files(source: &Path, target: &Path) -> Result<()> {
 }
 
 /// Strip JSONC comments from content
+#[allow(dead_code)]
 pub fn strip_jsonc_comments(content: &str) -> String {
     let mut result = String::new();
     let mut in_string = false;
@@ -323,6 +330,7 @@ pub fn strip_jsonc_comments(content: &str) -> String {
 }
 
 /// Shallow merge: overwrite top-level keys
+#[allow(dead_code)]
 pub fn shallow_merge(target: &mut serde_json::Value, source: &serde_json::Value) {
     if let (Some(target_obj), Some(source_obj)) = (target.as_object_mut(), source.as_object()) {
         for (key, value) in source_obj {
@@ -332,6 +340,7 @@ pub fn shallow_merge(target: &mut serde_json::Value, source: &serde_json::Value)
 }
 
 /// Deep merge: recursively merge nested objects
+#[allow(dead_code)]
 pub fn deep_merge(target: &mut serde_json::Value, source: &serde_json::Value) {
     match (target, source) {
         (serde_json::Value::Object(target_obj), serde_json::Value::Object(source_obj)) => {

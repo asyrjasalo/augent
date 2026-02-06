@@ -36,6 +36,7 @@ impl<'a> ListOperation<'a> {
         Self { workspace }
     }
 
+    #[allow(dead_code)]
     pub fn workspace(&self) -> &Workspace {
         self.workspace
     }

@@ -25,10 +25,6 @@ pub mod config;
 pub mod modified;
 pub mod operations;
 
-pub use self::config::BUNDLE_CONFIG_FILE;
-pub use self::config::LOCKFILE_NAME;
-pub use self::config::WORKSPACE_INDEX_FILE;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -210,6 +206,7 @@ impl Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::workspace::config::{BUNDLE_CONFIG_FILE, LOCKFILE_NAME, WORKSPACE_INDEX_FILE};
     use normpath::PathExt;
     use tempfile::TempDir;
 

@@ -3,7 +3,6 @@
 //! This module handles the cache index that tracks cached bundles.
 
 use std::fs;
-use std::path::Path;
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};

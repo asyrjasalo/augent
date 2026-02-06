@@ -7,7 +7,6 @@ use crate::cli::UninstallArgs;
 use crate::error::Result;
 use crate::operations::uninstall::{UninstallOperation, UninstallOptions};
 use crate::workspace::Workspace;
-use normpath::PathExt;
 
 /// Run uninstall command
 ///

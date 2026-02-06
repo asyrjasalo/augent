@@ -4,13 +4,13 @@
 //! installation business logic, including bundle resolution, file installation,
 //! configuration updates, and lockfile generation.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 
 use crate::cache;
 use crate::cli::InstallArgs;
 use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource, WorkspaceBundle};
-use crate::domain::{DiscoveredBundle, InstalledFile, ResolvedBundle};
+use crate::domain::{DiscoveredBundle, ResolvedBundle};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::{Installer, discover_resources};
@@ -25,6 +25,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 /// Configuration options for installation
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct InstallOptions {
     pub dry_run: bool,
     pub update: bool,
@@ -60,14 +61,17 @@ impl<'a> InstallOperation<'a> {
         Self { workspace, options }
     }
 
+    #[allow(dead_code)]
     pub fn workspace(&self) -> &Workspace {
         self.workspace
     }
 
+    #[allow(dead_code)]
     pub fn workspace_mut(&mut self) -> &mut Workspace {
         self.workspace
     }
 
+    #[allow(dead_code)]
     pub fn options(&self) -> &InstallOptions {
         &self.options
     }
@@ -350,6 +354,7 @@ impl<'a> InstallOperation<'a> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn resolve_selected_bundles(
         &self,
         args: &mut InstallArgs,
@@ -371,7 +376,7 @@ impl<'a> InstallOperation<'a> {
             None
         };
 
-        let mut resolved_bundles = (|| -> Result<Vec<ResolvedBundle>> {
+        let resolved_bundles = (|| -> Result<Vec<ResolvedBundle>> {
             if selected_bundles.is_empty() {
                 let source_str = args.source.as_ref().unwrap().as_str();
                 resolver.resolve(source_str, false)
@@ -418,6 +423,7 @@ impl<'a> InstallOperation<'a> {
         Ok(resolved_bundles)
     }
 
+    #[allow(dead_code)]
     fn fix_bundle_names(&self, resolved_bundles: &mut [ResolvedBundle]) {
         let workspace_bundle_name = self.workspace.get_workspace_name();
 
@@ -458,18 +464,18 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Execute install operation for bundles from a specific source (path/URL/bundle name)
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_with_source(
         &mut self,
         args: &mut InstallArgs,
-        selected_bundles: &[DiscoveredBundle],
-        transaction: &mut Transaction,
-        skip_workspace_bundle: bool,
+        _selected_bundles: &[DiscoveredBundle],
+        _transaction: &mut Transaction,
+        _skip_workspace_bundle: bool,
         actual_current_dir: &Path,
         current_dir: &Path,
         installing_by_bundle_name: Option<String>,
     ) -> Result<()> {
         use crate::commands::menu::select_bundles_interactively;
-        use crate::platform::Platform;
         use crate::resolver::Resolver;
         use crate::source::BundleSource;
 
@@ -616,7 +622,7 @@ impl<'a> InstallOperation<'a> {
     pub fn execute_from_yaml(
         &mut self,
         args: &mut InstallArgs,
-        transaction: &mut Transaction,
+        _transaction: &mut Transaction,
         actual_current_dir: &Path,
         current_dir: &Path,
         workspace_is_explicit: bool,
@@ -657,7 +663,7 @@ impl<'a> InstallOperation<'a> {
             }
         };
 
-        let mut workspace = Workspace::open(&workspace_root)?;
+        let workspace = Workspace::open(&workspace_root)?;
 
         // Check if there are any resources to install BEFORE printing messages or resolving
         // Check both augent.yaml bundles and workspace bundle resources
@@ -981,7 +987,7 @@ impl<'a> InstallOperation<'a> {
     fn resolve_with_changes(
         &mut self,
         lockfile_is_empty: bool,
-        augent_yaml_changed: bool,
+        _augent_yaml_changed: bool,
         was_initialized: bool,
         has_local_resources: bool,
     ) -> Result<Vec<ResolvedBundle>> {
@@ -2178,15 +2184,15 @@ impl<'a> InstallOperation<'a> {
     fn uninstall_bundle_list(
         &self,
         workspace: &mut Workspace,
-        transaction: &mut Transaction,
+        _transaction: &mut Transaction,
         bundle_names: &[String],
-        dry_run: bool,
+        _dry_run: bool,
     ) -> bool {
         use crate::operations::uninstall::uninstall_bundle_impl;
 
         let mut failed = false;
         for name in bundle_names {
-            if let Err(e) = uninstall_bundle_impl(workspace, &[name.clone()]) {
+            if let Err(e) = uninstall_bundle_impl(workspace, std::slice::from_ref(name)) {
                 eprintln!("Failed to uninstall {}: {}", name, e);
                 failed = true;
             }
@@ -2669,7 +2675,6 @@ pub fn handle_source_argument(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::source::GitSource;
     use tempfile::TempDir;
 
     #[test]

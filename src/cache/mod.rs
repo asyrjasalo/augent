@@ -113,14 +113,12 @@ pub fn entry_resources_path(entry_path: &Path) -> PathBuf {
 }
 
 // Re-export public API from submodules
-pub use index::{CachedEntryForUrlSha, IndexEntry, list_cached_entries_for_url_sha};
+pub use index::list_cached_entries_for_url_sha;
 pub use operations::{
     cache_bundle, clone_and_checkout, content_path_in_repo, derive_marketplace_bundle_name,
-    ensure_bundle_cached, get_bundle_content_path, get_cached, marketplace_plugin_name,
+    ensure_bundle_cached, get_cached,
 };
-pub use stats::{
-    CacheStats, CachedBundle, cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle,
-};
+pub use stats::{cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
 
 #[cfg(test)]
 mod tests {

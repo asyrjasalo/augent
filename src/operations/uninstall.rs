@@ -10,14 +10,12 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 
 use crate::cli::UninstallArgs;
 use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use inquire::{Confirm, MultiSelect};
-use normpath::PathExt;
 
 /// Scorer that matches only the bundle name (before " ("), so filtering by typing
 /// does not match words in platform lists.
@@ -296,7 +294,7 @@ fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<Str
             crate::config::LockedSource::Git {
                 url,
                 sha,
-                path: bundle_path,
+                path: _bundle_path,
                 git_ref: _,
                 hash: _,
             } => {
@@ -311,7 +309,7 @@ fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<Str
 
                 bundle_cache_dir.join("augent.yaml")
             }
-            crate::config::LockedSource::Dir { hash: _, path } => {
+            crate::config::LockedSource::Dir { hash: _, path: _ } => {
                 // Dir bundles don't have augent.yaml, skip
                 continue;
             }
@@ -345,7 +343,7 @@ fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<Str
 
 /// Check if bundle has dependents (other bundles that depend on it)
 fn check_bundle_dependents(
-    workspace: &Workspace,
+    _workspace: &Workspace,
     bundle_name: &str,
     dependency_map: &HashMap<String, Vec<String>>,
 ) -> Result<Vec<String>> {
@@ -501,11 +499,9 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     }
 
     // Confirm with user unless --yes flag
-    if !args.yes {
-        if !confirm_uninstall(&workspace, &bundle_names)? {
-            println!("Uninstall cancelled.");
-            return Ok(());
-        }
+    if !args.yes && !confirm_uninstall(&workspace, &bundle_names)? {
+        println!("Uninstall cancelled.");
+        return Ok(());
     }
 
     // Create transaction for atomic operations
@@ -558,7 +554,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
             Ok(())
         }
         Err(e) => {
-            transaction.rollback();
+            let _ = transaction.rollback();
             Err(e)
         }
     }
@@ -566,6 +562,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
 
 /// Configuration options for uninstall (kept for compatibility)
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct UninstallOptions {
     pub yes: bool,
     pub all_bundles: bool,
@@ -581,6 +578,7 @@ impl From<&UninstallArgs> for UninstallOptions {
 }
 
 /// High-level uninstall operation (kept for compatibility with refactored structure)
+#[allow(dead_code)]
 pub struct UninstallOperation<'a> {
     workspace: &'a mut Workspace,
     options: UninstallOptions,
@@ -600,10 +598,12 @@ impl<'a> UninstallOperation<'a> {
         run(_workspace, args)
     }
 
+    #[allow(dead_code)]
     pub fn workspace_mut(&mut self) -> &mut Workspace {
         self.workspace
     }
 
+    #[allow(dead_code)]
     pub fn options(&self) -> &UninstallOptions {
         &self.options
     }
