@@ -20,6 +20,7 @@ pub mod merger;
 pub mod registry;
 pub mod transformer;
 
+#[allow(unused_imports)]
 pub use transformer::{TransformResult, Transformer};
 
 /// A supported AI coding platform
@@ -133,11 +134,13 @@ pub fn default_platforms() -> Vec<Platform> {
 }
 
 /// Get default platform registry
+#[allow(dead_code)]
 pub fn default_registry() -> registry::PlatformRegistry {
     registry::PlatformRegistry::default()
 }
 
 // Re-export registry types
+#[allow(unused_imports)]
 pub use registry::PlatformRegistry;
 
 #[cfg(test)]

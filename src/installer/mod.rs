@@ -15,41 +15,22 @@ use walkdir::WalkDir;
 use wax::{CandidatePath, Glob, Pattern};
 
 use crate::config::WorkspaceBundle;
-use crate::domain::ResolvedBundle;
+use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
 use crate::error::{AugentError, Result};
 use crate::platform::{MergeStrategy, Platform, TransformRule};
 use crate::ui::ProgressReporter;
 use crate::universal;
+
+pub mod discovery;
+pub mod files;
+pub mod merge;
+pub mod pipeline;
 
 /// Known resource directories in bundles
 const RESOURCE_DIRS: &[&str] = &["commands", "rules", "agents", "skills", "root"];
 
 /// Known resource files in bundles (at root level)
 const RESOURCE_FILES: &[&str] = &["mcp.jsonc", "AGENTS.md"];
-
-/// A discovered resource file in a bundle
-#[derive(Debug, Clone)]
-pub struct DiscoveredResource {
-    /// Relative path within the bundle (e.g., "commands/debug.md")
-    pub bundle_path: PathBuf,
-
-    /// Absolute path to the file
-    pub absolute_path: PathBuf,
-
-    /// Resource type (commands, rules, agents, skills, root, or file name)
-    pub resource_type: String,
-}
-
-/// Result of installing a file
-#[derive(Debug, Clone)]
-pub struct InstalledFile {
-    /// Original bundle path (e.g., "commands/debug.md")
-    pub bundle_path: String,
-    /// Resource type (commands, rules, agents, skills, root, or file name)
-    pub resource_type: String,
-    /// Target paths per platform (e.g., ".cursor/rules/debug.mdc")
-    pub target_paths: Vec<String>,
-}
 
 /// File installer for a workspace
 pub struct Installer<'a> {
@@ -60,7 +41,7 @@ pub struct Installer<'a> {
     platforms: Vec<Platform>,
 
     /// Installed files tracking
-    installed_files: HashMap<String, InstalledFile>,
+    installed_files: HashMap<String, crate::domain::InstalledFile>,
 
     /// Whether to perform a dry run (skip actual file operations)
     dry_run: bool,
@@ -573,13 +554,13 @@ impl<'a> Installer<'a> {
         let resource_type = installations[0].resource_type.clone();
         let bundle_path = installations[0].bundle_path.clone();
 
-        let installed = InstalledFile {
+        let installed = crate::domain::InstalledFile {
             bundle_path: bundle_path.clone(),
             resource_type: resource_type.clone(),
             target_paths: target_paths.clone(),
         };
 
-        // Accumulate target paths for the same bundle_path (important when installing to multiple platforms)
+        // Accumulate target paths for same bundle_path (important when installing to multiple platforms)
         self.installed_files
             .entry(bundle_path.clone())
             .and_modify(|existing| {
@@ -590,7 +571,7 @@ impl<'a> Installer<'a> {
                     }
                 }
             })
-            .or_insert_with(|| InstalledFile {
+            .or_insert_with(|| crate::domain::InstalledFile {
                 bundle_path: bundle_path.clone(),
                 resource_type,
                 target_paths: target_paths.clone(),

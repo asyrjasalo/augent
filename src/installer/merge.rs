@@ -466,8 +466,8 @@ mod tests {
 
         assert!(result.is_ok());
         let target_content = fs::read_to_string(&target).unwrap();
-        assert!(target_content.contains(r#""a": 1""#));
-        assert!(target_content.contains(r#""b": 2""#));
+        assert!(target_content.contains(r#""a": 1"#));
+        assert!(target_content.contains(r#""b": 2"#));
     }
 
     #[test]

@@ -11,11 +11,13 @@ use std::path::Path;
 use super::{MergeStrategy, Platform, TransformRule};
 
 /// Registry of all supported platforms
+#[allow(dead_code)]
 pub struct PlatformRegistry {
     platforms: Vec<Platform>,
     by_id: HashMap<String, usize>,
 }
 
+#[allow(dead_code)]
 impl PlatformRegistry {
     /// Create a new registry with the given platforms
     pub fn new(platforms: Vec<Platform>) -> Self {

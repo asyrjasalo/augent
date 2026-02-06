@@ -15,6 +15,7 @@ mod error;
 mod git;
 mod hash;
 mod installer;
+mod operations;
 mod path_utils;
 mod platform;
 mod resolver;

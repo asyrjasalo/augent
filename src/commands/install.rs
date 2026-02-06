@@ -24,6 +24,7 @@ use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource};
 use crate::error::{AugentError, Result};
 use crate::hash;
 use crate::installer::{Installer, discover_resources};
+use crate::operations::{InstallOperation, InstallOptions};
 use crate::path_utils;
 use crate::platform::{self, Platform, detection};
 use crate::resolver::Resolver;
@@ -747,13 +748,14 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         let mut transaction = Transaction::new(&workspace);
         transaction.backup_configs()?;
 
-        // Perform installation
-        match do_install(
+        // Create install operation and execute
+        let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
+        let skip_workspace_bundle = installing_by_bundle_name.is_some();
+        match install_op.execute(
             &mut args,
             &selected_bundles,
-            &mut workspace,
             &mut transaction,
-            installing_by_bundle_name.is_some(), // Skip workspace bundle when installing by name
+            skip_workspace_bundle,
         ) {
             Ok(()) => {
                 // Commit installation
@@ -1500,7 +1502,7 @@ fn do_install_from_yaml(
 }
 
 /// Perform the actual installation
-fn do_install(
+pub fn do_install(
     args: &mut InstallArgs,
     selected_bundles: &[crate::domain::DiscoveredBundle],
     workspace: &mut Workspace,

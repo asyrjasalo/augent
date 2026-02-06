@@ -16,6 +16,8 @@
 //! - Repo name from URL (e.g. @author/repo) so one entry per repo+sha, not per sub-bundle
 //! - Git SHA: exact commit SHA for reproducibility
 
+pub mod index;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -55,10 +57,10 @@ const BUNDLE_NAME_FILE: &str = ".augent_bundle_name";
 const INDEX_FILE: &str = ".augent_cache_index.json";
 
 /// In-memory cache of the index to avoid repeated disk reads during a run.
-type IndexCacheState = Option<Vec<IndexEntry>>;
+type IndexCacheState = Option<Vec<index::IndexEntry>>;
 static INDEX_CACHE: std::sync::OnceLock<Mutex<IndexCacheState>> = std::sync::OnceLock::new();
 
-fn index_cache() -> &'static Mutex<Option<Vec<IndexEntry>>> {
+fn index_cache() -> &'static Mutex<Option<Vec<index::IndexEntry>>> {
     INDEX_CACHE.get_or_init(|| Mutex::new(None))
 }
 
@@ -66,18 +68,6 @@ fn invalidate_index_cache() {
     if let Some(cache) = INDEX_CACHE.get() {
         let _ = cache.lock().map(|mut g| *g = None);
     }
-}
-
-/// Single entry in the cache index
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct IndexEntry {
-    url: String,
-    sha: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    path: Option<String>,
-    bundle_name: String,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "ref")]
-    resolved_ref: Option<String>,
 }
 
 /// Get the default cache directory path
@@ -152,68 +142,15 @@ pub fn entry_resources_path(entry_path: &Path) -> PathBuf {
 }
 
 fn read_index() -> Result<Vec<IndexEntry>> {
-    let path = cache_dir()?.join(INDEX_FILE);
-    let cache = index_cache();
-    {
-        let guard = cache
-            .lock()
-            .map_err(|e| AugentError::CacheOperationFailed {
-                message: format!("Cache index lock poisoned: {}", e),
-            })?;
-        if let Some(ref entries) = *guard {
-            return Ok(entries.clone());
-        }
-    }
-    let entries = if !path.exists() {
-        Vec::new()
-    } else {
-        let data = fs::read_to_string(&path).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read cache index: {}", e),
-        })?;
-        serde_json::from_str(&data).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Invalid cache index: {}", e),
-        })?
-    };
-    let mut guard = cache
-        .lock()
-        .map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Cache index lock poisoned: {}", e),
-        })?;
-    *guard = Some(entries.clone());
-    Ok(entries)
+    index::read_index()
 }
 
 fn write_index(entries: &[IndexEntry]) -> Result<()> {
-    let path = cache_dir()?.join(INDEX_FILE);
-    let data = serde_json::to_string(entries).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to serialize cache index: {}", e),
-    })?;
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to create cache directory: {}", e),
-        })?;
-    }
-    fs::write(&path, data).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to write cache index: {}", e),
-    })?;
-    let mut guard = index_cache()
-        .lock()
-        .map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Cache index lock poisoned: {}", e),
-        })?;
-    *guard = Some(entries.to_vec());
-    Ok(())
+    index::write_index(entries)
 }
 
 fn add_index_entry(entry: IndexEntry) -> Result<()> {
-    let mut entries = read_index()?;
-    // Remove any existing entry with same (url, sha, path)
-    let path_opt = entry.path.clone();
-    entries.retain(|e| {
-        !(e.url == entry.url && e.sha == entry.sha && e.path.as_deref() == path_opt.as_deref())
-    });
-    entries.push(entry);
-    write_index(&entries)
+    index::add_index_entry(entry)
 }
 
 fn index_lookup(
@@ -221,9 +158,9 @@ fn index_lookup(
     sha: &str,
     path: Option<&str>,
 ) -> Result<Option<(String, Option<String>)>> {
-    let entries = read_index()?;
+    let entries = index::index_lookup(url, sha);
     for e in &entries {
-        if e.url == url && e.sha == sha && e.path.as_deref() == path {
+        if e.path.as_deref() == path {
             return Ok(Some((e.bundle_name.clone(), e.resolved_ref.clone())));
         }
     }
@@ -231,41 +168,12 @@ fn index_lookup(
 }
 
 /// One cache entry for (url, sha): path within repo, bundle name, resources dir, resolved ref.
-pub type CachedEntryForUrlSha = (Option<String>, String, PathBuf, Option<String>);
+pub use index::{CachedEntryForUrlSha, IndexEntry};
 
 /// List all cache index entries for a given (url, sha). Used to discover bundles from cache
 /// without cloning. Returns (path, bundle_name, content_path, resolved_ref) for each entry.
 pub fn list_cached_entries_for_url_sha(url: &str, sha: &str) -> Result<Vec<CachedEntryForUrlSha>> {
-    let entry_path = repo_cache_entry_path(url, sha)?;
-    let resources = entry_resources_path(&entry_path);
-    if !resources.is_dir() {
-        return Ok(Vec::new());
-    }
-    let entries = read_index()?;
-    let mut result = Vec::new();
-    for e in &entries {
-        if e.url != url || e.sha != sha {
-            continue;
-        }
-        let content_path = if let Some(name) = marketplace_plugin_name(e.path.as_deref()) {
-            resources.join(SYNTHETIC_DIR).join(name)
-        } else {
-            e.path
-                .as_ref()
-                .map(|p| resources.join(p))
-                .unwrap_or_else(|| resources.clone())
-        };
-        // Include entry if content exists, or if marketplace (synthetic created on demand when installed)
-        if content_path.is_dir() || marketplace_plugin_name(e.path.as_deref()).is_some() {
-            result.push((
-                e.path.clone(),
-                e.bundle_name.clone(),
-                content_path,
-                e.resolved_ref.clone(),
-            ));
-        }
-    }
-    Ok(result)
+    index::list_cached_entries_for_url_sha(url, sha)
 }
 
 /// Get the content path within a repo (root or source.path subdir). Does not apply $claudeplugin.

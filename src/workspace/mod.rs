@@ -20,6 +20,9 @@
 //! All paths in augent.yaml and augent.lock are relative to repository root.
 //! Paths cannot cross repository boundaries.
 //!
+
+pub mod config;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -273,54 +276,17 @@ impl Workspace {
     /// Returns an empty config if augent.yaml does not exist, as the config file is optional.
     /// When loading an empty config, the name field will be empty and needs to be set by the caller.
     fn load_bundle_config(config_dir: &Path) -> Result<BundleConfig> {
-        let path = config_dir.join(BUNDLE_CONFIG_FILE);
-
-        if !path.exists() {
-            // augent.yaml is optional - return empty config
-            // The name will need to be inferred by the caller
-            return Ok(BundleConfig::default());
-        }
-
-        let content = fs::read_to_string(&path).map_err(|e| AugentError::ConfigReadFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-        BundleConfig::from_yaml(&content)
+        config::load_bundle_config(config_dir)
     }
 
     /// Load lockfile from a directory
     fn load_lockfile(config_dir: &Path) -> Result<Lockfile> {
-        let path = config_dir.join(LOCKFILE_NAME);
-
-        if !path.exists() {
-            // Return empty lockfile if not present
-            return Ok(Lockfile::default());
-        }
-
-        let content = fs::read_to_string(&path).map_err(|e| AugentError::ConfigReadFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-        Lockfile::from_json(&content)
+        config::load_lockfile(config_dir)
     }
 
     /// Load workspace configuration from a directory
     fn load_workspace_config(config_dir: &Path) -> Result<WorkspaceConfig> {
-        let path = config_dir.join(WORKSPACE_INDEX_FILE);
-
-        if !path.exists() {
-            // Return empty workspace config if not present
-            return Ok(WorkspaceConfig::default());
-        }
-
-        let content = fs::read_to_string(&path).map_err(|e| AugentError::ConfigReadFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-        WorkspaceConfig::from_yaml(&content)
+        config::load_workspace_config(config_dir)
     }
 
     /// Save bundle configuration to a directory
@@ -329,13 +295,7 @@ impl Workspace {
         config: &BundleConfig,
         workspace_name: &str,
     ) -> Result<()> {
-        let path = config_dir.join(BUNDLE_CONFIG_FILE);
-        let content = config.to_yaml(workspace_name)?;
-
-        fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })
+        config::save_bundle_config(config_dir, config, workspace_name)
     }
 
     /// Save lockfile to a directory
@@ -344,23 +304,7 @@ impl Workspace {
     /// observe a partially written `augent.lock`, which is especially
     /// important under concurrent `install`/`list` operations.
     fn save_lockfile(config_dir: &Path, lockfile: &Lockfile, workspace_name: &str) -> Result<()> {
-        let path = config_dir.join(LOCKFILE_NAME);
-        let content = lockfile.to_json(workspace_name)?;
-
-        // Write to a temporary file in the same directory first, then
-        // atomically rename it into place. This avoids readers ever seeing
-        // a truncated or half-written lockfile.
-        let tmp_path = config_dir.join(format!("{}.tmp", LOCKFILE_NAME));
-
-        fs::write(&tmp_path, &content).map_err(|e| AugentError::FileWriteFailed {
-            path: tmp_path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-        fs::rename(&tmp_path, &path).map_err(|e| AugentError::FileWriteFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })
+        config::save_lockfile(config_dir, lockfile, workspace_name)
     }
 
     /// Save workspace configuration to a directory
@@ -369,16 +313,10 @@ impl Workspace {
         config: &WorkspaceConfig,
         workspace_name: &str,
     ) -> Result<()> {
-        let path = config_dir.join(WORKSPACE_INDEX_FILE);
-        let content = config.to_yaml(workspace_name)?;
-
-        fs::write(&path, content).map_err(|e| AugentError::FileWriteFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })
+        config::save_workspace_config(config_dir, config, workspace_name)
     }
 
-    /// Get the source path for the workspace bundle configuration
+    /// Get source path for workspace bundle configuration
     ///
     /// Returns "./.augent" since all configuration files are in .augent/
     pub fn get_config_source_path(&self) -> String {

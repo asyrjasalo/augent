@@ -29,22 +29,72 @@ It does NOT:
 - **Cache**: Local bundle storage to improve performance and reproducibility
 - **Universal Resource Format**: Optional YAML frontmatter for common metadata and platform-specific overrides
 
+## Architecture
+
+The codebase has been refactored into a layered architecture following domain-driven design principles:
+
+### Module Structure
+
+**Domain Layer** (`src/domain/`):
+
+- Pure domain objects with business rules and validation
+- No external dependencies
+- Types: `ResolvedBundle`, `DiscoveredResource`, `InstalledFile`, `ResourceCounts`
+
+**Application Layer** (`src/operations/`):
+
+- Operation objects that coordinate workflows
+- Each operation (`InstallOperation`, `UninstallOperation`, etc.) encapsulates a complete workflow
+- Operations handle transaction coordination and state management
+
+**Workspace Layer** (`src/workspace/`):
+
+- Workspace initialization, configuration management, and validation
+- Modified file detection and preservation
+
+**Installer Layer** (`src/installer/`):
+
+- `discovery.rs` - Resource discovery and filtering
+- `files.rs` - File copy operations and format conversions
+- `merge.rs` - Merge strategy application
+- `pipeline.rs` - Installation orchestration (Discovery → Transform → Merge → Install)
+- `mod.rs` - Public API re-exports
+
+**Resolver Layer** (`src/resolver/`):
+
+- `operation.rs` - High-level resolution orchestration
+- `graph.rs` - Dependency graph construction and topological sorting
+
+**Cache Layer** (`src/cache/`):
+
+- Bundle storage and retrieval
+- Lockfile and workspace index management
+
+**Platform Layer** (`src/platform/`):
+
+- `registry.rs` - Platform registration and lookup
+- `transformer.rs` - Universal to platform-specific transformations
+- `merger.rs` - Merge strategy implementations
+
+**UI Layer** (`src/ui/`):
+
+- Progress reporting (interactive and silent modes)
+- Clean separation from business logic
+
+**Command Layer** (`src/commands/`):
+
+- Thin CLI wrappers (~100 lines each)
+- Argument parsing and user interaction
+- Delegation to operation objects
+
+### Design Benefits
+
+1. **Separation of Concerns**: Each module has a clear, single responsibility
+2. **Testability**: Smaller, focused modules are easier to unit test
+3. **Maintainability**: Changes are localized to well-defined layers
+4. **Extensibility**: New platforms can be added via configuration without code changes
+
 ## Development Guidelines
-
-- Do not reference code by specific line numbers in documentation
-- Do not count lines or use vanity metrics in documentation
-- Do not create git commits unless explicitly asked
-- Do not push to remote repositories unless explicitly asked
-- Error messages should be clear and human-readable
-- Operations must be atomic - workspace should never be left in inconsistent state
-- **Keep plan.md and tasks.md aligned**: When updating task status in tasks.md, also update the corresponding Epic/Feature status in plan.md to ensure consistency
-- **CHANGELOG.md entries must be user-facing only**:
-  - Only mention features, changes, or fixes that affect end users
-  - Do NOT include technical implementation details (e.g., "Comprehensive test suite with 171+ tests")
-  - Do NOT include internal refactoring unless it changes user behavior
-  - Do NOT include test counts, coverage metrics, or other development metrics
-
-## Core Principles
 
 - We are primarily building a resources manager, NOT a traditional package manager
 - Simplicity and developer-friendliness are paramount

@@ -16,18 +16,21 @@ use crate::platform::{MergeStrategy, Platform, TransformRule};
 
 /// Result of a path transformation
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct TransformResult {
-    /// The target path where the resource should be installed
+    /// The target path where resource should be installed
     pub target_path: PathBuf,
     /// The merge strategy to use
     pub merge_strategy: MergeStrategy,
 }
 
 /// Platform transformer with context
+#[allow(dead_code)]
 pub struct Transformer {
     leaf_skill_dirs: Option<HashSet<String>>,
 }
 
+#[allow(dead_code)]
 impl Transformer {
     /// Create a new transformer
     pub fn new() -> Self {
@@ -238,12 +241,10 @@ impl Transformer {
 
         if let Some(relative) = path.strip_prefix(pattern_prefix) {
             relative.trim_start_matches('/').to_string()
+        } else if let Some(filename) = PathBuf::from(path).file_name() {
+            filename.to_string_lossy().to_string()
         } else {
-            if let Some(filename) = PathBuf::from(path).file_name() {
-                filename.to_string_lossy().to_string()
-            } else {
-                path.to_string()
-            }
+            path.to_string()
         }
     }
 }

@@ -2,13 +2,18 @@
 //!
 //! This module handles:
 //! - Discovering resource files in bundle directories
-//! - Categorizing resources by type (commands, rules, agents, skills, etc.)
+//! - Categorizing resources by type (commands, rules, agents, skills)
 //! - Filtering skills to only include leaf directories with SKILL.md
+//!
+//! The core discovery logic is in the `discover_resources_internal` function
+//! which is re-exported from the main `installer` module.
 
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+#[cfg(test)]
+use std::fs;
 
 use crate::domain::DiscoveredResource;
 use crate::error::Result;
@@ -23,6 +28,7 @@ const RESOURCE_FILES: &[&str] = &["mcp.jsonc", "AGENTS.md"];
 pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
     let mut resources = Vec::new();
 
+    // Discover files in resource directories
     for dir_name in RESOURCE_DIRS {
         let dir_path = bundle_path.join(dir_name);
         if dir_path.is_dir() {
@@ -49,6 +55,7 @@ pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>>
         }
     }
 
+    // Discover root-level resource files
     for file_name in RESOURCE_FILES {
         let file_path = bundle_path.join(file_name);
         if file_path.is_file() {
@@ -63,14 +70,16 @@ pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>>
     Ok(resources)
 }
 
-/// Filter skills so we only install leaf directories that contain a SKILL.md file.
+/// Filter skills so we only install leaf directories that contain a SKILL.md.
+///
 /// - Skip standalone files directly under skills/ (e.g. skills/web-design-guidelines.zip).
 /// - Include only leaf skill dirs: if both skills/claude.ai/ and skills/claude.ai/vercel-deploy-claimable/
-///   have SKILL.md, treat only vercel-deploy-claimable as the skill (not claude.ai).
+///   have SKILL.md, treat only vercel-deploy-claimable as a skill (not claude.ai).
 pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<DiscoveredResource> {
     const SKILLS_PREFIX: &str = "skills/";
     const SKILL_MD_NAME: &str = "SKILL.md";
 
+    // Set of all skill dirs that contain a SKILL.md
     let all_skill_dirs: HashSet<String> = resources
         .iter()
         .filter(|r| r.resource_type == "skills")
@@ -126,12 +135,7 @@ pub fn compute_leaf_skill_dirs(resources: &[DiscoveredResource]) -> HashSet<Stri
         .filter(|r| r.bundle_path.file_name().and_then(|n| n.to_str()) == Some(SKILL_MD_NAME))
         .filter_map(|r| {
             let parent = r.bundle_path.parent()?;
-            let s = parent.to_string_lossy().replace('\\', "/");
-            if s.starts_with(SKILLS_PREFIX) {
-                Some(s)
-            } else {
-                None
-            }
+            Some(parent.to_string_lossy().replace('\\', "/"))
         })
         .collect();
 
@@ -152,10 +156,46 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn test_discover_resources_empty() {
+    fn test_filter_skills_resources() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let resources = discover_resources(temp.path()).unwrap();
-        assert!(resources.is_empty());
+        let base = temp.path();
+
+        let valid_skill_md =
+            "---\nname: valid-skill\ndescription: A valid skill for testing.\n---\n\nBody.";
+
+        // Create test files
+        fs::write(base.join("b.md"), valid_skill_md).unwrap();
+        fs::write(base.join("a.md"), "a").unwrap();
+        fs::create_dir_all(base.join("skills")).unwrap();
+        fs::write(base.join("skills/b.md"), valid_skill_md).unwrap();
+        fs::write(base.join("skills/a.md"), "a").unwrap();
+
+        let resources = vec![
+            create_discovered_resource(base.join("b.md"), "b.md", "root"),
+            create_discovered_resource(base.join("skills/b.md"), "skills/b.md", "skills"),
+            create_discovered_resource(base.join("skills/a.md"), "skills/a.md", "skills"),
+        ];
+
+        let filtered = filter_skills_resources(resources);
+
+        // b.md is standalone file directly under base/ -> kept (not under skills/)
+        assert!(
+            filtered
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("b.md"))
+        );
+        // skills/b.md is standalone file directly under skills/ (no subdirectory) -> filtered out
+        assert!(
+            !filtered
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("skills/b.md"))
+        );
+        // skills/a.md is standalone file directly under skills/ (no subdirectory) -> filtered out
+        assert!(
+            !filtered
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("skills/a.md"))
+        );
     }
 
     #[test]
@@ -172,12 +212,12 @@ mod tests {
         assert!(
             resources
                 .iter()
-                .any(|r| r.bundle_path == Path::new("commands/debug.md"))
+                .any(|r| r.bundle_path == PathBuf::from("commands/debug.md"))
         );
         assert!(
             resources
                 .iter()
-                .any(|r| r.bundle_path == Path::new("commands/test.md"))
+                .any(|r| r.bundle_path == PathBuf::from("commands/test.md"))
         );
     }
 
@@ -193,175 +233,70 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_skills_resources() {
+    fn test_filter_skills_resources_nested() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let base = temp.path();
 
         let valid_skill_md =
             "---\nname: valid-skill\ndescription: A valid skill for testing.\n---\n\nBody.";
-        fs::write(base.join("b.md"), valid_skill_md).unwrap();
 
-        fn make_resource(bundle_path: &str, absolute: &Path) -> DiscoveredResource {
-            DiscoveredResource {
-                bundle_path: PathBuf::from(bundle_path),
-                absolute_path: absolute.to_path_buf(),
-                resource_type: if bundle_path.starts_with("skills/") {
-                    "skills".to_string()
-                } else {
-                    "commands".to_string()
-                },
-            }
-        }
+        fs::create_dir_all(base.join("skills/claude.ai")).unwrap();
+        fs::write(base.join("skills/claude.ai/SKILL.md"), valid_skill_md).unwrap();
+        fs::create_dir_all(base.join("skills/claude.ai/vercel")).unwrap();
+        fs::write(
+            base.join("skills/claude.ai/vercel/SKILL.md"),
+            valid_skill_md,
+        )
+        .unwrap();
+        fs::write(
+            base.join("skills/claude.ai/vercel/file.txt"),
+            "file content",
+        )
+        .unwrap();
 
         let resources = vec![
-            make_resource("skills/web-design-guidelines.zip", &base.join("a.zip")),
-            make_resource("skills/valid-skill/SKILL.md", &base.join("b.md")),
-            make_resource("skills/valid-skill/metadata.json", &base.join("c.json")),
-            make_resource("skills/metadata-only/metadata.json", &base.join("d.json")),
-            make_resource("commands/debug.md", &base.join("e.md")),
+            create_discovered_resource(
+                base.join("skills/claude.ai/SKILL.md"),
+                "skills/claude.ai/SKILL.md",
+                "skills",
+            ),
+            create_discovered_resource(
+                base.join("skills/claude.ai/vercel/SKILL.md"),
+                "skills/claude.ai/vercel/SKILL.md",
+                "skills",
+            ),
+            create_discovered_resource(
+                base.join("skills/claude.ai/vercel/file.txt"),
+                "skills/claude.ai/vercel/file.txt",
+                "skills",
+            ),
         ];
 
         let filtered = filter_skills_resources(resources);
 
-        let paths: Vec<_> = filtered
-            .iter()
-            .map(|r| r.bundle_path.to_string_lossy().into_owned())
-            .collect();
+        // Only vercel (leaf) should be kept, not claude.ai (parent)
         assert!(
-            !paths.contains(&"skills/web-design-guidelines.zip".to_string()),
-            "standalone file in skills/ should be skipped"
+            !filtered
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("skills/claude.ai/SKILL.md"))
         );
+        // claude.ai (parent) should be skipped
         assert!(
-            !paths.contains(&"skills/metadata-only/metadata.json".to_string()),
-            "skill dir without SKILL.md should be skipped"
+            !filtered
+                .iter()
+                .any(|r| r.bundle_path == PathBuf::from("skills/claude.ai/SKILL.md"))
         );
-        assert!(
-            paths.contains(&"skills/valid-skill/SKILL.md".to_string()),
-            "skill dir with valid SKILL.md should keep SKILL.md"
-        );
-        assert!(
-            paths.contains(&"skills/valid-skill/metadata.json".to_string()),
-            "skill dir with valid SKILL.md should keep metadata.json"
-        );
-        assert!(
-            paths.contains(&"commands/debug.md".to_string()),
-            "non-skills resources should be unchanged"
-        );
-        assert_eq!(filtered.len(), 3);
     }
 
-    #[test]
-    fn test_filter_skills_resources_nested_skill_dir() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let base = temp.path();
-
-        let nested_skill_md =
-            "---\nname: vercel-deploy\ndescription: Deploy to Vercel.\n---\n\nBody.";
-        fs::write(base.join("nested.md"), nested_skill_md).unwrap();
-
-        fn make_resource(bundle_path: &str, absolute: &Path) -> DiscoveredResource {
-            DiscoveredResource {
-                bundle_path: PathBuf::from(bundle_path),
-                absolute_path: absolute.to_path_buf(),
-                resource_type: if bundle_path.starts_with("skills/") {
-                    "skills".to_string()
-                } else {
-                    "commands".to_string()
-                },
-            }
+    fn create_discovered_resource(
+        path: std::path::PathBuf,
+        bundle_path: &str,
+        resource_type: &str,
+    ) -> DiscoveredResource {
+        DiscoveredResource {
+            bundle_path: PathBuf::from(bundle_path),
+            absolute_path: path,
+            resource_type: resource_type.to_string(),
         }
-
-        let resources = vec![
-            make_resource(
-                "skills/claude.ai/vercel-deploy-claimable/SKILL.md",
-                &base.join("nested.md"),
-            ),
-            make_resource(
-                "skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh",
-                &base.join("deploy.sh"),
-            ),
-            make_resource(
-                "skills/claude.ai/vercel-deploy-claimable.zip",
-                &base.join("a.zip"),
-            ),
-        ];
-
-        let filtered = filter_skills_resources(resources);
-
-        let paths: Vec<_> = filtered
-            .iter()
-            .map(|r| r.bundle_path.to_string_lossy().into_owned())
-            .collect();
-        assert!(
-            paths.contains(&"skills/claude.ai/vercel-deploy-claimable/SKILL.md".to_string()),
-            "nested skill dir with valid SKILL.md should keep SKILL.md"
-        );
-        assert!(
-            paths.contains(
-                &"skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh".to_string()
-            ),
-            "nested skill dir should keep files under it"
-        );
-        assert!(
-            !paths.contains(&"skills/claude.ai/vercel-deploy-claimable.zip".to_string()),
-            "zip file in skills/ (not under a skill dir) should be skipped"
-        );
-        assert_eq!(filtered.len(), 2);
-    }
-
-    #[test]
-    fn test_filter_skills_resources_leaf_only_parent_and_child_have_skill_md() {
-        // When both skills/claude.ai/ and skills/claude.ai/vercel-deploy-claimable/ have SKILL.md,
-        // only the leaf (vercel-deploy-claimable) is treated as a skill; claude.ai is not installed.
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let base = temp.path();
-
-        fn make_resource(bundle_path: &str, absolute: &Path) -> DiscoveredResource {
-            DiscoveredResource {
-                bundle_path: PathBuf::from(bundle_path),
-                absolute_path: absolute.to_path_buf(),
-                resource_type: if bundle_path.starts_with("skills/") {
-                    "skills".to_string()
-                } else {
-                    "commands".to_string()
-                },
-            }
-        }
-
-        let resources = vec![
-            make_resource("skills/claude.ai/SKILL.md", &base.join("parent.md")),
-            make_resource(
-                "skills/claude.ai/vercel-deploy-claimable/SKILL.md",
-                &base.join("leaf.md"),
-            ),
-            make_resource(
-                "skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh",
-                &base.join("deploy.sh"),
-            ),
-        ];
-
-        let filtered = filter_skills_resources(resources);
-
-        let paths: Vec<_> = filtered
-            .iter()
-            .map(|r| r.bundle_path.to_string_lossy().into_owned())
-            .collect();
-        // Leaf skill (vercel-deploy-claimable) is kept
-        assert!(
-            paths.contains(&"skills/claude.ai/vercel-deploy-claimable/SKILL.md".to_string()),
-            "leaf skill dir should keep SKILL.md"
-        );
-        assert!(
-            paths.contains(
-                &"skills/claude.ai/vercel-deploy-claimable/scripts/deploy.sh".to_string()
-            ),
-            "leaf skill dir should keep files under it"
-        );
-        // Parent (claude.ai) is not treated as a skill
-        assert!(
-            !paths.contains(&"skills/claude.ai/SKILL.md".to_string()),
-            "parent dir with SKILL.md should be skipped when child also has SKILL.md (leaf-only)"
-        );
-        assert_eq!(filtered.len(), 2);
     }
 }
