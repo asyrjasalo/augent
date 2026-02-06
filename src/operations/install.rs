@@ -84,91 +84,8 @@ impl<'a> InstallOperation<'a> {
         transaction: &mut Transaction,
         skip_workspace_bundle: bool,
     ) -> Result<()> {
-        // Detect and preserve any modified files before reinstalling bundles
-        let cache_dir = cache::bundles_cache_dir()?;
-        let modified_files = modified::detect_modified_files(self.workspace, &cache_dir)?;
-        let mut has_modified_files = false;
-
-        if !modified_files.is_empty() {
-            has_modified_files = true;
-            println!(
-                "Detected {} modified file(s). Preserving changes...",
-                modified_files.len()
-            );
-            modified::preserve_modified_files(self.workspace, &modified_files)?;
-        }
-
-        let mut resolver = Resolver::new(&self.workspace.root);
-
-        // Show progress while resolving bundles and their dependencies
-        let pb = if !args.dry_run {
-            let pb = ProgressBar::new_spinner();
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner} Resolving bundles and dependencies...")
-                    .unwrap()
-                    .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-            );
-            pb.enable_steady_tick(std::time::Duration::from_millis(80));
-            Some(pb)
-        } else {
-            None
-        };
-
-        let mut resolved_bundles = (|| -> Result<Vec<ResolvedBundle>> {
-            if selected_bundles.is_empty() {
-                // No bundles discovered - resolve source directly (might be a bundle itself)
-                let source_str = args.source.as_ref().unwrap().as_str();
-                resolver.resolve(source_str, false)
-            } else if selected_bundles.len() == 1 {
-                // Single bundle found
-                // Check if discovered bundle has git source info
-                if let Some(ref git_source) = selected_bundles[0].git_source {
-                    // Use GitSource directly (already has resolved_sha from discovery)
-                    // This avoids re-cloning the repository
-                    Ok(vec![resolver.resolve_git(git_source, None, false)?])
-                } else {
-                    // Local directory, use discovered path
-                    let bundle_path = selected_bundles[0].path.to_string_lossy().to_string();
-                    resolver.resolve_multiple(&[bundle_path])
-                }
-            } else {
-                // Multiple bundles selected - check if any have git source
-                let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
-
-                if has_git_source {
-                    // For git sources, resolve each bundle with its specific subdirectory
-                    let mut all_bundles = Vec::new();
-                    for discovered in selected_bundles {
-                        if let Some(ref git_source) = discovered.git_source {
-                            // Use GitSource directly (already has resolved_sha from discovery)
-                            // This avoids re-cloning the repository
-                            let bundle = resolver.resolve_git(git_source, None, false)?;
-                            all_bundles.push(bundle);
-                        } else {
-                            // Local directory
-                            let bundle_path = discovered.path.to_string_lossy().to_string();
-                            let bundles = resolver.resolve_multiple(&[bundle_path])?;
-                            all_bundles.extend(bundles);
-                        }
-                    }
-                    Ok(all_bundles)
-                } else {
-                    // All local directories
-                    let selected_paths: Vec<String> = selected_bundles
-                        .iter()
-                        .map(|b| b.path.to_string_lossy().to_string())
-                        .collect();
-                    resolver.resolve_multiple(&selected_paths)
-                }
-            }
-        })()?;
-
-        if let Some(pb) = pb {
-            pb.finish_and_clear();
-        }
-
-        // Fix workspace bundle name: ensure it uses the workspace bundle name, not the directory name
+        let has_modified_files = self.detect_and_preserve_modified_files()?;
+        let mut resolved_bundles = self.resolve_selected_bundles(args, selected_bundles)?;
         // This handles the case where the workspace bundle is in .augent/ and was named after the dir
         // OR when it's resolved from "." (workspace root) and named after the directory
         let workspace_bundle_name = self.workspace.get_workspace_name();
@@ -2339,6 +2256,8 @@ pub fn get_installed_bundle_names_for_menu(
     }
     None
 }
+
+impl<'a> InstallOperation<'a> {}
 
 /// Filter workspace bundle from discovered bundles
 pub fn filter_workspace_bundle_from_discovered(
