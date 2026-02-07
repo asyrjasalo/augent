@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::cache;
+use crate::config::marketplace::operations;
 use crate::config::{BundleDependency, MarketplaceConfig};
 use crate::domain::{DiscoveredBundle, ResolvedBundle};
 use crate::error::{AugentError, Result};
@@ -638,7 +639,7 @@ impl ResolveOperation {
                         message: format!("Failed to create temp dir: {}", e),
                     }
                 })?;
-            MarketplaceConfig::create_synthetic_bundle_to(
+            operations::create_synthetic_bundle_to(
                 repo_path,
                 &bundle.name,
                 synthetic_temp.path(),
@@ -1026,10 +1027,11 @@ impl ResolveOperation {
                 if !self.resolved.contains_key(dep_name) {
                     let resolved_names: Vec<&str> =
                         self.resolved.keys().map(|k| k.as_str()).collect();
+
                     return Err(AugentError::BundleValidationFailed {
                         message: format!(
                             "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
-                             Available bundles: {}",
+                         Available bundles: {}",
                             dep_name,
                             name,
                             resolved_names.join(", ")

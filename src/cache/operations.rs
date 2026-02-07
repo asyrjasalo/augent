@@ -6,12 +6,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::config::MarketplaceConfig;
+use super::{SYNTHETIC_DIR, index::IndexEntry};
+use crate::config::marketplace::operations::create_synthetic_bundle_to;
 use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::GitSource;
-
-use super::{SYNTHETIC_DIR, index::IndexEntry};
 
 /// File name for storing the resolved ref (repository has detached HEAD after checkout)
 const REF_FILE: &str = ".augent_ref";
@@ -213,12 +212,7 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
                         message: format!("Failed to create synthetic directory: {}", e),
                     }
                 })?;
-                MarketplaceConfig::create_synthetic_bundle_to(
-                    &repo_dst,
-                    name,
-                    &content_path,
-                    Some(&source.url),
-                )?;
+                create_synthetic_bundle_to(&repo_dst, name, &content_path, Some(&source.url))?;
                 return Ok(Some((content_path, sha.to_string(), resolved_ref)));
             }
         }
@@ -405,7 +399,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
             tempfile::TempDir::new_in(&base).map_err(|e| AugentError::CacheOperationFailed {
                 message: format!("Failed to create temp directory: {}", e),
             })?;
-        MarketplaceConfig::create_synthetic_bundle_to(
+        create_synthetic_bundle_to(
             temp_dir.path(),
             plugin_name,
             synthetic_temp.path(),
