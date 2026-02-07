@@ -3,6 +3,8 @@
 //! This module provides high-level resolve operations that coordinate
 //! the dependency graph (from graph module) and bundle fetching (from cache module).
 
+use std::path::{Path, PathBuf};
+
 use crate::cache;
 use crate::config::{BundleDependency, MarketplaceConfig};
 use crate::domain::{DiscoveredBundle, ResolvedBundle};
@@ -428,9 +430,7 @@ impl ResolveOperation {
                 git_source: None,
                 resource_counts,
             });
-
-        (subdirectory, bundle_name_for_cache)
-    }
+        }
 
         Ok(discovered)
     }
@@ -460,42 +460,42 @@ impl ResolveOperation {
 
     /// Discover bundles in a cached git repository
     fn discover_git_bundles(&mut self, source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
-        let (cached_bundles, sha) = try_get_cached_bundles(source)?;
+        let (cached_bundles, _sha) = self.try_get_cached_bundles(source)?;
 
         if let Some(bundles) = cached_bundles {
             return Ok(bundles);
         }
 
-        let (temp_dir, resolved_ref) = cache::clone_and_checkout(source)?;
+        let (temp_dir, sha, resolved_ref) = cache::clone_and_checkout(source)?;
         let repo_path = temp_dir.path();
         let content_path = cache::content_path_in_repo(repo_path, source);
 
         let mut discovered = self.discover_local_bundles(&content_path)?;
-        let marketplace_config = load_marketplace_config_if_exists(&repo_path)?;
+        let marketplace_config = self.load_marketplace_config_if_exists(repo_path);
 
         for bundle in &mut discovered {
             let (subdirectory, bundle_name_for_cache) =
-                determine_bundle_subdirectory_and_cache_name(
-                    &repo_path,
+                Self::determine_bundle_subdirectory_and_cache_name(
+                    repo_path,
                     &content_path,
-                    &bundle,
-                    &marketplace_config,
+                    bundle,
+                    &marketplace_config.as_ref(),
                     source,
                 );
 
-            let (bundle_content_path, synthetic_guard) = self
+            let (bundle_content_path, _synthetic_guard) = self
                 .create_synthetic_bundle_if_marketplace(
-                    &repo_path,
+                    repo_path,
                     bundle,
-                    subdirectory,
-                    &source,
+                    subdirectory.clone(),
+                    source,
                 )?;
 
             cache::ensure_bundle_cached(
                 &bundle_name_for_cache,
                 &sha,
                 &source.url,
-                subdirectory,
+                subdirectory.clone().as_deref(),
                 repo_path,
                 &bundle_content_path,
                 resolved_ref.as_deref(),
@@ -503,7 +503,7 @@ impl ResolveOperation {
 
             bundle.git_source = Some(GitSource {
                 url: source.url.clone(),
-                path: subdirectory.or_else(|| source.path.clone()),
+                path: subdirectory.clone().or_else(|| source.path.clone()),
                 git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
                 resolved_sha: Some(sha.clone()),
             });
@@ -520,8 +520,7 @@ impl ResolveOperation {
             if let Ok(sha) = git::ls_remote(&source.url, source.git_ref.as_deref()) {
                 if let Ok(cached) = cache::list_cached_entries_for_url_sha(&source.url, &sha) {
                     if !cached.is_empty() {
-                        let bundles =
-                            self.load_cached_bundles_from_marketplace(&source.url, &sha)?;
+                        let bundles = self.load_cached_bundles_from_marketplace(source, &sha)?;
                         return Ok((Some(bundles), sha));
                     }
                 }
@@ -532,13 +531,11 @@ impl ResolveOperation {
     }
 
     fn load_marketplace_config_if_exists(&self, repo_path: &Path) -> Option<MarketplaceConfig> {
-        repo_path
-            .join(".claude-plugin/marketplace.json")
-            .exists()
-            .then(|| {
-                MarketplaceConfig::from_file(&repo_path.join(".claude-plugin/marketplace.json"))
-            })
-            .ok()
+        let path = repo_path.join(".claude-plugin/marketplace.json");
+        if !path.exists() {
+            return None;
+        }
+        MarketplaceConfig::from_file(&path).ok()
     }
 
     fn load_cached_bundles_from_marketplace(
@@ -546,69 +543,76 @@ impl ResolveOperation {
         source: &GitSource,
         sha: &str,
     ) -> Result<Vec<DiscoveredBundle>> {
-        let entry_path = cache::repo_cache_entry_path(&source.url, &sha)?;
+        let entry_path = cache::repo_cache_entry_path(&source.url, sha)?;
         let repo_path = cache::entry_repository_path(&entry_path);
-        let marketplace_config = self.load_marketplace_config_if_exists(&repo_path)?;
+        let marketplace_config = self.load_marketplace_config_if_exists(&repo_path);
 
-        marketplace_config
-            .as_ref()
-            .and_then(|mc| {
-                let mut discovered = Vec::with_capacity(mc.plugins.len());
-                for (path_opt, bundle_name, resources_path, resolved_ref) in
-                    &cache::list_cached_entries_for_url_sha(&source.url, &sha)
-                {
-                    let short_name = bundle_name
-                        .rsplit('/')
-                        .next()
-                        .unwrap_or(&bundle_name)
-                        .trim_start_matches('@')
-                        .to_string();
+        if let Some(ref mc) = marketplace_config {
+            let mut discovered = Vec::with_capacity(mc.plugins.len());
+            for entry in &cache::list_cached_entries_for_url_sha(&source.url, sha)? {
+                let (path_opt, bundle_name, resources_path, resolved_ref) = entry;
 
-                    let description = if let Some(ref p) = path_opt {
-                        if p.starts_with("$claudeplugin/") {
-                            mc.plugins
-                                .iter()
-                                .find(|b| b.name == short_name)
-                                .map(|b| b.description.clone())
-                        } else {
-                            self.load_bundle_config(&repo_path.join(p)).ok().flatten().and_then(|c| c.description)
-                        }
-                    };
+                let short_name = bundle_name
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(bundle_name)
+                    .trim_start_matches('@')
+                    .to_string();
 
-                    let resource_counts = crate::domain::ResourceCounts::from_path(&resources_path);
-                    discovered.push(DiscoveredBundle {
-                        name: short_name,
-                        path: resources_path,
-                        description,
-                        git_source: Some(GitSource {
-                            url: source.url.clone(),
-                            path: path_opt.clone(),
-                            git_ref: resolved_ref.clone(),
-                            resolved_sha: Some(sha.clone()),
-                        }),
-                        resource_counts,
-                    });
-                }
-                Ok(discovered)
-	            })
-	        .unwrap_or(Ok(Vec::new()))
-	    }
+                let description = if let Some(p) = path_opt {
+                    if p.starts_with("$claudeplugin") {
+                        mc.plugins
+                            .iter()
+                            .find(|b| b.name == short_name)
+                            .map(|b| b.description.clone())
+                    } else {
+                        self.load_bundle_config(&repo_path.join(p))
+                            .ok()
+                            .flatten()
+                            .and_then(|c| c.description)
+                    }
+                } else {
+                    None
+                };
+
+                let resource_counts = crate::domain::ResourceCounts::from_path(resources_path);
+                discovered.push(DiscoveredBundle {
+                    name: short_name,
+                    path: resources_path.clone(),
+                    description,
+                    git_source: Some(GitSource {
+                        url: source.url.clone(),
+                        path: path_opt.clone(),
+                        git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
+                        resolved_sha: Some(sha.to_string()),
+                    }),
+                    resource_counts,
+                });
+            }
+            Ok(discovered)
+        } else {
+            Ok(Vec::new())
+        }
+    }
 
     fn determine_bundle_subdirectory_and_cache_name(
-        repo_path: &Path,
+        _repo_path: &Path,
         content_path: &Path,
         bundle: &DiscoveredBundle,
-        marketplace_config: &Option<&MarketplaceConfig>,
+        _marketplace_config: &Option<&MarketplaceConfig>,
         source: &GitSource,
     ) -> (Option<String>, String) {
-        let subdirectory = if bundle.path.starts_with(&content_path) {
-            let stripped = bundle
+        let subdirectory = if bundle.path.starts_with(content_path) {
+            bundle
                 .path
-                .strip_prefix(&content_path)
+                .strip_prefix(content_path)
                 .ok()
                 .and_then(|p| p.to_str())
                 .map(|s| s.trim_start_matches('/').to_string())
-                .filter(|s| !s.is_empty());
+                .filter(|s| !s.is_empty())
+        } else {
+            None
+        };
 
         let bundle_name_for_cache =
             if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
@@ -941,6 +945,7 @@ impl ResolveOperation {
     }
 
     /// Recursively scan a directory for bundle directories
+    #[allow(dead_code)]
     fn scan_directory_recursively(
         &self,
         dir: &std::path::Path,

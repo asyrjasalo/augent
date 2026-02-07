@@ -6,6 +6,7 @@ use inquire::MultiSelect;
 use std::collections::HashSet;
 
 /// Strip ANSI escape codes from a string
+#[allow(dead_code)]
 fn strip_ansi_codes(s: &str) -> String {
     // Simple ANSI code removal - removes escape sequences like \x1b[0m, \x1b[2m, etc.
     let mut result = String::new();
@@ -30,6 +31,7 @@ fn strip_ansi_codes(s: &str) -> String {
 
 /// Scorer that matches only the bundle name (before " (" or " · "), so filtering
 /// by typing does not match words in resource counts or descriptions.
+#[allow(dead_code)]
 fn score_by_name(input: &str, _opt: &String, string_value: &str, _idx: usize) -> Option<i64> {
     // Remove ANSI codes before extracting name
     let clean = strip_ansi_codes(string_value);
@@ -52,11 +54,13 @@ fn score_by_name(input: &str, _opt: &String, string_value: &str, _idx: usize) ->
 }
 
 /// Result of bundle selection - contains selected bundles and bundles that were deselected
+#[allow(dead_code)]
 pub struct BundleSelection {
     pub selected: Vec<DiscoveredBundle>,
     pub deselected: Vec<String>, // Names of bundles that were preselected but deselected
 }
 
+#[allow(dead_code)]
 pub fn select_bundles_interactively(
     discovered: &[DiscoveredBundle],
     installed_bundle_names: Option<&HashSet<String>>,

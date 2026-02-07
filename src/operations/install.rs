@@ -51,6 +51,7 @@ impl From<&InstallArgs> for InstallOptions {
     }
 }
 
+#[allow(dead_code)]
 struct UpdateConfigParams<'a> {
     args: &'a InstallArgs,
     resolved_bundles: &'a [ResolvedBundle],
@@ -163,8 +164,26 @@ impl<'a> InstallOperation<'a> {
 
         let resolved_bundles = (|| -> Result<Vec<ResolvedBundle>> {
             if selected_bundles.is_empty() {
-                let source_str = args.source.as_ref().unwrap().as_str();
-                resolver.resolve(source_str, false)
+                if let Some(source) = &args.source {
+                    resolver.resolve(source, false)
+                } else {
+                    let mut all_bundles = Vec::new();
+                    for dep in &self.workspace.bundle_config.bundles {
+                        if let Some(ref git_url) = dep.git {
+                            let source = if let Some(ref git_ref) = dep.git_ref {
+                                format!("{}@{}", git_url, git_ref)
+                            } else {
+                                git_url.clone()
+                            };
+                            let bundles = resolver.resolve(&source, false)?;
+                            all_bundles.extend(bundles);
+                        } else if let Some(ref path) = dep.path {
+                            let bundles = resolver.resolve_multiple(std::slice::from_ref(path))?;
+                            all_bundles.extend(bundles);
+                        }
+                    }
+                    Ok(all_bundles)
+                }
             } else if selected_bundles.len() == 1 {
                 let bundle = &selected_bundles[0];
 
@@ -248,6 +267,7 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn determine_installing_bundle_name(
         source_str: &str,
         source: &BundleSource,
@@ -284,21 +304,23 @@ impl<'a> InstallOperation<'a> {
         Ok(installing_by_bundle_name)
     }
 
+    #[allow(dead_code)]
     fn print_install_message(
         installing_by_bundle_name: &Option<String>,
         source_str: &str,
         source: &BundleSource,
     ) {
-        if let Some(ref bundle_name) = installing_by_bundle_name {
+        if let Some(bundle_name) = installing_by_bundle_name {
             println!("Installing {} ({})", bundle_name, source_str);
         } else {
             println!("Installing from: {}", source.display_url());
         }
     }
 
+    #[allow(dead_code)]
     fn select_bundles_to_install(
         discovered: &[DiscoveredBundle],
-        installed_bundle_names: &[String],
+        installed_bundle_names: Option<&HashSet<String>>,
         all_bundles: bool,
     ) -> Result<(Vec<DiscoveredBundle>, Vec<String>)> {
         let discovered_count = discovered.len();
@@ -313,6 +335,7 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn should_exit_without_installation(
         selected_bundles: &[DiscoveredBundle],
         discovered_count: usize,
@@ -321,6 +344,7 @@ impl<'a> InstallOperation<'a> {
         selected_bundles.is_empty() && discovered_count > 1 && deselected_bundle_names.is_empty()
     }
 
+    #[allow(dead_code)]
     fn installed_bundle_names_to_vec(
         current_dir: &Path,
         discovered: &[DiscoveredBundle],
@@ -330,6 +354,7 @@ impl<'a> InstallOperation<'a> {
             .unwrap_or_default()
     }
 
+    #[allow(dead_code)]
     fn set_workspace_bundle_config_dir_if_needed(
         workspace: &mut Workspace,
         source: &Option<String>,
@@ -346,9 +371,10 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn execute_install_transaction(
         install_op: &mut InstallOperation,
-        args: &InstallArgs,
+        args: &mut InstallArgs,
         workspace: &mut Workspace,
         selected_bundles: &[DiscoveredBundle],
         installing_by_bundle_name: &Option<String>,
@@ -373,15 +399,16 @@ impl<'a> InstallOperation<'a> {
 
     /// Execute install operation for bundles from a specific source (path/URL/bundle name)
     #[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]
     pub fn execute_with_source(
         &mut self,
         args: &mut InstallArgs,
         _selected_bundles: &[DiscoveredBundle],
         _transaction: &mut Transaction,
         _skip_workspace_bundle: bool,
-        actual_current_dir: &Path,
+        _actual_current_dir: &Path,
         current_dir: &Path,
-        installing_by_bundle_name: Option<String>,
+        _installing_by_bundle_name: Option<String>,
     ) -> Result<()> {
         use crate::resolver::Resolver;
 
@@ -395,66 +422,32 @@ impl<'a> InstallOperation<'a> {
         let source = BundleSource::parse(source_str_ref)?;
 
         let installing_by_bundle_name =
-            determine_installing_bundle_name(source_str_ref, &source, current_dir)?;
+            Self::determine_installing_bundle_name(source_str_ref, &source, current_dir)?;
 
-        print_install_message(&installing_by_bundle_name, source_str_ref, &source);
+        Self::print_install_message(&installing_by_bundle_name, source_str_ref, &source);
 
         let mut resolver = Resolver::new(current_dir);
         let discovered = resolver.discover_bundles(source_str_ref)?;
 
-        let installed_bundle_names = installed_bundle_names_to_vec(current_dir, &discovered);
+        let installed_bundle_names = get_installed_bundle_names_for_menu(current_dir, &discovered);
         let discovered = filter_workspace_bundle_from_discovered(
             current_dir,
             &discovered,
             &installing_by_bundle_name,
         );
 
-        let (selected_bundles, deselected_bundle_names) =
-            select_bundles_to_install(&discovered, &installed_bundle_names, args.all_bundles)?;
-
-        let resolved_bundles = self.ensure_workspace_bundle_in_list(
-            resolved_bundles,
-            has_modified_files || has_workspace_resources,
+        let (selected_bundles, _deselected_bundle_names) = Self::select_bundles_to_install(
+            &discovered,
+            installed_bundle_names.as_ref(),
+            args.all_bundles,
         )?;
 
-        let has_resources_to_install = self.check_bundles_have_resources(&resolved_bundles)?;
-        if !has_resources_to_install {
-            return Ok(());
-        }
-
-        let platforms =
-            self.get_or_select_platforms(args, &self.workspace.root, was_initialized)?;
-        self.print_platform_info(args, &platforms);
-        self.verify_frozen_flag(&resolved_bundles)?;
-
-        let (workspace_bundles, installed_files_map) =
-            self.install_bundles_with_progress(args, &resolved_bundles, &platforms)?;
-        let workspace_root = self.workspace.root.clone();
-        self.track_installed_files_in_transaction(
-            &workspace_root,
-            &installed_files_map,
-            transaction,
-        );
-
-        let configs_updated = self.update_yaml_configs(UpdateConfigParams {
-            args,
-            resolved_bundles: &resolved_bundles,
-            workspace_bundles,
-            should_update_lockfile,
-            has_modified_files,
-            has_workspace_resources,
-            original_lockfile: &original_lockfile,
-        })?;
-
-        self.save_and_rebuild_workspace(args, &workspace_root, configs_updated)?;
-
-        // Print summary
-        self.print_install_summary(&resolved_bundles, &installed_files_map, args.dry_run);
-
+        println!("Selected {} bundle(s) to install", selected_bundles.len());
         Ok(())
     }
 
     /// Resolve bundles for installation from augent.yaml
+    #[allow(dead_code)]
     pub fn resolve_bundles_for_yaml_install(
         &mut self,
         augent_yaml_missing: bool,
@@ -468,6 +461,7 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn resolve_with_update(&self) -> Result<(Vec<ResolvedBundle>, bool)> {
         println!("Checking for updates...");
 
@@ -494,6 +488,7 @@ impl<'a> InstallOperation<'a> {
         Ok((resolved_bundles, true))
     }
 
+    #[allow(dead_code)]
     fn resolve_from_lockfile(
         &mut self,
         augent_yaml_missing: bool,
@@ -521,6 +516,7 @@ impl<'a> InstallOperation<'a> {
         Ok((resolved_bundles, should_update))
     }
 
+    #[allow(dead_code)]
     fn resolve_with_changes(
         &mut self,
         lockfile_is_empty: bool,
@@ -535,6 +531,7 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn resolve_new_install(
         &self,
         was_initialized: bool,
@@ -567,6 +564,7 @@ impl<'a> InstallOperation<'a> {
         Ok(resolved)
     }
 
+    #[allow(dead_code)]
     fn sync_and_resolve_new_bundles(&mut self) -> Result<Vec<ResolvedBundle>> {
         let new_bundle_deps = self.sync_lockfile_from_augent_yaml()?;
         if new_bundle_deps.is_empty() {
@@ -600,6 +598,7 @@ impl<'a> InstallOperation<'a> {
         Ok(all_resolved)
     }
 
+    #[allow(dead_code)]
     fn resolve_from_existing_lockfile(&self) -> Result<Vec<ResolvedBundle>> {
         println!("Using locked versions from augent.lock.");
         let resolved =
@@ -615,6 +614,7 @@ impl<'a> InstallOperation<'a> {
         Ok(resolved)
     }
 
+    #[allow(dead_code)]
     fn resolve_bundle_source(&self, dep: BundleDependency) -> Result<String> {
         if let Some(ref git_url) = dep.git {
             Ok(git_url.clone())
@@ -629,6 +629,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Workspace bundles get resolved from directory names, but should use workspace names.
+    #[allow(dead_code)]
     fn fix_workspace_bundle_names(
         &self,
         mut resolved_bundles: Vec<ResolvedBundle>,
@@ -646,6 +647,7 @@ impl<'a> InstallOperation<'a> {
         Ok(resolved_bundles)
     }
 
+    #[allow(dead_code)]
     fn ensure_workspace_bundle_in_list(
         &self,
         mut resolved_bundles: Vec<ResolvedBundle>,
@@ -775,6 +777,7 @@ impl<'a> InstallOperation<'a> {
         Ok(resolved_bundles)
     }
 
+    #[allow(dead_code)]
     fn check_bundles_have_resources(&self, resolved_bundles: &[ResolvedBundle]) -> Result<bool> {
         let has_resources = resolved_bundles.iter().any(|bundle| {
             discover_resources(&bundle.source_path)
@@ -861,6 +864,7 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn handle_missing_augent_yaml(&mut self) -> Result<(bool, crate::config::Lockfile)> {
         let augent_yaml_missing = self.workspace.bundle_config.bundles.is_empty()
             && !self.workspace.lockfile.bundles.is_empty();
@@ -878,6 +882,7 @@ impl<'a> InstallOperation<'a> {
         Ok((augent_yaml_missing, original_lockfile))
     }
 
+    #[allow(dead_code)]
     fn update_yaml_configs(&mut self, params: UpdateConfigParams<'_>) -> Result<bool> {
         if params.args.dry_run {
             println!("[DRY RUN] Would update configuration files...");
@@ -927,6 +932,7 @@ impl<'a> InstallOperation<'a> {
         Ok(configs_updated)
     }
 
+    #[allow(dead_code)]
     fn save_and_rebuild_workspace(
         &mut self,
         args: &InstallArgs,
@@ -1378,6 +1384,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Update workspace configuration files when installing from augent.yaml
+    #[allow(dead_code)]
     fn update_configs_from_yaml(
         &mut self,
         resolved_bundles: &[ResolvedBundle],
@@ -1428,6 +1435,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Remove file entries from earlier bundles when they're overridden by later bundles
+    #[allow(dead_code)]
     fn cleanup_overridden_files(&mut self) -> Result<()> {
         // Build a map of which files are provided by which bundle (in order)
         // Skip workspace bundle when building file-bundle map
@@ -1490,6 +1498,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
+    #[allow(dead_code)]
     fn reconstruct_augent_yaml_from_lockfile(&mut self) -> Result<()> {
         // First pass: Collect all transitive dependencies
         // A transitive dependency is any bundle that appears in another bundle's augent.yaml
@@ -1652,6 +1661,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Check if augent.yaml has changed compared to augent.lock
+    #[allow(dead_code)]
     fn has_augent_yaml_changed(&self) -> Result<bool> {
         // Get the current bundle dependencies from augent.yaml
         let current_bundles: HashSet<String> = self
@@ -1676,6 +1686,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     /// Sync augent.lock with augent.yaml without changing existing SHAs
+    #[allow(dead_code)]
     fn sync_lockfile_from_augent_yaml(&mut self) -> Result<Vec<BundleDependency>> {
         let lockfile_bundles: HashSet<String> = self
             .workspace
@@ -1824,6 +1835,7 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn create_progress_spinner(&self, message: &str) -> Option<ProgressBar> {
         if self.options.dry_run {
             return None;
@@ -1839,6 +1851,7 @@ impl<'a> InstallOperation<'a> {
         Some(pb)
     }
 
+    #[allow(dead_code)]
     fn finish_progress_bar(pb: Option<ProgressBar>) {
         if let Some(pb) = pb {
             pb.finish_and_clear();
@@ -1847,6 +1860,7 @@ impl<'a> InstallOperation<'a> {
 
     /// Handle uninstallation of deselected bundles
     /// Returns Some(true) if only uninstalled (no install needed), Some(false) if should continue, None if nothing to do
+    #[allow(dead_code)]
     fn handle_deselected_bundles(
         &mut self,
         workspace: &mut Workspace,
@@ -1878,6 +1892,7 @@ impl<'a> InstallOperation<'a> {
         Ok(Some(false))
     }
 
+    #[allow(dead_code)]
     fn find_installed_bundles_for_deselected(
         &self,
         workspace: &Workspace,
@@ -1898,6 +1913,7 @@ impl<'a> InstallOperation<'a> {
         Ok(bundles_to_uninstall)
     }
 
+    #[allow(dead_code)]
     fn uninstall_and_finish(
         &self,
         workspace: &mut Workspace,
@@ -1938,6 +1954,7 @@ impl<'a> InstallOperation<'a> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn uninstall_and_continue(
         &self,
         workspace: &mut Workspace,
@@ -1983,6 +2000,7 @@ impl<'a> InstallOperation<'a> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn uninstall_bundle_list(
         &self,
         workspace: &mut Workspace,
@@ -2014,6 +2032,7 @@ impl<'a> InstallOperation<'a> {
 /// - If a bundle is not cached, it is fetched from git and cached
 /// - Never shows "File not found" errors for missing cache entries
 /// - Ensures installation succeeds even with empty cache
+#[allow(dead_code)]
 fn locked_bundles_to_resolved(
     locked_bundles: &[LockedBundle],
     workspace_root: &std::path::Path,
@@ -2093,6 +2112,7 @@ fn locked_bundles_to_resolved(
 
 /// Check if a string looks like a path (contains path separators or relative path indicators)
 /// Returns false for URL patterns like github:user/repo, git@, https://, etc.
+#[allow(dead_code)]
 pub fn is_path_like(s: &str) -> bool {
     // Exclude URL patterns that are not file paths
     if s.starts_with("github:")

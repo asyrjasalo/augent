@@ -1,7 +1,7 @@
 //! Show operation module
 
 use crate::cli::ShowArgs;
-use crate::config::{BundleConfig, LockedBundle, LockedSource, WorkspaceBundle};
+use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource, WorkspaceBundle};
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
 use console::Style;
@@ -26,9 +26,11 @@ impl<'a> ShowOperation<'a> {
 
     /// Execute show operation
     pub fn execute(&self, args: ShowArgs) -> Result<()> {
-        let bundle_name = args
-            .name
-            .unwrap_or_else(|| self.select_bundle_interactively()?)?;
+        let bundle_name = if let Some(name) = args.name {
+            name
+        } else {
+            self.select_bundle_interactively()?
+        };
 
         if bundle_name.is_empty() {
             return Ok(());
@@ -81,19 +83,16 @@ impl<'a> ShowOperation<'a> {
         };
 
         println!();
-        display_bundle_info(&self, bundle_name, &bundle_config, &locked_bundle, workspace_bundle, detailed);
+        self.display_bundle_info(
+            bundle_name,
+            &bundle_config,
+            locked_bundle,
+            workspace_bundle,
+            detailed,
+        );
 
         Ok(())
     }
-
-    fn display_bundle_info(
-        &self,
-        name: &str,
-        bundle_config: &BundleConfig,
-        locked_bundle: &LockedBundle,
-        workspace_bundle: Option<&WorkspaceBundle>,
-        detailed: bool,
-    ) {
 
     /// Select a bundle interactively from installed bundles
     fn select_bundle_interactively(&self) -> Result<String> {
@@ -244,12 +243,18 @@ impl<'a> ShowOperation<'a> {
             );
         }
 
-        display_bundle_source(&locked_bundle.source, detailed);
+        Self::display_bundle_source(&locked_bundle.source, detailed);
 
         // Plugin block for Claude Marketplace ($claudeplugin) bundles
-        display_marketplace_plugin_if_applicable(locked_bundle, detailed);
+        Self::display_marketplace_plugin_if_applicable(locked_bundle, detailed);
 
-        display_bundle_resources(&self, name, bundle_config, workspace_bundle, locked_bundle, detailed);
+        self.display_bundle_resources(
+            name,
+            bundle_config,
+            workspace_bundle,
+            locked_bundle,
+            detailed,
+        );
     }
 
     fn display_bundle_source(source: &LockedSource, detailed: bool) {
@@ -264,41 +269,51 @@ impl<'a> ShowOperation<'a> {
                 println!("      {} {}", Style::new().bold().apply_to("Path:"), path);
             }
             LockedSource::Git {
-                url, git_ref, sha, path, ..
+                url,
+                git_ref,
+                sha,
+                path,
+                ..
             } => {
-                display_git_source(detailed, url, git_ref, sha, path);
-            }
-        }
-    }
-
-        display_bundle_source(&locked_bundle.source, detailed);
-
-        // Plugin block for Claude Marketplace ($claudeplugin) bundles
-        display_marketplace_plugin_if_applicable(locked_bundle, detailed);
-
-        display_bundle_resources(&self, name, bundle_config, workspace_bundle, locked_bundle, detailed);
-    }
-
-    fn display_bundle_source(source: &LockedSource, detailed: bool) {
-        println!("    {}", Style::new().bold().apply_to("Source:"));
-        match source {
-            LockedSource::Dir { path, .. } => {
-                println!(
-                    "      {} {}",
-                    Style::new().bold().apply_to("Type:"),
-                    Style::new().green().apply_to("Directory")
+                Self::display_git_source(
+                    detailed,
+                    url,
+                    git_ref,
+                    &Some(sha.as_str().to_string()),
+                    path,
                 );
-                println!("      {} {}", Style::new().bold().apply_to("Path:"), path);
-            }
-            LockedSource::Git {
-                url, git_ref, sha, path, ..
-            } => {
-                display_git_source(detailed, url, git_ref, sha, path);
             }
         }
     }
 
-    fn display_marketplace_plugin_if_applicable(locked_bundle: &LockedBundle, detailed: bool) {
+    fn display_git_source(
+        detailed: bool,
+        url: &str,
+        git_ref: &Option<String>,
+        sha: &Option<String>,
+        path: &Option<String>,
+    ) {
+        println!(
+            "      {} {}",
+            Style::new().bold().apply_to("Type:"),
+            Style::new().green().apply_to("Git")
+        );
+        println!("      {} {}", Style::new().bold().apply_to("URL:"), url);
+
+        if detailed {
+            if let Some(v) = git_ref {
+                println!("      {} {}", Style::new().bold().apply_to("Ref:"), v);
+            }
+            if let Some(v) = sha {
+                println!("      {} {}", Style::new().bold().apply_to("SHA:"), v);
+            }
+            if let Some(v) = path {
+                println!("      {} {}", Style::new().bold().apply_to("Path:"), v);
+            }
+        }
+    }
+
+    fn display_marketplace_plugin_if_applicable(locked_bundle: &LockedBundle, _detailed: bool) {
         if let LockedSource::Git { path: Some(p), .. } = &locked_bundle.source {
             if p.contains("$claudeplugin") {
                 println!("    {}", Style::new().bold().apply_to("Plugin:"));
@@ -316,7 +331,7 @@ impl<'a> ShowOperation<'a> {
 
     fn display_bundle_resources(
         &self,
-        name: &str,
+        _name: &str,
         bundle_config: &BundleConfig,
         workspace_bundle: Option<&WorkspaceBundle>,
         locked_bundle: &LockedBundle,
@@ -324,7 +339,7 @@ impl<'a> ShowOperation<'a> {
     ) {
         // Display resources from workspace bundle if available, otherwise show all files from lockfile
         if let Some(ws_bundle) = workspace_bundle {
-            display_workspace_bundle_resources(&self, ws_bundle);
+            self.display_workspace_bundle_resources(ws_bundle);
         } else if !locked_bundle.files.is_empty() {
             Self::display_available_resources(&locked_bundle.files);
         } else {
@@ -333,7 +348,7 @@ impl<'a> ShowOperation<'a> {
         }
 
         // Dependencies last (only when --detailed)
-        display_dependencies_if_detailed(detailed, bundle_config);
+        self.display_dependencies_if_detailed(detailed, bundle_config);
     }
 
     fn display_workspace_bundle_resources(&self, ws_bundle: &WorkspaceBundle) {
@@ -345,13 +360,13 @@ impl<'a> ShowOperation<'a> {
         }
     }
 
-    fn display_dependencies_if_detailed(detailed: bool, bundle_config: &BundleConfig) {
+    fn display_dependencies_if_detailed(&self, detailed: bool, bundle_config: &BundleConfig) {
         if detailed {
             if !bundle_config.bundles.is_empty() {
                 println!("    {}", Style::new().bold().apply_to("Dependencies:"));
                 for dep in &bundle_config.bundles {
                     println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-                    display_dependency_details(&dep);
+                    Self::display_dependency_details(dep);
                 }
             } else {
                 println!(
@@ -374,95 +389,6 @@ impl<'a> ShowOperation<'a> {
             }
             if let Some(ref_name) = &dep.git_ref {
                 println!("        Ref: {}", ref_name);
-            }
-        }
-    }
-        println!("    {}", Style::new().bold().apply_to("Source:"));
-        match &locked_bundle.source {
-            LockedSource::Dir { path, .. } => {
-                println!(
-                    "      {} {}",
-                    Style::new().bold().apply_to("Type:"),
-                    Style::new().green().apply_to("Directory")
-                );
-                println!("      {} {}", Style::new().bold().apply_to("Path:"), path);
-            }
-            LockedSource::Git {
-                url,
-                git_ref,
-                sha,
-                path,
-                ..
-            } => {
-                display_git_source(detailed, url, git_ref, sha, path);
-            }
-        }
-    }
-                println!("      {} {}", Style::new().bold().apply_to("SHA:"), sha);
-                if let Some(subdir) = path {
-                    println!("      {} {}", Style::new().bold().apply_to("path:"), subdir);
-                }
-            }
-        }
-
-        // Plugin block for Claude Marketplace ($claudeplugin) bundles
-        if let LockedSource::Git { path: Some(p), .. } = &locked_bundle.source {
-            if p.contains("$claudeplugin") {
-                println!("    {}", Style::new().bold().apply_to("Plugin:"));
-                println!(
-                    "      {} {}",
-                    Style::new().bold().apply_to("type:"),
-                    Style::new().green().apply_to("Claude Marketplace")
-                );
-                if let Some(ref v) = locked_bundle.version {
-                    println!("      {} {}", Style::new().bold().apply_to("version:"), v);
-                }
-            }
-        }
-
-        // Display resources from workspace bundle if available, otherwise show all files from lockfile
-        if let Some(ws_bundle) = workspace_bundle {
-            println!("    {}", Style::new().bold().apply_to("Enabled resources:"));
-            if ws_bundle.enabled.is_empty() {
-                println!("      No files installed");
-            } else {
-                self.display_installed_resources(ws_bundle);
-            }
-        } else if !locked_bundle.files.is_empty() {
-            // Bundle not yet installed but has files in lockfile - show as "available"
-            Self::display_available_resources(&locked_bundle.files);
-        } else {
-            println!("    {}", Style::new().bold().apply_to("Resources:"));
-            println!("      {}", Style::new().dim().apply_to("No resources"));
-        }
-
-        // Dependencies last (only when --detailed)
-        if detailed {
-            if !bundle_config.bundles.is_empty() {
-                println!("    {}", Style::new().bold().apply_to("Dependencies:"));
-                for dep in &bundle_config.bundles {
-                    println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-                    if dep.is_local() {
-                        println!("        Type: {}", Style::new().green().apply_to("Local"));
-                        if let Some(path_val) = &dep.path {
-                            println!("        Path: {}", path_val);
-                        }
-                    } else if dep.is_git() {
-                        println!("        Type: {}", Style::new().green().apply_to("Git"));
-                        if let Some(url) = &dep.git {
-                            println!("        URL: {}", url);
-                        }
-                        if let Some(ref_name) = &dep.git_ref {
-                            println!("        Ref: {}", ref_name);
-                        }
-                    }
-                }
-            } else {
-                println!(
-                    "    {}: {}",
-                    Style::new().bold().apply_to("Dependencies"),
-                    Style::new().dim().apply_to("None")
-                );
             }
         }
     }

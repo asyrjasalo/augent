@@ -102,13 +102,14 @@ impl Transformer {
         let path_str = resource_path.to_string_lossy().replace('\\', "/");
         let skill_root = self.find_skill_root(&path_str);
 
-        let mut target = substitute_name_variable(&rule.to, &path_str, skill_root, resource_path);
+        let mut target =
+            Self::substitute_name_variable(&rule.to, &path_str, skill_root, resource_path);
 
-        let relative_part = compute_relative_part(&rule, &target, &path_str, skill_root);
+        let relative_part = Self::compute_relative_part(rule, &target, &path_str, skill_root);
 
-        target = process_wildcards(&target, &relative_part, rule.extension);
+        target = Self::process_wildcards(&target, &relative_part, rule.extension.clone());
 
-        target = add_extension(&target, rule.extension);
+        target = Self::add_extension(&target, rule.extension.as_deref());
 
         PathBuf::from(&target.replace('\\', "/"))
     }
@@ -152,9 +153,9 @@ impl Transformer {
         }
     }
 
-    fn process_wildcards(target: &str, relative_part: &str, extension: &Option<&str>) -> String {
+    fn process_wildcards(target: &str, relative_part: &str, extension: Option<String>) -> String {
         if target.contains("**") {
-            process_double_wildcard(target, relative_part, extension)
+            Self::process_double_wildcard(target, relative_part, extension)
         } else {
             target.to_string()
         }
@@ -163,7 +164,7 @@ impl Transformer {
     fn process_double_wildcard(
         target: &str,
         relative_part: &str,
-        extension: &Option<&str>,
+        extension: Option<String>,
     ) -> String {
         if let Some(pos) = target.find("**") {
             let prefix = &target[..pos];
@@ -173,7 +174,8 @@ impl Transformer {
                 ""
             };
 
-            let relative_to_use = compute_relative_to_use(relative_part, extension);
+            let relative_to_use =
+                Self::compute_relative_to_use(relative_part, extension.as_deref());
 
             if suffix.starts_with('/') {
                 let suffix_clean = suffix.strip_prefix('/').unwrap_or(suffix);
@@ -192,7 +194,7 @@ impl Transformer {
         }
     }
 
-    fn compute_relative_to_use(relative_part: &str, extension: &Option<&str>) -> String {
+    fn compute_relative_to_use(relative_part: &str, extension: Option<&str>) -> String {
         if extension.is_some() && (relative_part.contains('.') || relative_part.contains('*')) {
             let rel_path = PathBuf::from(relative_part);
             if let Some(stem) = rel_path.file_stem() {
@@ -217,8 +219,8 @@ impl Transformer {
         }
     }
 
-    fn add_extension(target: &str, extension: &Option<&str>) -> String {
-        if let Some(ref ext) = extension {
+    fn add_extension(target: &str, extension: Option<&str>) -> String {
+        if let Some(ext) = extension {
             let target_path = PathBuf::from(&target.replace('\\', "/"));
 
             if let Some(file_stem) = target_path.file_stem() {

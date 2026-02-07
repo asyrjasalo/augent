@@ -503,14 +503,12 @@ fn resolve_regular_bundle(
 ) -> Result<Vec<String>> {
     if all_bundles {
         Ok(filter_bundles_by_prefix(workspace, name))
+    } else if workspace.lockfile.find_bundle(name).is_some() {
+        Ok(vec![name.to_string()])
     } else {
-        if workspace.lockfile.find_bundle(name).is_some() {
-            Ok(vec![name.to_string()])
-        } else {
-            Err(AugentError::BundleNotFound {
-                name: name.to_string(),
-            })
-        }
+        Err(AugentError::BundleNotFound {
+            name: name.to_string(),
+        })
     }
 }
 
@@ -634,6 +632,7 @@ impl<'a> UninstallOperation<'a> {
 }
 
 /// Helper function to confirm uninstall with user
+#[allow(dead_code)]
 pub fn confirm_uninstall_impl(_workspace: &Workspace, bundles: &[String]) -> Result<bool> {
     println!("The following bundles will be uninstalled:");
     for bundle in bundles {
@@ -649,6 +648,7 @@ pub fn confirm_uninstall_impl(_workspace: &Workspace, bundles: &[String]) -> Res
 }
 
 /// Helper function to uninstall a bundle
+#[allow(dead_code)]
 pub fn uninstall_bundle_impl(workspace: &mut Workspace, bundles: &[String]) -> Result<()> {
     for bundle in bundles {
         workspace

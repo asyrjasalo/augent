@@ -198,6 +198,7 @@ impl BundleSource {
     /// let source = BundleSource::parse("author/repo#main:plugins/bundle").unwrap();
     /// assert_eq!(source.display_url(), "https://github.com/author/repo.git#main:plugins/bundle");
     /// ```
+    #[allow(dead_code)]
     pub fn display_url(&self) -> String {
         match self {
             BundleSource::Dir { path } => path.display().to_string(),

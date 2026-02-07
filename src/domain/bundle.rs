@@ -9,6 +9,7 @@ use crate::source::GitSource;
 
 /// Count of resources by type for a bundle
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 pub struct ResourceCounts {
     pub commands: usize,
     pub rules: usize,
@@ -102,6 +103,7 @@ impl ResolvedBundle {
 
 /// A discovered bundle before selection
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DiscoveredBundle {
     pub name: String,
     pub path: PathBuf,

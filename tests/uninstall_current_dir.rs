@@ -48,7 +48,7 @@ fn test_uninstall_dot_with_confirmation() {
 
     // Add and install the bundle
     workspace.write_file(
-        ".augent.yaml",
+        ".augent/augent.yaml",
         "bundles:\n  - name: \"test-bundle\"\n    path: \"test-bundle\"\n",
     );
 

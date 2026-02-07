@@ -281,7 +281,7 @@ fn add_index_entry_and_return(
     path: Option<&str>,
     bundle_name: &str,
     resolved_ref: Option<&str>,
-    content_result: &PathBuf,
+    _content_result: &PathBuf,
 ) -> Result<()> {
     super::index::add_index_entry(IndexEntry {
         url: url.to_string(),
@@ -328,12 +328,12 @@ fn populate_resources_directory(
     resources: &Path,
     is_marketplace: bool,
 ) -> Result<()> {
-    fs::create_dir_all(&resources).map_err(|e| AugentError::CacheOperationFailed {
+    fs::create_dir_all(resources).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to create resources directory: {}", e),
     })?;
     if is_marketplace {
     } else {
-        copy_dir_recursive_exclude_git(repo_path, &resources)?;
+        copy_dir_recursive_exclude_git(repo_path, resources)?;
     }
     Ok(())
 }

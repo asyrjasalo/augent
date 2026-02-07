@@ -164,6 +164,7 @@ impl Workspace {
     /// Get source path for workspace bundle configuration
     ///
     /// Returns "./.augent" since all configuration files are in .augent/
+    #[allow(dead_code)]
     pub fn get_config_source_path(&self) -> String {
         "./.augent".to_string()
     }

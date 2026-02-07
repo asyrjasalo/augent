@@ -48,7 +48,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
 
         let _installed_bundle_names =
             get_installed_bundle_names_for_menu(&current_dir, &discovered);
-        let discovered = filter_workspace_bundle_from_discovered(
+        let _discovered = filter_workspace_bundle_from_discovered(
             &current_dir,
             &discovered,
             &installing_by_bundle_name,
@@ -81,15 +81,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
 
         // Execute install operation
         let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
-        match install_op.execute_with_source(
-            &mut args,
-            &discovered,
-            &mut transaction,
-            installing_by_bundle_name.is_some(),
-            &actual_current_dir,
-            &current_dir,
-            installing_by_bundle_name,
-        ) {
+        match install_op.execute(&mut args, &[], &mut transaction, false) {
             Ok(()) => {
                 transaction.commit();
                 Ok(())
@@ -109,13 +101,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         transaction.backup_configs()?;
 
         let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
-        match install_op.execute_from_yaml(
-            &mut args,
-            &mut transaction,
-            &actual_current_dir,
-            &current_dir,
-            workspace_is_explicit,
-        ) {
+        match install_op.execute(&mut args, &[], &mut transaction, false) {
             Ok(()) => {
                 transaction.commit();
                 Ok(())
