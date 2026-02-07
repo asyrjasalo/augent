@@ -1,0 +1,537 @@
+{
+  // Default platform definitions for Augent
+  // This file contains all 17 supported AI coding platforms
+  // Each platform has detection patterns and transformation rules
+  "platforms": [
+    // Antigravity
+    {
+      "id": "antigravity",
+      "name": "Google Antigravity",
+      "directory": ".agent",
+      "detection": [".agent"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".agent/rules/**/*.md"
+        },
+        {
+          "from": "commands/**/*.md",
+          "to": ".agent/workflows/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".agent/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".agent/skills/{name}/**/*"
+        }
+      ]
+    },
+    // Augment Code
+    {
+      "id": "augment",
+      "name": "Augment Code",
+      "directory": ".augment",
+      "detection": [".augment"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".augment/rules/**/*.md"
+        },
+        {
+          "from": "commands/**/*.md",
+          "to": ".augment/commands/**/*.md"
+        }
+      ]
+    },
+    // Claude Code
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "directory": ".claude",
+      "detection": [".claude", "CLAUDE.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".claude/commands/**/*.md"
+        },
+        {
+          "from": "rules/**/*.md",
+          "to": ".claude/rules/**/*.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".claude/agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".claude/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".claude/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "CLAUDE.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Claude Plugin
+    {
+      "id": "claude-plugin",
+      "name": "Claude Code Plugin",
+      "directory": ".claude-plugin",
+      "detection": [".claude-plugin/plugin.json"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": "rules/**/*.md"
+        },
+        {
+          "from": "commands/**/*.md",
+          "to": "commands/**/*.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": "agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": "skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": "skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".mcp.json",
+          "merge": "deep"
+        }
+      ]
+    },
+    // GitHub Copilot
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot",
+      "directory": ".github",
+      "detection": [".github/copilot-instructions.md", ".github/instructions", ".github/skills", ".github/prompts", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".github/instructions/{name}.instructions.md",
+          "extension": "instructions.md"
+        },
+        {
+          "from": "commands/**/*.md",
+          "to": ".github/prompts/{name}.prompt.md",
+          "extension": "prompt.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".github/agents/{name}/AGENTS.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".github/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".github/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".github/mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Cursor
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "directory": ".cursor",
+      "detection": [".cursor", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".cursor/commands/**/*.md"
+        },
+        {
+          "from": "rules/**/*.md",
+          "to": ".cursor/rules/**/*.mdc",
+          "extension": "mdc"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".cursor/agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".cursor/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".cursor/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".cursor/mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Codex CLI
+    {
+      "id": "codex",
+      "name": "Codex CLI",
+      "directory": ".codex",
+      "detection": [".codex", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".codex/prompts/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".codex/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".codex/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".codex/config.toml",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Factory AI
+    {
+      "id": "factory",
+      "name": "Factory AI",
+      "directory": ".factory",
+      "detection": [".factory", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".factory/commands/**/*.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".factory/droids/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".factory/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".factory/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".factory/settings/mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // JetBrains Junie
+    {
+      "id": "junie",
+      "name": "JetBrains Junie",
+      "directory": ".junie",
+      "detection": [".junie", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".junie/guidelines.md",
+          "merge": "composite"
+        },
+        {
+          "from": "commands/**/*.md",
+          "to": ".junie/commands/**/*.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".junie/agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".junie/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".junie/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".agent/mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Kilo Code
+    {
+      "id": "kilo",
+      "name": "Kilo Code",
+      "directory": ".kilocode",
+      "detection": [".kilocode", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".kilocode/rules/**/*.md"
+        },
+        {
+          "from": "commands/**/*.md",
+          "to": ".kilocode/workflows/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".kilocode/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".kilocode/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".kilocode/mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Kiro
+    {
+      "id": "kiro",
+      "name": "Kiro",
+      "directory": ".kiro",
+      "detection": [".kiro"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".kiro/steering/**/*.md"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".kiro/settings/mcp.json",
+          "merge": "deep"
+        }
+      ]
+    },
+    // OpenCode
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "directory": ".opencode",
+      "detection": [".opencode", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".opencode/commands/**/*.md"
+        },
+        {
+          "from": "rules/**/*.md",
+          "to": ".opencode/rules/**/*.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".opencode/agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".opencode/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".opencode/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".opencode/opencode.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Qwen Code
+    {
+      "id": "qwen",
+      "name": "Qwen Code",
+      "directory": ".qwen",
+      "detection": [".qwen", "QWEN.md"],
+      "transforms": [
+        {
+          "from": "agents/**/*.md",
+          "to": ".qwen/agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".qwen/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".qwen/skills/{name}/**/*"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "QWEN.md",
+          "merge": "composite"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".qwen/settings.json",
+          "merge": "deep"
+        }
+      ]
+    },
+    // Roo Code
+    {
+      "id": "roo",
+      "name": "Roo Code",
+      "directory": ".roo",
+      "detection": [".roo", "AGENTS.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".roo/commands/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".roo/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".roo/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".roo/mcp.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "AGENTS.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Warp
+    {
+      "id": "warp",
+      "name": "Warp",
+      "directory": ".warp",
+      "detection": [".warp", "WARP.md"],
+      "transforms": [
+        {
+          "from": "AGENTS.md",
+          "to": "WARP.md",
+          "merge": "composite"
+        }
+      ]
+    },
+    // Windsurf
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "directory": ".windsurf",
+      "detection": [".windsurf"],
+      "transforms": [
+        {
+          "from": "rules/**/*.md",
+          "to": ".windsurf/rules/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".windsurf/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".windsurf/skills/{name}/**/*"
+        }
+      ]
+    },
+    // Gemini CLI
+    {
+      "id": "gemini",
+      "name": "Gemini CLI",
+      "directory": ".gemini",
+      "detection": [".gemini", "GEMINI.md"],
+      "transforms": [
+        {
+          "from": "commands/**/*.md",
+          "to": ".gemini/commands/**/*.md"
+        },
+        {
+          "from": "agents/**/*.md",
+          "to": ".gemini/agents/**/*.md"
+        },
+        {
+          "from": "skills/**/SKILL.md",
+          "to": ".gemini/skills/{name}/SKILL.md"
+        },
+        {
+          "from": "skills/**/*",
+          "to": ".gemini/skills/{name}/**/*"
+        },
+        {
+          "from": "mcp.jsonc",
+          "to": ".gemini/settings.json",
+          "merge": "deep"
+        },
+        {
+          "from": "AGENTS.md",
+          "to": "GEMINI.md",
+          "merge": "composite"
+        },
+        {
+          "from": "root/**/*",
+          "to": ".gemini/**/*"
+        }
+      ]
+    }
+  ]
+}

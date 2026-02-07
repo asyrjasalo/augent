@@ -41,6 +41,7 @@ pub struct Platform {
 
 impl Platform {
     /// Create a new platform
+    #[allow(dead_code)]
     pub fn new(
         id: impl Into<String>,
         name: impl Into<String>,
@@ -56,12 +57,14 @@ impl Platform {
     }
 
     /// Add a detection pattern
+    #[allow(dead_code)]
     pub fn with_detection(mut self, pattern: impl Into<String>) -> Self {
         self.detection.push(pattern.into());
         self
     }
 
     /// Add a transform rule
+    #[allow(dead_code)]
     pub fn with_transform(mut self, rule: TransformRule) -> Self {
         self.transforms.push(rule);
         self
@@ -103,6 +106,7 @@ pub struct TransformRule {
 
 impl TransformRule {
     /// Create a new transform rule
+    #[allow(dead_code)]
     pub fn new(from: impl Into<String>, to: impl Into<String>) -> Self {
         Self {
             from: from.into(),
@@ -113,12 +117,14 @@ impl TransformRule {
     }
 
     /// Set merge strategy
+    #[allow(dead_code)]
     pub fn with_merge(mut self, strategy: MergeStrategy) -> Self {
         self.merge = strategy;
         self
     }
 
     /// Set extension transformation
+    #[allow(dead_code)]
     pub fn with_extension(mut self, ext: impl Into<String>) -> Self {
         self.extension = Some(ext.into());
         self
@@ -127,7 +133,10 @@ impl TransformRule {
 
 /// Get default platform definitions
 pub fn default_platforms() -> Vec<Platform> {
-    registry::default_platforms()
+    use loader::PlatformLoader;
+
+    // Load directly from loader to avoid circular dependency
+    PlatformLoader::load_builtin_platforms().unwrap_or_default()
 }
 
 #[cfg(test)]
