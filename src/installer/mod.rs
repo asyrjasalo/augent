@@ -2,9 +2,20 @@
 //!
 //! This module orchestrates bundle installation through submodules:
 //! - discovery: Resource discovery in bundles
-//! - files: File copy operations
+//! - file_ops: Basic file operations
+//! - detection: Platform and binary file detection
+//! - parser: Content parsing for frontmatter
+//! - writer: Output writing for processed content
+//! - formats: Platform-specific format conversions
 
+pub mod detection;
 pub mod discovery;
+pub mod file_ops;
+pub mod formats;
+pub mod parser;
+pub mod writer;
+
+// Re-export from files.rs for now (will be removed later)
 pub mod files;
 
 use std::collections::HashMap;
