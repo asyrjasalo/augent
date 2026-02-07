@@ -177,31 +177,6 @@ Test body"#;
     }
 
     #[test]
-    fn test_convert_opencode_frontmatter_only() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let source = temp.path().join("source.md");
-        let target = temp.path().join(".opencode/skills/test.md");
-
-        let content = r#"---
-name: test skill (frontmatter only)
----
-Test body"#;
-
-        fs::write(&source, content).unwrap();
-
-        let platforms = vec![];
-        let workspace_root = &temp.path();
-
-        let result = super::convert_opencode_frontmatter_only(
-            "Test skill (frontmatter only)",
-            &target,
-            &platforms,
-            &workspace_root,
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_extract_description_and_prompt() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let source = temp.path().join("source.md");

@@ -3,13 +3,9 @@
 //! This module orchestrates bundle installation through submodules:
 //! - discovery: Resource discovery in bundles
 //! - files: File copy operations
-//! - merge: Merge strategy application
-//! - pipeline: Installation orchestration
 
 pub mod discovery;
 pub mod files;
-pub mod merge;
-pub mod pipeline;
 
 pub use discovery::discover_resources;
 
@@ -33,17 +29,6 @@ pub struct Installer<'a> {
 }
 
 impl<'a> Installer<'a> {
-    #[allow(dead_code)]
-    pub fn new(workspace_root: &'a Path, platforms: Vec<Platform>) -> Self {
-        Self {
-            workspace_root,
-            platforms,
-            installed_files: HashMap::new(),
-            dry_run: false,
-            progress: None,
-        }
-    }
-
     pub fn new_with_dry_run(
         workspace_root: &'a Path,
         platforms: Vec<Platform>,
@@ -150,7 +135,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let platforms = vec![];
 
-        let installer = Installer::new(temp.path(), platforms.clone());
+        let installer = Installer::new_with_dry_run(temp.path(), platforms.clone(), false);
 
         assert_eq!(installer.workspace_root, temp.path());
         assert_eq!(installer.platforms, platforms);

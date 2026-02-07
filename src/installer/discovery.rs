@@ -124,33 +124,6 @@ pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<Discov
         .collect()
 }
 
-/// Compute leaf skill dirs from filtered resources (for {name} and path-under-skill resolution).
-#[allow(dead_code)]
-pub fn compute_leaf_skill_dirs(resources: &[DiscoveredResource]) -> HashSet<String> {
-    const SKILLS_PREFIX: &str = "skills/";
-    const SKILL_MD_NAME: &str = "SKILL.md";
-
-    let all_skill_dirs: HashSet<String> = resources
-        .iter()
-        .filter(|r| r.resource_type == "skills")
-        .filter(|r| r.bundle_path.file_name().and_then(|n| n.to_str()) == Some(SKILL_MD_NAME))
-        .filter_map(|r| {
-            let parent = r.bundle_path.parent()?;
-            Some(parent.to_string_lossy().replace('\\', "/"))
-        })
-        .collect();
-
-    all_skill_dirs
-        .iter()
-        .filter(|dir| {
-            !all_skill_dirs
-                .iter()
-                .any(|other| *other != **dir && other.starts_with(&format!("{}/", dir)))
-        })
-        .cloned()
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

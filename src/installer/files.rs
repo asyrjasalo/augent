@@ -454,46 +454,6 @@ pub fn convert_opencode_agent(content: &str, target: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Convert OpenCode frontmatter only (for merge operations)
-#[allow(dead_code)]
-pub fn convert_opencode_frontmatter_only(content: &str) -> Result<String> {
-    let lines: Vec<&str> = content.lines().collect();
-
-    let (frontmatter, body) = if lines.len() >= 3 && lines[0].eq("---") {
-        if let Some(end_idx) = lines[1..].iter().position(|line| line.eq(&"---")) {
-            let fm = lines[1..end_idx + 1].join("\n");
-            let body_content = lines[end_idx + 2..].join("\n");
-            (Some(fm), body_content)
-        } else {
-            (None, content.to_string())
-        }
-    } else {
-        (None, content.to_string())
-    };
-
-    let mut new_frontmatter = String::new();
-    let mut frontmatter_map = std::collections::HashMap::new();
-
-    if let Some(fm) = &frontmatter {
-        for line in fm.lines() {
-            let line = line.trim();
-            if let Some((key, value)) = line.split_once(':') {
-                let key = key.trim();
-                let value = value.trim().trim_start_matches('"').trim_end_matches('"');
-                frontmatter_map.insert(key.to_string(), value.to_string());
-            }
-        }
-    }
-
-    new_frontmatter.push_str("---\n");
-    for (key, value) in &frontmatter_map {
-        new_frontmatter.push_str(&format!("{}: {}\n", key, value));
-    }
-    new_frontmatter.push_str("---\n\n");
-
-    Ok(format!("{}{}", new_frontmatter, body))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
