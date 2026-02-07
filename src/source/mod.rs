@@ -248,42 +248,50 @@ impl GitSource {
         self
     }
 
-    /// Parse a git source from a string
-    pub fn parse(input: &str) -> Result<Self> {
-        let input = input.trim();
-
-        // Check for GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
-        if let Some(github_parts) = Self::parse_github_web_ui_url(input) {
-            let (owner, repo, git_ref, path_val) = github_parts;
-            return Ok(Self {
-                url: format!("https://github.com/{}/{}.git", owner, repo),
-                git_ref: Some(git_ref),
-                path: path_val,
-                resolved_sha: None,
-            });
-        }
-
-        let (main_part, ref_part) = if let Some(hash_pos) = input.find('#') {
-            (&input[..hash_pos], Some(&input[hash_pos + 1..]))
-        } else if let Some(at_pos) = input.find('@') {
-            // Only treat @ as ref separator if:
-            //1. Not part of SSH URL (git@host:path)
-            // 2. Not at start of input (e.g., @user/repo is a GitHub username)
-            if input.starts_with("git@") || input.starts_with("ssh://") || at_pos == 0 {
-                (input, None)
-            } else {
-                (&input[..at_pos], Some(&input[at_pos + 1..]))
-            }
+    /// Find the starting position after protocol prefix in a URL string
+    fn find_protocol_prefix_start(main_part: &str) -> usize {
+        if main_part.starts_with("github:") {
+            "github:".len()
+        } else if main_part.starts_with("https://") {
+            "https://".len()
+        } else if main_part.starts_with("http://") {
+            "http://".len()
+        } else if main_part.starts_with("file://") {
+            "file://".len()
         } else {
-            (input, None)
-        };
+            0
+        }
+    }
 
-        // Parse ref and path:
-        // - If fragment exists (# or @): it can be ref, or ref:path
-        //   - If it contains ':', split into ref:path
-        //   - Otherwise, treat as ref
-        // - If no fragment: path is separated by : from main (e.g., github:author/repo:plugins/name)
-        let (path_val, git_ref, url_part_for_parsing) = match ref_part {
+    /// Skip Windows drive letter in file:// URLs (e.g., file://C:\ or file:///C:/)
+    /// Returns (skip_bytes, rest_of_string)
+    fn skip_windows_drive_letter(rest: &str) -> (usize, &str) {
+        // Windows "C:\" or "C:/" : skip 2
+        if rest.len() >= 2
+            && rest.chars().next().map(|c| c.is_ascii_alphabetic()) == Some(true)
+            && rest.chars().nth(1) == Some(':')
+        {
+            (2, &rest[2..])
+        }
+        // Windows "/C:\" or "/C:/" : skip 3
+        else if rest.len() >= 3
+            && rest.starts_with('/')
+            && rest.chars().nth(1).map(|c| c.is_ascii_alphabetic()) == Some(true)
+            && rest.chars().nth(2) == Some(':')
+        {
+            (3, &rest[3..])
+        } else {
+            (0, rest)
+        }
+    }
+
+    /// Parse path separator handling when main part has no fragment
+    /// Returns (optional_path, optional_ref, url_part_for_parsing)
+    fn parse_path_without_fragment<'a>(
+        main_part: &'a str,
+        ref_part: Option<&'a str>,
+    ) -> (Option<String>, Option<String>, &'a str) {
+        match ref_part {
             Some(ref_frag) => {
                 // Has fragment (# or @)
                 if ref_frag.is_empty() {
@@ -305,44 +313,18 @@ impl GitSource {
                 // No ref, check if main part has path separated by :
                 // BUT: Don't treat SSH URLs (git@host:path) as having path
                 if main_part.starts_with("git@") || main_part.starts_with("ssh://") {
-                    // SSH URL - the colon is part of the URL format, not a path separator
+                    // SSH URL - colon is part of the URL format, not a path separator
                     (None, None, main_part)
                 } else {
                     // For github:author/repo:path, we want to find the path colon.
                     // Skip protocol prefixes when looking for path separator.
                     // For file:// on Windows, also skip the drive letter (e.g. C: or /C:)
                     // so "file://C:\path:sub" splits at "path:sub" not at "C:".
-                    let search_start = if main_part.starts_with("github:") {
-                        "github:".len()
-                    } else if main_part.starts_with("https://") {
-                        "https://".len()
-                    } else if main_part.starts_with("http://") {
-                        "http://".len()
-                    } else if main_part.starts_with("file://") {
-                        "file://".len()
-                    } else {
-                        0
-                    };
+                    let search_start = Self::find_protocol_prefix_start(main_part);
 
                     let rest = &main_part[search_start..];
                     let (drive_skip, search_in) = if main_part.starts_with("file://") {
-                        // Windows "C:\" or "C:/" : skip 2
-                        if rest.len() >= 2
-                            && rest.chars().next().map(|c| c.is_ascii_alphabetic()) == Some(true)
-                            && rest.chars().nth(1) == Some(':')
-                        {
-                            (2, &rest[2..])
-                        }
-                        // Windows "/C:\" or "/C:/" : skip 3
-                        else if rest.len() >= 3
-                            && rest.starts_with('/')
-                            && rest.chars().nth(1).map(|c| c.is_ascii_alphabetic()) == Some(true)
-                            && rest.chars().nth(2) == Some(':')
-                        {
-                            (3, &rest[3..])
-                        } else {
-                            (0, rest)
-                        }
+                        Self::skip_windows_drive_letter(rest)
                     } else {
                         (0, rest)
                     };
@@ -373,7 +355,47 @@ impl GitSource {
                     }
                 }
             }
-        };
+        }
+    }
+
+    /// Parse fragment portion (#ref or @ref) from input
+    /// Returns (main_part, optional_ref_part)
+    fn parse_fragment(input: &str) -> (&str, Option<&str>) {
+        if let Some(hash_pos) = input.find('#') {
+            (&input[..hash_pos], Some(&input[hash_pos + 1..]))
+        } else if let Some(at_pos) = input.find('@') {
+            // Only treat @ as ref separator if:
+            // 1. Not part of SSH URL (git@host:path)
+            // 2. Not at start of input (e.g., @user/repo is a GitHub username)
+            if input.starts_with("git@") || input.starts_with("ssh://") || at_pos == 0 {
+                (input, None)
+            } else {
+                (&input[..at_pos], Some(&input[at_pos + 1..]))
+            }
+        } else {
+            (input, None)
+        }
+    }
+
+    /// Parse a git source from a string
+    pub fn parse(input: &str) -> Result<Self> {
+        let input = input.trim();
+
+        // Check for GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
+        if let Some(github_parts) = Self::parse_github_web_ui_url(input) {
+            let (owner, repo, git_ref, path_val) = github_parts;
+            return Ok(Self {
+                url: format!("https://github.com/{}/{}.git", owner, repo),
+                git_ref: Some(git_ref),
+                path: path_val,
+                resolved_sha: None,
+            });
+        }
+
+        let (main_part, ref_part) = Self::parse_fragment(input);
+
+        let (path_val, git_ref, url_part_for_parsing) =
+            Self::parse_path_without_fragment(main_part, ref_part);
 
         // Parse URL/shorthand
         let url = Self::parse_url(url_part_for_parsing)?;
