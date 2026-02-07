@@ -11,11 +11,7 @@ use crate::error::{AugentError, Result};
 use crate::git;
 use crate::source::GitSource;
 
-use super::index::IndexEntry;
-
-/// Subdirectory for marketplace synthetic bundle content under repo-level resources.
-/// Matches the source (.claude-plugin/marketplace.json) and cannot collide with a real sub-bundle name.
-pub const SYNTHETIC_DIR: &str = ".claude-plugin";
+use super::{SYNTHETIC_DIR, index::IndexEntry};
 
 /// File name for storing the resolved ref (repository has detached HEAD after checkout)
 const REF_FILE: &str = ".augent_ref";
@@ -245,29 +241,59 @@ pub fn ensure_bundle_cached(
     let is_marketplace = path.is_some_and(|p| p.starts_with("$claudeplugin/"));
     let plugin_name = marketplace_plugin_name(path);
 
-    // Always use repo-level entry (one per url+sha)
     let entry_path = super::repo_cache_entry_path(url, sha)?;
     let resources = super::entry_resources_path(&entry_path);
-    let content_result = if let Some(name) = plugin_name {
+    let content_result = compute_content_path(&resources, path, plugin_name);
+
+    if resources.is_dir() {
+        add_index_entry_and_return(url, sha, path, bundle_name, resolved_ref, &content_result)?;
+    }
+
+    ensure_cache_directories_exist(&entry_path)?;
+
+    copy_repo_to_cache(repo_path, &entry_path, resolved_ref)?;
+
+    populate_resources_directory(repo_path, &resources, is_marketplace)?;
+
+    write_bundle_name_file(&entry_path, url)?;
+
+    add_index_entry(url, sha, path, bundle_name, resolved_ref)?;
+
+    Ok(content_result)
+}
+
+fn compute_content_path(
+    resources: &Path,
+    path: Option<&str>,
+    plugin_name: Option<&str>,
+) -> PathBuf {
+    if let Some(name) = plugin_name {
         resources.join(SYNTHETIC_DIR).join(name)
     } else {
         path.map(|p| resources.join(p))
-            .unwrap_or_else(|| resources.clone())
-    };
-
-    if resources.is_dir() {
-        // Repo already cached: add index entry only. Marketplace synthetic dirs are created
-        // on demand in get_cached when a bundle is actually resolved (installed).
-        super::index::add_index_entry(IndexEntry {
-            url: url.to_string(),
-            sha: sha.to_string(),
-            path: path.map(String::from),
-            bundle_name: bundle_name.to_string(),
-            resolved_ref: resolved_ref.map(String::from),
-        })?;
-        return Ok(content_result);
+            .unwrap_or_else(|| resources.to_path_buf())
     }
+}
 
+fn add_index_entry_and_return(
+    url: &str,
+    sha: &str,
+    path: Option<&str>,
+    bundle_name: &str,
+    resolved_ref: Option<&str>,
+    content_result: &PathBuf,
+) -> Result<()> {
+    super::index::add_index_entry(IndexEntry {
+        url: url.to_string(),
+        sha: sha.to_string(),
+        path: path.map(String::from),
+        bundle_name: bundle_name.to_string(),
+        resolved_ref: resolved_ref.map(String::from),
+    })?;
+    Ok(())
+}
+
+fn ensure_cache_directories_exist(entry_path: &Path) -> Result<()> {
     let base = super::cache_dir()?;
     fs::create_dir_all(&base).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to create cache directory: {}", e),
@@ -281,23 +307,38 @@ pub fn ensure_bundle_cached(
             message: format!("Failed to create cache entry directory: {}", e),
         })?;
     }
+    Ok(())
+}
 
-    let repo_dst = super::entry_repository_path(&entry_path);
+fn copy_repo_to_cache(
+    repo_path: &Path,
+    entry_path: &Path,
+    resolved_ref: Option<&str>,
+) -> Result<()> {
+    let repo_dst = super::entry_repository_path(entry_path);
     copy_dir_recursive(repo_path, &repo_dst)?;
     if let Some(r) = resolved_ref {
         write_ref_to_cache(&repo_dst, r)?;
     }
+    Ok(())
+}
 
+fn populate_resources_directory(
+    repo_path: &Path,
+    resources: &Path,
+    is_marketplace: bool,
+) -> Result<()> {
     fs::create_dir_all(&resources).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to create resources directory: {}", e),
     })?;
     if is_marketplace {
-        // Marketplace: empty resources/; synthetic dirs are created on demand in get_cached when a bundle is installed
     } else {
-        // Normal multi-bundle repo: full repo content (without .git) in resources/
         copy_dir_recursive_exclude_git(repo_path, &resources)?;
     }
+    Ok(())
+}
 
+fn write_bundle_name_file(entry_path: &Path, url: &str) -> Result<()> {
     fs::write(
         entry_path.join(super::BUNDLE_NAME_FILE),
         super::repo_name_from_url(url),
@@ -305,7 +346,16 @@ pub fn ensure_bundle_cached(
     .map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to write bundle name file: {}", e),
     })?;
+    Ok(())
+}
 
+fn add_index_entry(
+    url: &str,
+    sha: &str,
+    path: Option<&str>,
+    bundle_name: &str,
+    resolved_ref: Option<&str>,
+) -> Result<()> {
     super::index::add_index_entry(IndexEntry {
         url: url.to_string(),
         sha: sha.to_string(),
@@ -313,8 +363,7 @@ pub fn ensure_bundle_cached(
         bundle_name: bundle_name.to_string(),
         resolved_ref: resolved_ref.map(String::from),
     })?;
-
-    Ok(content_result)
+    Ok(())
 }
 
 /// Cache a bundle by cloning from a git source (or use existing cache).

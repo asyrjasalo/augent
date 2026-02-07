@@ -40,6 +40,9 @@ pub const RESOURCES_DIR: &str = "resources";
 /// File name for storing the bundle display name in each cache entry
 pub const BUNDLE_NAME_FILE: &str = ".augent_bundle_name";
 
+/// Subdirectory for marketplace synthetic bundles
+pub const SYNTHETIC_DIR: &str = ".claude-plugin";
+
 /// Cache index file at cache root for (url, sha, path) -> bundle_name lookups
 pub const INDEX_FILE: &str = ".augent_cache_index.json";
 

@@ -396,8 +396,8 @@ fn determine_files_to_remove(
     Ok(files_to_remove)
 }
 
-/// Run uninstall command
-pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
+/// Initialize workspace and rebuild config if needed
+fn initialize_workspace(workspace: Option<std::path::PathBuf>) -> Result<Workspace> {
     let current_dir = match workspace {
         Some(path) => path,
         None => std::env::current_dir().map_err(|e| AugentError::IoError {
@@ -420,71 +420,104 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         workspace.rebuild_workspace_config()?;
     }
 
-    let bundle_names = match args.name {
-        Some(name) => {
-            // Check if this is special "." argument for current directory
-            if name == "." {
-                // Find bundle that corresponds to current directory
-                let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
-                    message: format!("Failed to get current directory: {}", e),
-                })?;
+    Ok(workspace)
+}
 
-                // Get the directory name (e.g., "my-library" from "/path/to/workspace/my-library")
-                let dir_name = current_dir
-                    .file_name()
-                    .unwrap_or_else(|| std::ffi::OsStr::new(""))
-                    .to_string_lossy();
-
-                // Look for a bundle with that name in workspace configuration
-                let matching_bundle = workspace
-                    .workspace_config
-                    .bundles
-                    .iter()
-                    .find(|b| b.name == dir_name);
-
-                if let Some(bundle) = matching_bundle {
-                    // Found a bundle matching current directory
-                    println!("Uninstalling current directory bundle: {}", bundle.name);
-                    vec![bundle.name.clone()]
-                } else {
-                    // No bundle found for current directory
-                    return Err(AugentError::BundleNotFound {
-                        name: "Current directory is not installed as a bundle. \
-                                 To uninstall, specify a bundle name from augent.yaml."
-                            .to_string(),
-                    });
-                }
-            } else if is_scope_pattern(&name) {
-                let matching_bundles = filter_bundles_by_scope(&workspace, &name);
-
-                if matching_bundles.is_empty() {
-                    println!("No bundles found matching scope: {}", name);
-                    return Ok(());
-                }
-
-                if args.all_bundles {
-                    matching_bundles
-                } else {
-                    select_bundles_from_list(&workspace, matching_bundles)?
-                }
-            } else {
-                // Regular bundle name or prefix with --all-bundles
-                if args.all_bundles {
-                    filter_bundles_by_prefix(&workspace, &name)
-                } else {
-                    // Find exact match in lockfile
-                    if workspace.lockfile.find_bundle(&name).is_some() {
-                        vec![name]
-                    } else {
-                        return Err(AugentError::BundleNotFound {
-                            name: name.to_string(),
-                        });
-                    }
-                }
-            }
-        }
-        None => select_bundles_interactively(&workspace)?,
+/// Resolve bundle names from arguments or interactive selection
+fn resolve_bundle_names(workspace: &Workspace, args: &UninstallArgs) -> Result<Vec<String>> {
+    let bundle_names = match &args.name {
+        Some(name) => resolve_named_bundle(workspace, name, args.all_bundles)?,
+        None => select_bundles_interactively(workspace)?,
     };
+
+    Ok(bundle_names)
+}
+
+/// Resolve bundle names when a specific name is provided
+fn resolve_named_bundle(
+    workspace: &Workspace,
+    name: &str,
+    all_bundles: bool,
+) -> Result<Vec<String>> {
+    if name == "." {
+        resolve_current_dir_bundle(workspace)
+    } else if is_scope_pattern(name) {
+        resolve_scope_pattern_bundles(workspace, name, all_bundles)
+    } else {
+        resolve_regular_bundle(workspace, name, all_bundles)
+    }
+}
+
+/// Resolve bundles when current directory is specified (".")
+fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
+    let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
+        message: format!("Failed to get current directory: {}", e),
+    })?;
+
+    let dir_name = current_dir
+        .file_name()
+        .unwrap_or_else(|| std::ffi::OsStr::new(""))
+        .to_string_lossy();
+
+    let matching_bundle = workspace
+        .workspace_config
+        .bundles
+        .iter()
+        .find(|b| b.name == dir_name);
+
+    if let Some(bundle) = matching_bundle {
+        println!("Uninstalling current directory bundle: {}", bundle.name);
+        Ok(vec![bundle.name.clone()])
+    } else {
+        Err(AugentError::BundleNotFound {
+            name: "Current directory is not installed as a bundle. \
+                     To uninstall, specify a bundle name from augent.yaml."
+                .to_string(),
+        })
+    }
+}
+
+/// Resolve bundles matching a scope pattern
+fn resolve_scope_pattern_bundles(
+    workspace: &Workspace,
+    name: &str,
+    all_bundles: bool,
+) -> Result<Vec<String>> {
+    let matching_bundles = filter_bundles_by_scope(workspace, name);
+
+    if matching_bundles.is_empty() {
+        println!("No bundles found matching scope: {}", name);
+        Ok(vec![])
+    } else if all_bundles {
+        Ok(matching_bundles)
+    } else {
+        select_bundles_from_list(workspace, matching_bundles)
+    }
+}
+
+/// Resolve a regular bundle name (not "." and not a scope pattern)
+fn resolve_regular_bundle(
+    workspace: &Workspace,
+    name: &str,
+    all_bundles: bool,
+) -> Result<Vec<String>> {
+    if all_bundles {
+        Ok(filter_bundles_by_prefix(workspace, name))
+    } else {
+        if workspace.lockfile.find_bundle(name).is_some() {
+            Ok(vec![name.to_string()])
+        } else {
+            Err(AugentError::BundleNotFound {
+                name: name.to_string(),
+            })
+        }
+    }
+}
+
+/// Run uninstall command
+pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
+    let mut workspace = initialize_workspace(workspace)?;
+    let bundle_names = resolve_bundle_names(&workspace, &args)?;
 
     if bundle_names.is_empty() {
         return Ok(());
@@ -504,43 +537,34 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
         return Ok(());
     }
 
-    // Create transaction for atomic operations
-    let mut transaction = Transaction::new(&workspace);
+    execute_uninstall(&mut workspace, &bundle_names)
+}
+
+fn remove_bundles_from_config(workspace: &mut Workspace, bundle_names: &[String]) -> Result<()> {
+    for bundle_name in bundle_names {
+        workspace
+            .workspace_config
+            .bundles
+            .retain(|b| b.name != *bundle_name);
+        workspace
+            .bundle_config
+            .bundles
+            .retain(|dep| dep.name != *bundle_name);
+        workspace
+            .lockfile
+            .bundles
+            .retain(|b| b.name != *bundle_name);
+    }
+    Ok(())
+}
+
+fn execute_uninstall(workspace: &mut Workspace, bundle_names: &[String]) -> Result<()> {
+    let mut transaction = Transaction::new(workspace);
     transaction.backup_configs()?;
 
     let result = (|| -> Result<()> {
-        // Collect all files to remove for all bundles
-        let mut all_files_to_remove: Vec<String> = Vec::new();
-
-        for bundle_name in &bundle_names {
-            if let Some(locked_bundle) = workspace.lockfile.find_bundle(bundle_name) {
-                let files_to_remove =
-                    determine_files_to_remove(&workspace, bundle_name, &locked_bundle.files)?;
-                all_files_to_remove.extend(files_to_remove);
-            }
-
-            // Remove bundle from configuration
-            // Also remove from workspace bundle config (for workspace bundles)
-            workspace
-                .workspace_config
-                .bundles
-                .retain(|b| b.name != *bundle_name);
-            workspace
-                .bundle_config
-                .bundles
-                .retain(|dep| dep.name != *bundle_name);
-            workspace
-                .lockfile
-                .bundles
-                .retain(|b| b.name != *bundle_name);
-        }
-
-        // Note: should_create_augent_yaml is NOT modified during uninstall
-        // to prevent unwanted creation of augent.yaml when workspace becomes empty
-
-        // Save updated configurations
+        remove_bundles_from_config(workspace, bundle_names)?;
         workspace.save()?;
-
         Ok(())
     })();
 

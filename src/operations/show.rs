@@ -26,10 +26,9 @@ impl<'a> ShowOperation<'a> {
 
     /// Execute show operation
     pub fn execute(&self, args: ShowArgs) -> Result<()> {
-        let bundle_name = match args.name {
-            Some(name) => name,
-            None => self.select_bundle_interactively()?,
-        };
+        let bundle_name = args
+            .name
+            .unwrap_or_else(|| self.select_bundle_interactively()?)?;
 
         if bundle_name.is_empty() {
             return Ok(());
@@ -37,31 +36,33 @@ impl<'a> ShowOperation<'a> {
 
         // Check if this is a scope pattern and handle multiple bundles if needed
         if Self::is_scope_pattern(&bundle_name) {
-            let matching_bundles = self.filter_bundles_by_scope(&bundle_name);
-
-            if matching_bundles.is_empty() {
-                return Err(AugentError::BundleNotFound {
-                    name: format!("No bundles found matching '{}'", bundle_name),
-                });
-            }
-
-            // If single match, show it directly
-            if matching_bundles.len() == 1 {
-                return self.show_bundle(&matching_bundles[0], args.detailed);
-            }
-
-            // Multiple matches - let user select
-            let selected = self.select_bundles_from_list(matching_bundles)?;
-            if !selected.is_empty() {
-                return self.show_bundle(&selected, args.detailed);
-            }
-            return Ok(());
+            return self.show_bundle_by_scope_pattern(&bundle_name, args.detailed);
         }
 
         self.show_bundle(&bundle_name, args.detailed)
     }
 
-    /// Show a single bundle
+    fn show_bundle_by_scope_pattern(&self, scope: &str, detailed: bool) -> Result<()> {
+        let matching_bundles = self.filter_bundles_by_scope(scope);
+
+        if matching_bundles.is_empty() {
+            return Err(AugentError::BundleNotFound {
+                name: format!("No bundles found matching '{}'", scope),
+            });
+        }
+
+        if matching_bundles.len() == 1 {
+            self.show_bundle(&matching_bundles[0], detailed)
+        } else {
+            let selected = self.select_bundles_from_list(matching_bundles)?;
+            if selected.is_empty() {
+                Ok(())
+            } else {
+                self.show_bundle(&selected, detailed)
+            }
+        }
+    }
+
     fn show_bundle(&self, bundle_name: &str, detailed: bool) -> Result<()> {
         let locked_bundle = self
             .workspace
@@ -80,16 +81,19 @@ impl<'a> ShowOperation<'a> {
         };
 
         println!();
-        self.display_bundle_info(
-            bundle_name,
-            &bundle_config,
-            locked_bundle,
-            workspace_bundle,
-            detailed,
-        );
+        display_bundle_info(&self, bundle_name, &bundle_config, &locked_bundle, workspace_bundle, detailed);
 
         Ok(())
     }
+
+    fn display_bundle_info(
+        &self,
+        name: &str,
+        bundle_config: &BundleConfig,
+        locked_bundle: &LockedBundle,
+        workspace_bundle: Option<&WorkspaceBundle>,
+        detailed: bool,
+    ) {
 
     /// Select a bundle interactively from installed bundles
     fn select_bundle_interactively(&self) -> Result<String> {
@@ -231,6 +235,7 @@ impl<'a> ShowOperation<'a> {
         detailed: bool,
     ) {
         println!("  {}", Style::new().bold().yellow().apply_to(name));
+
         if let Some(ref description) = locked_bundle.description {
             println!(
                 "    {} {}",
@@ -238,6 +243,140 @@ impl<'a> ShowOperation<'a> {
                 description
             );
         }
+
+        display_bundle_source(&locked_bundle.source, detailed);
+
+        // Plugin block for Claude Marketplace ($claudeplugin) bundles
+        display_marketplace_plugin_if_applicable(locked_bundle, detailed);
+
+        display_bundle_resources(&self, name, bundle_config, workspace_bundle, locked_bundle, detailed);
+    }
+
+    fn display_bundle_source(source: &LockedSource, detailed: bool) {
+        println!("    {}", Style::new().bold().apply_to("Source:"));
+        match source {
+            LockedSource::Dir { path, .. } => {
+                println!(
+                    "      {} {}",
+                    Style::new().bold().apply_to("Type:"),
+                    Style::new().green().apply_to("Directory")
+                );
+                println!("      {} {}", Style::new().bold().apply_to("Path:"), path);
+            }
+            LockedSource::Git {
+                url, git_ref, sha, path, ..
+            } => {
+                display_git_source(detailed, url, git_ref, sha, path);
+            }
+        }
+    }
+
+        display_bundle_source(&locked_bundle.source, detailed);
+
+        // Plugin block for Claude Marketplace ($claudeplugin) bundles
+        display_marketplace_plugin_if_applicable(locked_bundle, detailed);
+
+        display_bundle_resources(&self, name, bundle_config, workspace_bundle, locked_bundle, detailed);
+    }
+
+    fn display_bundle_source(source: &LockedSource, detailed: bool) {
+        println!("    {}", Style::new().bold().apply_to("Source:"));
+        match source {
+            LockedSource::Dir { path, .. } => {
+                println!(
+                    "      {} {}",
+                    Style::new().bold().apply_to("Type:"),
+                    Style::new().green().apply_to("Directory")
+                );
+                println!("      {} {}", Style::new().bold().apply_to("Path:"), path);
+            }
+            LockedSource::Git {
+                url, git_ref, sha, path, ..
+            } => {
+                display_git_source(detailed, url, git_ref, sha, path);
+            }
+        }
+    }
+
+    fn display_marketplace_plugin_if_applicable(locked_bundle: &LockedBundle, detailed: bool) {
+        if let LockedSource::Git { path: Some(p), .. } = &locked_bundle.source {
+            if p.contains("$claudeplugin") {
+                println!("    {}", Style::new().bold().apply_to("Plugin:"));
+                println!(
+                    "      {} {}",
+                    Style::new().bold().apply_to("type:"),
+                    Style::new().green().apply_to("Claude Marketplace")
+                );
+                if let Some(ref v) = locked_bundle.version {
+                    println!("      {} {}", Style::new().bold().apply_to("version:"), v);
+                }
+            }
+        }
+    }
+
+    fn display_bundle_resources(
+        &self,
+        name: &str,
+        bundle_config: &BundleConfig,
+        workspace_bundle: Option<&WorkspaceBundle>,
+        locked_bundle: &LockedBundle,
+        detailed: bool,
+    ) {
+        // Display resources from workspace bundle if available, otherwise show all files from lockfile
+        if let Some(ws_bundle) = workspace_bundle {
+            display_workspace_bundle_resources(&self, ws_bundle);
+        } else if !locked_bundle.files.is_empty() {
+            Self::display_available_resources(&locked_bundle.files);
+        } else {
+            println!("    {}", Style::new().bold().apply_to("Resources:"));
+            println!("      {}", Style::new().dim().apply_to("No resources"));
+        }
+
+        // Dependencies last (only when --detailed)
+        display_dependencies_if_detailed(detailed, bundle_config);
+    }
+
+    fn display_workspace_bundle_resources(&self, ws_bundle: &WorkspaceBundle) {
+        println!("    {}", Style::new().bold().apply_to("Enabled resources:"));
+        if ws_bundle.enabled.is_empty() {
+            println!("      No files installed");
+        } else {
+            self.display_installed_resources(ws_bundle);
+        }
+    }
+
+    fn display_dependencies_if_detailed(detailed: bool, bundle_config: &BundleConfig) {
+        if detailed {
+            if !bundle_config.bundles.is_empty() {
+                println!("    {}", Style::new().bold().apply_to("Dependencies:"));
+                for dep in &bundle_config.bundles {
+                    println!("      - {}", Style::new().cyan().apply_to(&dep.name));
+                    display_dependency_details(&dep);
+                }
+            } else {
+                println!(
+                    "    {}: {}",
+                    Style::new().bold().apply_to("Dependencies"),
+                    Style::new().dim().apply_to("None")
+                );
+            }
+        }
+    }
+
+    fn display_dependency_details(dep: &BundleDependency) {
+        if dep.is_local() {
+            if let Some(path_val) = &dep.path {
+                println!("        Path: {}", path_val);
+            }
+        } else if dep.is_git() {
+            if let Some(url) = &dep.git {
+                println!("        URL: {}", url);
+            }
+            if let Some(ref_name) = &dep.git_ref {
+                println!("        Ref: {}", ref_name);
+            }
+        }
+    }
         println!("    {}", Style::new().bold().apply_to("Source:"));
         match &locked_bundle.source {
             LockedSource::Dir { path, .. } => {
@@ -255,19 +394,10 @@ impl<'a> ShowOperation<'a> {
                 path,
                 ..
             } => {
-                println!(
-                    "      {} {}",
-                    Style::new().bold().apply_to("Type:"),
-                    Style::new().green().apply_to("Git")
-                );
-                println!("      {} {}", Style::new().bold().apply_to("URL:"), url);
-                if let Some(ref_name) = git_ref {
-                    println!(
-                        "      {} {}",
-                        Style::new().bold().apply_to("Ref:"),
-                        ref_name
-                    );
-                }
+                display_git_source(detailed, url, git_ref, sha, path);
+            }
+        }
+    }
                 println!("      {} {}", Style::new().bold().apply_to("SHA:"), sha);
                 if let Some(subdir) = path {
                     println!("      {} {}", Style::new().bold().apply_to("path:"), subdir);

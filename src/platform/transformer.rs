@@ -100,103 +100,143 @@ impl Transformer {
     /// Apply a transform rule to get the target path for a resource
     fn apply_transform_rule(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
         let path_str = resource_path.to_string_lossy().replace('\\', "/");
-
         let skill_root = self.find_skill_root(&path_str);
 
-        let mut target = rule.to.clone();
+        let mut target = substitute_name_variable(&rule.to, &path_str, skill_root, resource_path);
 
+        let relative_part = compute_relative_part(&rule, &target, &path_str, skill_root);
+
+        target = process_wildcards(&target, &relative_part, rule.extension);
+
+        target = add_extension(&target, rule.extension);
+
+        PathBuf::from(&target.replace('\\', "/"))
+    }
+
+    fn substitute_name_variable(
+        target: &str,
+        path_str: &str,
+        skill_root: Option<&str>,
+        resource_path: &Path,
+    ) -> String {
         if target.contains("{name}") {
-            let name = Transformer::compute_name_variable(&path_str, skill_root, resource_path);
+            let name = Transformer::compute_name_variable(path_str, skill_root, resource_path);
             if !name.is_empty() {
-                target = target.replace("{name}", &name);
+                target.replace("{name}", &name)
+            } else {
+                target.to_string()
             }
+        } else {
+            target.to_string()
         }
+    }
 
-        let relative_part = if rule.to.contains("{name}") {
+    fn compute_relative_part(
+        rule: &TransformRule,
+        target: &str,
+        path_str: &str,
+        skill_root: Option<&str>,
+    ) -> String {
+        if target.contains("{name}") {
             if let Some(root) = skill_root {
                 path_str
                     .strip_prefix(root)
-                    .unwrap_or(&path_str)
+                    .unwrap_or(path_str)
                     .trim_start_matches('/')
                     .to_string()
             } else {
-                Transformer::extract_relative_part(&rule.from, &path_str)
+                Transformer::extract_relative_part(&rule.from, path_str)
             }
         } else {
-            Transformer::extract_relative_part(&rule.from, &path_str)
-        };
-
-        if target.contains("**") {
-            if let Some(pos) = target.find("**") {
-                let prefix = &target[..pos];
-                let suffix = if pos + 2 < target.len() {
-                    &target[pos + 2..]
-                } else {
-                    ""
-                };
-
-                let relative_to_use =
-                    if rule.extension.is_some() && (suffix.contains('.') || suffix.contains('*')) {
-                        let rel_path = PathBuf::from(&relative_part);
-                        if let Some(stem) = rel_path.file_stem() {
-                            if let Some(parent) = rel_path.parent() {
-                                if parent.as_os_str().is_empty() {
-                                    stem.to_string_lossy().to_string()
-                                } else {
-                                    format!(
-                                        "{}/{}",
-                                        parent.to_string_lossy().replace('\\', "/"),
-                                        stem.to_string_lossy()
-                                    )
-                                }
-                            } else {
-                                stem.to_string_lossy().to_string()
-                            }
-                        } else {
-                            relative_part.clone()
-                        }
-                    } else {
-                        relative_part.clone()
-                    };
-
-                if suffix.starts_with('/') {
-                    let suffix_clean = suffix.strip_prefix('/').unwrap_or(suffix);
-                    if suffix_clean.contains('.') || suffix_clean.contains('*') {
-                        target = format!("{}{}", prefix, relative_to_use);
-                    } else {
-                        target = format!("{}{}/{}", prefix, relative_to_use, suffix_clean);
-                    }
-                } else if !suffix.is_empty() {
-                    target = format!("{}{}{}", prefix, relative_to_use, suffix);
-                } else {
-                    target = format!("{}{}", prefix, relative_to_use);
-                }
-            }
-        } else if target.contains('*') {
-            if let Some(stem) = resource_path.file_stem() {
-                target = target.replace('*', &stem.to_string_lossy());
-            }
+            Transformer::extract_relative_part(&rule.from, path_str)
         }
+    }
 
-        if let Some(ref ext) = rule.extension {
+    fn process_wildcards(target: &str, relative_part: &str, extension: &Option<&str>) -> String {
+        if target.contains("**") {
+            process_double_wildcard(target, relative_part, extension)
+        } else {
+            target.to_string()
+        }
+    }
+
+    fn process_double_wildcard(
+        target: &str,
+        relative_part: &str,
+        extension: &Option<&str>,
+    ) -> String {
+        if let Some(pos) = target.find("**") {
+            let prefix = &target[..pos];
+            let suffix = if pos + 2 < target.len() {
+                &target[pos + 2..]
+            } else {
+                ""
+            };
+
+            let relative_to_use = compute_relative_to_use(relative_part, extension);
+
+            if suffix.starts_with('/') {
+                let suffix_clean = suffix.strip_prefix('/').unwrap_or(suffix);
+                if suffix_clean.contains('.') || suffix_clean.contains('*') {
+                    format!("{}{}", prefix, relative_to_use)
+                } else {
+                    format!("{}{}/{}", prefix, relative_to_use, suffix_clean)
+                }
+            } else if !suffix.is_empty() {
+                format!("{}{}{}", prefix, relative_to_use, suffix)
+            } else {
+                format!("{}{}", prefix, relative_to_use)
+            }
+        } else {
+            target.to_string()
+        }
+    }
+
+    fn compute_relative_to_use(relative_part: &str, extension: &Option<&str>) -> String {
+        if extension.is_some() && (relative_part.contains('.') || relative_part.contains('*')) {
+            let rel_path = PathBuf::from(relative_part);
+            if let Some(stem) = rel_path.file_stem() {
+                if let Some(parent) = rel_path.parent() {
+                    if parent.as_os_str().is_empty() {
+                        stem.to_string_lossy().to_string()
+                    } else {
+                        format!(
+                            "{}/{}",
+                            parent.to_string_lossy().replace('\\', "/"),
+                            stem.to_string_lossy()
+                        )
+                    }
+                } else {
+                    stem.to_string_lossy().to_string()
+                }
+            } else {
+                relative_part.to_string()
+            }
+        } else {
+            relative_part.to_string()
+        }
+    }
+
+    fn add_extension(target: &str, extension: &Option<&str>) -> String {
+        if let Some(ref ext) = extension {
             let target_path = PathBuf::from(&target.replace('\\', "/"));
 
             if let Some(file_stem) = target_path.file_stem() {
                 let new_filename = format!("{}.{}", file_stem.to_string_lossy(), ext);
                 if let Some(parent) = target_path.parent() {
-                    target = parent
+                    parent
                         .join(&new_filename)
                         .to_string_lossy()
-                        .replace('\\', "/");
+                        .replace('\\', "/")
                 } else {
-                    target = new_filename;
+                    new_filename
                 }
             } else {
-                target = format!("{}.{}", target, ext);
+                format!("{}.{}", target, ext)
             }
+        } else {
+            target.to_string()
         }
-
-        PathBuf::from(&target.replace('\\', "/"))
     }
 
     /// Extract the relative part of a path that matches wildcards in a pattern

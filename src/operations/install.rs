@@ -9,6 +9,7 @@ use std::path::Path;
 
 use crate::cache;
 use crate::cli::InstallArgs;
+use crate::commands::menu;
 use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource, WorkspaceBundle};
 use crate::domain::{DiscoveredBundle, ResolvedBundle};
 use crate::error::{AugentError, Result};
@@ -17,7 +18,7 @@ use crate::installer::{Installer, discover_resources};
 use crate::path_utils;
 use crate::platform::{self, Platform, detection};
 use crate::resolver::Resolver;
-use crate::source::GitSource;
+use crate::source::{BundleSource, GitSource};
 use crate::transaction::Transaction;
 use crate::ui::{self, ProgressReporter};
 use crate::workspace::{Workspace, modified};
@@ -247,6 +248,129 @@ impl<'a> InstallOperation<'a> {
         }
     }
 
+    fn determine_installing_bundle_name(
+        source_str: &str,
+        source: &BundleSource,
+        current_dir: &Path,
+    ) -> Result<Option<String>> {
+        let mut installing_by_bundle_name = None;
+
+        if is_path_like(source_str) {
+            if let Some(source_path) = source.as_local_path() {
+                let resolved_source_path_for_check = if source_path.is_absolute() {
+                    source_path.clone()
+                } else {
+                    current_dir.join(source_path)
+                };
+
+                use normpath::PathExt;
+                let is_workspace_root = resolved_source_path_for_check
+                    .normalize()
+                    .ok()
+                    .and_then(|p| {
+                        current_dir
+                            .normalize()
+                            .ok()
+                            .map(|cwd| p.into_path_buf() == cwd.into_path_buf())
+                    })
+                    .unwrap_or(false);
+
+                if is_workspace_root {
+                    installing_by_bundle_name = Some("".to_string());
+                }
+            }
+        }
+
+        Ok(installing_by_bundle_name)
+    }
+
+    fn print_install_message(
+        installing_by_bundle_name: &Option<String>,
+        source_str: &str,
+        source: &BundleSource,
+    ) {
+        if let Some(ref bundle_name) = installing_by_bundle_name {
+            println!("Installing {} ({})", bundle_name, source_str);
+        } else {
+            println!("Installing from: {}", source.display_url());
+        }
+    }
+
+    fn select_bundles_to_install(
+        discovered: &[DiscoveredBundle],
+        installed_bundle_names: &[String],
+        all_bundles: bool,
+    ) -> Result<(Vec<DiscoveredBundle>, Vec<String>)> {
+        let discovered_count = discovered.len();
+
+        if discovered_count > 1 && !all_bundles {
+            let selection = menu::select_bundles_interactively(discovered, installed_bundle_names)?;
+            Ok((selection.selected, selection.deselected))
+        } else if discovered_count >= 1 {
+            Ok((discovered.to_vec(), vec![]))
+        } else {
+            Ok((vec![], vec![]))
+        }
+    }
+
+    fn should_exit_without_installation(
+        selected_bundles: &[DiscoveredBundle],
+        discovered_count: usize,
+        deselected_bundle_names: &[String],
+    ) -> bool {
+        selected_bundles.is_empty() && discovered_count > 1 && deselected_bundle_names.is_empty()
+    }
+
+    fn installed_bundle_names_to_vec(
+        current_dir: &Path,
+        discovered: &[DiscoveredBundle],
+    ) -> Vec<String> {
+        get_installed_bundle_names_for_menu(current_dir, discovered)
+            .map(|set| set.iter().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    fn set_workspace_bundle_config_dir_if_needed(
+        workspace: &mut Workspace,
+        source: &Option<String>,
+        actual_current_dir: &Path,
+    ) {
+        use crate::installer::discover_resources;
+
+        if source.is_some()
+            && !discover_resources(actual_current_dir)
+                .map(|resources: Vec<_>| resources.is_empty())
+                .unwrap_or(false)
+        {
+            workspace.bundle_config_dir = Some(actual_current_dir.to_path_buf());
+        }
+    }
+
+    fn execute_install_transaction(
+        install_op: &mut InstallOperation,
+        args: &InstallArgs,
+        workspace: &mut Workspace,
+        selected_bundles: &[DiscoveredBundle],
+        installing_by_bundle_name: &Option<String>,
+    ) -> Result<()> {
+        let mut transaction = Transaction::new(workspace);
+        transaction.backup_configs()?;
+
+        let skip_workspace_bundle = installing_by_bundle_name.is_some();
+        match install_op.execute(
+            args,
+            selected_bundles,
+            &mut transaction,
+            skip_workspace_bundle,
+        ) {
+            Ok(()) => {
+                transaction.commit();
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Execute install operation for bundles from a specific source (path/URL/bundle name)
     #[allow(clippy::too_many_arguments)]
     pub fn execute_with_source(
@@ -259,272 +383,34 @@ impl<'a> InstallOperation<'a> {
         current_dir: &Path,
         installing_by_bundle_name: Option<String>,
     ) -> Result<()> {
-        use crate::commands::menu::select_bundles_interactively;
         use crate::resolver::Resolver;
-        use crate::source::BundleSource;
 
-        // If source is a path and it's not the workspace root itself, skip workspace bundle
-        let mut installing_by_bundle_name = installing_by_bundle_name;
-        if let Some(ref source_str) = args.source {
-            let source_str_ref = source_str.as_str();
-
-            // Parse source early for display
-            let source = BundleSource::parse(source_str_ref)?;
-
-            if is_path_like(source_str_ref) {
-                // Only check if it's actually a local path (not a git URL that looks like a path)
-                if let Some(source_path) = source.as_local_path() {
-                    let resolved_source_path_for_check = if source_path.is_absolute() {
-                        source_path.clone()
-                    } else {
-                        current_dir.join(source_path)
-                    };
-
-                    use normpath::PathExt;
-                    let is_workspace_root = resolved_source_path_for_check
-                        .normalize()
-                        .ok()
-                        .and_then(|p| {
-                            current_dir
-                                .normalize()
-                                .ok()
-                                .map(|cwd| p.into_path_buf() == cwd.into_path_buf())
-                        })
-                        .unwrap_or(false);
-
-                    if is_workspace_root {
-                        installing_by_bundle_name = Some("".to_string());
-                    }
-                }
-            }
-
-            // Print a nice message depending on whether we're installing by name or source
-            if let Some(ref bundle_name) = installing_by_bundle_name {
-                println!("Installing {} ({})", bundle_name, source_str_ref);
-            } else {
-                println!("Installing from: {}", source.display_url());
-            }
-
-            let mut resolver = Resolver::new(current_dir);
-            let discovered = resolver.discover_bundles(source_str_ref)?;
-
-            let installed_bundle_names =
-                get_installed_bundle_names_for_menu(current_dir, &discovered);
-            let discovered = filter_workspace_bundle_from_discovered(
-                current_dir,
-                &discovered,
-                &installing_by_bundle_name,
-            );
-
-            // Show interactive menu if multiple bundles, auto-select if one
-            let discovered_count = discovered.len();
-            let (selected_bundles, deselected_bundle_names) =
-                if discovered_count > 1 && !args.all_bundles {
-                    let selection =
-                        select_bundles_interactively(&discovered, installed_bundle_names.as_ref())?;
-                    (selection.selected, selection.deselected)
-                } else if discovered_count >= 1 {
-                    (discovered.to_vec(), vec![])
-                } else {
-                    (vec![], vec![]) // No bundles discovered - will be handled in do_install
-                };
-
-            // If user selected nothing from menu (and there were multiple) AND there are
-            // no deselected installed bundles, exit without creating/updating workspace.
-            if selected_bundles.is_empty()
-                && discovered_count > 1
-                && deselected_bundle_names.is_empty()
-            {
-                return Ok(());
-            }
-
-            // Something was selected (to install or uninstall) — prompt for platforms if not yet set
-            let platforms = Self::select_or_detect_platforms(args, current_dir, false)?;
-            if platforms.is_empty() {
-                return Err(AugentError::NoPlatformsDetected);
-            }
-
-            // Only now create workspace directory (user completed bundle and platform selection)
-            std::fs::create_dir_all(current_dir).map_err(|e| AugentError::IoError {
-                message: format!("Failed to create workspace directory: {}", e),
-            })?;
-
-            // Initialize or open workspace (after bundle and platform selection)
-            let mut workspace = Workspace::init_or_open(current_dir)?;
-
-            // Check if we're installing from a subdirectory that is itself a bundle
-            if args.source.is_some()
-                && !discover_resources(actual_current_dir)
-                    .map(|resources: Vec<_>| resources.is_empty())
-                    .unwrap_or(false)
-            {
-                workspace.bundle_config_dir = Some(actual_current_dir.to_path_buf());
-            }
-
-            // If some bundles were deselected that are already installed, handle uninstall FIRST
-            if !deselected_bundle_names.is_empty() {
-                if let Some(only_uninstalled) = self.handle_deselected_bundles(
-                    &mut workspace,
-                    &deselected_bundle_names,
-                    &selected_bundles,
-                    args.dry_run,
-                    args.yes,
-                )? {
-                    if only_uninstalled {
-                        return Ok(());
-                    }
-                }
-            }
-
-            // Create transaction for atomic operations
-            let mut transaction = Transaction::new(&workspace);
-            transaction.backup_configs()?;
-
-            // Create install operation and execute
-            let skip_workspace_bundle = installing_by_bundle_name.is_some();
-            match self.execute(
-                args,
-                &selected_bundles,
-                &mut transaction,
-                skip_workspace_bundle,
-            ) {
-                Ok(()) => {
-                    // Commit installation
-                    transaction.commit();
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            }
-        } else {
-            Err(AugentError::BundleNotFound {
+        let Some(ref source_str) = args.source else {
+            return Err(AugentError::BundleNotFound {
                 name: "No source provided".to_string(),
-            })
-        }
-    }
-
-    /// Execute install operation for bundles from augent.yaml
-    pub fn execute_from_yaml(
-        &mut self,
-        args: &mut InstallArgs,
-        _transaction: &mut Transaction,
-        actual_current_dir: &Path,
-        current_dir: &Path,
-        workspace_is_explicit: bool,
-    ) -> Result<()> {
-        use crate::installer::discover_resources;
-
-        // IMPORTANT: Check if we're in a subdirectory (of workspace root or where workspace would be created) with no resources
-        // This prevents installing from parent workspace when running from a subdirectory
-        // Only skip this check when running with --workspace flag OR AUGENT_WORKSPACE env var
-        if !workspace_is_explicit && std::env::var("AUGENT_WORKSPACE").is_err() {
-            let workspace_root_opt = Workspace::find_from(actual_current_dir);
-            let workspace_root = workspace_root_opt.as_deref().unwrap_or(current_dir);
-
-            if !check_subdirectory_resources(
-                actual_current_dir,
-                workspace_root,
-                workspace_is_explicit,
-            )? {
-                return Ok(());
-            }
-        }
-
-        // No source provided - check if we're in a sub-bundle directory first
-        let (workspace_root, was_initialized) = match Workspace::find_from(current_dir) {
-            Some(root) => (root, false),
-            None => {
-                // No workspace — only create .augent/ if current dir has bundle resources to install
-                let has_resources_in_current_dir = discover_resources(current_dir)
-                    .map(|resources: Vec<_>| !resources.is_empty())
-                    .unwrap_or(false);
-                if !has_resources_in_current_dir {
-                    println!("Nothing to install.");
-                    return Ok(());
-                }
-                let workspace = Workspace::init_or_open(current_dir)?;
-                println!("Initialized .augent/ directory.");
-                (workspace.root, true)
-            }
+            });
         };
 
-        let workspace = Workspace::open(&workspace_root)?;
+        let source_str_ref = source_str.as_str();
+        let source = BundleSource::parse(source_str_ref)?;
 
-        // Check if there are any resources to install BEFORE printing messages or resolving
-        // Check both augent.yaml bundles and workspace bundle resources
-        let has_bundles_in_config =
-            !workspace.bundle_config.bundles.is_empty() || !workspace.lockfile.bundles.is_empty();
-        let has_workspace_resources = {
-            let workspace_bundle_path = workspace.get_bundle_source_path();
-            discover_resources(&workspace_bundle_path)
-                .map(|resources: Vec<_>| !resources.is_empty())
-                .unwrap_or(false)
-        };
+        let installing_by_bundle_name =
+            determine_installing_bundle_name(source_str_ref, &source, current_dir)?;
 
-        // If workspace was just initialized, also check workspace root for local resources
-        let has_local_resources = if was_initialized {
-            discover_resources(&workspace_root)
-                .map(|resources: Vec<_>| !resources.is_empty())
-                .unwrap_or(false)
-        } else {
-            false
-        };
+        print_install_message(&installing_by_bundle_name, source_str_ref, &source);
 
-        // If there's nothing to install, show a message and exit (without creating .augent/)
-        if !has_bundles_in_config && !has_workspace_resources && !has_local_resources {
-            println!("Nothing to install.");
-            return Ok(());
-        }
+        let mut resolver = Resolver::new(current_dir);
+        let discovered = resolver.discover_bundles(source_str_ref)?;
 
-        // augent.yaml is in .augent/
-        let augent_yaml_path = workspace_root.join(".augent/augent.yaml");
+        let installed_bundle_names = installed_bundle_names_to_vec(current_dir, &discovered);
+        let discovered = filter_workspace_bundle_from_discovered(
+            current_dir,
+            &discovered,
+            &installing_by_bundle_name,
+        );
 
-        // Calculate relative path for display
-        let display_path = augent_yaml_path
-            .strip_prefix(current_dir)
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| augent_yaml_path.to_string_lossy().to_string());
-
-        println!("Augent: Installing bundles from {}", display_path);
-
-        // Create transaction for atomic operations
-        let mut transaction = Transaction::new(&workspace);
-        transaction.backup_configs()?;
-
-        // Create install operation and execute
-        match self.execute_from_yaml_internal(
-            args,
-            &mut transaction,
-            was_initialized,
-            has_local_resources,
-            has_workspace_resources,
-        ) {
-            Ok(()) => {
-                transaction.commit();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Internal implementation of execute_from_yaml
-    fn execute_from_yaml_internal(
-        &mut self,
-        args: &mut InstallArgs,
-        transaction: &mut Transaction,
-        was_initialized: bool,
-        has_local_resources: bool,
-        has_workspace_resources: bool,
-    ) -> Result<()> {
-        // Detect and preserve any modified files before reinstalling bundles
-        let has_modified_files = self.detect_and_preserve_modified_files()?;
-
-        let (augent_yaml_missing, original_lockfile) = self.handle_missing_augent_yaml()?;
-
-        let (resolved_bundles, should_update_lockfile) = self.resolve_bundles_for_yaml_install(
-            augent_yaml_missing,
-            was_initialized,
-            has_local_resources,
-        )?;
+        let (selected_bundles, deselected_bundle_names) =
+            select_bundles_to_install(&discovered, &installed_bundle_names, args.all_bundles)?;
 
         let resolved_bundles = self.ensure_workspace_bundle_in_list(
             resolved_bundles,
