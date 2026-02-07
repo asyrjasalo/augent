@@ -17,7 +17,7 @@ use std::path::Path;
 use std::process::Command;
 
 use git2::{
-    Cred, CredentialType, ErrorClass, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder,
+    Cred, CredentialType, ErrorClass, FetchOptions, RemoteCallbacks, RepoBuilder, Repository,
 };
 
 use crate::error::{AugentError, Result};
@@ -137,41 +137,82 @@ fn copy_dir_recursive_for_clone(src: &Path, dst: &Path, url: &str) -> Result<()>
 
 /// Interpret a git2 error and provide a more user-friendly message
 fn interpret_git_error(err: &git2::Error) -> String {
-    let class = err.class();
     let message = err.message().to_lowercase();
 
-    // Check for specific error patterns in the message
-    // Order matters - more specific patterns first
-    if message.contains("not found") || message.contains("404") {
-        "Repository not found".to_string()
-    } else if message.contains("too many redirects") || message.contains("authentication replays") {
-        // This often means repository doesn't exist but auth is being attempted
-        "Repository not found".to_string()
-    } else if message.contains("authentication") || message.contains("credentials") {
-        "Authentication failed".to_string()
-    } else if message.contains("permission denied") || message.contains("access denied") {
-        "Permission denied".to_string()
-    } else if message.contains("connection")
-        || message.contains("network")
-        || message.contains("timeout")
-        || message.contains("timed out")
-    {
-        "Network error".to_string()
-    } else if class == ErrorClass::Http {
-        // Generic HTTP error - try to provide more context
-        if message.contains("certificate") {
-            "Certificate error".to_string()
-        } else if message.contains("ssl") {
-            "SSL error".to_string()
-        } else {
-            format!("HTTP error: {}", err.message())
-        }
-    } else if class == ErrorClass::Ssh {
-        format!("SSH error: {}", err.message())
-    } else {
-        // Fall back to original message
-        err.message().to_string()
+    // Helper: Check if message matches specific error patterns
+    fn matches_error_pattern(msg: &str, patterns: &[&str]) -> bool {
+        patterns.iter().any(|p| msg.contains(p))
     }
+
+    // Helper: Classify error class for specific handling
+    fn classify_error_class(class: ErrorClass, msg: &str) -> ErrorClassOrMessage {
+        if class == ErrorClass::Http && msg.contains("certificate") {
+            ErrorClassOrMessage::HttpCertificate
+        } else if class == ErrorClass::Http && msg.contains("ssl") {
+            ErrorClassOrMessage::HttpSsl
+        } else {
+            ErrorClassOrMessage::Other(class)
+        }
+    }
+
+    // Classify the error type for specific handling
+    let error_type = classify_error_class(err.class(), &message.as_str());
+
+    match error_type {
+        ErrorClassOrMessage::RepositoryNotFound => {
+            // Repository not found, 404, or auth relay
+            "Repository not found".to_string()
+        }
+        ErrorClassOrMessage::AuthenticationFailed => {
+            // Authentication or credentials error
+            "Authentication failed".to_string()
+        }
+        ErrorClassOrMessage::PermissionDenied => {
+            // Permission denied or access denied
+            "Permission denied".to_string()
+        }
+        ErrorClassOrMessage::NetworkError => {
+            // Connection, network, timeout, or timed out errors
+            "Network error".to_string()
+        }
+        ErrorClassOrMessage::HttpCertificate => {
+            // Certificate error
+            "Certificate error".to_string()
+        }
+        ErrorClassOrMessage::HttpSsl => {
+            // SSL error
+            "SSL error".to_string()
+        }
+        ErrorClassOrMessage::Other(_) => {
+            // For HTTP and SSH errors, provide original message
+            // For all other errors, use the original message
+            if matches_error_class(err.class(), &["ErrorClass::Http", "ErrorClass::Ssh"]) {
+                format!("{} error: {}", error_class_name(err.class()), err.message())
+            } else {
+                err.message().to_string()
+            }
+        }
+    }
+}
+
+/// Helper: Get display name for error class
+fn error_class_name(class: ErrorClass) -> &'static str {
+    match class {
+        ErrorClass::Http => "HTTP",
+        ErrorClass::Ssh => "SSH",
+        _ => "Unknown",
+    }
+}
+
+/// Internal enum for error type classification
+enum ErrorClassOrMessage {
+    RepositoryNotFound,
+    AuthenticationFailed,
+    PermissionDenied,
+    NetworkError,
+    HttpCertificate,
+    HttpSsl,
+    Other(ErrorClass),
 }
 
 /// Clone a git repository to a target directory
