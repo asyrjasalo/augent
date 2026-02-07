@@ -6,7 +6,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::config::lockfile::LockedSource;
+use crate::config::LockedSource;
+use crate::config::utils::BundleContainer;
 use crate::error::Result;
 use crate::hash;
 use crate::workspace::Workspace;

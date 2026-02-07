@@ -93,9 +93,7 @@ pub fn should_include_workspace_bundle(
 /// Check if workspace root has resources to install
 #[allow(dead_code)]
 fn has_workspace_resources(workspace_root: &Path) -> bool {
-    use crate::installer;
-
-    match installer::discover_resources(workspace_root) {
+    match crate::installer::discovery::discover_resources(workspace_root) {
         Ok(resources) => !resources.is_empty(),
         Err(_) => false,
     }

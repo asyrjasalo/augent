@@ -2,7 +2,7 @@
 #[allow(unused_imports)]
 use crate::cli::ShowArgs;
 use crate::common::string_utils;
-use crate::config::{BundleConfig, LockedSource};
+use crate::config::{BundleConfig, LockedSource, utils::BundleContainer};
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
 use inquire::Select;

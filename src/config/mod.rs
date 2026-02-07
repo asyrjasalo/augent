@@ -10,6 +10,7 @@ pub mod bundle;
 pub mod index;
 pub mod lockfile;
 pub mod marketplace;
+pub mod utils;
 
 // Re-export commonly used types
 pub use bundle::{BundleConfig, BundleDependency};

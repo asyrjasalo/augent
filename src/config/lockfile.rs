@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::config::utils::BundleContainer;
 use crate::error::{AugentError, Result};
 
 /// Lockfile structure (augent.lock)
@@ -333,11 +334,6 @@ impl Lockfile {
         self.bundles = reordered;
     }
 
-    /// Find a bundle by name
-    pub fn find_bundle(&self, name: &str) -> Option<&LockedBundle> {
-        self.bundles.iter().find(|b| b.name == name)
-    }
-
     /// Remove a bundle from the lockfile
     pub fn remove_bundle(&mut self, name: &str) -> Option<LockedBundle> {
         if let Some(pos) = self.bundles.iter().position(|b| b.name == name) {
@@ -381,6 +377,20 @@ impl Lockfile {
                     _ => false,
                 }
         })
+    }
+}
+
+impl BundleContainer<LockedBundle> for Lockfile {
+    fn bundles(&self) -> &[LockedBundle] {
+        &self.bundles
+    }
+
+    fn name(bundle: &LockedBundle) -> &str {
+        &bundle.name
+    }
+
+    fn find_bundle(&self, name: &str) -> Option<&LockedBundle> {
+        self.bundles().iter().find(|b| Self::name(b) == name)
     }
 }
 

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::config::utils::BundleContainer;
 use crate::error::Result;
 
 /// Custom serializer for enabled map that sorts keys and values alphabetically
@@ -132,43 +133,11 @@ impl WorkspaceConfig {
 
     /// Serialize workspace configuration to YAML string with workspace name
     pub fn to_yaml(&self, workspace_name: &str) -> Result<String> {
-        let mut yaml = serde_yaml::to_string(self)?;
-
-        // Replace the empty name with the actual workspace name
-        yaml = yaml.replace("name: ''", &format!("name: '{}'", workspace_name));
-
-        // Insert empty line after name field for readability
-        let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
-        if parts.len() != 2 {
-            return Ok(format!("{}\n", yaml));
-        }
-
-        let result = format!("{}\n\n{}", parts[0], parts[1]);
-
-        // Add empty lines between bundle entries for readability
-        let lines: Vec<&str> = result.lines().collect();
-        let mut formatted = Vec::new();
-        let mut in_bundles_section = false;
-
-        for line in lines {
-            if line.trim_start().starts_with("bundles:") {
-                in_bundles_section = true;
-                formatted.push(line.to_string());
-            } else if in_bundles_section && line.trim_start().starts_with("- name:") {
-                // New bundle entry - add empty line before it (unless it's first one)
-                // Check if the last line was indented (meaning we had a previous bundle with content)
-                if let Some(last) = formatted.last() {
-                    if !last.is_empty() && last.starts_with(' ') {
-                        formatted.push(String::new());
-                    }
-                }
-                formatted.push(line.to_string());
-            } else {
-                formatted.push(line.to_string());
-            }
-        }
-
-        Ok(format!("{}\n", formatted.join("\n")))
+        let yaml = serde_yaml::to_string(self)?;
+        Ok(crate::config::utils::format_yaml_with_workspace_name(
+            &yaml,
+            workspace_name,
+        ))
     }
 
     /// Reorganize all bundles to match lockfile order
@@ -209,16 +178,6 @@ impl WorkspaceConfig {
         self.bundles = reordered;
     }
 
-    /// Find a bundle by name
-    pub fn find_bundle(&self, name: &str) -> Option<&WorkspaceBundle> {
-        self.bundles.iter().find(|b| b.name == name)
-    }
-
-    /// Find a bundle by name (mutable)
-    pub fn find_bundle_mut(&mut self, name: &str) -> Option<&mut WorkspaceBundle> {
-        self.bundles.iter_mut().find(|b| b.name == name)
-    }
-
     /// Remove a bundle from the workspace
     pub fn remove_bundle(&mut self, name: &str) -> Option<WorkspaceBundle> {
         if let Some(pos) = self.bundles.iter().position(|b| b.name == name) {
@@ -232,6 +191,12 @@ impl WorkspaceConfig {
     ///
     /// # Note
     /// This function is used by tests.
+    #[allow(dead_code)]
+    pub fn find_bundle_mut(&mut self, name: &str) -> Option<&mut WorkspaceBundle> {
+        self.bundles.iter_mut().find(|b| b.name == name)
+    }
+
+    /// Find which bundle provides a specific installed file
     #[allow(dead_code)] // Used by tests
     pub fn find_provider(&self, installed_path: &str) -> Option<(&str, &str)> {
         for bundle in &self.bundles {
@@ -252,6 +217,20 @@ impl WorkspaceConfig {
     pub fn validate(&self) -> Result<()> {
         // Name is computed from workspace location, not validated here
         Ok(())
+    }
+}
+
+impl BundleContainer<WorkspaceBundle> for WorkspaceConfig {
+    fn bundles(&self) -> &[WorkspaceBundle] {
+        &self.bundles
+    }
+
+    fn name(bundle: &WorkspaceBundle) -> &str {
+        &bundle.name
+    }
+
+    fn find_bundle(&self, name: &str) -> Option<&WorkspaceBundle> {
+        self.bundles().iter().find(|b| Self::name(b) == name)
     }
 }
 

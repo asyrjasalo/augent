@@ -9,6 +9,7 @@ use console::Style;
 use std::collections::HashMap;
 
 use crate::cli::ListArgs;
+use crate::config::utils::BundleContainer;
 use crate::config::{LockedSource, WorkspaceBundle};
 use crate::error::Result;
 use crate::workspace::Workspace;

@@ -7,8 +7,6 @@
 pub mod discovery;
 pub mod files;
 
-pub use discovery::discover_resources;
-
 use std::collections::HashMap;
 use std::path::Path;
 

@@ -9,11 +9,13 @@ use std::path::Path;
 
 use crate::cache;
 use crate::cli::InstallArgs;
+use crate::config::utils::BundleContainer;
 use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource, WorkspaceBundle};
 use crate::domain::{DiscoveredBundle, ResolvedBundle};
 use crate::error::{AugentError, Result};
 use crate::hash;
-use crate::installer::{Installer, discover_resources};
+use crate::installer::Installer;
+use crate::installer::discovery::discover_resources;
 use crate::path_utils;
 use crate::platform::{self, Platform, detection};
 use crate::resolver::Resolver;

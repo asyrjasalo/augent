@@ -61,7 +61,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         let mut workspace = Workspace::init_or_open(&current_dir)?;
 
         // Check if we're installing from a subdirectory that is itself a bundle
-        if !crate::installer::discover_resources(&actual_current_dir)
+        if !crate::installer::discovery::discover_resources(&actual_current_dir)
             .map(|resources: Vec<_>| resources.is_empty())
             .unwrap_or(true)
         {

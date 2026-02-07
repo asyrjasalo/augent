@@ -4,9 +4,8 @@
 //! 1. Check for bundles that depend on target bundle
 //! 2. Safely remove files that aren't provided by other bundles
 //! 3. Update configuration files
-//! 4. Rollback on failure
-//!
 use crate::common::{bundle_utils, string_utils};
+use crate::config::utils::BundleContainer;
 use std::collections::HashMap;
 use std::fs;
 
