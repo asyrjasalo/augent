@@ -17,7 +17,7 @@ use std::path::Path;
 use std::process::Command;
 
 use git2::{
-    Cred, CredentialType, ErrorClass, FetchOptions, RemoteCallbacks, RepoBuilder, Repository,
+    Cred, CredentialType, ErrorClass, FetchOptions, RemoteCallbacks, Repository, build::RepoBuilder,
 };
 
 use crate::error::{AugentError, Result};
@@ -139,14 +139,24 @@ fn copy_dir_recursive_for_clone(src: &Path, dst: &Path, url: &str) -> Result<()>
 fn interpret_git_error(err: &git2::Error) -> String {
     let message = err.message().to_lowercase();
 
-    // Helper: Check if message matches specific error patterns
-    fn matches_error_pattern(msg: &str, patterns: &[&str]) -> bool {
-        patterns.iter().any(|p| msg.contains(p))
-    }
-
-    // Helper: Classify error class for specific handling
-    fn classify_error_class(class: ErrorClass, msg: &str) -> ErrorClassOrMessage {
-        if class == ErrorClass::Http && msg.contains("certificate") {
+    // Order matters - more specific patterns first
+    fn classify_error_type(msg: &str, class: ErrorClass) -> ErrorClassOrMessage {
+        if msg.contains("not found") || msg.contains("404") {
+            ErrorClassOrMessage::RepositoryNotFound
+        } else if msg.contains("too many redirects") || msg.contains("authentication replays") {
+            // This often means repository doesn't exist but auth is being attempted
+            ErrorClassOrMessage::RepositoryNotFound
+        } else if msg.contains("authentication") || msg.contains("credentials") {
+            ErrorClassOrMessage::AuthenticationFailed
+        } else if msg.contains("permission denied") || msg.contains("access denied") {
+            ErrorClassOrMessage::PermissionDenied
+        } else if msg.contains("connection")
+            || msg.contains("network")
+            || msg.contains("timeout")
+            || msg.contains("timed out")
+        {
+            ErrorClassOrMessage::NetworkError
+        } else if class == ErrorClass::Http && msg.contains("certificate") {
             ErrorClassOrMessage::HttpCertificate
         } else if class == ErrorClass::Http && msg.contains("ssl") {
             ErrorClassOrMessage::HttpSsl
@@ -155,8 +165,8 @@ fn interpret_git_error(err: &git2::Error) -> String {
         }
     }
 
-    // Classify the error type for specific handling
-    let error_type = classify_error_class(err.class(), &message.as_str());
+    // Classify the error
+    let error_type = classify_error_type(message.as_str(), err.class());
 
     match error_type {
         ErrorClassOrMessage::RepositoryNotFound => {
@@ -183,13 +193,14 @@ fn interpret_git_error(err: &git2::Error) -> String {
             // SSL error
             "SSL error".to_string()
         }
-        ErrorClassOrMessage::Other(_) => {
-            // For HTTP and SSH errors, provide original message
+        ErrorClassOrMessage::Other(class) => {
+            // For HTTP and SSH errors, provide the original message with class name
             // For all other errors, use the original message
-            if matches_error_class(err.class(), &["ErrorClass::Http", "ErrorClass::Ssh"]) {
-                format!("{} error: {}", error_class_name(err.class()), err.message())
-            } else {
-                err.message().to_string()
+            match class {
+                ErrorClass::Http | ErrorClass::Ssh => {
+                    format!("{} error: {}", error_class_name(class), err.message())
+                }
+                _ => err.message().to_string(),
             }
         }
     }
