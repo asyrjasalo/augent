@@ -50,6 +50,16 @@ impl From<&InstallArgs> for InstallOptions {
     }
 }
 
+struct UpdateConfigParams<'a> {
+    args: &'a InstallArgs,
+    resolved_bundles: &'a [ResolvedBundle],
+    workspace_bundles: Vec<WorkspaceBundle>,
+    should_update_lockfile: bool,
+    has_modified_files: bool,
+    has_workspace_resources: bool,
+    original_lockfile: &'a crate::config::Lockfile,
+}
+
 /// High-level install operation
 pub struct InstallOperation<'a> {
     workspace: &'a mut Workspace,
@@ -86,85 +96,12 @@ impl<'a> InstallOperation<'a> {
     ) -> Result<()> {
         let has_modified_files = self.detect_and_preserve_modified_files()?;
         let mut resolved_bundles = self.resolve_selected_bundles(args, selected_bundles)?;
-        // This handles the case where the workspace bundle is in .augent/ and was named after the dir
-        // OR when it's resolved from "." (workspace root) and named after the directory
-        let workspace_bundle_name = self.workspace.get_workspace_name();
-        for bundle in &mut resolved_bundles {
-            // Check if this is the workspace bundle by checking if its source path matches
-            let bundle_source_path = self.workspace.get_bundle_source_path();
-            let is_workspace_bundle = bundle.source_path == bundle_source_path // .augent dir
-                || bundle.source_path == self.workspace.root; // workspace root (when resolving from ".")
-
-            if is_workspace_bundle && bundle.name != workspace_bundle_name {
-                // This is the workspace bundle but it has the wrong name (probably derived from directory)
-                // Rename it to use the workspace bundle name
-                bundle.name = workspace_bundle_name.clone();
-            }
-
-            // Fix dir bundle names from augent.yaml: preserve custom bundle names
-            // This handles cases like:
-            //   augent.yaml: { name: "my-library-name", path: "my-library" }
-            //   Command: augent install my-library  <- matches PATH, not NAME
-            // Expected: ResolvedBundle and lockfile should have name: "my-library-name", not "my-library"
-            if bundle.git_source.is_none() {
-                // This is a local directory bundle - check if there's an existing dependency with this path
-                if let Ok(rel_from_config) =
-                    bundle.source_path.strip_prefix(&self.workspace.config_dir)
-                {
-                    // Bundle is under config_dir - construct relative path for comparison
-                    let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-                    let normalized_path = if path_str.is_empty() {
-                        ".".to_string()
-                    } else {
-                        path_str
-                    };
-
-                    // Check if any existing dependency has this path in augent.yaml
-                    if let Some(existing_dep) =
-                        self.workspace.bundle_config.bundles.iter().find(|dep| {
-                            dep.path.as_ref().is_some_and(|p| {
-                                // Normalize both paths for comparison
-                                let normalized_existing = p
-                                    .strip_prefix("./")
-                                    .or_else(|| p.strip_prefix("../"))
-                                    .unwrap_or(p);
-                                normalized_existing == normalized_path
-                            })
-                        })
-                    {
-                        // Use the name from the existing dependency (preserves custom bundle name)
-                        if bundle.name != existing_dep.name {
-                            bundle.name = existing_dep.name.clone();
-                        }
-                    }
-                }
-            }
-        }
-
-        // If we detected modified files, ensure workspace bundle is in the resolved list
-        // UNLESS we're installing a specific bundle by name (in which case skip the workspace bundle)
-        if has_modified_files
-            && !skip_workspace_bundle
-            && !resolved_bundles
-                .iter()
-                .any(|b| b.name == workspace_bundle_name)
-        {
-            let workspace_bundle = ResolvedBundle {
-                name: workspace_bundle_name.clone(),
-                dependency: None,
-                source_path: self.workspace.get_bundle_source_path(),
-                resolved_sha: None,
-                resolved_ref: None,
-                git_source: None,
-                config: None,
-            };
-            resolved_bundles.push(workspace_bundle);
-        }
-
-        // Also filter out the workspace bundle from resolved_bundles if we're installing by bundle name
-        if skip_workspace_bundle {
-            resolved_bundles.retain(|b| b.name != workspace_bundle_name);
-        }
+        resolved_bundles = self.fix_bundle_names_for_execute(resolved_bundles)?;
+        resolved_bundles = self.ensure_workspace_bundle_in_list_for_execute(
+            resolved_bundles,
+            has_modified_files,
+            skip_workspace_bundle,
+        )?;
 
         if resolved_bundles.is_empty() {
             let source_display = args.source.as_deref().unwrap_or("unknown");
@@ -175,97 +112,27 @@ impl<'a> InstallOperation<'a> {
 
         let platforms = self.get_or_select_platforms(args, &self.workspace.root, false)?;
         self.print_platform_info(args, &platforms);
+        self.verify_frozen_flag(&resolved_bundles)?;
 
-        // Check --frozen flag
-        if args.frozen {
-            // Verify that lockfile wouldn't change
-            let new_lockfile = self.generate_lockfile(&resolved_bundles)?;
-            if !self.workspace.lockfile.equals(&new_lockfile) {
-                return Err(AugentError::LockfileOutdated);
-            }
-        }
-
-        // Install files
-        if args.dry_run {
-            println!("[DRY RUN] Would install files...");
-        }
+        let (workspace_bundles, installed_files_map) =
+            self.install_bundles_with_progress(args, &resolved_bundles, &platforms)?;
         let workspace_root = self.workspace.root.clone();
-
-        // Create progress display if not in dry-run mode
-        let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
-            Some(ui::InteractiveProgressReporter::new(
-                resolved_bundles.len() as u64
-            ))
-        } else {
-            None
-        };
-
-        let (workspace_bundles_result, installed_files_map) = {
-            let mut installer = if let Some(ref mut progress) = progress_display {
-                Installer::new_with_progress(
-                    &workspace_root,
-                    platforms.clone(),
-                    args.dry_run,
-                    Some(progress),
-                )
-            } else {
-                Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run)
-            };
-
-            let result = installer.install_bundles(&resolved_bundles);
-            let installed_files = installer.installed_files().clone();
-            (result, installed_files)
-        };
-
-        // Handle progress display completion (after installer is dropped)
-        if let Some(ref mut progress) = progress_display {
-            match &workspace_bundles_result {
-                Ok(_) => {
-                    progress.finish_files();
-                }
-                Err(_) => {
-                    progress.abandon();
-                }
-            }
-        }
-
-        let workspace_bundles = workspace_bundles_result?;
-
-        // Track created files in transaction
-        for installed in installed_files_map.values() {
-            for target in &installed.target_paths {
-                let full_path = workspace_root.join(target);
-                transaction.track_file_created(full_path);
-            }
-        }
+        self.track_installed_files_in_transaction(
+            &workspace_root,
+            &installed_files_map,
+            transaction,
+        );
 
         let has_git_bundles = resolved_bundles.iter().any(|b| b.git_source.is_some());
         let should_update_augent_yaml = has_git_bundles || !skip_workspace_bundle;
+        self.update_and_save_workspace(
+            args,
+            &resolved_bundles,
+            workspace_bundles,
+            &workspace_root,
+            should_update_augent_yaml,
+        )?;
 
-        let source_str = args.source.as_deref().unwrap_or("");
-        if args.dry_run {
-            println!("[DRY RUN] Would update configuration files...");
-        } else {
-            // Set flag to create/update augent.yaml during bundle install
-            self.workspace.should_create_augent_yaml = should_update_augent_yaml;
-
-            self.update_configs(
-                source_str,
-                &resolved_bundles,
-                workspace_bundles,
-                should_update_augent_yaml,
-            )?;
-        }
-
-        if args.dry_run {
-            println!("[DRY RUN] Would save workspace...");
-        } else {
-            self.workspace.save()?;
-            // Reload the workspace to ensure the new bundle is in memory
-            *self.workspace = Workspace::open(&workspace_root)?;
-        }
-
-        // Print summary
         self.print_install_summary(&resolved_bundles, &installed_files_map, args.dry_run);
 
         Ok(())
@@ -651,22 +518,7 @@ impl<'a> InstallOperation<'a> {
         // Detect and preserve any modified files before reinstalling bundles
         let has_modified_files = self.detect_and_preserve_modified_files()?;
 
-        let augent_yaml_missing = self.workspace.bundle_config.bundles.is_empty()
-            && !self.workspace.lockfile.bundles.is_empty();
-
-        if augent_yaml_missing {
-            println!(
-                "augent.yaml is missing but augent.lock contains {} bundle(s).",
-                self.workspace.lockfile.bundles.len()
-            );
-            println!("Reconstructing augent.yaml from augent.lock...");
-
-            // Reconstruct augent.yaml from lockfile
-            self.reconstruct_augent_yaml_from_lockfile()?;
-        }
-
-        // Backup the original lockfile - we'll restore it if --update was not given
-        let original_lockfile = self.workspace.lockfile.clone();
+        let (augent_yaml_missing, original_lockfile) = self.handle_missing_augent_yaml()?;
 
         let (resolved_bundles, should_update_lockfile) = self.resolve_bundles_for_yaml_install(
             augent_yaml_missing,
@@ -687,146 +539,28 @@ impl<'a> InstallOperation<'a> {
         let platforms =
             self.get_or_select_platforms(args, &self.workspace.root, was_initialized)?;
         self.print_platform_info(args, &platforms);
+        self.verify_frozen_flag(&resolved_bundles)?;
 
-        // Check --frozen flag
-        if args.frozen {
-            // Verify that lockfile wouldn't change
-            let new_lockfile = self.generate_lockfile(&resolved_bundles)?;
-            if !self.workspace.lockfile.equals(&new_lockfile) {
-                return Err(AugentError::LockfileOutdated);
-            }
-        }
-
-        // Install files
-        if args.dry_run {
-            println!("[DRY RUN] Would install files...");
-        }
+        let (workspace_bundles, installed_files_map) =
+            self.install_bundles_with_progress(args, &resolved_bundles, &platforms)?;
         let workspace_root = self.workspace.root.clone();
+        self.track_installed_files_in_transaction(
+            &workspace_root,
+            &installed_files_map,
+            transaction,
+        );
 
-        // Create progress display if not in dry-run mode
-        let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
-            Some(ui::InteractiveProgressReporter::new(
-                resolved_bundles.len() as u64
-            ))
-        } else {
-            None
-        };
+        let configs_updated = self.update_yaml_configs(UpdateConfigParams {
+            args,
+            resolved_bundles: &resolved_bundles,
+            workspace_bundles,
+            should_update_lockfile,
+            has_modified_files,
+            has_workspace_resources,
+            original_lockfile: &original_lockfile,
+        })?;
 
-        let (workspace_bundles_result, installed_files_map) = {
-            let mut installer = if let Some(ref mut progress) = progress_display {
-                Installer::new_with_progress(
-                    &workspace_root,
-                    platforms.clone(),
-                    args.dry_run,
-                    Some(progress),
-                )
-            } else {
-                Installer::new_with_dry_run(&workspace_root, platforms.clone(), args.dry_run)
-            };
-
-            let result = installer.install_bundles(&resolved_bundles);
-            let installed_files = installer.installed_files().clone();
-            (result, installed_files)
-        };
-
-        // Handle progress display completion (after installer is dropped)
-        if let Some(ref mut progress) = progress_display {
-            match &workspace_bundles_result {
-                Ok(_) => {
-                    progress.finish_files();
-                }
-                Err(_) => {
-                    progress.abandon();
-                }
-            }
-        }
-
-        let workspace_bundles = workspace_bundles_result?;
-
-        // Track created files in transaction
-        for installed in installed_files_map.values() {
-            for target in &installed.target_paths {
-                let full_path = workspace_root.join(target);
-                transaction.track_file_created(full_path);
-            }
-        }
-
-        // Update configuration files
-        if args.dry_run {
-            println!("[DRY RUN] Would update configuration files...");
-        } else {
-            println!("Updating configuration files...");
-        }
-
-        // Filter out workspace bundles that have no files (nothing actually installed for them)
-        let workspace_bundles_with_files: Vec<_> = workspace_bundles
-            .into_iter()
-            .filter(|wb| !wb.enabled.is_empty())
-            .collect();
-
-        // Only update configurations if changes were made:
-        // - If --update flag was given (lockfile needs updating), OR
-        // - If files were actually installed (workspace_bundles has entries with files), OR
-        // - If modified files were detected and preserved, OR
-        // - If workspace has resources that need to be installed
-        let configs_updated = should_update_lockfile
-            || !workspace_bundles_with_files.is_empty()
-            || has_modified_files
-            || has_workspace_resources;
-
-        if configs_updated && !args.dry_run {
-            // Set flag to create augent.yaml during workspace bundle install
-            self.workspace.should_create_augent_yaml = true;
-
-            self.update_configs_from_yaml(
-                &resolved_bundles,
-                workspace_bundles_with_files,
-                should_update_lockfile,
-            )?;
-        }
-
-        // If --update was not given, restore the original lockfile (don't modify it)
-        // UNLESS modified files were detected OR workspace has resources, in which case keep the workspace bundle entry
-        if !should_update_lockfile {
-            if has_modified_files || has_workspace_resources {
-                // Keep the workspace bundle entry, but restore everything else
-                let workspace_bundle_name = self.workspace.get_workspace_name();
-                if let Some(workspace_bundle_entry) = self
-                    .workspace
-                    .lockfile
-                    .find_bundle(&workspace_bundle_name)
-                    .cloned()
-                {
-                    self.workspace.lockfile = original_lockfile;
-                    self.workspace.lockfile.add_bundle(workspace_bundle_entry);
-                } else {
-                    self.workspace.lockfile = original_lockfile;
-                }
-            } else {
-                self.workspace.lockfile = original_lockfile;
-            }
-        }
-
-        // Check if workspace config is missing or empty - if so, rebuild it by scanning filesystem
-        let needs_rebuild = self.workspace.workspace_config.bundles.is_empty()
-            && !self.workspace.lockfile.bundles.is_empty();
-
-        // Save workspace if configurations were updated
-        let needs_save = configs_updated;
-        if needs_save && !args.dry_run {
-            println!("Saving workspace...");
-            self.workspace.save()?;
-            // Reload workspace to ensure new bundle is in memory
-            *self.workspace = Workspace::open(&workspace_root)?;
-        } else if needs_save && args.dry_run {
-            println!("[DRY RUN] Would save workspace...");
-        }
-
-        // After saving, if workspace config was empty, rebuild it by scanning the filesystem
-        if needs_rebuild {
-            println!("Rebuilding workspace configuration from installed files...");
-            self.workspace.rebuild_workspace_config()?;
-        }
+        self.save_and_rebuild_workspace(args, &workspace_root, configs_updated)?;
 
         // Print summary
         self.print_install_summary(&resolved_bundles, &installed_files_map, args.dry_run);
@@ -1056,6 +790,105 @@ impl<'a> InstallOperation<'a> {
         Ok(resolved_bundles)
     }
 
+    /// Fix bundle names for execute method
+    fn fix_bundle_names_for_execute(
+        &self,
+        mut resolved_bundles: Vec<ResolvedBundle>,
+    ) -> Result<Vec<ResolvedBundle>> {
+        let workspace_bundle_name = self.workspace.get_workspace_name();
+
+        for bundle in &mut resolved_bundles {
+            // Check if this is workspace bundle by checking if its source path matches
+            let bundle_source_path = self.workspace.get_bundle_source_path();
+            let is_workspace_bundle = bundle.source_path == bundle_source_path // .augent dir
+                || bundle.source_path == self.workspace.root; // workspace root (when resolving from ".")
+
+            if is_workspace_bundle && bundle.name != workspace_bundle_name {
+                // This is workspace bundle but it has the wrong name (probably derived from directory)
+                // Rename it to use the workspace bundle name
+                bundle.name = workspace_bundle_name.clone();
+            }
+
+            // Fix dir bundle names from augent.yaml: preserve custom bundle names
+            // This handles cases like:
+            //   augent.yaml: { name: "my-library-name", path: "my-library" }
+            //   Command: augent install my-library  <- matches PATH, not NAME
+            // Expected: ResolvedBundle and lockfile should have name: "my-library-name", not "my-library"
+            if bundle.git_source.is_none() {
+                // This is a local directory bundle - check if there's an existing dependency with this path
+                if let Ok(rel_from_config) =
+                    bundle.source_path.strip_prefix(&self.workspace.config_dir)
+                {
+                    // Bundle is under config_dir - construct relative path for comparison
+                    let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+                    let normalized_path = if path_str.is_empty() {
+                        ".".to_string()
+                    } else {
+                        path_str
+                    };
+
+                    // Check if any existing dependency has this path in augent.yaml
+                    if let Some(existing_dep) =
+                        self.workspace.bundle_config.bundles.iter().find(|dep| {
+                            dep.path.as_ref().is_some_and(|p| {
+                                // Normalize both paths for comparison
+                                let normalized_existing = p
+                                    .strip_prefix("./")
+                                    .or_else(|| p.strip_prefix("../"))
+                                    .unwrap_or(p);
+                                normalized_existing == normalized_path
+                            })
+                        })
+                    {
+                        // Use the name from the existing dependency (preserves custom bundle name)
+                        if bundle.name != existing_dep.name {
+                            bundle.name = existing_dep.name.clone();
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(resolved_bundles)
+    }
+
+    /// Ensure workspace bundle is in the resolved list for execute method
+    fn ensure_workspace_bundle_in_list_for_execute(
+        &self,
+        mut resolved_bundles: Vec<ResolvedBundle>,
+        has_modified_files: bool,
+        skip_workspace_bundle: bool,
+    ) -> Result<Vec<ResolvedBundle>> {
+        let workspace_bundle_name = self.workspace.get_workspace_name();
+
+        // If we detected modified files, ensure workspace bundle is in the resolved list
+        // UNLESS we're installing a specific bundle by name (in which case skip the workspace bundle)
+        if has_modified_files
+            && !skip_workspace_bundle
+            && !resolved_bundles
+                .iter()
+                .any(|b| b.name == workspace_bundle_name)
+        {
+            let workspace_bundle = ResolvedBundle {
+                name: workspace_bundle_name.clone(),
+                dependency: None,
+                source_path: self.workspace.get_bundle_source_path(),
+                resolved_sha: None,
+                resolved_ref: None,
+                git_source: None,
+                config: None,
+            };
+            resolved_bundles.push(workspace_bundle);
+        }
+
+        // Also filter out the workspace bundle from resolved_bundles if we're installing by bundle name
+        if skip_workspace_bundle {
+            resolved_bundles.retain(|b| b.name != workspace_bundle_name);
+        }
+
+        Ok(resolved_bundles)
+    }
+
     fn check_bundles_have_resources(&self, resolved_bundles: &[ResolvedBundle]) -> Result<bool> {
         let has_resources = resolved_bundles.iter().any(|bundle| {
             discover_resources(&bundle.source_path)
@@ -1063,6 +896,204 @@ impl<'a> InstallOperation<'a> {
                 .unwrap_or(false)
         });
         Ok(has_resources)
+    }
+
+    fn verify_frozen_flag(&self, resolved_bundles: &[ResolvedBundle]) -> Result<()> {
+        if self.options.frozen {
+            let new_lockfile = self.generate_lockfile(resolved_bundles)?;
+            if !self.workspace.lockfile.equals(&new_lockfile) {
+                return Err(AugentError::LockfileOutdated);
+            }
+        }
+        Ok(())
+    }
+
+    fn install_bundles_with_progress(
+        &self,
+        args: &InstallArgs,
+        resolved_bundles: &[ResolvedBundle],
+        platforms: &[Platform],
+    ) -> Result<(
+        Vec<WorkspaceBundle>,
+        std::collections::HashMap<String, crate::domain::InstalledFile>,
+    )> {
+        if args.dry_run {
+            println!("[DRY RUN] Would install files...");
+        }
+        let workspace_root = self.workspace.root.clone();
+
+        let mut progress_display = if !args.dry_run && !resolved_bundles.is_empty() {
+            Some(ui::InteractiveProgressReporter::new(
+                resolved_bundles.len() as u64
+            ))
+        } else {
+            None
+        };
+
+        let (workspace_bundles_result, installed_files_map) = {
+            let mut installer = if let Some(ref mut progress) = progress_display {
+                Installer::new_with_progress(
+                    &workspace_root,
+                    platforms.to_vec(),
+                    args.dry_run,
+                    Some(progress),
+                )
+            } else {
+                Installer::new_with_dry_run(&workspace_root, platforms.to_vec(), args.dry_run)
+            };
+
+            let result = installer.install_bundles(resolved_bundles);
+            let installed_files = installer.installed_files().clone();
+            (result, installed_files)
+        };
+
+        if let Some(ref mut progress) = progress_display {
+            match &workspace_bundles_result {
+                Ok(_) => {
+                    progress.finish_files();
+                }
+                Err(_) => {
+                    progress.abandon();
+                }
+            }
+        }
+
+        Ok((workspace_bundles_result?, installed_files_map))
+    }
+
+    fn track_installed_files_in_transaction(
+        &self,
+        workspace_root: &std::path::Path,
+        installed_files_map: &std::collections::HashMap<String, crate::domain::InstalledFile>,
+        transaction: &mut Transaction,
+    ) {
+        for installed in installed_files_map.values() {
+            for target in &installed.target_paths {
+                let full_path = workspace_root.join(target);
+                transaction.track_file_created(full_path);
+            }
+        }
+    }
+
+    fn handle_missing_augent_yaml(&mut self) -> Result<(bool, crate::config::Lockfile)> {
+        let augent_yaml_missing = self.workspace.bundle_config.bundles.is_empty()
+            && !self.workspace.lockfile.bundles.is_empty();
+
+        if augent_yaml_missing {
+            println!(
+                "augent.yaml is missing but augent.lock contains {} bundle(s).",
+                self.workspace.lockfile.bundles.len()
+            );
+            println!("Reconstructing augent.yaml from augent.lock...");
+            self.reconstruct_augent_yaml_from_lockfile()?;
+        }
+
+        let original_lockfile = self.workspace.lockfile.clone();
+        Ok((augent_yaml_missing, original_lockfile))
+    }
+
+    fn update_yaml_configs(&mut self, params: UpdateConfigParams<'_>) -> Result<bool> {
+        if params.args.dry_run {
+            println!("[DRY RUN] Would update configuration files...");
+        } else {
+            println!("Updating configuration files...");
+        }
+
+        let workspace_bundles_with_files: Vec<_> = params
+            .workspace_bundles
+            .into_iter()
+            .filter(|wb| !wb.enabled.is_empty())
+            .collect();
+
+        let configs_updated = params.should_update_lockfile
+            || !workspace_bundles_with_files.is_empty()
+            || params.has_modified_files
+            || params.has_workspace_resources;
+
+        if configs_updated && !params.args.dry_run {
+            self.workspace.should_create_augent_yaml = true;
+            self.update_configs_from_yaml(
+                params.resolved_bundles,
+                workspace_bundles_with_files,
+                params.should_update_lockfile,
+            )?;
+        }
+
+        if !params.should_update_lockfile {
+            if params.has_modified_files || params.has_workspace_resources {
+                let workspace_bundle_name = self.workspace.get_workspace_name();
+                if let Some(workspace_bundle_entry) = self
+                    .workspace
+                    .lockfile
+                    .find_bundle(&workspace_bundle_name)
+                    .cloned()
+                {
+                    self.workspace.lockfile = params.original_lockfile.clone();
+                    self.workspace.lockfile.add_bundle(workspace_bundle_entry);
+                } else {
+                    self.workspace.lockfile = params.original_lockfile.clone();
+                }
+            } else {
+                self.workspace.lockfile = params.original_lockfile.clone();
+            }
+        }
+
+        Ok(configs_updated)
+    }
+
+    fn save_and_rebuild_workspace(
+        &mut self,
+        args: &InstallArgs,
+        workspace_root: &std::path::Path,
+        configs_updated: bool,
+    ) -> Result<()> {
+        let needs_rebuild = self.workspace.workspace_config.bundles.is_empty()
+            && !self.workspace.lockfile.bundles.is_empty();
+
+        if configs_updated && !args.dry_run {
+            println!("Saving workspace...");
+            self.workspace.save()?;
+            *self.workspace = Workspace::open(workspace_root)?;
+        } else if configs_updated && args.dry_run {
+            println!("[DRY RUN] Would save workspace...");
+        }
+
+        if needs_rebuild {
+            println!("Rebuilding workspace configuration from installed files...");
+            self.workspace.rebuild_workspace_config()?;
+        }
+
+        Ok(())
+    }
+
+    fn update_and_save_workspace(
+        &mut self,
+        args: &InstallArgs,
+        resolved_bundles: &[ResolvedBundle],
+        workspace_bundles: Vec<WorkspaceBundle>,
+        workspace_root: &std::path::Path,
+        should_update_augent_yaml: bool,
+    ) -> Result<()> {
+        let source_str = args.source.as_deref().unwrap_or("");
+        if args.dry_run {
+            println!("[DRY RUN] Would update configuration files...");
+        } else {
+            self.workspace.should_create_augent_yaml = should_update_augent_yaml;
+            self.update_configs(
+                source_str,
+                resolved_bundles,
+                workspace_bundles,
+                should_update_augent_yaml,
+            )?;
+        }
+
+        if args.dry_run {
+            println!("[DRY RUN] Would save workspace...");
+        } else {
+            self.workspace.save()?;
+            *self.workspace = Workspace::open(workspace_root)?;
+        }
+        Ok(())
     }
 
     /// Print platform installation information
@@ -1249,145 +1280,117 @@ impl<'a> InstallOperation<'a> {
         workspace_bundles: Vec<WorkspaceBundle>,
         update_augent_yaml: bool,
     ) -> Result<()> {
-        // Add only direct/root bundles to workspace config (not transitive dependencies)
-        // Per spec: Git bundles are ALWAYS added to augent.yaml (even when installing directly)
-        // Dir bundles are only added when update_augent_yaml is true (workspace bundle install)
+        self.add_direct_bundles_to_config(resolved_bundles, update_augent_yaml);
+        self.update_lockfile_with_bundles(resolved_bundles)?;
+        self.reorganize_configs_and_backfill_refs();
+        self.update_workspace_config_with_bundles(workspace_bundles);
+        Ok(())
+    }
+
+    fn add_direct_bundles_to_config(
+        &mut self,
+        resolved_bundles: &[ResolvedBundle],
+        update_augent_yaml: bool,
+    ) {
         for bundle in resolved_bundles.iter() {
             if bundle.dependency.is_none() {
-                // Skip the workspace bundle - it's not a normal dependency
                 let workspace_name = self.workspace.get_workspace_name();
                 if bundle.name == workspace_name {
                     continue;
                 }
 
-                // Check if this bundle should be added to augent.yaml
-                // Git bundles: always add
-                // Dir bundles: only add when update_augent_yaml is true
                 let is_git_bundle = bundle.git_source.is_some();
                 if !is_git_bundle && !update_augent_yaml {
-                    // Skip dir bundle when not doing workspace bundle install
                     continue;
                 }
 
-                // Root bundle (what user specified): add with original source specification
                 if !self.workspace.bundle_config.has_dependency(&bundle.name) {
-                    // Use bundle.git_source directly to preserve subdirectory information
-                    // from interactive selection (instead of re-parsing the original source string)
-                    let dependency = if let Some(ref git_source) = bundle.git_source {
-                        // Git bundle - only write ref in augent.yaml when it's not the default branch
-                        let ref_for_yaml = git_source
-                            .git_ref
-                            .clone()
-                            .or_else(|| bundle.resolved_ref.clone())
-                            .filter(|r| r != "main" && r != "master");
-                        let mut dep =
-                            BundleDependency::git(&bundle.name, &git_source.url, ref_for_yaml);
-                        // Preserve path from git_source
-                        dep.path = git_source.path.clone();
-                        dep
-                    } else {
-                        // Local directory - use the resolved bundle's source_path (which is absolute)
-                        let bundle_path = &bundle.source_path;
-
-                        // Check if there's already a dependency with this path in augent.yaml
-                        // If so, use the name from augent.yaml instead of the directory name
-                        // This preserves the custom bundle name when installing by path
-                        let dir_name = if let Ok(rel_from_config) =
-                            bundle_path.strip_prefix(&self.workspace.config_dir)
-                        {
-                            // Bundle is under config_dir - construct relative path for comparison
-                            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-                            let normalized_path = if path_str.is_empty() {
-                                ".".to_string()
-                            } else {
-                                path_str
-                            };
-
-                            // Check if any existing dependency has this path
-                            if let Some(existing_dep) =
-                                self.workspace.bundle_config.bundles.iter().find(|dep| {
-                                    dep.path.as_ref().is_some_and(|p| {
-                                        // Normalize both paths for comparison
-                                        let normalized_existing = p
-                                            .strip_prefix("./")
-                                            .or_else(|| p.strip_prefix("../"))
-                                            .unwrap_or(p);
-                                        normalized_existing == normalized_path
-                                    })
-                                })
-                            {
-                                // Use the name from the existing dependency
-                                existing_dep.name.clone()
-                            } else {
-                                // No existing dependency with this path - use directory name
-                                bundle_path
-                                    .file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or(&bundle.name)
-                                    .to_string()
-                            }
-                        } else {
-                            // Bundle is not under config_dir - use directory name
-                            bundle_path
-                                .file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or(&bundle.name)
-                                .to_string()
-                        };
-
-                        // Convert path to relative from config_dir (where augent.yaml is)
-                        let relative_path = if let Ok(rel_from_config) =
-                            bundle_path.strip_prefix(&self.workspace.config_dir)
-                        {
-                            // Bundle is under config_dir
-                            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-                            if path_str.is_empty() {
-                                ".".to_string()
-                            } else {
-                                path_str
-                            }
-                        } else if let Ok(rel_from_root) =
-                            bundle_path.strip_prefix(&self.workspace.root)
-                        {
-                            // Bundle is under workspace root but not under config_dir
-                            // Need to construct path with .. segments
-                            let rel_from_root_str =
-                                rel_from_root.to_string_lossy().replace('\\', "/");
-
-                            // Find how deep config_dir is relative to workspace root
-                            if let Ok(config_rel) =
-                                self.workspace.config_dir.strip_prefix(&self.workspace.root)
-                            {
-                                let config_depth = config_rel.components().count();
-                                let mut parts = vec!["..".to_string(); config_depth];
-                                if !rel_from_root_str.is_empty() {
-                                    parts.push(rel_from_root_str);
-                                }
-                                parts.join("/")
-                            } else {
-                                // config_dir is not under root (shouldn't happen), use absolute path
-                                bundle_path.to_string_lossy().to_string()
-                            }
-                        } else {
-                            // Bundle is outside workspace - use absolute path
-                            bundle_path.to_string_lossy().to_string()
-                        };
-
-                        BundleDependency::local(&dir_name, relative_path)
-                    };
+                    let dependency = self.create_bundle_dependency(bundle);
                     self.workspace.bundle_config.add_dependency(dependency);
                 }
             }
-            // NOTE: Transitive dependencies (bundle.dependency.is_some()) are NOT added to
-            // workspace.bundle_config. They are managed automatically through the dependency
-            // declarations in the parent bundles. Only direct installs should appear in the
-            // workspace's own augent.yaml.
         }
+    }
 
-        // Update lockfile - merge new bundles with existing ones
-        // Process bundles in order: already-installed bundles first (to move to end),
-        // then new bundles (to add at end), preserving installation order
-        // Get list of already-installed bundle names
+    fn create_bundle_dependency(&self, bundle: &ResolvedBundle) -> BundleDependency {
+        if let Some(ref git_source) = bundle.git_source {
+            let ref_for_yaml = git_source
+                .git_ref
+                .clone()
+                .or_else(|| bundle.resolved_ref.clone())
+                .filter(|r| r != "main" && r != "master");
+            let mut dep = BundleDependency::git(&bundle.name, &git_source.url, ref_for_yaml);
+            dep.path = git_source.path.clone();
+            dep
+        } else {
+            let bundle_path = &bundle.source_path;
+            let dir_name = self.get_dir_bundle_name(bundle_path, &bundle.name);
+            let relative_path = self.get_relative_path(bundle_path);
+            BundleDependency::local(&dir_name, relative_path)
+        }
+    }
+
+    fn get_dir_bundle_name(&self, bundle_path: &std::path::Path, default_name: &str) -> String {
+        if let Ok(rel_from_config) = bundle_path.strip_prefix(&self.workspace.config_dir) {
+            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+            let normalized_path = if path_str.is_empty() {
+                ".".to_string()
+            } else {
+                path_str
+            };
+
+            if let Some(existing_dep) = self.workspace.bundle_config.bundles.iter().find(|dep| {
+                dep.path.as_ref().is_some_and(|p| {
+                    let normalized_existing = p
+                        .strip_prefix("./")
+                        .or_else(|| p.strip_prefix("../"))
+                        .unwrap_or(p);
+                    normalized_existing == normalized_path
+                })
+            }) {
+                existing_dep.name.clone()
+            } else {
+                bundle_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(default_name)
+                    .to_string()
+            }
+        } else {
+            bundle_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(default_name)
+                .to_string()
+        }
+    }
+
+    fn get_relative_path(&self, bundle_path: &std::path::Path) -> String {
+        if let Ok(rel_from_config) = bundle_path.strip_prefix(&self.workspace.config_dir) {
+            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+            if path_str.is_empty() {
+                ".".to_string()
+            } else {
+                path_str
+            }
+        } else if let Ok(rel_from_root) = bundle_path.strip_prefix(&self.workspace.root) {
+            let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
+            if let Ok(config_rel) = self.workspace.config_dir.strip_prefix(&self.workspace.root) {
+                let config_depth = config_rel.components().count();
+                let mut parts = vec!["..".to_string(); config_depth];
+                if !rel_from_root_str.is_empty() {
+                    parts.push(rel_from_root_str);
+                }
+                parts.join("/")
+            } else {
+                bundle_path.to_string_lossy().to_string()
+            }
+        } else {
+            bundle_path.to_string_lossy().to_string()
+        }
+    }
+
+    fn update_lockfile_with_bundles(&mut self, resolved_bundles: &[ResolvedBundle]) -> Result<()> {
         let installed_names: HashSet<String> = self
             .workspace
             .lockfile
@@ -1396,7 +1399,6 @@ impl<'a> InstallOperation<'a> {
             .map(|b| b.name.clone())
             .collect();
 
-        // Separate bundles into already-installed and new
         let mut already_installed = Vec::new();
         let mut new_bundles = Vec::new();
 
@@ -1409,21 +1411,25 @@ impl<'a> InstallOperation<'a> {
             }
         }
 
+        self.merge_bundles_to_lockfile(already_installed, new_bundles);
+        Ok(())
+    }
+
+    fn merge_bundles_to_lockfile(
+        &mut self,
+        already_installed: Vec<crate::config::LockedBundle>,
+        new_bundles: Vec<crate::config::LockedBundle>,
+    ) {
         if !new_bundles.is_empty() {
-            // There are new bundles - process already-installed bundles first (remove and re-add to move to end)
             for locked_bundle in already_installed {
                 self.workspace.lockfile.remove_bundle(&locked_bundle.name);
                 self.workspace.lockfile.add_bundle(locked_bundle);
             }
-
-            // Then process new bundles (add at end)
             for locked_bundle in new_bundles {
                 self.workspace.lockfile.add_bundle(locked_bundle);
             }
         } else {
-            // No new bundles - update existing ones in place to preserve order
             for locked_bundle in already_installed {
-                // Find the position of the existing bundle
                 if let Some(pos) = self
                     .workspace
                     .lockfile
@@ -1431,23 +1437,17 @@ impl<'a> InstallOperation<'a> {
                     .iter()
                     .position(|b| b.name == locked_bundle.name)
                 {
-                    // Remove and re-insert at the same position to update without changing order
                     self.workspace.lockfile.bundles.remove(pos);
                     self.workspace.lockfile.bundles.insert(pos, locked_bundle);
                 } else {
-                    // Bundle not found (shouldn't happen), add it normally
                     self.workspace.lockfile.add_bundle(locked_bundle);
                 }
             }
         }
 
-        // Reorganize lockfile to ensure correct ordering
-        // (git bundles in install order -> dir bundles -> workspace bundle last)
         let workspace_name = self.workspace.get_workspace_name();
         self.workspace.lockfile.reorganize(Some(&workspace_name));
 
-        // Reorder augent.yaml dependencies to match lockfile order (excluding workspace bundle)
-        let workspace_name = self.workspace.get_workspace_name();
         let lockfile_bundle_names: Vec<String> = self
             .workspace
             .lockfile
@@ -1459,8 +1459,12 @@ impl<'a> InstallOperation<'a> {
         self.workspace
             .bundle_config
             .reorder_dependencies(&lockfile_bundle_names);
+    }
 
-        // Backfill ref in augent.yaml from lockfile only when ref is not the default branch
+    fn reorganize_configs_and_backfill_refs(&mut self) {
+        let workspace_name = self.workspace.get_workspace_name();
+        self.workspace.lockfile.reorganize(Some(&workspace_name));
+
         for dep in self.workspace.bundle_config.bundles.iter_mut() {
             if dep.git.is_some() && dep.git_ref.is_none() {
                 if let Some(locked) = self.workspace.lockfile.find_bundle(&dep.name) {
@@ -1475,21 +1479,16 @@ impl<'a> InstallOperation<'a> {
                 }
             }
         }
+    }
 
-        // Update workspace config
+    fn update_workspace_config_with_bundles(&mut self, workspace_bundles: Vec<WorkspaceBundle>) {
         for bundle in workspace_bundles {
-            // Remove existing entry for this bundle if present
             self.workspace.workspace_config.remove_bundle(&bundle.name);
-            // Add new entry
             self.workspace.workspace_config.add_bundle(bundle);
         }
-
-        // Reorganize workspace config to match lockfile order
         self.workspace
             .workspace_config
             .reorganize(&self.workspace.lockfile);
-
-        Ok(())
     }
 
     /// Update workspace configuration files when installing from augent.yaml
@@ -2328,267 +2327,305 @@ pub fn handle_source_argument(
     args: &mut InstallArgs,
     current_dir: &Path,
 ) -> Result<Option<String>> {
-    use crate::source::BundleSource;
-
     let mut installing_by_bundle_name: Option<String> = None;
 
-    if let Some(source_str) = &args.source {
-        let source_str_ref = source_str.as_str();
+    if let Some(source) = args.source.clone() {
+        let source_obj = crate::source::BundleSource::parse(source.as_str())?;
 
-        // Parse the source to determine if it's a local path
-        let source = BundleSource::parse(source_str_ref)?;
-        let is_local_path = source.is_local();
-
-        // For directory bundles, add to augent.yaml if not present
-        if is_local_path {
-            // Get the repository root from actual current directory
-            let actual_current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
-                message: format!("Failed to get current directory: {}", e),
-            })?;
-            let workspace_root_opt = Workspace::find_from(&actual_current_dir);
-
-            // Initialize workspace if it doesn't exist
-            let workspace_root = match workspace_root_opt {
-                Some(root) => root,
-                None => {
-                    // Check if we're in a git repository (workspaces must be in git repos)
-                    if let Some(repo_root) =
-                        crate::workspace::operations::find_git_repository_root(&actual_current_dir)
-                    {
-                        // Initialize the workspace
-                        let _ = Workspace::init_or_open(&repo_root)?;
-                        repo_root
-                    } else {
-                        return Err(AugentError::BundleValidationFailed {
-                            message: format!(
-                                "Directory bundles require an augent.yaml workspace in a git repository. \
-                                 To install '{}', first run 'augent init' in a git repository.",
-                                source_str_ref
-                            ),
-                        });
-                    }
-                }
-            };
-            let mut workspace = Workspace::open(&workspace_root)?;
-
-            // Validate the path is within the repository
-            let source_path = source.as_local_path().unwrap();
-            let resolved_source_path = if source_path.is_absolute() {
-                source_path.clone()
-            } else if source_str_ref == "." {
-                actual_current_dir.clone()
-            } else {
-                current_dir.join(source_path)
-            };
-
-            // Normalize both paths for comparison
-            // Prefer fs::canonicalize for existing paths (resolves symlinks, Windows short names, etc.)
-            // Fall back to normpath for non-existing paths
-            use normpath::PathExt;
-            let canonical_source_path = resolved_source_path
-                .canonicalize()
-                .or_else(|_| {
-                    resolved_source_path
-                        .normalize()
-                        .map(|np| np.into_path_buf())
-                })
-                .unwrap_or_else(|_| resolved_source_path.clone());
-            let canonical_workspace_root = workspace_root
-                .canonicalize()
-                .or_else(|_| workspace_root.normalize().map(|np| np.into_path_buf()))
-                .unwrap_or_else(|_| workspace_root.clone());
-
-            // Check if path is within of repository
-            if !path_utils::is_path_within(&canonical_source_path, &canonical_workspace_root) {
-                return Err(AugentError::BundleValidationFailed {
-                    message: format!(
-                        "Path '{}' is outside of repository root '{}'. \
-                         Directory bundles must be within of repository.",
-                        source_str_ref,
-                        canonical_workspace_root.display()
-                    ),
-                });
-            }
-
-            // Look for a bundle with this path in the workspace config
-            let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
-                if let Some(ref path_val) = b.path {
-                    let normalized_bundle_path = canonical_workspace_root.join(path_val);
-                    let canonical_bundle_path = normalized_bundle_path
-                        .canonicalize()
-                        .or_else(|_| {
-                            normalized_bundle_path
-                                .normalize()
-                                .map(|np| np.into_path_buf())
-                        })
-                        .unwrap_or_else(|_| normalized_bundle_path.clone());
-
-                    path_utils::normalize_path_for_comparison(&canonical_bundle_path)
-                        == path_utils::normalize_path_for_comparison(&canonical_source_path)
-                } else {
-                    false
-                }
-            });
-
-            if let Some(bundle_dep) = found_bundle {
-                // Bundle found in augent.yaml - use its path and name
-                let bundle_path_str = bundle_dep
-                    .path
-                    .clone()
-                    .unwrap_or_else(|| source_str_ref.to_string());
-                let bundle_name = bundle_dep.name.clone();
-
-                // Resolve to path relative to workspace root
-                let resolved_path =
-                    if bundle_path_str.starts_with("./") || bundle_path_str.starts_with("../") {
-                        canonical_workspace_root.join(&bundle_path_str)
-                    } else {
-                        workspace.config_dir.join(&bundle_path_str)
-                    };
-
-                // Store the bundle name for better messaging
-                installing_by_bundle_name = Some(bundle_name.clone());
-
-                // Convert to path relative to workspace root for the resolver
-                if let Ok(relative_path) = resolved_path.strip_prefix(&canonical_workspace_root) {
-                    let final_source = if bundle_path_str.starts_with("./") {
-                        format!("./{}", relative_path.to_string_lossy())
-                    } else if bundle_path_str.starts_with("../") {
-                        format!("../{}", relative_path.to_string_lossy())
-                    } else {
-                        relative_path.to_string_lossy().to_string()
-                    };
-                    args.source = Some(final_source);
-                } else {
-                    let final_source = resolved_path.to_string_lossy().to_string();
-                    args.source = Some(final_source);
-                }
-            } else {
-                // Bundle not found - add it to augent.yaml
-
-                // Check if the bundle directory has an augent.yaml file
-                let bundle_name = if resolved_source_path.join("augent.yaml").exists() {
-                    let bundle_augent_yaml = resolved_source_path.join("augent.yaml");
-                    let yaml_content =
-                        std::fs::read_to_string(&bundle_augent_yaml).map_err(|e| {
-                            AugentError::IoError {
-                                message: format!("Failed to read bundle augent.yaml: {}", e),
-                            }
-                        })?;
-
-                    // Parse just the name field from the YAML
-                    let parsed_name = yaml_content.lines().next().and_then(|line| {
-                        line.strip_prefix("name:")
-                            .and_then(|s| {
-                                s.trim().strip_prefix('"').and_then(|s| s.strip_suffix('"'))
-                            })
-                            .or_else(|| {
-                                line.strip_prefix("name:").and_then(|s| {
-                                    s.trim()
-                                        .strip_prefix('\'')
-                                        .and_then(|s| s.strip_suffix('\''))
-                                })
-                            })
-                    });
-                    parsed_name.map(|name| name.to_string()).unwrap_or_else(|| {
-                        resolved_source_path
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(|s| s.to_string())
-                            .expect("Failed to extract bundle name from path")
-                    })
-                } else {
-                    resolved_source_path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|s| s.to_string())
-                        .expect("Failed to extract bundle name from path")
-                };
-
-                // Compute relative path from workspace root
-                // Always add ./ prefix for consistency with BundleSource::parse
-                // Normalize to forward slashes for cross-platform consistency
-                let relative_path_for_save = canonical_source_path
-                    .strip_prefix(&canonical_workspace_root)
-                    .map(|p| {
-                        let path_str = p.to_string_lossy().to_string();
-                        if path_str.is_empty() {
-                            ".".to_string()
-                        } else {
-                            format!("./{}", path_str.replace('\\', "/"))
-                        }
-                    })
-                    .unwrap_or_else(|_| source_str_ref.to_string());
-
-                println!("Adding bundle '{}' to augent.yaml", bundle_name);
-
-                // Create a new bundle dependency
-                let new_bundle = BundleDependency {
-                    name: bundle_name.clone(),
-                    git: None,
-                    path: Some(relative_path_for_save.clone()),
-                    git_ref: None,
-                };
-                workspace.bundle_config.bundles.push(new_bundle);
-                args.source = Some(relative_path_for_save);
-                installing_by_bundle_name = Some(bundle_name);
-
-                // Set flag to create augent.yaml during save
-                workspace.should_create_augent_yaml = true;
-
-                // Save the workspace to persist the new bundle entry
-                workspace.save()?;
-            }
+        if source_obj.is_local() {
+            installing_by_bundle_name =
+                handle_local_bundle(args, current_dir, source_obj, &source)?;
         } else {
-            // Check if this source matches a dependency in augent.yaml (by name or by path)
-            if let Some(workspace_root) = Workspace::find_from(current_dir) {
-                if let Ok(workspace) = Workspace::open(&workspace_root) {
-                    // Look for a bundle with this name or path in the workspace config
-                    let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
-                        // Match by name first
-                        if b.name == source_str_ref {
-                            return true;
-                        }
-
-                        // Also match by path (normalized - strip ./ and ../ prefixes)
-                        if let Some(ref path_val) = b.path {
-                            let normalized_source = source_str_ref
-                                .strip_prefix("./")
-                                .or_else(|| source_str_ref.strip_prefix("../"))
-                                .unwrap_or(source_str_ref);
-                            let normalized_path = path_val
-                                .strip_prefix("./")
-                                .or_else(|| path_val.strip_prefix("../"))
-                                .unwrap_or(path_val);
-                            return normalized_source == normalized_path;
-                        }
-
-                        false
-                    });
-
-                    if let Some(bundle_dep) = found_bundle {
-                        let bundle_path_str = bundle_dep
-                            .path
-                            .clone()
-                            .unwrap_or_else(|| source_str_ref.to_string());
-                        let bundle_name = bundle_dep.name.clone();
-
-                        let resolved_path = workspace.config_dir.join(&bundle_path_str);
-
-                        installing_by_bundle_name = Some(bundle_name.clone());
-
-                        if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
-                            args.source = Some(relative_path.to_string_lossy().to_string());
-                        } else {
-                            args.source = Some(resolved_path.to_string_lossy().to_string());
-                        }
-                    }
-                }
-            }
+            installing_by_bundle_name = match_git_or_url_source(args, current_dir, &source)?;
         }
     }
 
     Ok(installing_by_bundle_name)
+}
+
+fn handle_local_bundle(
+    args: &mut InstallArgs,
+    current_dir: &Path,
+    source: crate::source::BundleSource,
+    source_str: &str,
+) -> Result<Option<String>> {
+    let actual_current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
+        message: format!("Failed to get current directory: {}", e),
+    })?;
+
+    let workspace_root = get_or_init_workspace(&actual_current_dir, source_str)?;
+    let mut workspace = Workspace::open(&workspace_root)?;
+
+    let source_path = source.as_local_path().unwrap();
+    let resolved_source_path = if source_path.is_absolute() {
+        source_path.clone()
+    } else if source_str == "." {
+        actual_current_dir.clone()
+    } else {
+        current_dir.join(source_path)
+    };
+
+    let canonical_source_path = normalize_path(&resolved_source_path);
+    let canonical_workspace_root = normalize_path(&workspace_root);
+
+    if !path_utils::is_path_within(&canonical_source_path, &canonical_workspace_root) {
+        return Err(AugentError::BundleValidationFailed {
+            message: format!(
+                "Path '{}' is outside of repository root '{}'. \
+                 Directory bundles must be within of repository.",
+                source_str,
+                canonical_workspace_root.display()
+            ),
+        });
+    }
+
+    let bundle_name = find_or_add_bundle(
+        &mut workspace,
+        &canonical_source_path,
+        &canonical_workspace_root,
+        source_str,
+        args,
+    )?;
+
+    Ok(bundle_name)
+}
+
+fn get_or_init_workspace(
+    current_dir: &std::path::Path,
+    source_str: &str,
+) -> Result<std::path::PathBuf> {
+    let workspace_root_opt = Workspace::find_from(current_dir);
+
+    Ok(match workspace_root_opt {
+        Some(root) => root,
+        None => {
+            if let Some(repo_root) =
+                crate::workspace::operations::find_git_repository_root(current_dir)
+            {
+                let _ = Workspace::init_or_open(&repo_root)?;
+                repo_root
+            } else {
+                return Err(AugentError::BundleValidationFailed {
+                    message: format!(
+                        "Directory bundles require an augent.yaml workspace in a git repository. \
+                         To install '{}', first run 'augent init' in a git repository.",
+                        source_str
+                    ),
+                });
+            }
+        }
+    })
+}
+
+fn normalize_path(path: &std::path::Path) -> std::path::PathBuf {
+    use normpath::PathExt;
+    path.canonicalize()
+        .or_else(|_| path.normalize().map(|np| np.into_path_buf()))
+        .unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn find_or_add_bundle(
+    workspace: &mut Workspace,
+    canonical_source_path: &std::path::Path,
+    canonical_workspace_root: &std::path::Path,
+    source_str: &str,
+    args: &mut InstallArgs,
+) -> Result<Option<String>> {
+    let found_bundle = workspace.bundle_config.bundles.iter().find(|b| {
+        if let Some(ref path_val) = b.path {
+            let normalized_bundle_path = canonical_workspace_root.join(path_val);
+            let canonical_bundle_path = normalize_path(&normalized_bundle_path);
+            path_utils::normalize_path_for_comparison(&canonical_bundle_path)
+                == path_utils::normalize_path_for_comparison(canonical_source_path)
+        } else {
+            false
+        }
+    });
+
+    if let Some(bundle_dep) = found_bundle {
+        update_source_for_existing_bundle(
+            args,
+            bundle_dep,
+            canonical_workspace_root,
+            &workspace.config_dir,
+            source_str,
+        );
+        Ok(Some(bundle_dep.name.clone()))
+    } else {
+        Ok(Some(add_new_bundle_to_workspace(
+            workspace,
+            canonical_source_path,
+            canonical_workspace_root,
+            source_str,
+            args,
+        )?))
+    }
+}
+
+fn update_source_for_existing_bundle(
+    args: &mut InstallArgs,
+    bundle_dep: &crate::config::BundleDependency,
+    canonical_workspace_root: &std::path::Path,
+    config_dir: &std::path::Path,
+    source_str: &str,
+) {
+    let bundle_path_str = bundle_dep
+        .path
+        .clone()
+        .unwrap_or_else(|| source_str.to_string());
+    let resolved_path = if bundle_path_str.starts_with("./") || bundle_path_str.starts_with("../") {
+        canonical_workspace_root.join(&bundle_path_str)
+    } else {
+        config_dir.join(&bundle_path_str)
+    };
+
+    if let Ok(relative_path) = resolved_path.strip_prefix(canonical_workspace_root) {
+        let final_source = if bundle_path_str.starts_with("./") {
+            format!("./{}", relative_path.to_string_lossy())
+        } else if bundle_path_str.starts_with("../") {
+            format!("../{}", relative_path.to_string_lossy())
+        } else {
+            relative_path.to_string_lossy().to_string()
+        };
+        args.source = Some(final_source);
+    } else {
+        args.source = Some(resolved_path.to_string_lossy().to_string());
+    }
+}
+
+fn add_new_bundle_to_workspace(
+    workspace: &mut Workspace,
+    resolved_source_path: &std::path::Path,
+    canonical_workspace_root: &std::path::Path,
+    source_str: &str,
+    args: &mut InstallArgs,
+) -> Result<String> {
+    let bundle_name = extract_bundle_name_from_path(resolved_source_path)?;
+
+    let relative_path_for_save = resolved_source_path
+        .strip_prefix(canonical_workspace_root)
+        .map(|p| {
+            let path_str = p.to_string_lossy().to_string();
+            if path_str.is_empty() {
+                ".".to_string()
+            } else {
+                format!("./{}", path_str.replace('\\', "/"))
+            }
+        })
+        .unwrap_or_else(|_| source_str.to_string());
+
+    println!("Adding bundle '{}' to augent.yaml", bundle_name);
+
+    let new_bundle = crate::config::BundleDependency {
+        name: bundle_name.clone(),
+        git: None,
+        path: Some(relative_path_for_save.clone()),
+        git_ref: None,
+    };
+    workspace.bundle_config.bundles.push(new_bundle);
+    args.source = Some(relative_path_for_save);
+    workspace.should_create_augent_yaml = true;
+    workspace.save()?;
+
+    Ok(bundle_name)
+}
+
+fn extract_bundle_name_from_path(path: &std::path::Path) -> Result<String> {
+    if path.join("augent.yaml").exists() {
+        let bundle_augent_yaml = path.join("augent.yaml");
+        let yaml_content =
+            std::fs::read_to_string(&bundle_augent_yaml).map_err(|e| AugentError::IoError {
+                message: format!("Failed to read bundle augent.yaml: {}", e),
+            })?;
+
+        let parsed_name = yaml_content.lines().next().and_then(|line| {
+            line.strip_prefix("name:")
+                .and_then(|s| s.trim().strip_prefix('"').and_then(|s| s.strip_suffix('"')))
+                .or_else(|| {
+                    line.strip_prefix("name:").and_then(|s| {
+                        s.trim()
+                            .strip_prefix('\'')
+                            .and_then(|s| s.strip_suffix('\''))
+                    })
+                })
+        });
+
+        if let Some(name) = parsed_name {
+            Ok(name.to_string())
+        } else {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| AugentError::IoError {
+                    message: "Failed to extract bundle name from path".to_string(),
+                })
+        }
+    } else {
+        path.file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| AugentError::IoError {
+                message: "Failed to extract bundle name from path".to_string(),
+            })
+    }
+}
+
+fn match_git_or_url_source(
+    args: &mut InstallArgs,
+    current_dir: &std::path::Path,
+    source_str: &str,
+) -> Result<Option<String>> {
+    if let Some(workspace_root) = Workspace::find_from(current_dir) {
+        if let Ok(workspace) = Workspace::open(&workspace_root) {
+            if let Some(bundle_dep) = find_bundle_by_name_or_path(&workspace, source_str) {
+                let bundle_path_str = bundle_dep
+                    .path
+                    .clone()
+                    .unwrap_or_else(|| source_str.to_string());
+                let bundle_name = bundle_dep.name.clone();
+                let resolved_path = workspace.config_dir.join(&bundle_path_str);
+
+                if let Ok(relative_path) = resolved_path.strip_prefix(&workspace_root) {
+                    args.source = Some(relative_path.to_string_lossy().to_string());
+                } else {
+                    args.source = Some(resolved_path.to_string_lossy().to_string());
+                }
+
+                Ok(Some(bundle_name))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+fn find_bundle_by_name_or_path<'a>(
+    workspace: &'a Workspace,
+    source_str: &str,
+) -> Option<&'a crate::config::BundleDependency> {
+    workspace.bundle_config.bundles.iter().find(|b| {
+        if b.name == source_str {
+            return true;
+        }
+
+        if let Some(ref path_val) = b.path {
+            let normalized_source = source_str
+                .strip_prefix("./")
+                .or_else(|| source_str.strip_prefix("../"))
+                .unwrap_or(source_str);
+            let normalized_path = path_val
+                .strip_prefix("./")
+                .or_else(|| path_val.strip_prefix("../"))
+                .unwrap_or(path_val);
+            return normalized_source == normalized_path;
+        }
+
+        false
+    })
 }
 
 #[cfg(test)]
