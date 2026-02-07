@@ -584,31 +584,26 @@ fn execute_uninstall(workspace: &mut Workspace, bundle_names: &[String]) -> Resu
 
 /// Configuration options for uninstall (kept for compatibility)
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct UninstallOptions {
-    pub yes: bool,
-    pub all_bundles: bool,
-}
+pub struct UninstallOptions;
 
 impl From<&UninstallArgs> for UninstallOptions {
-    fn from(args: &UninstallArgs) -> Self {
-        Self {
-            yes: args.yes,
-            all_bundles: args.all_bundles,
-        }
+    fn from(_args: &UninstallArgs) -> Self {
+        Self
     }
 }
 
 /// High-level uninstall operation (kept for compatibility with refactored structure)
-#[allow(dead_code)]
 pub struct UninstallOperation<'a> {
-    workspace: &'a mut Workspace,
-    options: UninstallOptions,
+    _workspace: &'a mut Workspace,
+    _options: UninstallOptions,
 }
 
 impl<'a> UninstallOperation<'a> {
     pub fn new(workspace: &'a mut Workspace, options: UninstallOptions) -> Self {
-        Self { workspace, options }
+        Self {
+            _workspace: workspace,
+            _options: options,
+        }
     }
 
     /// Execute uninstall operation
@@ -619,20 +614,9 @@ impl<'a> UninstallOperation<'a> {
     ) -> Result<()> {
         run(_workspace, args)
     }
-
-    #[allow(dead_code)]
-    pub fn workspace_mut(&mut self) -> &mut Workspace {
-        self.workspace
-    }
-
-    #[allow(dead_code)]
-    pub fn options(&self) -> &UninstallOptions {
-        &self.options
-    }
 }
 
 /// Helper function to confirm uninstall with user
-#[allow(dead_code)]
 pub fn confirm_uninstall_impl(_workspace: &Workspace, bundles: &[String]) -> Result<bool> {
     println!("The following bundles will be uninstalled:");
     for bundle in bundles {
@@ -648,7 +632,6 @@ pub fn confirm_uninstall_impl(_workspace: &Workspace, bundles: &[String]) -> Res
 }
 
 /// Helper function to uninstall a bundle
-#[allow(dead_code)]
 pub fn uninstall_bundle_impl(workspace: &mut Workspace, bundles: &[String]) -> Result<()> {
     for bundle in bundles {
         workspace

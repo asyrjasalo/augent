@@ -9,7 +9,6 @@ use std::path::Path;
 
 use crate::cache;
 use crate::cli::InstallArgs;
-use crate::commands::menu;
 use crate::config::{BundleConfig, BundleDependency, LockedBundle, LockedSource, WorkspaceBundle};
 use crate::domain::{DiscoveredBundle, ResolvedBundle};
 use crate::error::{AugentError, Result};
@@ -18,7 +17,7 @@ use crate::installer::{Installer, discover_resources};
 use crate::path_utils;
 use crate::platform::{self, Platform, detection};
 use crate::resolver::Resolver;
-use crate::source::{BundleSource, GitSource};
+use crate::source::GitSource;
 use crate::transaction::Transaction;
 use crate::ui::{self, ProgressReporter};
 use crate::workspace::{Workspace, modified};
@@ -26,15 +25,10 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 /// Configuration options for installation
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct InstallOptions {
     pub dry_run: bool,
     pub update: bool,
-    pub yes: bool,
-    pub all_bundles: bool,
     pub frozen: bool,
-    pub platforms: Vec<String>,
-    pub source: Option<String>,
 }
 
 impl From<&InstallArgs> for InstallOptions {
@@ -42,24 +36,9 @@ impl From<&InstallArgs> for InstallOptions {
         Self {
             dry_run: args.dry_run,
             update: args.update,
-            yes: args.yes,
-            all_bundles: args.all_bundles,
             frozen: args.frozen,
-            platforms: args.platforms.clone(),
-            source: args.source.clone(),
         }
     }
-}
-
-#[allow(dead_code)]
-struct UpdateConfigParams<'a> {
-    args: &'a InstallArgs,
-    resolved_bundles: &'a [ResolvedBundle],
-    workspace_bundles: Vec<WorkspaceBundle>,
-    should_update_lockfile: bool,
-    has_modified_files: bool,
-    has_workspace_resources: bool,
-    original_lockfile: &'a crate::config::Lockfile,
 }
 
 /// High-level install operation
@@ -71,21 +50,6 @@ pub struct InstallOperation<'a> {
 impl<'a> InstallOperation<'a> {
     pub fn new(workspace: &'a mut Workspace, options: InstallOptions) -> Self {
         Self { workspace, options }
-    }
-
-    #[allow(dead_code)]
-    pub fn workspace(&self) -> &Workspace {
-        self.workspace
-    }
-
-    #[allow(dead_code)]
-    pub fn workspace_mut(&mut self) -> &mut Workspace {
-        self.workspace
-    }
-
-    #[allow(dead_code)]
-    pub fn options(&self) -> &InstallOptions {
-        &self.options
     }
 
     /// Execute install operation for bundles specified by user (with --source or CLI arg)
@@ -225,240 +189,6 @@ impl<'a> InstallOperation<'a> {
         }
 
         Ok(resolved_bundles)
-    }
-
-    #[allow(dead_code)]
-    fn fix_bundle_names(&self, resolved_bundles: &mut [ResolvedBundle]) {
-        let workspace_bundle_name = self.workspace.get_workspace_name();
-
-        for bundle in resolved_bundles {
-            let bundle_source_path = self.workspace.get_bundle_source_path();
-
-            let is_workspace_bundle = bundle.source_path == bundle_source_path
-                || bundle.source_path == self.workspace.root;
-
-            if is_workspace_bundle && bundle.name != workspace_bundle_name {
-                bundle.name = workspace_bundle_name.clone();
-            }
-
-            if bundle.git_source.is_none() {
-                if let Ok(rel_from_config) =
-                    bundle.source_path.strip_prefix(&self.workspace.config_dir)
-                {
-                    let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-
-                    if let Some(existing_dep) =
-                        self.workspace.bundle_config.bundles.iter().find(|dep| {
-                            dep.path.as_ref().is_some_and(|p| {
-                                let normalized_existing = p
-                                    .strip_prefix("./")
-                                    .or_else(|| p.strip_prefix("../"))
-                                    .unwrap_or(p);
-                                normalized_existing == path_str
-                            })
-                        })
-                    {
-                        if bundle.name != existing_dep.name {
-                            bundle.name = existing_dep.name.clone();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    fn determine_installing_bundle_name(
-        source_str: &str,
-        source: &BundleSource,
-        current_dir: &Path,
-    ) -> Result<Option<String>> {
-        let mut installing_by_bundle_name = None;
-
-        if is_path_like(source_str) {
-            if let Some(source_path) = source.as_local_path() {
-                let resolved_source_path_for_check = if source_path.is_absolute() {
-                    source_path.clone()
-                } else {
-                    current_dir.join(source_path)
-                };
-
-                use normpath::PathExt;
-                let is_workspace_root = resolved_source_path_for_check
-                    .normalize()
-                    .ok()
-                    .and_then(|p| {
-                        current_dir
-                            .normalize()
-                            .ok()
-                            .map(|cwd| p.into_path_buf() == cwd.into_path_buf())
-                    })
-                    .unwrap_or(false);
-
-                if is_workspace_root {
-                    installing_by_bundle_name = Some("".to_string());
-                }
-            }
-        }
-
-        Ok(installing_by_bundle_name)
-    }
-
-    #[allow(dead_code)]
-    fn print_install_message(
-        installing_by_bundle_name: &Option<String>,
-        source_str: &str,
-        source: &BundleSource,
-    ) {
-        if let Some(bundle_name) = installing_by_bundle_name {
-            println!("Installing {} ({})", bundle_name, source_str);
-        } else {
-            println!("Installing from: {}", source.display_url());
-        }
-    }
-
-    #[allow(dead_code)]
-    fn select_bundles_to_install(
-        discovered: &[DiscoveredBundle],
-        installed_bundle_names: Option<&HashSet<String>>,
-        all_bundles: bool,
-    ) -> Result<(Vec<DiscoveredBundle>, Vec<String>)> {
-        let discovered_count = discovered.len();
-
-        if discovered_count > 1 && !all_bundles {
-            let selection = menu::select_bundles_interactively(discovered, installed_bundle_names)?;
-            Ok((selection.selected, selection.deselected))
-        } else if discovered_count >= 1 {
-            Ok((discovered.to_vec(), vec![]))
-        } else {
-            Ok((vec![], vec![]))
-        }
-    }
-
-    #[allow(dead_code)]
-    fn should_exit_without_installation(
-        selected_bundles: &[DiscoveredBundle],
-        discovered_count: usize,
-        deselected_bundle_names: &[String],
-    ) -> bool {
-        selected_bundles.is_empty() && discovered_count > 1 && deselected_bundle_names.is_empty()
-    }
-
-    #[allow(dead_code)]
-    fn installed_bundle_names_to_vec(
-        current_dir: &Path,
-        discovered: &[DiscoveredBundle],
-    ) -> Vec<String> {
-        get_installed_bundle_names_for_menu(current_dir, discovered)
-            .map(|set| set.iter().cloned().collect())
-            .unwrap_or_default()
-    }
-
-    #[allow(dead_code)]
-    fn set_workspace_bundle_config_dir_if_needed(
-        workspace: &mut Workspace,
-        source: &Option<String>,
-        actual_current_dir: &Path,
-    ) {
-        use crate::installer::discover_resources;
-
-        if source.is_some()
-            && !discover_resources(actual_current_dir)
-                .map(|resources: Vec<_>| resources.is_empty())
-                .unwrap_or(false)
-        {
-            workspace.bundle_config_dir = Some(actual_current_dir.to_path_buf());
-        }
-    }
-
-    #[allow(dead_code)]
-    fn execute_install_transaction(
-        install_op: &mut InstallOperation,
-        args: &mut InstallArgs,
-        workspace: &mut Workspace,
-        selected_bundles: &[DiscoveredBundle],
-        installing_by_bundle_name: &Option<String>,
-    ) -> Result<()> {
-        let mut transaction = Transaction::new(workspace);
-        transaction.backup_configs()?;
-
-        let skip_workspace_bundle = installing_by_bundle_name.is_some();
-        match install_op.execute(
-            args,
-            selected_bundles,
-            &mut transaction,
-            skip_workspace_bundle,
-        ) {
-            Ok(()) => {
-                transaction.commit();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Execute install operation for bundles from a specific source (path/URL/bundle name)
-    #[allow(clippy::too_many_arguments)]
-    #[allow(dead_code)]
-    pub fn execute_with_source(
-        &mut self,
-        args: &mut InstallArgs,
-        _selected_bundles: &[DiscoveredBundle],
-        _transaction: &mut Transaction,
-        _skip_workspace_bundle: bool,
-        _actual_current_dir: &Path,
-        current_dir: &Path,
-        _installing_by_bundle_name: Option<String>,
-    ) -> Result<()> {
-        use crate::resolver::Resolver;
-
-        let Some(ref source_str) = args.source else {
-            return Err(AugentError::BundleNotFound {
-                name: "No source provided".to_string(),
-            });
-        };
-
-        let source_str_ref = source_str.as_str();
-        let source = BundleSource::parse(source_str_ref)?;
-
-        let installing_by_bundle_name =
-            Self::determine_installing_bundle_name(source_str_ref, &source, current_dir)?;
-
-        Self::print_install_message(&installing_by_bundle_name, source_str_ref, &source);
-
-        let mut resolver = Resolver::new(current_dir);
-        let discovered = resolver.discover_bundles(source_str_ref)?;
-
-        let installed_bundle_names = get_installed_bundle_names_for_menu(current_dir, &discovered);
-        let discovered = filter_workspace_bundle_from_discovered(
-            current_dir,
-            &discovered,
-            &installing_by_bundle_name,
-        );
-
-        let (selected_bundles, _deselected_bundle_names) = Self::select_bundles_to_install(
-            &discovered,
-            installed_bundle_names.as_ref(),
-            args.all_bundles,
-        )?;
-
-        println!("Selected {} bundle(s) to install", selected_bundles.len());
-        Ok(())
-    }
-
-    /// Resolve bundles for installation from augent.yaml
-    #[allow(dead_code)]
-    pub fn resolve_bundles_for_yaml_install(
-        &mut self,
-        augent_yaml_missing: bool,
-        was_initialized: bool,
-        has_local_resources: bool,
-    ) -> Result<(Vec<ResolvedBundle>, bool)> {
-        if self.options.update {
-            self.resolve_with_update()
-        } else {
-            self.resolve_from_lockfile(augent_yaml_missing, was_initialized, has_local_resources)
-        }
     }
 
     #[allow(dead_code)]
@@ -880,82 +610,6 @@ impl<'a> InstallOperation<'a> {
 
         let original_lockfile = self.workspace.lockfile.clone();
         Ok((augent_yaml_missing, original_lockfile))
-    }
-
-    #[allow(dead_code)]
-    fn update_yaml_configs(&mut self, params: UpdateConfigParams<'_>) -> Result<bool> {
-        if params.args.dry_run {
-            println!("[DRY RUN] Would update configuration files...");
-        } else {
-            println!("Updating configuration files...");
-        }
-
-        let workspace_bundles_with_files: Vec<_> = params
-            .workspace_bundles
-            .into_iter()
-            .filter(|wb| !wb.enabled.is_empty())
-            .collect();
-
-        let configs_updated = params.should_update_lockfile
-            || !workspace_bundles_with_files.is_empty()
-            || params.has_modified_files
-            || params.has_workspace_resources;
-
-        if configs_updated && !params.args.dry_run {
-            self.workspace.should_create_augent_yaml = true;
-            self.update_configs_from_yaml(
-                params.resolved_bundles,
-                workspace_bundles_with_files,
-                params.should_update_lockfile,
-            )?;
-        }
-
-        if !params.should_update_lockfile {
-            if params.has_modified_files || params.has_workspace_resources {
-                let workspace_bundle_name = self.workspace.get_workspace_name();
-                if let Some(workspace_bundle_entry) = self
-                    .workspace
-                    .lockfile
-                    .find_bundle(&workspace_bundle_name)
-                    .cloned()
-                {
-                    self.workspace.lockfile = params.original_lockfile.clone();
-                    self.workspace.lockfile.add_bundle(workspace_bundle_entry);
-                } else {
-                    self.workspace.lockfile = params.original_lockfile.clone();
-                }
-            } else {
-                self.workspace.lockfile = params.original_lockfile.clone();
-            }
-        }
-
-        Ok(configs_updated)
-    }
-
-    #[allow(dead_code)]
-    fn save_and_rebuild_workspace(
-        &mut self,
-        args: &InstallArgs,
-        workspace_root: &std::path::Path,
-        configs_updated: bool,
-    ) -> Result<()> {
-        let needs_rebuild = self.workspace.workspace_config.bundles.is_empty()
-            && !self.workspace.lockfile.bundles.is_empty();
-
-        if configs_updated && !args.dry_run {
-            println!("Saving workspace...");
-            self.workspace.save()?;
-            *self.workspace = Workspace::open(workspace_root)?;
-        } else if configs_updated && args.dry_run {
-            println!("[DRY RUN] Would save workspace...");
-        }
-
-        if needs_rebuild {
-            println!("Rebuilding workspace configuration from installed files...");
-            self.workspace.rebuild_workspace_config()?;
-        }
-
-        Ok(())
     }
 
     fn update_and_save_workspace(
