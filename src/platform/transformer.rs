@@ -101,47 +101,12 @@ impl Transformer {
     fn apply_transform_rule(&self, rule: &TransformRule, resource_path: &Path) -> PathBuf {
         let path_str = resource_path.to_string_lossy().replace('\\', "/");
 
-        let skill_root: Option<&str> = if path_str.starts_with("skills/")
-            && self.leaf_skill_dirs.as_ref().is_some_and(|dirs| {
-                dirs.iter()
-                    .any(|d| path_str == d.as_str() || path_str.starts_with(&format!("{}/", d)))
-            }) {
-            self.leaf_skill_dirs.as_ref().and_then(|dirs| {
-                dirs.iter()
-                    .find(|dir| {
-                        path_str == dir.as_str() || path_str.starts_with(&format!("{}/", dir))
-                    })
-                    .map(String::as_str)
-            })
-        } else {
-            None
-        };
+        let skill_root = self.find_skill_root(&path_str);
 
         let mut target = rule.to.clone();
 
         if target.contains("{name}") {
-            let name = if path_str.starts_with("skills/") {
-                skill_root
-                    .and_then(|root| root.split('/').next_back().map(String::from))
-                    .unwrap_or_else(|| {
-                        path_str
-                            .trim_start_matches("skills/")
-                            .split('/')
-                            .next()
-                            .map(String::from)
-                            .unwrap_or_else(|| {
-                                resource_path
-                                    .file_stem()
-                                    .map(|s| s.to_string_lossy().into_owned())
-                                    .unwrap_or_default()
-                            })
-                    })
-            } else {
-                resource_path
-                    .file_stem()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            };
+            let name = Transformer::compute_name_variable(&path_str, skill_root, resource_path);
             if !name.is_empty() {
                 target = target.replace("{name}", &name);
             }
@@ -155,10 +120,10 @@ impl Transformer {
                     .trim_start_matches('/')
                     .to_string()
             } else {
-                self.extract_relative_part(&rule.from, &path_str)
+                Transformer::extract_relative_part(&rule.from, &path_str)
             }
         } else {
-            self.extract_relative_part(&rule.from, &path_str)
+            Transformer::extract_relative_part(&rule.from, &path_str)
         };
 
         if target.contains("**") {
@@ -235,7 +200,7 @@ impl Transformer {
     }
 
     /// Extract the relative part of a path that matches wildcards in a pattern
-    fn extract_relative_part(&self, pattern: &str, path: &str) -> String {
+    fn extract_relative_part(pattern: &str, path: &str) -> String {
         let wildcard_pos = pattern.find('*').unwrap_or(pattern.len());
         let pattern_prefix = &pattern[..wildcard_pos];
 
@@ -245,6 +210,51 @@ impl Transformer {
             filename.to_string_lossy().to_string()
         } else {
             path.to_string()
+        }
+    }
+
+    /// Find skill root directory if path is within a skill directory
+    fn find_skill_root(&self, path_str: &str) -> Option<&str> {
+        if path_str.starts_with("skills/") {
+            self.leaf_skill_dirs.as_ref().and_then(|dirs| {
+                dirs.iter()
+                    .find(|dir| {
+                        path_str == dir.as_str() || path_str.starts_with(&format!("{}/", dir))
+                    })
+                    .map(String::as_str)
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Compute the {name} variable value for template substitution
+    fn compute_name_variable(
+        path_str: &str,
+        skill_root: Option<&str>,
+        resource_path: &Path,
+    ) -> String {
+        if path_str.starts_with("skills/") {
+            skill_root
+                .and_then(|root| root.split('/').next_back().map(String::from))
+                .unwrap_or_else(|| {
+                    path_str
+                        .trim_start_matches("skills/")
+                        .split('/')
+                        .next()
+                        .map(String::from)
+                        .unwrap_or_else(|| {
+                            resource_path
+                                .file_stem()
+                                .map(|s| s.to_string_lossy().into_owned())
+                                .unwrap_or_default()
+                        })
+                })
+        } else {
+            resource_path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
         }
     }
 }
@@ -307,21 +317,19 @@ mod tests {
 
     #[test]
     fn test_extract_relative_part() {
-        let transformer = Transformer::new();
         let pattern = "commands/**/*.md";
         let path = "commands/test/command.md";
 
-        let result = transformer.extract_relative_part(pattern, path);
+        let result = Transformer::extract_relative_part(pattern, path);
         assert_eq!(result, "test/command.md");
     }
 
     #[test]
     fn test_extract_relative_part_single_wildcard() {
-        let transformer = Transformer::new();
         let pattern = "rules/*";
         let path = "rules/test.md";
 
-        let result = transformer.extract_relative_part(pattern, path);
+        let result = Transformer::extract_relative_part(pattern, path);
         assert_eq!(result, "test.md");
     }
 
