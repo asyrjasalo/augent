@@ -3,13 +3,14 @@
 //! This module provides ListOperation struct that encapsulates all
 //! listing business logic, including bundle information display and
 //! resource grouping.
+use crate::common::{config_utils, display_utils, string_utils};
 
 use console::Style;
 use std::collections::HashMap;
 
 use crate::cli::ListArgs;
-use crate::config::{BundleConfig, LockedSource, WorkspaceBundle};
-use crate::error::{AugentError, Result};
+use crate::config::{LockedSource, WorkspaceBundle};
+use crate::error::Result;
 use crate::workspace::Workspace;
 
 /// Configuration options for list
@@ -88,7 +89,12 @@ fn display_bundle_simple(
         );
     }
     println!("    {}", Style::new().bold().apply_to("Source:"));
-    display_source_detailed_with_indent(&bundle.source, "      ", bundle.version.as_deref(), false);
+    display_utils::display_source_detailed_with_indent(
+        &bundle.source,
+        "      ",
+        bundle.version.as_deref(),
+        false,
+    );
 
     // Plugin for Claude Marketplace ($claudeplugin) bundles
     if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
@@ -106,6 +112,96 @@ fn display_bundle_simple(
     }
 
     display_resources_grouped(&bundle.files);
+}
+
+/// Display bundle in detailed format
+fn display_bundle_detailed(
+    workspace_root: &std::path::Path,
+    bundle: &crate::config::LockedBundle,
+    workspace_config: &crate::config::WorkspaceConfig,
+    detailed: bool,
+) {
+    let workspace_bundle = workspace_config.find_bundle(&bundle.name);
+
+    println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
+
+    // Display metadata if available
+    if let Some(ref description) = bundle.description {
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Description:"),
+            description
+        );
+    }
+    if let Some(ref author) = bundle.author {
+        println!("    {} {}", Style::new().bold().apply_to("Author:"), author);
+    }
+    if let Some(ref license) = bundle.license {
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("License:"),
+            license
+        );
+    }
+    if let Some(ref homepage) = bundle.homepage {
+        println!(
+            "    {} {}",
+            Style::new().bold().apply_to("Homepage:"),
+            homepage
+        );
+    }
+
+    println!("    {}", Style::new().bold().apply_to("Source:"));
+    display_utils::display_source_detailed_with_indent(
+        &bundle.source,
+        "      ",
+        bundle.version.as_deref(),
+        detailed,
+    );
+
+    // Plugin at same level as Source (for $claudeplugin bundles)
+    if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
+        if p.contains("$claudeplugin") {
+            println!("    {}", Style::new().bold().apply_to("Plugin:"));
+            println!(
+                "      {} {}",
+                Style::new().bold().apply_to("type:"),
+                Style::new().green().apply_to("Claude Marketplace")
+            );
+            if let Some(ref v) = bundle.version {
+                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
+            }
+        }
+    }
+
+    display_resources_grouped(&bundle.files);
+
+    if detailed && !bundle.files.is_empty() {
+        display_provided_files_grouped_by_platform(&bundle.files, workspace_bundle);
+    }
+
+    // Dependencies last (only in detailed view)
+    if detailed {
+        match config_utils::load_bundle_config(workspace_root, &bundle.source) {
+            Ok(bundle_config) => {
+                if !bundle_config.bundles.is_empty() {
+                    println!("    {}", Style::new().bold().apply_to("Dependencies:"));
+                    for dep in &bundle_config.bundles {
+                        println!("      - {}", Style::new().cyan().apply_to(&dep.name));
+                    }
+                } else {
+                    println!(
+                        "    {}: {}",
+                        Style::new().bold().apply_to("Dependencies"),
+                        Style::new().dim().apply_to("None")
+                    );
+                }
+            }
+            Err(_) => {
+                // Skip dependencies if config cannot be loaded (e.g. cache missing)
+            }
+        }
+    }
 }
 
 /// Extract resource type from file path
@@ -126,14 +222,6 @@ pub fn extract_resource_type(file: &str) -> &'static str {
         "templates" => "templates",
         _ => "other",
     }
-}
-
-/// Capitalize first letter of a word
-fn capitalize_word(word: &str) -> String {
-    if word.is_empty() {
-        return String::new();
-    }
-    word.chars().next().unwrap().to_uppercase().to_string() + &word[1..]
 }
 
 /// Display resources grouped by type with consistent layout
@@ -167,7 +255,7 @@ fn display_resources_grouped(files: &[String]) {
 
     // Display each resource type with simple file list
     for resource_type in sorted_types.iter() {
-        let type_display = capitalize_word(resource_type);
+        let type_display = string_utils::capitalize_word(resource_type);
         let files_for_type = resource_by_type.get(resource_type).unwrap();
         let n = files_for_type.len();
         let type_label = if n == 1 { "file" } else { "files" };
@@ -238,7 +326,7 @@ fn display_provided_files_grouped_by_platform(
 
         // Display each platform with file mappings
         for platform in sorted_platforms {
-            let platform_display = capitalize_word(platform);
+            let platform_display = string_utils::capitalize_word(platform);
             println!("      {}", Style::new().cyan().apply_to(platform_display));
 
             let file_mappings = files_by_platform.get(platform).unwrap();
@@ -269,221 +357,6 @@ fn display_provided_files_grouped_by_platform(
     }
 }
 
-/// Load bundle config (augent.yaml) from a locked source for displaying dependencies
-fn load_bundle_config(
-    workspace_root: &std::path::Path,
-    source: &LockedSource,
-) -> Result<BundleConfig> {
-    let bundle_path = match source {
-        LockedSource::Dir { path, .. } => workspace_root.join(path),
-        LockedSource::Git {
-            path: Some(subdir), ..
-        } => {
-            let cache_dir = dirs::cache_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
-                .join("augent/bundles");
-            cache_dir.join(subdir)
-        }
-        LockedSource::Git { url, sha, .. } => {
-            let cache_dir = dirs::cache_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
-                .join("augent/bundles");
-
-            let repo_name = url
-                .rsplit('/')
-                .next()
-                .unwrap_or_default()
-                .trim_end_matches(".git");
-
-            cache_dir.join(format!("{}_{}", repo_name, sha))
-        }
-    };
-
-    let config_path = bundle_path.join("augent.yaml");
-
-    if !config_path.exists() {
-        return Ok(BundleConfig::new());
-    }
-
-    let content =
-        std::fs::read_to_string(&config_path).map_err(|e| AugentError::ConfigReadFailed {
-            path: config_path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-    BundleConfig::from_yaml(&content)
-}
-
-/// Display bundle in detailed format
-fn display_bundle_detailed(
-    workspace_root: &std::path::Path,
-    bundle: &crate::config::LockedBundle,
-    workspace_config: &crate::config::WorkspaceConfig,
-    detailed: bool,
-) {
-    let workspace_bundle = workspace_config.find_bundle(&bundle.name);
-
-    println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
-
-    // Display metadata if available
-    if let Some(ref description) = bundle.description {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("Description:"),
-            description
-        );
-    }
-    if let Some(ref author) = bundle.author {
-        println!("    {} {}", Style::new().bold().apply_to("Author:"), author);
-    }
-    if let Some(ref license) = bundle.license {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("License:"),
-            license
-        );
-    }
-    if let Some(ref homepage) = bundle.homepage {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("Homepage:"),
-            homepage
-        );
-    }
-
-    println!("    {}", Style::new().bold().apply_to("Source:"));
-    display_source_detailed_with_indent(
-        &bundle.source,
-        "      ",
-        bundle.version.as_deref(),
-        detailed,
-    );
-
-    // Plugin at same level as Source (for $claudeplugin bundles)
-    if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
-        if p.contains("$claudeplugin") {
-            println!("    {}", Style::new().bold().apply_to("Plugin:"));
-            println!(
-                "      {} {}",
-                Style::new().bold().apply_to("type:"),
-                Style::new().green().apply_to("Claude Marketplace")
-            );
-            if let Some(ref v) = bundle.version {
-                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
-            }
-        }
-    }
-
-    display_resources_grouped(&bundle.files);
-
-    if detailed && !bundle.files.is_empty() {
-        display_provided_files_grouped_by_platform(&bundle.files, workspace_bundle);
-    }
-
-    // Dependencies last (only in detailed view)
-    if detailed {
-        match load_bundle_config(workspace_root, &bundle.source) {
-            Ok(bundle_config) => {
-                if !bundle_config.bundles.is_empty() {
-                    println!("    {}", Style::new().bold().apply_to("Dependencies:"));
-                    for dep in &bundle_config.bundles {
-                        println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-                    }
-                } else {
-                    println!(
-                        "    {}: {}",
-                        Style::new().bold().apply_to("Dependencies"),
-                        Style::new().dim().apply_to("None")
-                    );
-                }
-            }
-            Err(_) => {
-                // Skip dependencies if config cannot be loaded (e.g. cache missing)
-            }
-        }
-    }
-}
-
-/// Display source information with custom indentation
-fn display_source_detailed_with_indent(
-    source: &LockedSource,
-    indent: &str,
-    version: Option<&str>,
-    show_version: bool,
-) {
-    match source {
-        LockedSource::Dir { path, .. } => {
-            println!(
-                "{}{} {}",
-                indent,
-                Style::new().bold().apply_to("Type:"),
-                Style::new().green().apply_to("Directory")
-            );
-            println!(
-                "{}{} {}",
-                indent,
-                Style::new().bold().apply_to("Path:"),
-                path
-            );
-            if show_version {
-                if let Some(v) = version {
-                    println!(
-                        "{}{} {}",
-                        indent,
-                        Style::new().bold().apply_to("version:"),
-                        v
-                    );
-                }
-            }
-        }
-        LockedSource::Git {
-            url,
-            git_ref,
-            sha,
-            path,
-            ..
-        } => {
-            println!(
-                "{}{} {}",
-                indent,
-                Style::new().bold().apply_to("Type:"),
-                Style::new().green().apply_to("Git")
-            );
-            println!("{}{} {}", indent, Style::new().bold().apply_to("URL:"), url);
-            if let Some(ref_name) = git_ref {
-                println!(
-                    "{}{} {}",
-                    indent,
-                    Style::new().bold().apply_to("Ref:"),
-                    ref_name
-                );
-            }
-            println!("{}{} {}", indent, Style::new().bold().apply_to("SHA:"), sha);
-            if let Some(subdir) = path {
-                println!(
-                    "{}{} {}",
-                    indent,
-                    Style::new().bold().apply_to("path:"),
-                    subdir
-                );
-            }
-            if show_version {
-                if let Some(v) = version {
-                    // Plugin block is printed at bundle level by caller for $claudeplugin
-                    if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
-                        println!(
-                            "{}{} {}",
-                            indent,
-                            Style::new().bold().apply_to("version:"),
-                            v
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -499,10 +372,10 @@ mod tests {
 
     #[test]
     fn test_capitalize_word() {
-        assert_eq!(capitalize_word("hello"), "Hello");
-        assert_eq!(capitalize_word("HELLO"), "HELLO");
-        assert_eq!(capitalize_word(""), "");
-        assert_eq!(capitalize_word("cursor"), "Cursor");
+        assert_eq!(string_utils::capitalize_word("hello"), "Hello");
+        assert_eq!(string_utils::capitalize_word("HELLO"), "HELLO");
+        assert_eq!(string_utils::capitalize_word(""), "");
+        assert_eq!(string_utils::capitalize_word("cursor"), "Cursor");
     }
 
     #[test]

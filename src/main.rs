@@ -9,6 +9,7 @@ use std::path::PathBuf;
 mod cache;
 mod cli;
 mod commands;
+mod common;
 mod config;
 mod domain;
 mod error;

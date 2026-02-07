@@ -1,13 +1,12 @@
 //! Uninstall operation module
 //!
 //! This module provides UninstallOperation and related uninstall workflow logic.
-//!
-//! The uninstall command handles removing bundles from a workspace:
 //! 1. Check for bundles that depend on target bundle
 //! 2. Safely remove files that aren't provided by other bundles
 //! 3. Update configuration files
 //! 4. Rollback on failure
-
+//!
+use crate::common::{bundle_utils, string_utils};
 use std::collections::HashMap;
 use std::fs;
 
@@ -16,24 +15,6 @@ use crate::error::{AugentError, Result};
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 use inquire::{Confirm, MultiSelect};
-
-/// Scorer that matches only the bundle name (before " ("), so filtering by typing
-/// does not match words in platform lists.
-fn score_by_name(input: &str, _opt: &String, string_value: &str, _idx: usize) -> Option<i64> {
-    let name = string_value
-        .split(" (")
-        .next()
-        .unwrap_or(string_value)
-        .trim();
-    if input.is_empty() {
-        return Some(0);
-    }
-    if name.to_lowercase().contains(&input.to_lowercase()) {
-        Some(0)
-    } else {
-        None
-    }
-}
 
 /// Select bundles interactively from installed bundles
 fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
@@ -92,7 +73,7 @@ fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
         .with_help_message(
             "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
         )
-        .with_scorer(&score_by_name)
+        .with_scorer(&bundle_utils::score_by_name)
         .prompt_skippable()?
     {
         Some(sel) => sel,
@@ -170,7 +151,7 @@ fn select_bundles_from_list(
         .with_help_message(
             "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
         )
-        .with_scorer(&score_by_name)
+        .with_scorer(&bundle_utils::score_by_name)
         .prompt_skippable()?
     {
         Some(sel) => sel,
@@ -237,11 +218,6 @@ fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String]) -> 
         })
 }
 
-/// Check if a name is a scope pattern (starts with @ or ends with /)
-fn is_scope_pattern(name: &str) -> bool {
-    name.starts_with('@') || name.ends_with('/')
-}
-
 /// Filter bundles by name prefix (used with --all-bundles when name is not a scope pattern).
 fn filter_bundles_by_prefix(workspace: &Workspace, prefix: &str) -> Vec<String> {
     let prefix_lower = prefix.to_lowercase();
@@ -250,34 +226,6 @@ fn filter_bundles_by_prefix(workspace: &Workspace, prefix: &str) -> Vec<String> 
         .bundles
         .iter()
         .filter(|b| b.name.to_lowercase().starts_with(&prefix_lower))
-        .map(|b| b.name.clone())
-        .collect()
-}
-
-/// Filter bundles by scope pattern
-/// Supports patterns like:
-/// - @author/scope - all bundles starting with @author/scope
-/// - author/scope - all bundles containing /scope pattern
-fn filter_bundles_by_scope(workspace: &Workspace, scope: &str) -> Vec<String> {
-    let scope_lower = scope.to_lowercase();
-
-    workspace
-        .lockfile
-        .bundles
-        .iter()
-        .filter(|b| {
-            let bundle_name_lower = b.name.to_lowercase();
-
-            // Check if bundle name starts with or matches scope pattern
-            if bundle_name_lower.starts_with(&scope_lower) {
-                // Ensure it's a complete match (not partial name match)
-                // e.g., @wshobson/agents matches @wshobson/agents/accessibility but not @wshobson/agent
-                let after_match = &bundle_name_lower[scope_lower.len()..];
-                after_match.is_empty() || after_match.starts_with('/')
-            } else {
-                false
-            }
-        })
         .map(|b| b.name.clone())
         .collect()
 }
@@ -441,7 +389,7 @@ fn resolve_named_bundle(
 ) -> Result<Vec<String>> {
     if name == "." {
         resolve_current_dir_bundle(workspace)
-    } else if is_scope_pattern(name) {
+    } else if string_utils::is_scope_pattern(name) {
         resolve_scope_pattern_bundles(workspace, name, all_bundles)
     } else {
         resolve_regular_bundle(workspace, name, all_bundles)
@@ -483,7 +431,7 @@ fn resolve_scope_pattern_bundles(
     name: &str,
     all_bundles: bool,
 ) -> Result<Vec<String>> {
-    let matching_bundles = filter_bundles_by_scope(workspace, name);
+    let matching_bundles = bundle_utils::filter_bundles_by_scope(workspace, name);
 
     if matching_bundles.is_empty() {
         println!("No bundles found matching scope: {}", name);

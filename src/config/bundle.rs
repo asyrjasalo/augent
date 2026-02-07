@@ -392,11 +392,12 @@ impl BundleDependency {
     }
 
     /// Check if this is a local dependency
+    #[allow(dead_code)]
     pub fn is_local(&self) -> bool {
-        self.path.is_some() && self.git.is_none()
+        self.git.is_none() && self.path.is_some()
     }
 
-    /// Check if this is a git dependency
+    #[allow(dead_code)]
     pub fn is_git(&self) -> bool {
         self.git.is_some()
     }

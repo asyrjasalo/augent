@@ -92,12 +92,11 @@ impl BundleSource {
             if has_ref_or_path {
                 let git_source = GitSource::parse(input)?;
                 return Ok(BundleSource::Git(git_source));
-            } else {
-                // Plain file:// URL without ref/path - treat as local directory
-                return Ok(BundleSource::Dir {
-                    path: PathBuf::from(after_protocol),
-                });
             }
+            // Plain file:// URL without ref/path - treat as local directory
+            return Ok(BundleSource::Dir {
+                path: PathBuf::from(after_protocol),
+            });
         }
 
         // Check for local paths first

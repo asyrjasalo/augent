@@ -110,7 +110,7 @@ impl<'a> InstallOperation<'a> {
         args: &mut InstallArgs,
         selected_bundles: &[DiscoveredBundle],
     ) -> Result<Vec<ResolvedBundle>> {
-        let mut resolver = Resolver::new(&self.workspace.root);
+        let mut bundle_resolver = Resolver::new(&self.workspace.root);
 
         let pb = if !args.dry_run {
             let pb = ProgressBar::new_spinner();
@@ -129,7 +129,7 @@ impl<'a> InstallOperation<'a> {
         let resolved_bundles = (|| -> Result<Vec<ResolvedBundle>> {
             if selected_bundles.is_empty() {
                 if let Some(source) = &args.source {
-                    resolver.resolve(source, false)
+                    bundle_resolver.resolve(source, false)
                 } else {
                     let mut all_bundles = Vec::new();
                     for dep in &self.workspace.bundle_config.bundles {
@@ -139,10 +139,11 @@ impl<'a> InstallOperation<'a> {
                             } else {
                                 git_url.clone()
                             };
-                            let bundles = resolver.resolve(&source, false)?;
+                            let bundles = bundle_resolver.resolve(&source, false)?;
                             all_bundles.extend(bundles);
                         } else if let Some(ref path) = dep.path {
-                            let bundles = resolver.resolve_multiple(std::slice::from_ref(path))?;
+                            let bundles =
+                                bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
                             all_bundles.extend(bundles);
                         }
                     }
@@ -152,10 +153,10 @@ impl<'a> InstallOperation<'a> {
                 let bundle = &selected_bundles[0];
 
                 if let Some(ref git_source) = bundle.git_source {
-                    Ok(vec![resolver.resolve_git(git_source, None, false)?])
+                    Ok(vec![bundle_resolver.resolve_git(git_source, None, false)?])
                 } else {
                     let bundle_path = bundle.path.to_string_lossy().to_string();
-                    resolver.resolve_multiple(&[bundle_path])
+                    bundle_resolver.resolve_multiple(&[bundle_path])
                 }
             } else {
                 let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
@@ -164,11 +165,11 @@ impl<'a> InstallOperation<'a> {
                     let mut all_bundles = Vec::new();
                     for discovered in selected_bundles {
                         if let Some(ref git_source) = discovered.git_source {
-                            let bundle = resolver.resolve_git(git_source, None, false)?;
+                            let bundle = bundle_resolver.resolve_git(git_source, None, false)?;
                             all_bundles.push(bundle);
                         } else {
                             let bundle_path = discovered.path.to_string_lossy().to_string();
-                            let bundles = resolver.resolve_multiple(&[bundle_path])?;
+                            let bundles = bundle_resolver.resolve_multiple(&[bundle_path])?;
                             all_bundles.extend(bundles);
                         }
                     }
@@ -179,7 +180,7 @@ impl<'a> InstallOperation<'a> {
                         .map(|b| b.path.to_string_lossy().to_string())
                         .collect();
 
-                    resolver.resolve_multiple(&selected_paths)
+                    bundle_resolver.resolve_multiple(&selected_paths)
                 }
             }
         })()?;
@@ -195,14 +196,14 @@ impl<'a> InstallOperation<'a> {
     fn resolve_with_update(&self) -> Result<(Vec<ResolvedBundle>, bool)> {
         println!("Checking for updates...");
 
-        let mut resolver = Resolver::new(&self.workspace.root);
+        let mut bundle_resolver = Resolver::new(&self.workspace.root);
         let bundle_sources = vec![self.workspace.get_config_source_path()];
 
         println!("Resolving workspace bundle and its dependencies...");
 
         let pb = self.create_progress_spinner("Resolving dependencies...");
 
-        let resolved = resolver.resolve_multiple(&bundle_sources)?;
+        let resolved = bundle_resolver.resolve_multiple(&bundle_sources)?;
 
         Self::finish_progress_bar(pb);
 
@@ -269,7 +270,7 @@ impl<'a> InstallOperation<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         println!("Lockfile not found or empty. Resolving dependencies...");
 
-        let mut resolver = Resolver::new(&self.workspace.root);
+        let mut bundle_resolver = Resolver::new(&self.workspace.root);
         let bundle_sources = if was_initialized && has_local_resources {
             vec![".".to_string()]
         } else {
@@ -280,7 +281,7 @@ impl<'a> InstallOperation<'a> {
 
         let pb = self.create_progress_spinner("Resolving dependencies...");
 
-        let resolved = resolver.resolve_multiple(&bundle_sources)?;
+        let resolved = bundle_resolver.resolve_multiple(&bundle_sources)?;
 
         Self::finish_progress_bar(pb);
 
@@ -307,13 +308,13 @@ impl<'a> InstallOperation<'a> {
 
         println!("Resolving {} new bundle(s)...", new_bundle_deps.len());
 
-        let mut resolver = Resolver::new(&self.workspace.root);
+        let mut bundle_resolver = Resolver::new(&self.workspace.root);
         let pb = self.create_progress_spinner("Resolving new bundles...");
 
         let mut resolved_new_bundles = Vec::new();
         for dep in new_bundle_deps {
             let source = self.resolve_bundle_source(dep)?;
-            let mut resolved = resolver.resolve(&source, true)?;
+            let mut resolved = bundle_resolver.resolve(&source, true)?;
             resolved_new_bundles.append(&mut resolved);
         }
 

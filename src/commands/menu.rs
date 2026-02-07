@@ -1,57 +1,11 @@
+use crate::common::bundle_utils;
+use crate::common::string_utils;
 use crate::domain::DiscoveredBundle;
 use crate::error::Result;
 use crate::platform::Platform;
 use console::Style;
 use inquire::MultiSelect;
 use std::collections::HashSet;
-
-/// Strip ANSI escape codes from a string
-#[allow(dead_code)]
-fn strip_ansi_codes(s: &str) -> String {
-    // Simple ANSI code removal - removes escape sequences like \x1b[0m, \x1b[2m, etc.
-    let mut result = String::new();
-    let mut chars = s.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        if ch == '\x1b' {
-            // Skip until 'm' (end of ANSI code)
-            while let Some(&next) = chars.peek() {
-                chars.next();
-                if next == 'm' {
-                    break;
-                }
-            }
-        } else {
-            result.push(ch);
-        }
-    }
-
-    result.trim().to_string()
-}
-
-/// Scorer that matches only the bundle name (before " (" or " · "), so filtering
-/// by typing does not match words in resource counts or descriptions.
-#[allow(dead_code)]
-fn score_by_name(input: &str, _opt: &String, string_value: &str, _idx: usize) -> Option<i64> {
-    // Remove ANSI codes before extracting name
-    let clean = strip_ansi_codes(string_value);
-    let name = clean
-        .split(" (")
-        .next()
-        .unwrap_or(&clean)
-        .split(" · ")
-        .next()
-        .unwrap_or(&clean)
-        .trim();
-    if input.is_empty() {
-        return Some(0);
-    }
-    if name.to_lowercase().contains(&input.to_lowercase()) {
-        Some(0)
-    } else {
-        None
-    }
-}
 
 /// Result of bundle selection - contains selected bundles and bundles that were deselected
 #[allow(dead_code)]
@@ -136,7 +90,7 @@ pub fn select_bundles_interactively(
         .with_help_message(
             "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
         )
-        .with_scorer(&score_by_name);
+        .with_scorer(&bundle_utils::score_by_name);
 
     // Preselect installed bundles if any exist
     if !default_selections.is_empty() {
@@ -162,7 +116,7 @@ pub fn select_bundles_interactively(
             // Extract bundle name from display string
             // The string might contain ANSI codes and "(installed)" marker
             // Remove ANSI escape sequences first
-            let clean = strip_ansi_codes(s);
+            let clean = string_utils::strip_ansi(s);
 
             // Extract name part (before first " (" or " · ")
             let name = clean
