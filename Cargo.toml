@@ -20,8 +20,9 @@ exclude = [
     ".codespellrc",
     '.gitignore',
     ".pre-commit-config.yaml",
-    "Cross.toml",
+    "AGENTS.md",
     "CLAUDE.md",
+    "Cross.toml",
     "pyproject.toml"
 ]
 
