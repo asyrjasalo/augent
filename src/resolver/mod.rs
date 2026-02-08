@@ -11,6 +11,13 @@
 //! The resolver is organized into submodules:
 //! - **operation**: High-level resolution orchestration
 //! - **graph**: Dependency graph construction and topological sorting
+//! - **local**: Local bundle resolution
+//! - **git**: Git bundle resolution
+//! - **discovery**: Bundle discovery from various sources
+//! - **synthetic**: Synthetic bundle creation for marketplace
+//! - **validation**: Cycle detection and path validation
+//! - **config**: Bundle and marketplace config loading
+//! - **topology**: Topological sorting and dependency graph building
 //!
 //! # Usage
 //!
@@ -30,8 +37,15 @@
 //! ```
 
 // Module declarations
+pub mod config;
+pub mod discovery;
+pub mod git;
 pub mod graph;
+pub mod local;
 pub mod operation;
+pub mod synthetic;
+pub mod topology;
+pub mod validation;
 
 // Re-export submodules
 pub use operation::ResolveOperation;

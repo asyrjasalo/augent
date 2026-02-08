@@ -1,0 +1,144 @@
+//! Validation utilities for resolver
+//!
+//! This module provides:
+//! - Circular dependency detection
+//! - Path validation for local bundles
+//! - Dependency validation helpers
+
+use normpath::PathExt;
+use std::path::Path;
+
+use crate::error::{AugentError, Result};
+
+/// Check for circular dependency in resolution stack
+///
+/// # Errors
+///
+/// Returns `AugentError::CircularDependency` if a cycle is detected.
+pub fn check_cycle(name: &str, resolution_stack: &[String]) -> Result<()> {
+    if resolution_stack.contains(&name.to_string()) {
+        let mut chain = resolution_stack.to_vec();
+        chain.push(name.to_string());
+        return Err(AugentError::CircularDependency {
+            chain: chain.join(" -> "),
+        });
+    }
+    Ok(())
+}
+
+/// Validate that a local bundle path is within repository
+///
+/// # Arguments
+///
+/// * `full_path` - The absolute path to the bundle
+/// * `user_path` - The user-provided path (for error messages)
+/// * `is_dependency` - Whether this is a dependency (vs. top-level source)
+/// * `workspace_root` - The root of the workspace/repository
+///
+/// # Errors
+///
+/// Returns `AugentError::BundleValidationFailed` if:
+/// - Absolute path is used in dependencies (not portable)
+/// - Path is outside the repository
+pub fn validate_local_bundle_path(
+    full_path: &Path,
+    user_path: &Path,
+    is_dependency: bool,
+    workspace_root: &Path,
+) -> Result<()> {
+    // Reject absolute paths in dependencies - only relative paths are allowed for bundles in augent.yaml
+    // Absolute paths break portability when repo is cloned or moved to a different machine
+    if is_dependency && user_path.is_absolute() {
+        return Err(AugentError::BundleValidationFailed {
+            message: format!(
+                "Local bundle path '{}' is an absolute path. \
+                 Bundles in augent.yaml must use relative paths (e.g., './bundles/my-bundle', '../shared-bundle'). \
+                 Absolute paths break portability when repository is cloned or moved to a different machine.",
+                user_path.display()
+            ),
+        });
+    }
+
+    // Resolve full path and workspace root to absolute normalized paths
+    // This handles symlinks and relative path components safely
+    let full_canonical = full_path
+        .normalize()
+        .map_err(|_| AugentError::BundleValidationFailed {
+            message: format!(
+                "Local bundle path '{}' cannot be resolved.",
+                user_path.display()
+            ),
+        })?
+        .into_path_buf();
+    let workspace_canonical = workspace_root
+        .normalize()
+        .map_err(|_| AugentError::BundleValidationFailed {
+            message: "Workspace root cannot be resolved.".to_string(),
+        })?
+        .into_path_buf();
+
+    // Check if bundle path is within repository
+    if !full_canonical.starts_with(&workspace_canonical) {
+        return Err(AugentError::BundleValidationFailed {
+            message: format!(
+                "Local bundle path '{}' resolves to '{}' which is outside the repository at '{}'. \
+                 Local bundles (type: dir in lockfile) cannot reference paths outside of repository.",
+                user_path.display(),
+                full_canonical.display(),
+                workspace_canonical.display()
+            ),
+        });
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_cycle_no_cycle() {
+        let stack = vec!["bundle-a".to_string(), "bundle-b".to_string()];
+        assert!(check_cycle("bundle-c", &stack).is_ok());
+    }
+
+    #[test]
+    fn test_check_cycle_with_cycle() {
+        let stack = vec!["bundle-a".to_string(), "bundle-b".to_string()];
+        let result = check_cycle("bundle-a", &stack);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            AugentError::CircularDependency { .. }
+        ));
+    }
+
+    #[test]
+    fn test_validate_absolute_path_in_dependency() {
+        let workspace_root = Path::new("/workspace");
+        let user_path = Path::new("/absolute/path");
+        let full_path = Path::new("/absolute/path");
+
+        let result = validate_local_bundle_path(full_path, user_path, true, workspace_root);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            AugentError::BundleValidationFailed { .. }
+        ));
+    }
+
+    #[test]
+    fn test_validate_path_outside_workspace() {
+        let workspace_root = Path::new("/workspace");
+        let user_path = Path::new("../outside");
+        let full_path = Path::new("/outside");
+
+        let result = validate_local_bundle_path(full_path, user_path, true, workspace_root);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            AugentError::BundleValidationFailed { .. }
+        ));
+    }
+}

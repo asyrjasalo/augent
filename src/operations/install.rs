@@ -155,7 +155,16 @@ impl<'a> InstallOperation<'a> {
                 let bundle = &selected_bundles[0];
 
                 if let Some(ref git_source) = bundle.git_source {
-                    Ok(vec![bundle_resolver.resolve_git(git_source, None, false)?])
+                    let mut url = git_source.url.clone();
+                    if let Some(ref git_ref) = git_source.git_ref {
+                        url.push('#');
+                        url.push_str(git_ref);
+                    }
+                    if let Some(ref path_val) = git_source.path {
+                        url.push(':');
+                        url.push_str(path_val);
+                    }
+                    bundle_resolver.resolve(&url, false)
                 } else {
                     let bundle_path = bundle.path.to_string_lossy().to_string();
                     bundle_resolver.resolve_multiple(&[bundle_path])
@@ -167,8 +176,17 @@ impl<'a> InstallOperation<'a> {
                     let mut all_bundles = Vec::new();
                     for discovered in selected_bundles {
                         if let Some(ref git_source) = discovered.git_source {
-                            let bundle = bundle_resolver.resolve_git(git_source, None, false)?;
-                            all_bundles.push(bundle);
+                            let mut url = git_source.url.clone();
+                            if let Some(ref git_ref) = git_source.git_ref {
+                                url.push('#');
+                                url.push_str(git_ref);
+                            }
+                            if let Some(ref path_val) = git_source.path {
+                                url.push(':');
+                                url.push_str(path_val);
+                            }
+                            let bundles = bundle_resolver.resolve(&url, false)?;
+                            all_bundles.extend(bundles);
                         } else {
                             let bundle_path = discovered.path.to_string_lossy().to_string();
                             let bundles = bundle_resolver.resolve_multiple(&[bundle_path])?;
