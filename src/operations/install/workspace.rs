@@ -117,7 +117,9 @@ impl<'a> WorkspaceManager<'a> {
                     // Path in lockfile is relative to workspace root (e.g., "bundles/my-bundle")
                     // Need to convert to be relative to where augent.yaml lives (config_dir)
                     let normalized_path = {
-                        let bundle_path = self.workspace.root.join(path);
+                        // Strip leading "./" from path to ensure consistent joining on all platforms
+                        let clean_path = path.strip_prefix("./").unwrap_or(path);
+                        let bundle_path = self.workspace.root.join(clean_path);
 
                         if let Ok(rel_from_config) =
                             bundle_path.strip_prefix(&self.workspace.config_dir)

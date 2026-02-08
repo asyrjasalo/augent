@@ -126,7 +126,9 @@ impl<'a> BundleResolver<'a> {
         if let Some(ref git_url) = dep.git {
             Ok(git_url.clone())
         } else if let Some(ref path) = dep.path {
-            let abs_path = self.workspace.root.join(path);
+            // Strip leading "./" from path to ensure consistent joining on all platforms
+            let clean_path = path.strip_prefix("./").unwrap_or(path);
+            let abs_path = self.workspace.root.join(clean_path);
             Ok(abs_path.to_string_lossy().to_string())
         } else {
             Err(AugentError::BundleNotFound {

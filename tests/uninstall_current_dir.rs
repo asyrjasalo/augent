@@ -104,7 +104,7 @@ fn test_uninstall_dot_updates_augent_yaml() {
     // Uninstall using "." - run command from bundle directory, not workspace path
     #[allow(deprecated)]
     let mut cmd = assert_cmd::Command::cargo_bin("augent").unwrap();
-    common::configure_augent_cmd(&mut cmd, &bundle_dir);
+    common::configure_augent_cmd(&mut cmd, &workspace.path);
     cmd.current_dir(&bundle_dir);
     cmd.args(["uninstall", ".", "-y"]).assert().success();
 

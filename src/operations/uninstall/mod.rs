@@ -178,7 +178,9 @@ fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
 
     for bundle in &workspace.lockfile.bundles {
         if let crate::config::lockfile::source::LockedSource::Dir { path, .. } = &bundle.source {
-            let bundle_path = workspace.root.join(path);
+            // Strip leading "./" from path to ensure consistent joining on all platforms
+            let clean_path = path.strip_prefix("./").unwrap_or(path);
+            let bundle_path = workspace.root.join(clean_path);
             let bundle_path_normalized = bundle_path
                 .normalize()
                 .ok()
