@@ -92,7 +92,7 @@ fn fetch_git_bundle(
     }
 
     // Fetch from git
-    let temp_bundle_dir = git::fetch_bundle(&git_source.url, git_source.git_ref.as_deref())?;
+    let temp_bundle_dir = git::clone(&git_source.url, temp_dir.path(), true)?;
 
     // Extract bundle config
     let config = if temp_bundle_dir.join("augent.yaml").exists() {
