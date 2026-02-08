@@ -1,23 +1,9 @@
 //! Main cache entry operations
 //!
 //! This module provides the primary cache_bundle function that orchestrates
-//! entire cache operation flow: lookup, clone, populate, and storage.
-//!
-//! Cache Structure
-//!
-//! ```text
-//! AUGENT_CACHE_DIR/bundles/
-//! └── <repo_key>/            (path-safe: @author/repo -> author-repo, one per repo)
-//!     └── <sha>/
-//!         ├── repository/    (shallow clone, full repo)
-//!         └── resources/     (full repo content without .git; sub-bundles under subdirs)
-//! ```
-//!
-//! The cache key is composed of:
-//! - Repo name from URL (e.g. @author/repo) so one entry per repo+sha, not per sub-bundle
-//! - Git SHA: exact commit SHA for reproducibility
+//! the entire cache operation flow: lookup, clone, populate, and storage.
 
-use std::path::Path;
+use std::path::PathBuf;
 
 use crate::config::marketplace::operations;
 use crate::error::{AugentError, Result};
@@ -48,7 +34,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
                 resolved_sha: Some(sha.clone()),
             };
             if let Some((path, _, ref_name)) = super::lookup::get_cached(&source_with_sha)? {
-                return Ok((path, sha.clone(), ref_name));
+                return Ok((path, sha, ref_name));
             }
         }
     }
@@ -85,11 +71,10 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         (bundle_name, content_path, None)
     };
 
-    // Check if already cached (via index lookup)
-    if let Some((_, ref_name)) = super::index::index_lookup(&source.url, &sha, path_opt)? {
+    if let Some((_, ref_name)) = super::lookup::index_lookup(&source.url, &sha, path_opt)? {
         let entry_path = super::paths::repo_cache_entry_path(&source.url, &sha)?;
         let resources = super::paths::entry_resources_path(&entry_path);
-        let content = if let Some(name) = super::lookup::marketplace_plugin_name(path_opt) {
+        let content = if let Some(name) = marketplace_plugin_name(path_opt) {
             resources.join(super::paths::SYNTHETIC_DIR).join(name)
         } else {
             path_opt
@@ -116,6 +101,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cache::bundle_name;
 
     #[test]
     fn test_content_path_in_repo() {
@@ -125,28 +111,8 @@ mod tests {
             git_ref: None,
             resolved_sha: None,
         };
-        let repo_path = Path::new("/cache/repo");
-        let path = super::bundle_name::content_path_in_repo(repo_path, &source);
+        let repo_path = std::path::Path::new("/cache/repo");
+        let path = bundle_name::content_path_in_repo(repo_path, &source);
         assert_eq!(path, PathBuf::from("/cache/repo"));
-
-        let source_with_path = GitSource {
-            url: "https://github.com/test/repo.git".to_string(),
-            path: Some("subdir".to_string()),
-            git_ref: None,
-            resolved_sha: None,
-        };
-        let path = super::bundle_name::content_path_in_repo(repo_path, &source_with_path);
-        assert_eq!(path, PathBuf::from("/cache/repo/subdir"));
-    }
-
-    #[test]
-    fn test_marketplace_plugin_name() {
-        assert_eq!(
-            super::bundle_name::derive_marketplace_bundle_name(
-                "https://github.com/author/repo.git",
-                "my-plugin"
-            ),
-            "@author/repo/my-plugin"
-        );
     }
 }

@@ -16,116 +16,34 @@
 //! - Repo name from URL (e.g. @author/repo) so one entry per repo+sha, not per sub-bundle
 //! - Git SHA: exact commit SHA for reproducibility
 
+pub mod bundle_name;
+pub mod cache_entry;
+pub mod clone;
 pub mod index;
-pub mod operations;
+pub mod lookup;
+pub mod paths;
+pub mod populate;
 pub mod stats;
 
-use std::path::{Path, PathBuf};
-
-use crate::error::{AugentError, Result};
-use crate::path_utils;
-
-/// Default cache directory name under user's cache directory
-const CACHE_DIR: &str = "augent";
-
-/// Bundles subdirectory within cache
-pub const BUNDLES_DIR: &str = "bundles";
-
-/// Subdirectory for the git clone
-pub const REPOSITORY_DIR: &str = "repository";
-
-/// Subdirectory for extracted resources (agents, commands, etc.)
-pub const RESOURCES_DIR: &str = "resources";
-
-/// File name for storing the bundle display name in each cache entry
-pub const BUNDLE_NAME_FILE: &str = ".augent_bundle_name";
-
-/// Subdirectory for marketplace synthetic bundles
-pub const SYNTHETIC_DIR: &str = ".claude-plugin";
-
-/// Cache index file at cache root for (url, sha, path) -> bundle_name lookups
-pub const INDEX_FILE: &str = ".augent_cache_index.json";
-
-/// Get the default cache directory path
-///
-/// Uses the platform's standard cache location (e.g. XDG on Linux, Library/Caches on macOS)
-/// with an `augent` subdirectory. Can be overridden with the `AUGENT_CACHE_DIR` environment variable.
-pub fn cache_dir() -> Result<PathBuf> {
-    if let Ok(cache_dir) = std::env::var("AUGENT_CACHE_DIR") {
-        return Ok(PathBuf::from(cache_dir));
-    }
-
-    let base = dirs::cache_dir().ok_or_else(|| AugentError::CacheOperationFailed {
-        message: "Could not determine cache directory".to_string(),
-    })?;
-
-    Ok(base.join(CACHE_DIR))
-}
-
-/// Get the bundles cache directory path
-pub fn bundles_cache_dir() -> Result<PathBuf> {
-    Ok(cache_dir()?.join(BUNDLES_DIR))
-}
-
-/// Convert bundle name to a path-safe cache key (e.g. @author/repo -> author-repo).
-/// Sanitizes characters invalid on Windows so file:// URLs and names with colons work.
-pub fn bundle_name_to_cache_key(name: &str) -> String {
-    path_utils::make_path_safe(name)
-}
-
-/// Derive repo name from URL (e.g. https://github.com/davila7/claude-code-templates.git -> @davila7/claude-code-templates)
-pub fn repo_name_from_url(url: &str) -> String {
-    let url_clean = url.trim_end_matches(".git");
-    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
-        &url_clean[colon_idx + 1..]
-    } else {
-        url_clean
-    };
-    let parts: Vec<&str> = repo_path.split('/').filter(|s| !s.is_empty()).collect();
-    if parts.len() >= 2 {
-        let author = parts[parts.len() - 2];
-        let repo = parts[parts.len() - 1];
-        format!("@{}/{}", author, repo)
-    } else {
-        format!("@unknown/{}", repo_path.replace('/', "-"))
-    }
-}
-
-/// Get the cache entry path for a repo: `bundles/<repo_key>/<sha>`. One entry per repo+sha.
-pub fn repo_cache_entry_path(url: &str, sha: &str) -> Result<PathBuf> {
-    let repo_name = repo_name_from_url(url);
-    let key = bundle_name_to_cache_key(&repo_name);
-    Ok(bundles_cache_dir()?.join(&key).join(sha))
-}
-
-/// Get the cache entry path for a bundle (legacy / per-bundle key; kept for tests and API)
-#[allow(dead_code)]
-pub fn bundle_cache_entry_path(bundle_name: &str, sha: &str) -> Result<PathBuf> {
-    let key = bundle_name_to_cache_key(bundle_name);
-    Ok(bundles_cache_dir()?.join(&key).join(sha))
-}
-
-/// Path to the repository directory inside a cache entry
-pub fn entry_repository_path(entry_path: &Path) -> PathBuf {
-    entry_path.join(REPOSITORY_DIR)
-}
-
-/// Path to the resources directory inside a cache entry
-pub fn entry_resources_path(entry_path: &Path) -> PathBuf {
-    entry_path.join(RESOURCES_DIR)
-}
-
 // Re-export public API from submodules
+pub use bundle_name::{content_path_in_repo, derive_marketplace_bundle_name};
+pub use cache_entry::cache_bundle;
+pub use clone::clone_and_checkout;
 pub use index::list_cached_entries_for_url_sha;
-pub use operations::{
-    cache_bundle, clone_and_checkout, content_path_in_repo, derive_marketplace_bundle_name,
-    ensure_bundle_cached, get_cached,
-};
+pub use lookup::get_cached;
+pub use populate::ensure_bundle_cached;
 pub use stats::{cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
+
+// Re-export path utilities and constants
+pub use paths::{
+    bundle_name_to_cache_key, bundles_cache_dir, cache_dir, entry_repository_path,
+    entry_resources_path, repo_cache_entry_path, repo_name_from_url,
+};
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cache::paths::bundle_cache_entry_path;
 
     #[test]
     fn test_bundle_name_to_cache_key() {

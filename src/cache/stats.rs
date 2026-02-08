@@ -11,7 +11,8 @@ use walkdir::WalkDir;
 
 use crate::error::{AugentError, Result};
 
-use super::{BUNDLE_NAME_FILE, bundle_name_to_cache_key, repo_name_from_url};
+use super::paths::BUNDLE_NAME_FILE;
+use super::{bundle_name_to_cache_key, repo_name_from_url};
 
 /// Cached bundle information (by bundle name)
 #[derive(Debug, Clone)]
@@ -208,7 +209,7 @@ pub fn clear_cache() -> Result<()> {
             message: format!("Failed to clear cache: {}", e),
         })?;
     }
-    let index_path = super::cache_dir()?.join(super::INDEX_FILE);
+    let index_path = super::cache_dir()?.join(super::index::INDEX_FILE);
     if index_path.exists() {
         fs::remove_file(&index_path).map_err(|e| AugentError::CacheOperationFailed {
             message: format!("Failed to remove cache index: {}", e),
