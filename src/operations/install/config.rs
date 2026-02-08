@@ -7,6 +7,7 @@ use crate::config::{
 };
 use crate::error::Result;
 use crate::workspace::Workspace;
+use normpath::PathExt;
 
 /// Configuration updater for install operation
 pub struct ConfigUpdater<'a> {
@@ -112,14 +113,32 @@ impl<'a> ConfigUpdater<'a> {
     }
 
     fn get_relative_path(&self, bundle_path: &std::path::Path) -> String {
-        if let Ok(rel_from_config) = bundle_path.strip_prefix(&self.workspace.config_dir) {
+        // Normalize paths to handle symlinks (e.g., /tmp -> /private/tmp on macOS)
+        let config_dir_normalized = self.workspace.config_dir.normalize().ok();
+        let root_normalized = self.workspace.root.normalize().ok();
+        let bundle_path_normalized = bundle_path.normalize().ok();
+
+        let config_dir_ref = config_dir_normalized
+            .as_ref()
+            .map(|p| p.as_path())
+            .unwrap_or(&self.workspace.config_dir);
+        let root_ref = root_normalized
+            .as_ref()
+            .map(|p| p.as_path())
+            .unwrap_or(&self.workspace.root);
+        let bundle_path_ref = bundle_path_normalized
+            .as_ref()
+            .map(|p| p.as_path())
+            .unwrap_or(bundle_path);
+
+        if let Ok(rel_from_config) = bundle_path_ref.strip_prefix(config_dir_ref) {
             let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
             if path_str.is_empty() {
                 ".".to_string()
             } else {
                 path_str
             }
-        } else if let Ok(rel_from_root) = bundle_path.strip_prefix(&self.workspace.root) {
+        } else if let Ok(rel_from_root) = bundle_path_ref.strip_prefix(root_ref) {
             let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
             if !rel_from_root_str.is_empty() {
                 format!("./{}", rel_from_root_str)

@@ -15,6 +15,7 @@ use crate::common::string_utils;
 use crate::config::utils::BundleContainer;
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
+use normpath::PathExt;
 
 pub use confirmation::confirm_uninstall;
 pub use dependency::build_dependency_map;
@@ -162,17 +163,35 @@ fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
         message: format!("Failed to get current directory: {}", e),
     })?;
 
+    // Normalize paths to handle symlinks and platform differences
+    let current_dir_normalized = current_dir
+        .normalize()
+        .ok()
+        .map(|p| p.into_path_buf())
+        .unwrap_or_else(|| current_dir.clone());
+    let root_normalized = workspace
+        .root
+        .normalize()
+        .ok()
+        .map(|p| p.into_path_buf())
+        .unwrap_or_else(|| workspace.root.clone());
+
     for bundle in &workspace.lockfile.bundles {
         if let crate::config::lockfile::source::LockedSource::Dir { path, .. } = &bundle.source {
             let bundle_path = workspace.root.join(path);
-            if current_dir == bundle_path {
+            let bundle_path_normalized = bundle_path
+                .normalize()
+                .ok()
+                .map(|p| p.into_path_buf())
+                .unwrap_or_else(|| bundle_path.clone());
+            if current_dir_normalized == bundle_path_normalized {
                 println!("Uninstalling current directory bundle: {}", bundle.name);
                 return Ok(vec![bundle.name.clone()]);
             }
         }
     }
 
-    let relative_path = current_dir.strip_prefix(&workspace.root).ok();
+    let relative_path = current_dir_normalized.strip_prefix(&root_normalized).ok();
     if let Some(rel_path) = relative_path {
         if let Some(first_component) = rel_path.iter().next() {
             let potential_bundle_name = first_component.to_string_lossy();
