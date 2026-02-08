@@ -272,60 +272,68 @@ sequenceDiagram
 
 ## Rust Development Practices
 
-### Project Structure
+### Module Structure
 
-```text
-augent/
-├── Cargo.toml
-├── src/
-│   ├── main.rs           # CLI entry point
-│   ├── cli.rs            # CLI definitions (clap)
-│   ├── error.rs          # Error types (thiserror + miette)
-│   ├── hash.rs           # BLAKE3 hashing for integrity verification
-│   ├── progress.rs       # Progress reporting for long-running operations
-│   ├── config/
-│   │   ├── mod.rs
-│   │   ├── bundle.rs     # augent.yaml structures
-│   │   ├── lockfile.rs   # augent.lock structures
-│   │   ├── index.rs  # augent.index.yaml structures
-│   │   └── marketplace.rs # marketplace.json parsing
-│   ├── platform/
-│   │   ├── mod.rs
-│   │   ├── detection.rs  # Platform detection
-│   │   ├── loader.rs     # Platform configuration loading
-│   │   └── merge.rs       # Merge strategies for special files
-│   ├── git/
-│   │   └── mod.rs        # Git operations
-│   ├── cache/
-│   │   └── mod.rs        # Bundle caching
-│   ├── source/
-│   │   ├── mod.rs
-│   │   └── bundle.rs     # Bundle source parsing and models
-│   ├── resolver/
-│   │   └── mod.rs        # Dependency resolution
-│   ├── installer/
-│   │   └── mod.rs        # Installation and uninstallation logic
-│   ├── transaction/
-│   │   └── mod.rs        # Transaction management for atomic operations
-│   ├── workspace/
-│   │   └── mod.rs        # Workspace management and initialization
-│   └── commands/
-│       ├── mod.rs
-│       ├── install.rs
-│       ├── uninstall.rs
-│       ├── list.rs
-│       ├── show.rs
-│       ├── clean_cache.rs
-│       ├── completions.rs
-│       ├── version.rs
-│       └── menu.rs        # Interactive menu for bundle selection
-├── tests/
-│   ├── common/
-│   │   └── mod.rs        # Test utilities and fixtures
-│   ├── install_tests.rs
-│   └── ...
-└── docs/
-```
+The codebase has been refactored into a layered architecture following domain-driven design principles:
+
+**Domain Layer** (`src/domain/`):
+
+- Pure domain objects with business rules and validation
+- No external dependencies
+- Types: `ResolvedBundle`, `DiscoveredResource`, `InstalledFile`, `ResourceCounts`
+
+**Application Layer** (`src/operations/`):
+
+- Operation objects that coordinate workflows
+- Each operation (`InstallOperation`, `UninstallOperation`, etc.) encapsulates a complete workflow
+- Operations handle transaction coordination and state management
+
+**Workspace Layer** (`src/workspace/`):
+
+- Workspace initialization, configuration management, and validation
+- Modified file detection and preservation
+
+**Installer Layer** (`src/installer/`):
+
+- `discovery.rs` - Resource discovery and filtering
+- `files.rs` - File copy operations and format conversions
+- `merge.rs` - Merge strategy application
+- `pipeline.rs` - Installation orchestration (Discovery → Transform → Merge → Install)
+- `mod.rs` - Public API re-exports
+
+**Resolver Layer** (`src/resolver/`):
+
+- `operation.rs` - High-level resolution orchestration
+- `graph.rs` - Dependency graph construction and topological sorting
+
+**Cache Layer** (`src/cache/`):
+
+- Bundle storage and retrieval
+- Lockfile and workspace index management
+
+**Platform Layer** (`src/platform/`):
+
+- `registry.rs` - Platform registration and lookup
+- `transformer.rs` - Universal to platform-specific transformations
+- `merger.rs` - Merge strategy implementations
+
+**UI Layer** (`src/ui/`):
+
+- Progress reporting (interactive and silent modes)
+- Clean separation from business logic
+
+**Command Layer** (`src/commands/`):
+
+- Thin CLI wrappers (~100 lines each)
+- Argument parsing and user interaction
+- Delegation to operation objects
+
+### Design Benefits
+
+1. **Separation of Concerns**: Each module has a clear, single responsibility
+2. **Testability**: Smaller, focused modules are easier to unit test
+3. **Maintainability**: Changes are localized to well-defined layers
+4. **Extensibility**: New platforms can be added via configuration without code changes
 
 ### Error Handling
 

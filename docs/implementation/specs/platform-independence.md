@@ -51,7 +51,7 @@ Each `Platform` defines:
 - **detection**: Patterns to auto-detect platform presence
 - **transforms**: Rules for universal → platform-specific conversion
 
-### 2. Platform Detection (`src/platform/detection.rs`)
+### 2. Platform Detection (`src/platform/mod.rs`)
 
 Platform detection is fully dynamic:
 
@@ -92,7 +92,7 @@ fn detect_installed_platforms(&self) -> Result<Vec<PathBuf>> {
 
 This iterates through **all defined platforms**, not just 4 hardcoded ones.
 
-### 4. Platform Configuration Loading (`src/platform/loader.rs`)
+### 4. Platform Configuration Loading (`src/platform/loader.rs`) and Registry (`src/platform/registry.rs`)
 
 New platforms can be added via `platforms.jsonc` files at:
 

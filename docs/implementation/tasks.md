@@ -855,7 +855,7 @@ Comprehensive test coverage for all user-facing functionality including integrat
 
 **Status:** Complete
 
-- [x] Create MarketplaceConfig struct in src/config/marketplace.rs for parsing marketplace.json
+- [x] Create MarketplaceConfig struct for parsing marketplace.json (now in resolver layer)
 - [x] Add marketplace.json detection in discover_local_bundles()
 - [x] Implement discover_marketplace_bundles() to parse marketplace.json and create DiscoveredBundle entries
 - [x] Add detection for virtual bundles in resolve_local()

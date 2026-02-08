@@ -31,7 +31,11 @@ This plan covers both pre-implementation planning and actual implementation of A
 - [Complete] Phase 5: Quality Assurance (Epics 11-13) - Complete
 - [Complete] Phase 6: Release (Epic 14) - Complete
 - [Complete] Phase 7: Post-Release Maintenance & Cleanup (Epic 15) - Complete
-- [Complete] Phase 11: CLI Enhancements (Epic 19) - Complete
+- [Complete] Phase 8: Architecture Refactoring - Complete
+- [Complete] Phase 9: CLI Maintenance - Complete
+- [Complete] Phase 10: Dir Bundle Simplification - Complete
+- [Complete] Phase 11: Universal Resource Format - Complete
+- [Complete] Phase 12: CLI Enhancements (Epic 19) - Complete
 
 ---
 
@@ -133,6 +137,8 @@ Core infrastructure and data models, platform system for extensibility - essenti
 
 **Goal:** Define core data structures for bundles, locks, and resources.
 
+**Note:** Refactored during architecture refactoring - core data models now organized into layered structure with domain/, operations/, resolver/, and installer/ modules. See architecture.md for updated module structure.
+
 #### Feature 2.1: Bundle Models
 
 **Status:** Complete
@@ -150,6 +156,8 @@ Core infrastructure and data models, platform system for extensibility - essenti
 **Status:** Complete
 
 **Goal:** Implement extensible platform support with flow-based transformations.
+
+**Note:** Refactored to include loader.rs and registry.rs modules for better platform configuration management.
 
 #### Feature 3.1: Platform Configuration Schema
 
@@ -181,6 +189,8 @@ Git operations and bundle sources, workspace management - install/uninstall prer
 
 **Goal:** Handle bundle discovery, fetching, and caching.
 
+**Note:** Refactored source parsing into modules and resolver split into submodules for better separation of concerns.
+
 ---
 
 ### Feature Overview
@@ -211,6 +221,8 @@ Bundle sources support for installing from various locations, with automatic cac
 
 **Goal:** Handle workspace initialization and locking.
 
+**Note:** Refactored workspace operations into modules for better code organization and maintainability.
+
 #### Feature 5.1: Workspace Initialization
 
 **Status:** Complete
@@ -235,7 +247,9 @@ Most complex command, core value proposition - requires all previous phases.
 
 **Status:** Complete
 
-**Goal:** Implement the `install` command with dependency resolution.
+**Goal:** Implement `install` command with dependency resolution.
+
+**Note:** Refactored install operation into submodules for better separation of discovery, execution, and display logic.
 
 #### Feature 6.1: Dependency Resolution
 
@@ -269,7 +283,9 @@ Uninstall command, query commands (list, show), help and version.
 
 **Status:** Complete
 
-**Goal:** Implement the `uninstall` command with safe removal.
+**Goal:** Implement `uninstall` command with safe removal.
+
+**Note:** Refactored uninstall operation into submodules for better separation of concerns.
 
 #### Feature 7.1: Bundle Dependency Analysis
 
@@ -344,6 +360,8 @@ Testing infrastructure, documentation, and comprehensive test coverage.
 ### Epic 11: Testing Infrastructure
 
 **Status:** Complete
+
+**Note:** Updated test documentation to reflect new layered architecture (domain/, operations/, resolver/, installer/ modules instead of old config/ structure).
 
 #### Feature 11.1: Unit Testing Framework
 
@@ -462,7 +480,7 @@ Scope:
 
 ---
 
-## Phase 10: Dir Bundle Simplification
+## Phase 9: Dir Bundle Simplification
 
 ### Epic 18: Remove dir bundle dependencies and augent.yaml support
 

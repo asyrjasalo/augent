@@ -33,25 +33,30 @@ Unit tests verify the correctness of individual components:
 
 ### Organization
 
-Unit tests are co-located with the code they test:
+Unit tests are co-located with code they test:
 
 ```text
 src/
-├── config/
+├── domain/
 │   ├── mod.rs
-│   ├── bundle.rs         # Tests at bottom of file
-│   ├── lockfile.rs       # Tests at bottom of file
-│   └── index.rs          # Tests at bottom of file
+│   ├── bundle.rs         # Domain models for bundles
+│   └── resource.rs      # Domain models for resources
+├── resolver/
+│   ├── mod.rs
+│   ├── config.rs         # Configuration parsing
+│   ├── graph.rs         # Dependency graphs
+│   └── topology.rs      # Topological sorting
 ├── platform/
 │   ├── mod.rs
-│   └── transform.rs      # Tests at bottom of file
+│   ├── registry.rs       # Platform registration
+│   └── transformer.rs   # Transformations
 └── error.rs              # Tests at bottom of file
 ```
 
 ### Example Pattern
 
 ```rust
-// src/config/bundle.rs
+// src/domain/bundle.rs
 
 #[cfg(test)]
 mod tests {
@@ -448,7 +453,7 @@ Complex tests should have comments explaining:
 
 All merge strategies must have comprehensive test coverage:
 
-### Unit Tests (`src/platform/merge.rs`)
+### Unit Tests (`src/platform/merger.rs`)
 
 **Replace Strategy:**
 
