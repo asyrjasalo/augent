@@ -3,6 +3,8 @@
 //! A platform-independent command line tool for managing AI coding platform resources
 //! across multiple platforms (Claude, Cursor, OpenCode, etc.) in a reproducible manner.
 
+#![allow(dead_code)]
+
 use clap::Parser;
 use std::path::PathBuf;
 

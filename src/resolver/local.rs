@@ -62,6 +62,10 @@ pub fn resolve_local(
 ) -> Result<ResolvedBundle> {
     let full_path = if path.is_absolute() {
         path.to_path_buf()
+    } else if path == Path::new(".") {
+        std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {}", e),
+        })?
     } else {
         workspace_root.join(path)
     };

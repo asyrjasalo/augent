@@ -1,82 +1,17 @@
-//! List operation module
+//! Display functions for list operation
 //!
-//! This module provides ListOperation struct that encapsulates all
-//! listing business logic, including bundle information display and
-//! resource grouping.
-use crate::common::{config_utils, display_utils, string_utils};
+//! This module handles displaying bundle information, resources, and platform mappings.
 
 use console::Style;
 use std::collections::HashMap;
 
-use crate::cli::ListArgs;
+use crate::common::{config_utils, display_utils, string_utils};
+use crate::config::LockedSource;
+use crate::config::WorkspaceBundle;
 use crate::config::utils::BundleContainer;
-use crate::config::{LockedSource, WorkspaceBundle};
-use crate::error::Result;
-use crate::workspace::Workspace;
-
-/// Configuration options for list
-#[derive(Debug, Clone)]
-pub struct ListOptions {
-    pub detailed: bool,
-}
-
-impl From<&ListArgs> for ListOptions {
-    fn from(args: &ListArgs) -> Self {
-        Self {
-            detailed: args.detailed,
-        }
-    }
-}
-
-/// High-level list operation
-pub struct ListOperation<'a> {
-    workspace: &'a Workspace,
-}
-
-impl<'a> ListOperation<'a> {
-    pub fn new(workspace: &'a Workspace) -> Self {
-        Self { workspace }
-    }
-
-    #[allow(dead_code)]
-    pub fn workspace(&self) -> &Workspace {
-        self.workspace
-    }
-
-    /// Execute list operation
-    pub fn execute(&self, options: &ListOptions) -> Result<()> {
-        list_bundles(self.workspace, options.detailed)
-    }
-}
-
-/// List bundles in the workspace
-fn list_bundles(workspace: &Workspace, detailed: bool) -> Result<()> {
-    let lockfile = &workspace.lockfile;
-
-    if lockfile.bundles.is_empty() {
-        println!("No bundles installed.");
-        return Ok(());
-    }
-
-    println!("Installed bundles ({}):", lockfile.bundles.len());
-    println!();
-
-    let workspace_root = &workspace.root;
-    let workspace_config = &workspace.workspace_config;
-    for bundle in &lockfile.bundles {
-        if detailed {
-            display_bundle_detailed(workspace_root, bundle, workspace_config, detailed);
-        } else {
-            display_bundle_simple(bundle, workspace_config, detailed);
-        }
-        println!();
-    }
-
-    Ok(())
-}
 
 /// Display bundle in simple format
-fn display_bundle_simple(
+pub fn display_bundle_simple(
     bundle: &crate::config::LockedBundle,
     _workspace_config: &crate::config::WorkspaceConfig,
     _detailed: bool,
@@ -116,7 +51,7 @@ fn display_bundle_simple(
 }
 
 /// Display bundle in detailed format
-fn display_bundle_detailed(
+pub fn display_bundle_detailed(
     workspace_root: &std::path::Path,
     bundle: &crate::config::LockedBundle,
     workspace_config: &crate::config::WorkspaceConfig,
@@ -226,7 +161,7 @@ pub fn extract_resource_type(file: &str) -> &'static str {
 }
 
 /// Display resources grouped by type with consistent layout
-fn display_resources_grouped(files: &[String]) {
+pub fn display_resources_grouped(files: &[String]) {
     if files.is_empty() {
         return;
     }
@@ -275,13 +210,13 @@ fn display_resources_grouped(files: &[String]) {
 }
 
 /// Extract platform name from location path (e.g., ".cursor/commands/file.md" -> "cursor")
-fn extract_platform_from_location(location: &str) -> String {
+pub fn extract_platform_from_location(location: &str) -> String {
     if let Some(first_slash) = location.find('/') {
         let platform_dir = &location[..first_slash];
         // Remove leading dot if present (e.g., ".cursor" -> "cursor")
         platform_dir.trim_start_matches('.').to_string()
     } else {
-        // Fallback: try to extract from the whole path
+        // Fallback: try to extract from:: whole path
         location
             .split('/')
             .next()
@@ -292,7 +227,7 @@ fn extract_platform_from_location(location: &str) -> String {
 }
 
 /// Display enabled resources grouped by platform
-fn display_provided_files_grouped_by_platform(
+pub fn display_provided_files_grouped_by_platform(
     files: &[String],
     workspace_bundle: Option<&WorkspaceBundle>,
 ) {
@@ -355,44 +290,5 @@ fn display_provided_files_grouped_by_platform(
         for file in files {
             println!("      {}", Style::new().dim().apply_to(file));
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_resource_type() {
-        assert_eq!(extract_resource_type("commands/test.md"), "commands");
-        assert_eq!(extract_resource_type("rules/lint.md"), "rules");
-        assert_eq!(extract_resource_type("skills/review.md"), "skills");
-        assert_eq!(extract_resource_type("agents/cicd.md"), "agents");
-        assert_eq!(extract_resource_type("other_file.txt"), "other");
-    }
-
-    #[test]
-    fn test_capitalize_word() {
-        assert_eq!(string_utils::capitalize_word("hello"), "Hello");
-        assert_eq!(string_utils::capitalize_word("HELLO"), "HELLO");
-        assert_eq!(string_utils::capitalize_word(""), "");
-        assert_eq!(string_utils::capitalize_word("cursor"), "Cursor");
-    }
-
-    #[test]
-    fn test_extract_platform_from_location() {
-        assert_eq!(
-            extract_platform_from_location(".cursor/commands/test.md"),
-            "cursor"
-        );
-        assert_eq!(
-            extract_platform_from_location("opencode/skills/test.md"),
-            "opencode"
-        );
-        assert_eq!(
-            extract_platform_from_location("claude/rules/test.md"),
-            "claude"
-        );
-        assert_eq!(extract_platform_from_location("singlepath"), "singlepath");
     }
 }

@@ -32,8 +32,6 @@ pub fn resolve_git(
     resolution_stack: &[String],
     resolved: &std::collections::HashMap<String, ResolvedBundle>,
 ) -> Result<ResolvedBundle> {
-    cache_bundle(git_source)?;
-
     let (content_path, sha, resolved_ref) = cache::cache_bundle(git_source)?;
 
     if !content_path.is_dir() {
@@ -127,11 +125,6 @@ fn derive_base_name(url: &str) -> String {
         ("author", repo_path)
     };
     format!("@{}/{}", author, repo)
-}
-
-/// Ensure bundle is cached by caching it if needed
-fn cache_bundle(git_source: &GitSource) -> Result<()> {
-    cache::cache_bundle(git_source).map(|_| ())
 }
 
 #[cfg(test)]

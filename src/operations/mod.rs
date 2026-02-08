@@ -1,10 +1,10 @@
 //! Operations module for installing and uninstalling bundles
 //!
 //! This module provides high-level operations that coordinate:
-//! - InstallOperation: Complete installation workflow
-//! - UninstallOperation: Clean uninstallation after errors
-//! - ListOperation: List installed bundles
-//! - ShowOperation: Display bundle details
+//! - install: Complete installation workflow (modularized submodules)
+//! - uninstall: Clean uninstallation (modularized submodules)
+//! - list: List installed bundles (modularized)
+//! - show: Display bundle details (modularized)
 //!
 //! The operations coordinate with:
 //! - Resolver: Dependency resolution (from resolver module)
@@ -19,5 +19,8 @@ pub mod list;
 pub mod show;
 pub mod uninstall;
 
+// List operation exports (modularized)
 pub use list::{ListOperation, ListOptions};
+
+// Show operation exports (modularized)
 pub use show::ShowOperation;

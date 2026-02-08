@@ -1,11 +1,16 @@
 //! Show operation module
-#[allow(unused_imports)]
+
+pub mod selection;
+
+use selection::{select_bundle_interactively, select_bundles_from_list};
+
 use crate::cli::ShowArgs;
-use crate::common::string_utils;
-use crate::config::{BundleConfig, LockedSource, utils::BundleContainer};
+use crate::common::config_utils;
+use crate::common::display_utils;
+use crate::common::{bundle_utils, string_utils};
+use crate::config::{BundleConfig, utils::BundleContainer};
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
-use inquire::Select;
 use std::path::PathBuf;
 
 /// High-level show operation
@@ -45,8 +50,7 @@ impl<'a> ShowOperation<'a> {
     }
 
     fn show_bundle_by_scope_pattern(&self, scope: &str, detailed: bool) -> Result<()> {
-        let matching_bundles =
-            crate::common::bundle_utils::filter_bundles_by_scope(self.workspace, scope);
+        let matching_bundles = bundle_utils::filter_bundles_by_scope(self.workspace, scope);
 
         if matching_bundles.is_empty() {
             return Err(AugentError::BundleNotFound {
@@ -84,7 +88,7 @@ impl<'a> ShowOperation<'a> {
         };
 
         println!();
-        crate::common::display_utils::display_bundle_info(
+        display_utils::display_bundle_info(
             &self.workspace_root,
             bundle_name,
             &bundle_config,
@@ -98,60 +102,15 @@ impl<'a> ShowOperation<'a> {
 
     /// Select a bundle interactively from installed bundles
     fn select_bundle_interactively(&self) -> Result<String> {
-        if self.workspace.lockfile.bundles.is_empty() {
-            println!("No bundles installed.");
-            return Ok(String::new());
-        }
-
-        // Sort bundles alphabetically by name
-        let mut sorted_bundles: Vec<_> = self.workspace.lockfile.bundles.iter().collect();
-        sorted_bundles.sort_by(|a, b| a.name.cmp(&b.name));
-
-        let items: Vec<String> = sorted_bundles.iter().map(|b| b.name.clone()).collect();
-
-        let selection = match Select::new("Select bundle to show", items)
-            .with_starting_cursor(0)
-            .with_page_size(10)
-            .without_filtering()
-            .with_help_message("↑↓ to move, ENTER to select, ESC/q to cancel")
-            .prompt_skippable()?
-        {
-            Some(name) => name,
-            None => return Ok(String::new()),
-        };
-
-        Ok(selection)
+        select_bundle_interactively(self.workspace)
     }
 
     /// Select a single bundle from a list of bundle names
-    fn select_bundles_from_list(&self, mut bundle_names: Vec<String>) -> Result<String> {
-        if bundle_names.is_empty() {
-            println!("No bundles to select from.");
-            return Ok(String::new());
-        }
-
-        if bundle_names.len() == 1 {
-            return Ok(bundle_names[0].clone());
-        }
-
-        // Sort bundles alphabetically by name
-        bundle_names.sort();
-
-        let selection = match Select::new("Select bundle to show", bundle_names)
-            .with_starting_cursor(0)
-            .with_page_size(10)
-            .without_filtering()
-            .with_help_message("↑↓ to move, ENTER to select, ESC/q to cancel")
-            .prompt_skippable()?
-        {
-            Some(name) => name,
-            None => return Ok(String::new()),
-        };
-
-        Ok(selection)
+    fn select_bundles_from_list(&self, bundle_names: Vec<String>) -> Result<String> {
+        select_bundles_from_list(self.workspace, bundle_names)
     }
 
-    fn load_bundle_config(&self, source: &LockedSource) -> Result<BundleConfig> {
-        crate::common::config_utils::load_bundle_config(&self.workspace_root, source)
+    fn load_bundle_config(&self, source: &crate::config::LockedSource) -> Result<BundleConfig> {
+        config_utils::load_bundle_config(&self.workspace_root, source)
     }
 }

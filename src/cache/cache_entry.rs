@@ -18,6 +18,7 @@ use super::{
 ///
 /// Returns (resources_path, sha, resolved_ref).
 /// When resolved_sha is None, resolves ref via ls-remote first so we can check cache without cloning.
+#[allow(dead_code)]
 pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
     // If we have resolved_sha, check cache first
     if let Some(sha) = &source.resolved_sha {

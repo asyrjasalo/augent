@@ -32,6 +32,9 @@ fn test_install_dir_bundle_with_path() {
     // Verify the bundle was added to augent.yaml
     let augent_yaml = std::fs::read_to_string(workspace.path.join(".augent/augent.yaml"))
         .expect("Failed to read augent.yaml");
+    eprintln!("=== DEBUG: Actual YAML content ===");
+    eprintln!("{}", augent_yaml);
+    eprintln!("=== END DEBUG ===");
     assert!(augent_yaml.contains("name: my-local-bundle"));
     assert!(augent_yaml.contains("path: ./bundles/my-local-bundle"));
 
@@ -66,6 +69,9 @@ fn test_install_current_directory_as_bundle() {
     // Verify the bundle was added to augent.yaml
     let augent_yaml = std::fs::read_to_string(workspace.path.join(".augent/augent.yaml"))
         .expect("Failed to read augent.yaml");
+    eprintln!("=== DEBUG: Actual YAML content ===");
+    eprintln!("{}", augent_yaml);
+    eprintln!("=== END DEBUG ===");
     assert!(augent_yaml.contains("name: my-bundle"));
     assert!(augent_yaml.contains("path: ./my-bundle"));
 

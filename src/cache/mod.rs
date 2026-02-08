@@ -30,7 +30,6 @@ pub use bundle_name::{content_path_in_repo, derive_marketplace_bundle_name};
 pub use cache_entry::cache_bundle;
 pub use clone::clone_and_checkout;
 pub use index::list_cached_entries_for_url_sha;
-pub use lookup::get_cached;
 pub use populate::ensure_bundle_cached;
 pub use stats::{cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
 
