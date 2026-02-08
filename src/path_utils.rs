@@ -71,7 +71,10 @@ pub fn is_path_within(path: &Path, base: &Path) -> bool {
     // 2. Symlink resolution is inconsistent between existing and non-existent paths on macOS
     // 3. We just need to check logical containment, not resolve all symlinks
     let path_str = path.to_string_lossy().to_string();
+    #[cfg(not(windows))]
     let mut base_str = base.to_string_lossy().to_string();
+    #[cfg(windows)]
+    let base_str = base.to_string_lossy().to_string();
 
     // Normalize slashes and case for Windows
     #[cfg(windows)]

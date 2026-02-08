@@ -163,17 +163,19 @@ fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
         message: format!("Failed to get current directory: {}", e),
     })?;
 
-    // Normalize paths to handle symlinks and platform differences
-    let current_dir_normalized = current_dir
-        .normalize()
+    // Use canonicalize for reliable path comparison on all platforms
+    // Falls back to normalize if canonicalize fails (e.g., path doesn't exist)
+    let current_dir_canonical = current_dir
+        .canonicalize()
         .ok()
-        .map(|p| p.into_path_buf())
+        .or_else(|| current_dir.normalize().ok().map(|p| p.into_path_buf()))
         .unwrap_or_else(|| current_dir.clone());
-    let root_normalized = workspace
+
+    let root_canonical = workspace
         .root
-        .normalize()
+        .canonicalize()
         .ok()
-        .map(|p| p.into_path_buf())
+        .or_else(|| workspace.root.normalize().ok().map(|p| p.into_path_buf()))
         .unwrap_or_else(|| workspace.root.clone());
 
     for bundle in &workspace.lockfile.bundles {
@@ -181,19 +183,20 @@ fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
             // Strip leading "./" from path to ensure consistent joining on all platforms
             let clean_path = path.strip_prefix("./").unwrap_or(path);
             let bundle_path = workspace.root.join(clean_path);
-            let bundle_path_normalized = bundle_path
-                .normalize()
+            let bundle_path_canonical = bundle_path
+                .canonicalize()
                 .ok()
-                .map(|p| p.into_path_buf())
+                .or_else(|| bundle_path.normalize().ok().map(|p| p.into_path_buf()))
                 .unwrap_or_else(|| bundle_path.clone());
-            if current_dir_normalized == bundle_path_normalized {
+
+            if current_dir_canonical == bundle_path_canonical {
                 println!("Uninstalling current directory bundle: {}", bundle.name);
                 return Ok(vec![bundle.name.clone()]);
             }
         }
     }
 
-    let relative_path = current_dir_normalized.strip_prefix(&root_normalized).ok();
+    let relative_path = current_dir_canonical.strip_prefix(&root_canonical).ok();
     if let Some(rel_path) = relative_path {
         if let Some(first_component) = rel_path.iter().next() {
             let potential_bundle_name = first_component.to_string_lossy();

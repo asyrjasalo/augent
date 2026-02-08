@@ -106,3 +106,10 @@ The codebase has been refactored into a layered architecture following domain-dr
 - Later bundles override earlier bundles (same filename)
 - No semantic versioning - exact Git refs and SHAs only
 - Platform support is extensible via `platforms.jsonc` (no code changes needed)
+
+## Git Workflow
+
+- **NEVER create commits automatically** - always ask the user first before committing
+- Show git diff and explain changes, then ask if user wants to commit
+- Let the user decide when and what to commit
+- Only create commits when explicitly requested by the user
