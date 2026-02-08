@@ -1,4 +1,6 @@
 use crate::cli::InstallArgs;
+use crate::commands::menu;
+use crate::domain::DiscoveredBundle;
 use crate::error::Result;
 use crate::operations::install::{InstallOperation, InstallOptions};
 use crate::source::BundleSource;
@@ -45,13 +47,29 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         let mut resolver = crate::resolver::Resolver::new(&workspace_root);
         let discovered = resolver.discover_bundles(source_str)?;
 
-        let _installed_bundle_names =
+        let installed_bundle_names =
             InstallOperation::get_installed_bundle_names_for_menu(&workspace_root, &discovered);
-        let _discovered = InstallOperation::filter_workspace_bundle_from_discovered(
+        let filtered = InstallOperation::filter_workspace_bundle_from_discovered(
             &workspace_root,
             &discovered,
             &installing_by_bundle_name,
         );
+
+        let menu_shown = !args.all_bundles && filtered.len() > 1;
+
+        let selected_bundles: Vec<DiscoveredBundle> = if menu_shown {
+            use std::collections::HashSet;
+            let installed_set: HashSet<String> = installed_bundle_names.into_iter().collect();
+            let selection = menu::select_bundles_interactively(&filtered, Some(&installed_set))?;
+            selection.selected
+        } else {
+            filtered
+        };
+
+        if selected_bundles.is_empty() && menu_shown {
+            eprintln!("No bundles selected for installation.");
+            return Ok(());
+        }
 
         // Create or open workspace
         std::fs::create_dir_all(&workspace_root).map_err(|e| {
@@ -83,7 +101,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
 
         // Execute install operation
         let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
-        match install_op.execute(&mut args, &[], &mut transaction, false) {
+        match install_op.execute(&mut args, &selected_bundles, &mut transaction, false) {
             Ok(()) => {
                 transaction.commit();
                 Ok(())
