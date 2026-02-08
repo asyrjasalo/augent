@@ -1980,9 +1980,7 @@ fn get_or_init_workspace(
     Ok(match workspace_root_opt {
         Some(root) => root,
         None => {
-            if let Some(repo_root) =
-                crate::workspace::operations::find_git_repository_root(current_dir)
-            {
+            if let Some(repo_root) = crate::workspace::git::find_git_repository_root(current_dir) {
                 let _ = Workspace::init_or_open(&repo_root)?;
                 repo_root
             } else {

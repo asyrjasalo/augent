@@ -22,8 +22,11 @@
 //!
 
 pub mod config;
+pub mod git;
+pub mod init;
 pub mod modified;
 pub mod operations;
+pub mod path;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -79,7 +82,7 @@ impl Workspace {
     /// Workspace is always located at the git repository root.
     /// Returns None if not in a git repository or if .augent doesn't exist there.
     pub fn find_from(start: &Path) -> Option<PathBuf> {
-        let git_root = operations::find_git_repository_root(start)?;
+        let git_root = git::find_git_repository_root(start)?;
 
         if Self::exists(&git_root) {
             Some(git_root)
@@ -93,7 +96,7 @@ impl Workspace {
     /// Loads workspace configuration from .augent/ directory.
     /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from .augent/
     pub fn open(root: &Path) -> Result<Self> {
-        operations::verify_git_root(root)?;
+        git::verify_git_root(root)?;
 
         let augent_dir = root.join(WORKSPACE_DIR);
 
@@ -108,7 +111,7 @@ impl Workspace {
         let lockfile = config::load_lockfile(&config_dir)?;
         let workspace_config = config::load_workspace_config(&config_dir)?;
 
-        let workspace_name = operations::infer_workspace_name(root);
+        let workspace_name = init::infer_workspace_name(root);
 
         let mut lockfile = lockfile;
         if !bundle_config.bundles.is_empty() {
@@ -133,7 +136,7 @@ impl Workspace {
     /// Creates the .augent directory structure and initial configuration files.
     /// The workspace bundle name is inferred from the directory name.
     pub fn init(root: &Path) -> Result<Self> {
-        operations::verify_git_root(root)?;
+        git::verify_git_root(root)?;
 
         let augent_dir = root.join(WORKSPACE_DIR);
         fs::create_dir_all(&augent_dir)?;
@@ -152,13 +155,13 @@ impl Workspace {
 
     /// Get the workspace bundle name
     pub fn get_workspace_name(&self) -> String {
-        operations::infer_workspace_name(&self.root)
+        init::infer_workspace_name(&self.root)
     }
 
     /// Find the bundle in the workspace that matches the current directory
     /// Initialize a workspace if it doesn't exist, or open it if it does
     pub fn init_or_open(root: &Path) -> Result<Self> {
-        operations::init_or_open_workspace(root)
+        init::init_or_open_workspace(root)
     }
 
     /// Get source path for workspace bundle configuration
