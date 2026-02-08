@@ -6,6 +6,14 @@ use serde::ser::SerializeStruct;
 use serde::{Deserializer, Serializer};
 use std::fmt;
 
+macro_rules! serialize_optional_field {
+    ($state:expr, $name:expr, $value:expr) => {
+        if let Some(val) = $value {
+            $state.serialize_field($name, val)?;
+        }
+    };
+}
+
 /// Serialize BundleConfig (empty name field, name injected externally)
 pub fn serialize_bundle_config<S>(
     config: &BundleConfigData,
@@ -42,24 +50,15 @@ where
     }
 
     let mut state = serializer.serialize_struct("BundleConfig", field_count)?;
+
     // Note: name is injected externally during file write, we serialize empty string
     state.serialize_field("name", "")?;
 
-    if let Some(description) = description {
-        state.serialize_field("description", description)?;
-    }
-    if let Some(version) = version {
-        state.serialize_field("version", version)?;
-    }
-    if let Some(author) = author {
-        state.serialize_field("author", author)?;
-    }
-    if let Some(license) = license {
-        state.serialize_field("license", license)?;
-    }
-    if let Some(homepage) = homepage {
-        state.serialize_field("homepage", homepage)?;
-    }
+    serialize_optional_field!(state, "description", description);
+    serialize_optional_field!(state, "version", version);
+    serialize_optional_field!(state, "author", author);
+    serialize_optional_field!(state, "license", license);
+    serialize_optional_field!(state, "homepage", homepage);
     state.serialize_field("bundles", bundles)?;
     state.end()
 }

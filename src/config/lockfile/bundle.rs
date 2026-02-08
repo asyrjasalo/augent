@@ -48,21 +48,19 @@ impl Serialize for LockedBundle {
     {
         let mut state = serializer.serialize_struct("LockedBundle", 9)?;
         state.serialize_field("name", &self.name)?;
-        if let Some(ref description) = self.description {
-            state.serialize_field("description", description)?;
+
+        for (name, value) in [
+            ("description", self.description.as_ref()),
+            ("version", self.version.as_ref()),
+            ("author", self.author.as_ref()),
+            ("license", self.license.as_ref()),
+            ("homepage", self.homepage.as_ref()),
+        ] {
+            if let Some(v) = value {
+                state.serialize_field(name, v)?;
+            }
         }
-        if let Some(ref version) = self.version {
-            state.serialize_field("version", version)?;
-        }
-        if let Some(ref author) = self.author {
-            state.serialize_field("author", author)?;
-        }
-        if let Some(ref license) = self.license {
-            state.serialize_field("license", license)?;
-        }
-        if let Some(ref homepage) = self.homepage {
-            state.serialize_field("homepage", homepage)?;
-        }
+
         state.serialize_field("source", &self.source)?;
 
         // Sort files alphabetically before serialization

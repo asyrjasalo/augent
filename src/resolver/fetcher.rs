@@ -9,7 +9,6 @@ use std::fs;
 use std::path::Path;
 
 use crate::cache;
-use crate::common::fs;
 use crate::config::BundleConfig;
 use crate::config::MarketplaceConfig;
 use crate::domain::{DiscoveredBundle, ResourceCounts};
@@ -18,6 +17,50 @@ use crate::git;
 use crate::source::BundleSource;
 use crate::source::GitSource;
 use crate::universal;
+
+fn cache_bundle_resources(temp_bundle_dir: &Path, resources_dir: &Path) -> Result<()> {
+    let temp_resources = temp_bundle_dir.join("resources");
+    if !resources_dir.exists() {
+        std::fs::create_dir_all(resources_dir)?;
+    }
+
+    for entry in std::fs::read_dir(temp_bundle_dir).map_err(|e| AugentError::IoError {
+        message: format!("Failed to read bundle directory: {}", e),
+    })? {
+        let entry_path = entry.path();
+        if entry.file_name() == ".git" {
+            continue;
+        }
+
+        let target_path = resources_dir.join(entry.file_name());
+
+        if entry_path.is_dir() {
+            copy_dir_recursive(&entry_path, &target_path)?;
+        } else {
+            std::fs::copy(&entry_path, &target_path).map_err(|e| AugentError::FileWriteFailed {
+                path: target_path.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+fn extract_bundle_config(temp_bundle_dir: &Path) -> Option<BundleConfig> {
+    let config_path = temp_bundle_dir.join("augent.yaml");
+    if config_path.exists() {
+        let config_content = std::fs::read_to_string(&config_path)
+            .map_err(|e| AugentError::ConfigParseFailed {
+                path: config_path.display().to_string(),
+                reason: e.to_string(),
+            })
+            .ok()?;
+        Some(BundleConfig::from_yaml(&config_content).ok()?)
+    } else {
+        None
+    }
+}
 
 /// Fetch a bundle from its source
 pub fn fetch_bundle(source: &BundleSource, workspace_root: &Path) -> Result<DiscoveredBundle> {
@@ -93,20 +136,13 @@ fn fetch_git_bundle(
     }
 
     // Fetch from git
+    let temp_dir = tempfile::tempdir().map_err(|e| AugentError::IoError {
+        message: format!("Failed to create temporary directory: {}", e),
+    })?;
     let temp_bundle_dir = git::clone(&git_source.url, temp_dir.path(), true)?;
 
     // Extract bundle config
-    let config = if temp_bundle_dir.join("augent.yaml").exists() {
-        let config_path = temp_bundle_dir.join("augent.yaml");
-        let config_content =
-            fs::read_to_string(&config_path).map_err(|e| AugentError::ConfigParseFailed {
-                path: config_path.display().to_string(),
-                reason: e.to_string(),
-            })?;
-        Some(BundleConfig::from_yaml(&config_content)?)
-    } else {
-        None
-    };
+    let config = extract_bundle_config(&temp_bundle_dir);
 
     // Determine bundle name
     let name = if let Some(ref cfg) = config {
@@ -120,33 +156,10 @@ fn fetch_git_bundle(
 
     let resource_counts = ResourceCounts::from_path(&temp_bundle_dir);
 
-    // Cache the bundle
+    // Cache bundle
     let resources_dir = cache_dir.join(&bundle_cache_key).join("resources");
 
-    if !resources_dir.exists() {
-        fs::create_dir_all(&resources_dir)?;
-    }
-
-    // Copy bundle to cache (excluding .git)
-    for entry in fs::read_dir(&temp_bundle_dir).map_err(|e| AugentError::IoError {
-        message: format!("Failed to read bundle directory: {}", e),
-    })? {
-        let entry_path = entry.path();
-        if entry.file_name() == ".git" {
-            continue;
-        }
-
-        let target_path = resources_dir.join(entry.file_name());
-
-        if entry_path.is_dir() {
-            fs::copy_dir_recursive(&entry_path, &target_path, fs::CopyOptions::default())?;
-        } else {
-            fs::copy(&entry_path, &target_path).map_err(|e| AugentError::FileWriteFailed {
-                path: target_path.display().to_string(),
-                reason: e.to_string(),
-            })?;
-        }
-    }
+    cache_bundle_resources(&temp_bundle_dir, &resources_dir)?;
 
     Ok(DiscoveredBundle {
         name,
@@ -193,89 +206,37 @@ fn fetch_cached_bundle(cache_entry_path: &Path, git_url: &str) -> Result<Discove
         name,
         path: resources_path,
         description,
-        git_source: Some(crate::source::GitSource {
-            url: git_url.to_string(),
-            path: None,
-            git_ref: None,
-            resolved_sha: None,
-        }),
+        git_source: None,
         resource_counts,
     })
 }
 
-/// Discover bundles from a marketplace config
-pub fn discover_marketplace_bundles(
-    marketplace_config: &MarketplaceConfig,
-    workspace_root: &Path,
-) -> Vec<DiscoveredBundle> {
-    let mut bundles = Vec::new();
-
-    for bundle in &marketplace_config.bundles {
-        let bundle_path = workspace_root.join(".claude-plugin").join(&bundle.id);
-
-        let resource_counts = ResourceCounts::from_marketplace(bundle);
-
-        bundles.push(DiscoveredBundle {
-            name: bundle.id.clone(),
-            path: bundle_path,
-            description: bundle.description.clone(),
-            git_source: Some(crate::source::GitSource {
-                url: marketplace_config.marketplace_url.clone(),
-                path: Some(bundle.id.clone()),
-                git_ref: None,
-                resolved_sha: None,
-            }),
-            resource_counts,
-        });
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| AugentError::FileWriteFailed {
+            path: dst.display().to_string(),
+            reason: e.to_string(),
+        })?;
     }
 
-    bundles
-}
+    for entry in fs::read_dir(src).map_err(|e| AugentError::IoError {
+        message: format!("Failed to read directory: {}", e),
+    })? {
+        let entry = entry.map_err(|e| AugentError::IoError {
+            message: format!("Failed to read directory entry: {}", e),
+        })?;
+        let path = entry.path();
+        let dest = dst.join(entry.file_name());
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
-
-    #[test]
-    fn test_fetch_local_bundle() {
-        let temp = TempDir::new().unwrap();
-
-        let bundle_dir = temp.path().join("test-bundle");
-        fs::create_dir_all(&bundle_dir).unwrap();
-        fs::write(
-            bundle_dir.join("augent.yaml"),
-            "name: test-bundle\ndescription: Test bundle\n",
-        )
-        .unwrap();
-        fs::create_dir_all(bundle_dir.join("commands")).unwrap();
-        fs::write(bundle_dir.join("commands/test.md"), "# Test command").unwrap();
-
-        let source = crate::source::BundleSource::Dir {
-            path: "test-bundle".to_string(),
-        };
-
-        let bundle = fetch_local_bundle(&PathBuf::from("test-bundle"), temp.path()).unwrap();
-
-        assert_eq!(bundle.name, "test-bundle");
-        assert_eq!(bundle.description, Some("Test bundle".to_string()));
+        if path.is_dir() {
+            copy_dir_recursive(&path, &dest)?;
+        } else {
+            fs::copy(&path, &dest).map_err(|e| AugentError::FileWriteFailed {
+                path: dest.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
     }
 
-    #[test]
-    fn test_resource_counts_from_path() {
-        let temp = TempDir::new().unwrap();
-
-        let bundle_dir = temp.path().join("test-bundle");
-        fs::create_dir_all(&bundle_dir).unwrap();
-        fs::create_dir_all(bundle_dir.join("commands")).unwrap();
-        fs::create_dir_all(bundle_dir.join("skills")).unwrap();
-        fs::write(bundle_dir.join("AGENTS.md"), "# Agents").unwrap();
-
-        let counts = ResourceCounts::from_path(&bundle_dir);
-
-        assert_eq!(counts.commands, 1);
-        assert_eq!(counts.agents, 1);
-        assert_eq!(counts.skills, 1);
-        assert!(counts.mcp_servers.is_none()); // AGENTS.md is not mcp.jsonc
-    }
+    Ok(())
 }

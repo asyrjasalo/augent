@@ -33,12 +33,9 @@ impl<'a> WorkspaceManager<'a> {
         }
     }
 
-    /// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
-    #[allow(dead_code)]
-    pub fn reconstruct_augent_yaml_from_lockfile(&mut self) -> Result<()> {
-        // First pass: Collect all transitive dependencies
-        // A transitive dependency is any bundle that appears in another bundle's augent.yaml
-        // NOTE: Only git bundles have augent.yaml; dir bundles do not
+    /// Collect all transitive dependencies from git bundles' augent.yaml files.
+    /// A transitive dependency is any bundle that appears in another bundle's augent.yaml.
+    fn collect_transitive_dependencies(&self) -> std::collections::HashSet<String> {
         let mut transitive_dependencies = std::collections::HashSet::new();
 
         for locked in &self.workspace.lockfile.bundles {
@@ -51,11 +48,10 @@ impl<'a> WorkspaceManager<'a> {
                 hash: _,
             } = &locked.source
             {
-                let cache_entry = cache::repo_cache_entry_path(url, sha).map_err(|e| {
-                    AugentError::CacheOperationFailed {
-                        message: format!("Failed to get cache path for '{}': {}", url, e),
-                    }
-                })?;
+                let cache_entry = match cache::repo_cache_entry_path(url, sha) {
+                    Ok(entry) => entry,
+                    Err(_) => continue,
+                };
                 let bundle_cache_dir = cache::entry_repository_path(&cache_entry);
                 let bundle_resources_dir = if let Some(path) = bundle_path {
                     bundle_cache_dir.join(path)
@@ -76,26 +72,49 @@ impl<'a> WorkspaceManager<'a> {
             }
         }
 
+        transitive_dependencies
+    }
+
+    /// Determine if a bundle should be skipped during augent.yaml reconstruction.
+    fn should_skip_bundle(
+        &self,
+        locked: &crate::config::lockfile::bundle::LockedBundle,
+        workspace_bundle_name: &str,
+        transitive_dependencies: &std::collections::HashSet<String>,
+    ) -> bool {
+        // Skip workspace bundle entries with workspace's own name
+        if locked.name == workspace_bundle_name {
+            return true;
+        }
+
+        // Skip bundles from .augent directory that match workspace structure
+        // (e.g., @asyrjasalo/.augent) - these are workspace config bundles
+        if let LockedSource::Dir { path, .. } = &locked.source {
+            // Only skip if path is exactly ".augent" (not subdirectories like ".augent/my-local-bundle")
+            if path == ".augent" {
+                return true;
+            }
+        }
+
+        // Skip transitive dependencies (bundles that are dependencies of other bundles)
+        if transitive_dependencies.contains(&locked.name) {
+            return true;
+        }
+
+        false
+    }
+
+    /// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
+    #[allow(dead_code)]
+    pub fn reconstruct_augent_yaml_from_lockfile(&mut self) -> Result<()> {
+        // First pass: Collect all transitive dependencies
+        let transitive_dependencies = self.collect_transitive_dependencies();
+
         let workspace_bundle_name = self.workspace.get_workspace_name();
         let mut bundles = Vec::new();
 
         for locked in &self.workspace.lockfile.bundles {
-            // Skip workspace bundle entries with workspace's own name
-            if locked.name == workspace_bundle_name {
-                continue;
-            }
-
-            // Skip bundles from .augent directory that match workspace structure
-            // (e.g., @asyrjasalo/.augent) - these are workspace config bundles
-            if let LockedSource::Dir { path, .. } = &locked.source {
-                // Only skip if path is exactly ".augent" (not subdirectories like ".augent/my-local-bundle")
-                if path == ".augent" {
-                    continue;
-                }
-            }
-
-            // Skip transitive dependencies (bundles that are dependencies of other bundles)
-            if transitive_dependencies.contains(&locked.name) {
+            if self.should_skip_bundle(locked, &workspace_bundle_name, &transitive_dependencies) {
                 continue;
             }
 
@@ -124,7 +143,6 @@ impl<'a> WorkspaceManager<'a> {
                         if let Ok(rel_from_config) =
                             bundle_path.strip_prefix(&self.workspace.config_dir)
                         {
-                            // Bundle is under config_dir (relative path is straightforward)
                             let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
                             if path_str.is_empty() {
                                 ".".to_string()
@@ -134,8 +152,6 @@ impl<'a> WorkspaceManager<'a> {
                         } else if let Ok(rel_from_root) =
                             bundle_path.strip_prefix(&self.workspace.root)
                         {
-                            // Bundle is under workspace root but not under config_dir
-                            // Need to construct path with .. segments
                             let rel_from_root_str =
                                 rel_from_root.to_string_lossy().replace('\\', "/");
 

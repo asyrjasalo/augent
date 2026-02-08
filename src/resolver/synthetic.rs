@@ -67,49 +67,55 @@ fn copy_resources(
         repo_root.to_path_buf()
     };
 
-    let copy_list = |resource_list: &[String], target_subdir: &str| -> Result<()> {
+    let copy_resource_list = |resource_list: &[String], target_subdir: &str| -> Result<()> {
         let target_path = target_dir.join(target_subdir);
         if !resource_list.is_empty() {
             std::fs::create_dir_all(&target_path)?;
         }
 
         for resource_path in resource_list {
-            let source = source_dir.join(resource_path.trim_start_matches("./"));
-            if !source.exists() {
-                continue;
-            }
-
-            let file_name = source
-                .file_name()
-                .ok_or_else(|| AugentError::FileNotFound {
-                    path: source.display().to_string(),
-                })?;
-
-            let dest = target_path.join(file_name);
-
-            if source.is_dir() {
-                copy_dir_recursive(&source, target_path.join(file_name), CopyOptions::default())?;
-            } else {
-                std::fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
-                    message: format!(
-                        "Failed to copy {} to {}: {}",
-                        source.display(),
-                        dest.display(),
-                        e
-                    ),
-                })?;
-            }
+            copy_single_resource(&source_dir, resource_path, &target_path)?;
         }
 
         Ok(())
     };
 
-    copy_list(&bundle_def.commands, "commands")?;
-    copy_list(&bundle_def.agents, "agents")?;
-    copy_list(&bundle_def.skills, "skills")?;
-    copy_list(&bundle_def.mcp_servers, "mcp_servers")?;
-    copy_list(&bundle_def.rules, "rules")?;
-    copy_list(&bundle_def.hooks, "hooks")?;
+    copy_resource_list(&bundle_def.commands, "commands")?;
+    copy_resource_list(&bundle_def.agents, "agents")?;
+    copy_resource_list(&bundle_def.skills, "skills")?;
+    copy_resource_list(&bundle_def.mcp_servers, "mcp_servers")?;
+    copy_resource_list(&bundle_def.rules, "rules")?;
+    copy_resource_list(&bundle_def.hooks, "hooks")?;
+
+    Ok(())
+}
+
+fn copy_single_resource(source_dir: &Path, resource_path: &str, target_path: &Path) -> Result<()> {
+    let source = source_dir.join(resource_path.trim_start_matches("./"));
+    if !source.exists() {
+        return Ok(());
+    }
+
+    let file_name = source
+        .file_name()
+        .ok_or_else(|| AugentError::FileNotFound {
+            path: source.display().to_string(),
+        })?;
+
+    let dest = target_path.join(file_name);
+
+    if source.is_dir() {
+        copy_dir_recursive(&source, target_path.join(file_name), CopyOptions::default())?;
+    } else {
+        std::fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
+            message: format!(
+                "Failed to copy {} to {}: {}",
+                source.display(),
+                dest.display(),
+                e
+            ),
+        })?;
+    }
 
     Ok(())
 }

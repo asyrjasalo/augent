@@ -242,46 +242,38 @@ impl GitSource {
         Some((owner, repo, git_ref, path_val))
     }
 
-    /// Parse the URL portion (without fragment)
-    fn parse_url(input: &str) -> Result<String> {
-        // GitHub short form: github:user/repo or just user/repo or @user/repo
-        if let Some(rest) = input.strip_prefix("github:") {
-            return Ok(format!("https://github.com/{}.git", rest));
-        }
-
-        // Check for @user/repo format (GitHub shorthand with @ prefix)
-        if let Some(rest) = input.strip_prefix('@') {
-            if !rest.contains("://")
-                && !rest.starts_with("git@")
-                && !rest.starts_with("file://")
-                && rest.matches('/').count() == 1
-                && !rest.starts_with('/')
-            {
-                return Ok(format!("https://github.com/{}.git", rest));
-            }
-        }
-
-        // Check for user/repo format (GitHub shorthand)
-        // Must have exactly one slash and no protocol
-        if !input.contains("://")
+    /// Check if string looks like a GitHub user/repo shorthand
+    fn is_github_shorthand(input: &str) -> bool {
+        !input.contains("://")
             && !input.starts_with("git@")
             && !input.starts_with("file://")
             && !input.starts_with("github:")
             && !input.starts_with('@')
             && input.matches('/').count() == 1
             && !input.starts_with('/')
-        {
+    }
+
+    /// Parse the URL portion (without fragment)
+    fn parse_url(input: &str) -> Result<String> {
+        if let Some(rest) = input.strip_prefix("github:") {
+            return Ok(format!("https://github.com/{}.git", rest));
+        }
+
+        if let Some(rest) = input.strip_prefix('@') {
+            if Self::is_github_shorthand(rest) {
+                return Ok(format!("https://github.com/{}.git", rest));
+            }
+        }
+
+        if Self::is_github_shorthand(input) {
             return Ok(format!("https://github.com/{}.git", input));
         }
 
-        // Full HTTPS or SSH URL
-        if input.starts_with("https://") || input.starts_with("git@") || input.starts_with("ssh://")
+        if input.starts_with("https://")
+            || input.starts_with("git@")
+            || input.starts_with("ssh://")
+            || input.starts_with("file://")
         {
-            return Ok(input.to_string());
-        }
-
-        // file:// URL - treat as Git source (may be a git repo)
-        if input.starts_with("file://") {
             return Ok(input.to_string());
         }
 

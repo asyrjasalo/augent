@@ -59,23 +59,27 @@ pub fn validate_local_bundle_path(
         });
     }
 
-    // Resolve full path and workspace root to absolute normalized paths
-    // This handles symlinks and relative path components safely
-    let full_canonical = full_path
-        .normalize()
-        .map_err(|_| AugentError::BundleValidationFailed {
-            message: format!(
-                "Local bundle path '{}' cannot be resolved.",
-                user_path.display()
-            ),
-        })?
-        .into_path_buf();
+    // Resolve workspace root to absolute normalized path
     let workspace_canonical = workspace_root
         .normalize()
         .map_err(|_| AugentError::BundleValidationFailed {
             message: "Workspace root cannot be resolved.".to_string(),
         })?
         .into_path_buf();
+
+    // Try to normalize the full path, but if it fails (e.g., path doesn't exist),
+    // fall back to manual path resolution
+    let full_canonical = if let Ok(normalized) = full_path.normalize() {
+        normalized.into_path_buf()
+    } else {
+        // Path doesn't exist or cannot be normalized - construct it manually
+        // This is needed to validate paths that don't exist yet
+        if full_path.is_absolute() {
+            full_path.to_path_buf()
+        } else {
+            workspace_canonical.join(full_path)
+        }
+    };
 
     // Check if bundle path is within repository
     if !full_canonical.starts_with(&workspace_canonical) {

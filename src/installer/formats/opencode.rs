@@ -43,21 +43,73 @@ pub fn convert(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Convert to OpenCode skill format with proper frontmatter
-pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
+/// Parse frontmatter from markdown content, returning (frontmatter, body).
+fn parse_frontmatter(content: &str) -> (Option<String>, String) {
     let lines: Vec<&str> = content.lines().collect();
 
-    let (frontmatter, body) = if lines.len() >= 3 && lines[0].eq("---") {
-        if let Some(end_idx) = lines[1..].iter().position(|line| line.eq(&"---")) {
-            let fm = lines[1..end_idx + 1].join("\n");
-            let body_content = lines[end_idx + 2..].join("\n");
-            (Some(fm), body_content)
-        } else {
-            (None, content.to_string())
-        }
-    } else {
-        (None, content.to_string())
+    if lines.len() < 3 || !lines[0].eq("---") {
+        return (None, content.to_string());
+    }
+
+    let end_idx = match lines[1..].iter().position(|line| line.eq(&"---")) {
+        Some(idx) => idx,
+        None => return (None, content.to_string()),
     };
+
+    let fm = lines[1..end_idx + 1].join("\\n");
+    let body_content = lines[end_idx + 2..].join("\\n");
+    (Some(fm), body_content)
+}
+
+/// Build a HashMap from frontmatter lines.
+fn build_frontmatter_map(frontmatter: &str) -> std::collections::HashMap<String, String> {
+    let mut map = std::collections::HashMap::new();
+    for line in frontmatter.lines() {
+        if let Some((key, value)) = line.trim().split_once(':') {
+            let key = key.trim().to_string();
+            let value = value
+                .trim()
+                .trim_start_matches('"')
+                .trim_end_matches('"')
+                .to_string();
+            map.insert(key, value);
+        }
+    }
+    map
+}
+
+/// Build OpenCode frontmatter from parsed key-value map.
+fn build_opencode_frontmatter(
+    map: &std::collections::HashMap<String, String>,
+    target: &Path,
+) -> String {
+    let mut fm = String::new();
+    fm.push_str("---\\n");
+
+    let name = map
+        .get("name")
+        .map(|s| s.as_str())
+        .or_else(|| target.file_stem().and_then(|s| s.to_str()))
+        .unwrap_or("unknown");
+    fm.push_str(&format!("name: {}\\n", name));
+
+    for key in ["description", "license", "compatibility"] {
+        if let Some(value) = map.get(key) {
+            fm.push_str(&format!("{}: {}\\n", key, value));
+        }
+    }
+
+    if let Some(meta) = map.get("metadata") {
+        fm.push_str(&format!("metadata: {}\\n", meta));
+    }
+
+    fm.push_str("---\\n\\n");
+    fm
+}
+
+/// Convert to OpenCode skill format with proper frontmatter
+pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
+    let (frontmatter, body) = parse_frontmatter(content);
 
     if frontmatter.is_none() {
         file_ops::ensure_parent_dir(target)?;
@@ -68,48 +120,8 @@ pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let mut new_frontmatter = String::new();
-    let mut frontmatter_map = std::collections::HashMap::new();
-
-    if let Some(fm) = &frontmatter {
-        for line in fm.lines() {
-            let line = line.trim();
-            if let Some((key, value)) = line.split_once(':') {
-                let key = key.trim();
-                let value = value.trim().trim_start_matches('"').trim_end_matches('"');
-                frontmatter_map.insert(key.to_string(), value.to_string());
-            }
-        }
-    }
-
-    new_frontmatter.push_str("---\n");
-
-    let name = frontmatter_map
-        .get("name")
-        .map(|s| s.as_str())
-        .or_else(|| target.file_stem().and_then(|s| s.to_str()))
-        .unwrap_or("unknown");
-    new_frontmatter.push_str(&format!("name: {}\n", name));
-
-    if let Some(desc) = frontmatter_map.get("description") {
-        new_frontmatter.push_str(&format!("description: {}\n", desc));
-    }
-
-    if let Some(license) = frontmatter_map.get("license") {
-        new_frontmatter.push_str(&format!("license: {}\n", license));
-    }
-
-    if let Some(compatibility) = frontmatter_map.get("compatibility") {
-        new_frontmatter.push_str(&format!("compatibility: {}\n", compatibility));
-    }
-
-    if frontmatter_map.contains_key("metadata") {
-        if let Some(meta) = frontmatter_map.get("metadata") {
-            new_frontmatter.push_str(&format!("metadata: {}\n", meta));
-        }
-    }
-
-    new_frontmatter.push_str("---\n\n");
+    let frontmatter_map = build_frontmatter_map(frontmatter.as_ref().unwrap());
+    let new_frontmatter = build_opencode_frontmatter(&frontmatter_map, target);
 
     file_ops::ensure_parent_dir(target)?;
     std::fs::write(target, format!("{}{}", new_frontmatter, body)).map_err(|e| {
@@ -129,9 +141,9 @@ pub fn convert_command(content: &str, target: &Path) -> Result<()> {
     let mut new_content = String::new();
 
     if let Some(desc) = description {
-        new_content.push_str("---\n");
-        new_content.push_str(&format!("description: {}\n", desc));
-        new_content.push_str("---\n\n");
+        new_content.push_str("---\\n");
+        new_content.push_str(&format!("description: {}\\n", desc));
+        new_content.push_str("---\\n\\n");
     }
 
     new_content.push_str(&prompt);
@@ -152,9 +164,9 @@ pub fn convert_agent(content: &str, target: &Path) -> Result<()> {
     let mut new_content = String::new();
 
     if let Some(desc) = description {
-        new_content.push_str("---\n");
-        new_content.push_str(&format!("description: {}\n", desc));
-        new_content.push_str("---\n\n");
+        new_content.push_str("---\\n");
+        new_content.push_str(&format!("description: {}\\n", desc));
+        new_content.push_str("---\\n\\n");
     }
 
     new_content.push_str(&prompt);

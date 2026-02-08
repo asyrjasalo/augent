@@ -13,6 +13,15 @@
 use dirs;
 use git2::{Cred, CredentialType, Error, ErrorClass, RemoteCallbacks};
 
+fn try_default_credentials() -> Option<Cred> {
+    for username in &["git", "anonymous"] {
+        if let Ok(cred) = Cred::userpass_plaintext(username, "") {
+            return Some(cred);
+        }
+    }
+    None
+}
+
 /// Set up authentication callbacks for git operations
 ///
 /// This delegates authentication to git's native credential system:
@@ -86,10 +95,8 @@ pub fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
             }
 
             // Try common git usernames (git, anonymous)
-            for username in &["git", "anonymous"] {
-                if let Ok(cred) = Cred::userpass_plaintext(username, "") {
-                    return Ok(cred);
-                }
+            if let Some(cred) = try_default_credentials() {
+                return Ok(cred);
             }
         }
 

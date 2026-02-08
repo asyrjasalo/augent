@@ -43,12 +43,7 @@ impl UninstallOperation {
         Self {}
     }
 
-    /// Execute uninstall operation
-    pub fn execute(
-        &mut self,
-        workspace: Option<std::path::PathBuf>,
-        args: UninstallArgs,
-    ) -> Result<()> {
+    fn validate_and_resolve_workspace(workspace: Option<std::path::PathBuf>) -> Result<Workspace> {
         let workspace_root = match workspace {
             Some(path) => path,
             None => std::env::current_dir().map_err(|e| AugentError::IoError {
@@ -68,7 +63,23 @@ impl UninstallOperation {
             }
         };
 
-        let mut ws: Workspace = Workspace::open(&workspace_root_for_workspace)?;
+        Workspace::open(&workspace_root_for_workspace)
+    }
+
+    fn check_all_bundle_dependents(workspace: &Workspace, bundle_names: &[String]) -> Result<()> {
+        let dependency_map = build_dependency_map(workspace)?;
+        for bundle_name in bundle_names {
+            check_bundle_dependents(workspace, bundle_name, &dependency_map)?;
+        }
+        Ok(())
+    }
+
+    pub fn execute(
+        &mut self,
+        workspace: Option<std::path::PathBuf>,
+        args: UninstallArgs,
+    ) -> Result<()> {
+        let mut ws = Self::validate_and_resolve_workspace(workspace)?;
 
         // Check if workspace config is missing or empty - if so, rebuild it by scanning filesystem
         let needs_rebuild =
@@ -84,13 +95,8 @@ impl UninstallOperation {
             return Ok(());
         }
 
-        // Build dependency map to check for dependents
-        let dependency_map = build_dependency_map(&ws)?;
-
-        // Check for bundles that depend on the ones we're uninstalling
-        for bundle_name in &bundle_names {
-            check_bundle_dependents(&ws, bundle_name, &dependency_map)?;
-        }
+        // Check for bundles that depend on ones we're uninstalling
+        Self::check_all_bundle_dependents(&ws, &bundle_names)?;
 
         // Confirm with user unless --yes flag
         if !args.yes && !confirm_uninstall(&ws, &bundle_names)? {

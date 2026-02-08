@@ -115,9 +115,21 @@ pub fn resolve_local(
 pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
     let full_path = if path.is_absolute() {
         path.to_path_buf()
+    } else if path == Path::new(".") {
+        std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {}", e),
+        })?
     } else {
         workspace_root.join(path)
     };
+
+    // Validate path before checking existence to catch outside-repo paths early
+    crate::resolver::validation::validate_local_bundle_path(
+        &full_path,
+        path,
+        false,
+        workspace_root,
+    )?;
 
     if !full_path.is_dir() {
         return Ok(vec![]);

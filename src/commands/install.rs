@@ -7,21 +7,134 @@ use crate::source::BundleSource;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 
-/// Run install command
-pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
-    let workspace_root = match workspace {
-        Some(path) => path,
+fn resolve_workspace_root(workspace: Option<std::path::PathBuf>) -> Result<std::path::PathBuf> {
+    match workspace {
+        Some(path) => Ok(path),
         None => std::env::current_dir().map_err(|e| crate::error::AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
-        })?,
+        }),
+    }
+}
+
+fn select_bundles(
+    args: &InstallArgs,
+    workspace_root: &std::path::Path,
+    discovered: &[DiscoveredBundle],
+    installing_by_bundle_name: &bool,
+) -> Result<Vec<DiscoveredBundle>> {
+    let installed_bundle_names =
+        InstallOperation::get_installed_bundle_names_for_menu(workspace_root, discovered);
+    let filtered = InstallOperation::filter_workspace_bundle_from_discovered(
+        workspace_root,
+        discovered,
+        installing_by_bundle_name,
+    );
+
+    let menu_shown = !args.all_bundles && filtered.len() > 1;
+
+    let selected = if menu_shown {
+        use std::collections::HashSet;
+        let installed_set: HashSet<String> = installed_bundle_names.into_iter().collect();
+        let selection = menu::select_bundles_interactively(&filtered, Some(&installed_set))?;
+        selection.selected
+    } else {
+        filtered
     };
 
-    let mut workspace = Workspace::open(&workspace_root)?;
+    if selected.is_empty() && menu_shown {
+        eprintln!("No bundles selected for installation.");
+    }
 
+    Ok(selected)
+}
+
+fn setup_workspace(workspace_root: &std::path::Path) -> Result<Workspace> {
+    std::fs::create_dir_all(workspace_root).map_err(|e| crate::error::AugentError::IoError {
+        message: format!("Failed to create workspace directory: {}", e),
+    })?;
+
+    let mut workspace = Workspace::init_or_open(workspace_root)?;
+
+    if !crate::installer::discovery::discover_resources(workspace_root)
+        .map(|resources: Vec<_>| resources.is_empty())
+        .unwrap_or(true)
+    {
+        workspace.bundle_config_dir = Some(workspace_root.to_path_buf());
+    }
+
+    Ok(workspace)
+}
+
+fn execute_install(
+    install_op: &mut InstallOperation,
+    args: &mut InstallArgs,
+    bundles: &[DiscoveredBundle],
+    transaction: &mut Transaction,
+) -> Result<()> {
+    install_op.execute(args, bundles, transaction, false)
+}
+
+fn install_from_source(
+    workspace_root: &std::path::Path,
+    args: &mut InstallArgs,
+    installing_by_bundle_name: bool,
+) -> Result<()> {
+    let source_str = args.source.as_ref().unwrap().as_str();
+    let _source = BundleSource::parse(source_str)?;
+    let mut resolver = crate::resolver::Resolver::new(workspace_root);
+    let discovered = resolver.discover_bundles(source_str)?;
+
+    let selected = select_bundles(
+        args,
+        workspace_root,
+        &discovered,
+        &installing_by_bundle_name,
+    )?;
+    if selected.is_empty() {
+        return Ok(());
+    }
+
+    let mut workspace = setup_workspace(workspace_root)?;
+    let mut transaction = Transaction::new(&workspace);
+    transaction.backup_configs()?;
+
+    let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&*args));
+    let platforms = install_op.select_or_detect_platforms(args, workspace_root, false)?;
+    if platforms.is_empty() {
+        return Err(crate::error::AugentError::NoPlatformsDetected);
+    }
+
+    match execute_install(&mut install_op, args, &selected, &mut transaction) {
+        Ok(()) => {
+            transaction.commit();
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn install_from_config(workspace_root: &std::path::Path, args: &mut InstallArgs) -> Result<()> {
+    let mut workspace = setup_workspace(workspace_root)?;
+    let mut transaction = Transaction::new(&workspace);
+    transaction.backup_configs()?;
+
+    let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&*args));
+    match execute_install(&mut install_op, args, &[], &mut transaction) {
+        Ok(()) => {
+            transaction.commit();
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Run install command
+pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
+    let workspace_root = resolve_workspace_root(workspace)?;
+
+    let mut workspace = Workspace::open(&workspace_root)?;
     let _install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
 
-    // Only check if we're in a subdirectory with no resources when installing from a specific source
-    // When installing from augent.yaml (no source), this check shouldn't block the installation
     if args.source.is_some()
         && !InstallOperation::check_subdirectory_resources(
             &args,
@@ -33,102 +146,12 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         return Ok(());
     }
 
-    // Handle source argument parsing, path resolution, and augent.yaml updates
     let installing_by_bundle_name =
         InstallOperation::handle_source_argument(&mut args, &workspace_root)?;
 
-    // Determine installation mode and execute
     if args.source.is_some() {
-        // Install from a specific source (path/URL/bundle name)
-        let source_str = args.source.as_ref().unwrap().as_str();
-
-        // Parse source and discover bundles
-        let _source = BundleSource::parse(source_str)?;
-        let mut resolver = crate::resolver::Resolver::new(&workspace_root);
-        let discovered = resolver.discover_bundles(source_str)?;
-
-        let installed_bundle_names =
-            InstallOperation::get_installed_bundle_names_for_menu(&workspace_root, &discovered);
-        let filtered = InstallOperation::filter_workspace_bundle_from_discovered(
-            &workspace_root,
-            &discovered,
-            &installing_by_bundle_name,
-        );
-
-        let menu_shown = !args.all_bundles && filtered.len() > 1;
-
-        let selected_bundles: Vec<DiscoveredBundle> = if menu_shown {
-            use std::collections::HashSet;
-            let installed_set: HashSet<String> = installed_bundle_names.into_iter().collect();
-            let selection = menu::select_bundles_interactively(&filtered, Some(&installed_set))?;
-            selection.selected
-        } else {
-            filtered
-        };
-
-        if selected_bundles.is_empty() && menu_shown {
-            eprintln!("No bundles selected for installation.");
-            return Ok(());
-        }
-
-        // Create or open workspace
-        std::fs::create_dir_all(&workspace_root).map_err(|e| {
-            crate::error::AugentError::IoError {
-                message: format!("Failed to create workspace directory: {}", e),
-            }
-        })?;
-        let mut workspace = Workspace::init_or_open(&workspace_root)?;
-
-        // Check if we're installing from a subdirectory that is itself a bundle
-        if !crate::installer::discovery::discover_resources(&workspace_root)
-            .map(|resources: Vec<_>| resources.is_empty())
-            .unwrap_or(true)
-        {
-            workspace.bundle_config_dir = Some(workspace_root.to_path_buf());
-        }
-
-        let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
-
-        // Select platforms
-        let platforms = install_op.select_or_detect_platforms(&args, &workspace_root, false)?;
-        if platforms.is_empty() {
-            return Err(crate::error::AugentError::NoPlatformsDetected);
-        }
-
-        // Create transaction
-        let mut transaction = Transaction::new(&workspace);
-        transaction.backup_configs()?;
-
-        // Execute install operation
-        let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
-        match install_op.execute(&mut args, &selected_bundles, &mut transaction, false) {
-            Ok(()) => {
-                transaction.commit();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        install_from_source(&workspace_root, &mut args, installing_by_bundle_name)
     } else {
-        // Install from augent.yaml
-        // Initialize or open workspace
-        std::fs::create_dir_all(&workspace_root).map_err(|e| {
-            crate::error::AugentError::IoError {
-                message: format!("Failed to create workspace directory: {}", e),
-            }
-        })?;
-        let mut workspace = Workspace::init_or_open(&workspace_root)?;
-
-        // Create transaction before passing to install_op to avoid borrow conflict
-        let mut transaction = Transaction::new(&workspace);
-        transaction.backup_configs()?;
-
-        let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
-        match install_op.execute(&mut args, &[], &mut transaction, false) {
-            Ok(()) => {
-                transaction.commit();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        install_from_config(&workspace_root, &mut args)
     }
 }

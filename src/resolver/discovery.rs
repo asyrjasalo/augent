@@ -42,6 +42,14 @@ pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<
         workspace_root.join(path)
     };
 
+    // Validate path before checking existence to catch outside-repo paths early
+    crate::resolver::validation::validate_local_bundle_path(
+        &full_path,
+        path,
+        false,
+        workspace_root,
+    )?;
+
     if !full_path.is_dir() {
         return Ok(vec![]);
     }

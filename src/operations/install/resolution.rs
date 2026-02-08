@@ -4,6 +4,7 @@
 use crate::domain::ResolvedBundle;
 use crate::error::Result;
 use crate::resolver::Resolver;
+use crate::source::GitSource;
 use indicatif::{ProgressBar, ProgressStyle};
 
 /// Bundle resolver for install operation
@@ -14,6 +15,77 @@ pub struct BundleResolver<'a> {
 impl<'a> BundleResolver<'a> {
     pub fn new(workspace: &'a crate::workspace::Workspace) -> Self {
         Self { workspace }
+    }
+
+    /// Build a git source URL from git source components
+    fn build_git_source_url(git_source: &GitSource) -> String {
+        let mut url = git_source.url.clone();
+        if let Some(ref git_ref) = git_source.git_ref {
+            url.push('#');
+            url.push_str(git_ref);
+        }
+        if let Some(ref path_val) = git_source.path {
+            url.push(':');
+            url.push_str(path_val);
+        }
+        url
+    }
+
+    /// Collect all bundles from workspace bundle configuration
+    fn collect_workspace_bundles(
+        &self,
+        bundle_resolver: &mut Resolver,
+    ) -> Result<Vec<ResolvedBundle>> {
+        let mut all_bundles = Vec::new();
+        for dep in &self.workspace.bundle_config.bundles {
+            if let Some(ref git_url) = dep.git {
+                let source = if let Some(ref git_ref) = dep.git_ref {
+                    format!("{}@{}", git_url, git_ref)
+                } else {
+                    git_url.clone()
+                };
+                let bundles = bundle_resolver.resolve(&source, false)?;
+                all_bundles.extend(bundles);
+            } else if let Some(ref path) = dep.path {
+                let bundles = bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
+                all_bundles.extend(bundles);
+            }
+        }
+        Ok(all_bundles)
+    }
+
+    /// Resolve a single discovered bundle
+    fn resolve_single_bundle(
+        bundle: &crate::domain::DiscoveredBundle,
+        bundle_resolver: &mut Resolver,
+    ) -> Result<Vec<ResolvedBundle>> {
+        if let Some(ref git_source) = bundle.git_source {
+            let url = Self::build_git_source_url(git_source);
+            bundle_resolver.resolve(&url, false)
+        } else {
+            let bundle_path = bundle.path.to_string_lossy().to_string();
+            bundle_resolver.resolve_multiple(&[bundle_path])
+        }
+    }
+
+    /// Resolve multiple bundles with git sources
+    fn resolve_git_bundles(
+        selected_bundles: &[crate::domain::DiscoveredBundle],
+        bundle_resolver: &mut Resolver,
+    ) -> Result<Vec<ResolvedBundle>> {
+        let mut all_bundles = Vec::new();
+        for discovered in selected_bundles {
+            if let Some(ref git_source) = discovered.git_source {
+                let url = Self::build_git_source_url(git_source);
+                let bundles = bundle_resolver.resolve(&url, false)?;
+                all_bundles.extend(bundles);
+            } else {
+                let bundle_path = discovered.path.to_string_lossy().to_string();
+                let bundles = bundle_resolver.resolve_multiple(&[bundle_path])?;
+                all_bundles.extend(bundles);
+            }
+        }
+        Ok(all_bundles)
     }
 
     pub fn resolve_selected_bundles(
@@ -37,82 +109,28 @@ impl<'a> BundleResolver<'a> {
             None
         };
 
-        let resolved_bundles = (|| -> Result<Vec<ResolvedBundle>> {
-            if selected_bundles.is_empty() {
-                if let Some(source) = &args.source {
-                    bundle_resolver.resolve(source, false)
-                } else {
-                    let mut all_bundles = Vec::new();
-                    for dep in &self.workspace.bundle_config.bundles {
-                        if let Some(ref git_url) = dep.git {
-                            let source = if let Some(ref git_ref) = dep.git_ref {
-                                format!("{}@{}", git_url, git_ref)
-                            } else {
-                                git_url.clone()
-                            };
-                            let bundles = bundle_resolver.resolve(&source, false)?;
-                            all_bundles.extend(bundles);
-                        } else if let Some(ref path) = dep.path {
-                            let bundles =
-                                bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
-                            all_bundles.extend(bundles);
-                        }
-                    }
-                    Ok(all_bundles)
-                }
-            } else if selected_bundles.len() == 1 {
-                let bundle = &selected_bundles[0];
-
-                if let Some(ref git_source) = bundle.git_source {
-                    let mut url = git_source.url.clone();
-                    if let Some(ref git_ref) = git_source.git_ref {
-                        url.push('#');
-                        url.push_str(git_ref);
-                    }
-                    if let Some(ref path_val) = git_source.path {
-                        url.push(':');
-                        url.push_str(path_val);
-                    }
-                    bundle_resolver.resolve(&url, false)
-                } else {
-                    let bundle_path = bundle.path.to_string_lossy().to_string();
-                    bundle_resolver.resolve_multiple(&[bundle_path])
-                }
+        let resolved_bundles = if selected_bundles.is_empty() {
+            if let Some(source) = &args.source {
+                bundle_resolver.resolve(source, false)
             } else {
-                let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
-
-                if has_git_source {
-                    let mut all_bundles = Vec::new();
-                    for discovered in selected_bundles {
-                        if let Some(ref git_source) = discovered.git_source {
-                            let mut url = git_source.url.clone();
-                            if let Some(ref git_ref) = git_source.git_ref {
-                                url.push('#');
-                                url.push_str(git_ref);
-                            }
-                            if let Some(ref path_val) = git_source.path {
-                                url.push(':');
-                                url.push_str(path_val);
-                            }
-                            let bundles = bundle_resolver.resolve(&url, false)?;
-                            all_bundles.extend(bundles);
-                        } else {
-                            let bundle_path = discovered.path.to_string_lossy().to_string();
-                            let bundles = bundle_resolver.resolve_multiple(&[bundle_path])?;
-                            all_bundles.extend(bundles);
-                        }
-                    }
-                    Ok(all_bundles)
-                } else {
-                    let selected_paths: Vec<String> = selected_bundles
-                        .iter()
-                        .map(|b| b.path.to_string_lossy().to_string())
-                        .collect();
-
-                    bundle_resolver.resolve_multiple(&selected_paths)
-                }
+                self.collect_workspace_bundles(&mut bundle_resolver)
             }
-        })()?;
+        } else if selected_bundles.len() == 1 {
+            Self::resolve_single_bundle(&selected_bundles[0], &mut bundle_resolver)
+        } else {
+            let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
+
+            if has_git_source {
+                Self::resolve_git_bundles(selected_bundles, &mut bundle_resolver)
+            } else {
+                let selected_paths: Vec<String> = selected_bundles
+                    .iter()
+                    .map(|b| b.path.to_string_lossy().to_string())
+                    .collect();
+
+                bundle_resolver.resolve_multiple(&selected_paths)
+            }
+        }?;
 
         if let Some(pb) = pb {
             pb.finish_and_clear();
