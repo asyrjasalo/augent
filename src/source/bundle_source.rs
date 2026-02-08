@@ -331,4 +331,50 @@ mod tests {
         let source = BundleSource::parse("./bundle").unwrap();
         assert!(!source.is_git());
     }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_parse_windows_absolute_path() {
+        // Windows absolute paths should be treated as local directories
+        let result = BundleSource::parse("C:\\Users\\test\\bundle");
+        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_parse_windows_absolute_path_forward_slash() {
+        // Windows paths with forward slashes should also work
+        let result = BundleSource::parse("C:/Users/test/bundle");
+        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_parse_windows_style_path_on_unix() {
+        // On Unix, a Windows-style path like "C:\temp\bundle" is not recognized as absolute
+        // This tests the fix for the Windows drive letter parsing issue
+        let result = BundleSource::parse("C:\\temp\\bundle");
+
+        // The fix ensures that even if the path fails to parse, it doesn't incorrectly
+        // split on the colon and try to parse just "C"
+        match result {
+            Ok(_) => {
+                // On Unix, this might be treated as a relative path component
+            }
+            Err(e) => {
+                let err_msg = e.to_string();
+                // The key test: it should fail with the FULL path, not just "C"
+                assert!(
+                    err_msg.contains("C:\\temp\\bundle") || err_msg.contains("C:/temp/bundle"),
+                    "Should fail with full path, not just 'C'. Got: {}",
+                    err_msg
+                );
+                assert!(
+                    !err_msg.contains("Failed to parse source: C\n"),
+                    "Should not fail with just 'C'. Got: {}",
+                    err_msg
+                );
+            }
+        }
+    }
 }

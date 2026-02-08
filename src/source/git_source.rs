@@ -121,14 +121,14 @@ impl GitSource {
                     // Skip protocol prefixes when looking for path separator.
                     // For file:// on Windows, also skip the drive letter (e.g. C: or /C:)
                     // so "file://C:\path:sub" splits at "path:sub" not at "C:".
+                    // Also skip Windows drive letters in bare paths (runtime check)
+                    // to prevent splitting "C:\path" into "C" and "\path" during cross-platform operations.
                     let search_start = Self::find_protocol_prefix_start(main_part);
 
                     let rest = &main_part[search_start..];
-                    let (drive_skip, search_in) = if main_part.starts_with("file://") {
-                        Self::skip_windows_drive_letter(rest)
-                    } else {
-                        (0, rest)
-                    };
+                    // Always check for Windows drive letters (not just for file:// URLs)
+                    // because paths can come from lockfiles or be canonicalized on Windows
+                    let (drive_skip, search_in) = Self::skip_windows_drive_letter(rest);
 
                     if let Some(relative_pos) = search_in.find(':') {
                         let colon_pos = search_start + drive_skip + relative_pos;
