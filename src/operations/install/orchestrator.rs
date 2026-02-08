@@ -12,43 +12,22 @@ use crate::workspace::Workspace;
 
 /// Options for installation
 #[derive(Debug, Clone)]
-pub struct InstallOptions {
-    /// Dry run mode - don't actually install
-    pub dry_run: bool,
-    /// Install only for specific platforms
-    pub platforms: Vec<String>,
-    /// Update bundles to latest versions
-    pub update: bool,
-    /// Fail if lockfile would change
-    pub frozen: bool,
-    /// Select all bundles without menu
-    pub all_bundles: bool,
-    /// Skip confirmation prompts
-    pub yes: bool,
-}
+pub struct InstallOptions;
 
 impl From<&InstallArgs> for InstallOptions {
-    fn from(args: &InstallArgs) -> Self {
-        Self {
-            dry_run: args.dry_run,
-            platforms: args.platforms.clone(),
-            update: args.update,
-            frozen: args.frozen,
-            all_bundles: args.all_bundles,
-            yes: args.yes,
-        }
+    fn from(_args: &InstallArgs) -> Self {
+        Self
     }
 }
 
 /// Main orchestrator for install operation
 pub struct InstallOperation<'a> {
     workspace: &'a mut Workspace,
-    options: InstallOptions,
 }
 
 impl<'a> InstallOperation<'a> {
-    pub fn new(workspace: &'a mut Workspace, options: InstallOptions) -> Self {
-        Self { workspace, options }
+    pub fn new(workspace: &'a mut Workspace, _options: InstallOptions) -> Self {
+        Self { workspace }
     }
 
     /// Check if we're in a subdirectory with no resources

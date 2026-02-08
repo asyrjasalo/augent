@@ -1,9 +1,8 @@
 //! Resolution logic for install operation
 //! Handles bundle resolution from various sources
 
-use crate::config::BundleDependency;
 use crate::domain::ResolvedBundle;
-use crate::error::{AugentError, Result};
+use crate::error::Result;
 use crate::resolver::Resolver;
 use indicatif::{ProgressBar, ProgressStyle};
 
@@ -120,20 +119,5 @@ impl<'a> BundleResolver<'a> {
         }
 
         Ok(resolved_bundles)
-    }
-
-    pub fn resolve_bundle_source(&self, dep: BundleDependency) -> Result<String> {
-        if let Some(ref git_url) = dep.git {
-            Ok(git_url.clone())
-        } else if let Some(ref path) = dep.path {
-            // Strip leading "./" from path to ensure consistent joining on all platforms
-            let clean_path = path.strip_prefix("./").unwrap_or(path);
-            let abs_path = self.workspace.root.join(clean_path);
-            Ok(abs_path.to_string_lossy().to_string())
-        } else {
-            Err(AugentError::BundleNotFound {
-                name: format!("Bundle {} has no source", dep.name),
-            })
-        }
     }
 }

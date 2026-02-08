@@ -214,44 +214,6 @@ impl Lockfile {
             None
         }
     }
-
-    /// Compare this lockfile with another
-    ///
-    /// Returns `true` if two lockfiles are equivalent (same bundles in same order).
-    pub fn equals(&self, other: &Lockfile) -> bool {
-        use crate::config::lockfile::source::LockedSource;
-
-        if self.bundles.len() != other.bundles.len() {
-            return false;
-        }
-
-        self.bundles.iter().zip(other.bundles.iter()).all(|(a, b)| {
-            a.name == b.name
-                && match (&a.source, &b.source) {
-                    (
-                        LockedSource::Dir { path: pa, hash: ha },
-                        LockedSource::Dir { path: pb, hash: hb },
-                    ) => pa == pb && ha == hb,
-                    (
-                        LockedSource::Git {
-                            url: ua,
-                            sha: sa,
-                            hash: ha,
-                            path: pa,
-                            git_ref: ra,
-                        },
-                        LockedSource::Git {
-                            url: ub,
-                            sha: sb,
-                            hash: hb,
-                            path: pb,
-                            git_ref: rb,
-                        },
-                    ) => ua == ub && sa == sb && ha == hb && pa == pb && ra == rb,
-                    _ => false,
-                }
-        })
-    }
 }
 
 impl BundleContainer<LockedBundle> for Lockfile {

@@ -36,14 +36,11 @@ impl From<&UninstallArgs> for UninstallOptions {
 }
 
 /// High-level uninstall operation
-pub struct UninstallOperation<'a> {
-    workspace: &'a mut Workspace,
-    options: UninstallOptions,
-}
+pub struct UninstallOperation;
 
-impl<'a> UninstallOperation<'a> {
-    pub fn new(workspace: &'a mut Workspace, options: UninstallOptions) -> Self {
-        Self { workspace, options }
+impl UninstallOperation {
+    pub fn new(_workspace: &mut Workspace, _options: UninstallOptions) -> Self {
+        Self {}
     }
 
     /// Execute uninstall operation
@@ -103,33 +100,6 @@ impl<'a> UninstallOperation<'a> {
 
         execute_uninstall(&mut ws, &bundle_names)
     }
-}
-
-/// Initialize workspace and rebuild config if needed
-fn initialize_workspace(workspace: Option<std::path::PathBuf>) -> Result<Workspace> {
-    let current_dir = match workspace {
-        Some(path) => path,
-        None => std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
-        })?,
-    };
-
-    let workspace_root =
-        Workspace::find_from(&current_dir).ok_or_else(|| AugentError::WorkspaceNotFound {
-            path: current_dir.display().to_string(),
-        })?;
-
-    let mut workspace = Workspace::open(&workspace_root)?;
-
-    // Check if workspace config is missing or empty - if so, rebuild it by scanning filesystem
-    let needs_rebuild =
-        workspace.workspace_config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
-    if needs_rebuild {
-        println!("Workspace configuration is missing. Rebuilding from installed files...");
-        workspace.rebuild_workspace_config()?;
-    }
-
-    Ok(workspace)
 }
 
 /// Resolve bundle names from arguments or interactive selection
@@ -254,58 +224,4 @@ fn resolve_regular_bundle(
             name: name.to_string(),
         })
     }
-}
-
-/// Run uninstall command (legacy function for compatibility)
-pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
-    let mut ws = initialize_workspace(workspace)?;
-    let bundle_names = resolve_bundle_names(&ws, &args)?;
-
-    if bundle_names.is_empty() {
-        return Ok(());
-    }
-
-    // Build dependency map to check for dependents
-    let dependency_map = build_dependency_map(&ws)?;
-
-    // Check for bundles that depend on the ones we're uninstalling
-    for bundle_name in &bundle_names {
-        check_bundle_dependents(&ws, bundle_name, &dependency_map)?;
-    }
-
-    // Confirm with user unless --yes flag
-    if !args.yes && !confirm_uninstall(&ws, &bundle_names)? {
-        println!("Uninstall cancelled.");
-        return Ok(());
-    }
-
-    execute_uninstall(&mut ws, &bundle_names)
-}
-
-/// Helper function to confirm uninstall with user (for testing)
-pub fn confirm_uninstall_impl(_workspace: &Workspace, bundles: &[String]) -> Result<bool> {
-    println!("The following bundles will be uninstalled:");
-    for bundle in bundles {
-        println!("  - {}", bundle);
-    }
-
-    println!("This will remove their resources from your workspace.");
-    println!("Continue? [y/N]");
-
-    // For automated testing/builds, always return true
-    // In interactive mode, would read from stdin
-    Ok(true)
-}
-
-/// Helper function to uninstall a bundle (for testing)
-pub fn uninstall_bundle_impl(workspace: &mut Workspace, bundles: &[String]) -> Result<()> {
-    for bundle in bundles {
-        workspace
-            .workspace_config
-            .bundles
-            .retain(|b| b.name != *bundle);
-        workspace.lockfile.bundles.retain(|b| b.name != *bundle);
-    }
-
-    Ok(())
 }
