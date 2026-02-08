@@ -89,33 +89,14 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
             continue;
         }
 
-        let key_dir = entry.path();
-        for sha_entry in fs::read_dir(&key_dir).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read SHA directory: {}", e),
-        })? {
-            let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
-                message: format!("Failed to read SHA entry: {}", e),
-            })?;
-
-            if !sha_entry.path().is_dir() {
-                continue;
-            }
-
-            let entry_path = sha_entry.path();
-            let name = fs::read_to_string(entry_path.join(BUNDLE_NAME_FILE))
-                .ok()
-                .map(|s| s.trim().to_string())
-                .unwrap_or_else(|| {
-                    entry_path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default()
-                });
-
-            let size = dir_size(&entry_path).unwrap_or(0);
-            let (versions, total) = by_name.entry(name).or_insert((0, 0));
-            *versions += 1;
-            *total += size;
+        for sha_bundle in collect_sha_bundles(&entry.path())? {
+            by_name
+                .entry(sha_bundle.name.clone())
+                .and_modify(|(versions, total)| {
+                    *versions += 1;
+                    *total += sha_bundle.size;
+                })
+                .or_insert((1, sha_bundle.size));
         }
     }
 
@@ -128,7 +109,54 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
         })
         .collect();
     bundles.sort_by(|a, b| a.name.cmp(&b.name));
+
     Ok(bundles)
+}
+
+/// Collect all SHA bundles for a single cache entry
+fn collect_sha_bundles(entry_path: &Path) -> Result<Vec<ShaBundleStats>> {
+    let mut bundles = Vec::new();
+
+    for sha_entry in fs::read_dir(entry_path).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to read SHA directory: {}", e),
+    })? {
+        let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read SHA entry: {}", e),
+        })?;
+
+        if !sha_entry.path().is_dir() {
+            continue;
+        }
+
+        let entry_path = sha_entry.path();
+        let name = read_bundle_name(&entry_path)?;
+        let size = dir_size(&entry_path).unwrap_or(0);
+        bundles.push(ShaBundleStats { name, size });
+    }
+
+    Ok(bundles)
+}
+
+/// Read bundle name from BUNDLE_NAME_FILE
+fn read_bundle_name(entry_path: &Path) -> Result<String> {
+    fs::read_to_string(entry_path.join(BUNDLE_NAME_FILE))
+        .map(|s| s.trim().to_string())
+        .map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read bundle name: {}", e),
+        })
+}
+
+/// Bundle stats from SHA collection
+struct ShaBundleStats {
+    name: String,
+    size: u64,
+}
+
+impl ShaBundleStats {
+    #[allow(dead_code)]
+    fn into_bundle_stats(self) -> (usize, u64) {
+        (1, self.size)
+    }
 }
 
 /// Remove a specific bundle (or repo) from cache by name

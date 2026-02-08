@@ -98,7 +98,6 @@ mod tests {
 
         // Create augent.yaml and lockfile with test bundles
         let yaml_content = r#"
-name: "@test/workspace"
 bundles:
   - name: "@author/scope"
     git: https://github.com/author/repo
@@ -110,7 +109,6 @@ bundles:
         std::fs::write(augent_dir.join("augent.yaml"), yaml_content).unwrap();
 
         let lock_content = r#"{
-  "name": "@test/workspace",
   "bundles": [
     {
       "name": "@author/scope",

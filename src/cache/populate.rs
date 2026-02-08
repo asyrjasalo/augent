@@ -9,10 +9,49 @@ use std::path::{Path, PathBuf};
 use crate::common::fs::{CopyOptions, copy_dir_recursive};
 use crate::error::{AugentError, Result};
 
+/// Determine content destination path based on bundle type
+fn determine_content_dst(resources: &Path, path_opt: Option<&str>) -> Result<PathBuf> {
+    if let Some(plugin_name) = path_opt.and_then(|p| p.strip_prefix("$claudeplugin/")) {
+        // Marketplace: create synthetic directory
+        let synthetic_dir = resources.join(".claude-plugin");
+        fs::create_dir_all(&synthetic_dir).map_err(|e| AugentError::CacheOperationFailed {
+            message: format!(
+                "Failed to create synthetic directory {}: {}",
+                synthetic_dir.display(),
+                e
+            ),
+        })?;
+        Ok(synthetic_dir.join(plugin_name))
+    } else if let Some(path) = path_opt {
+        Ok(resources.join(path))
+    } else {
+        Ok(resources.to_path_buf())
+    }
+}
+
+/// Create index entry and add to cache index
+fn create_and_add_index_entry(
+    url: &str,
+    sha: &str,
+    path_opt: Option<&str>,
+    bundle_name: &str,
+    resolved_ref: Option<&str>,
+) -> Result<()> {
+    use crate::cache::index::{IndexEntry, add_index_entry};
+
+    add_index_entry(IndexEntry {
+        url: url.to_string(),
+        sha: sha.to_string(),
+        path: path_opt.map(|s| s.to_string()),
+        bundle_name: bundle_name.to_string(),
+        resolved_ref: resolved_ref.map(|s| s.to_string()),
+    })
+}
+
 /// Ensure a bundle is cached by copying from temp directory to cache.
 ///
 /// Creates the cache entry structure, copies repository and content,
-/// writes the bundle name file, and adds to index.
+/// writes to the bundle name file, and adds to index.
 pub fn ensure_bundle_cached(
     bundle_name: &str,
     sha: &str,
@@ -22,7 +61,6 @@ pub fn ensure_bundle_cached(
     _content_path: &Path,
     resolved_ref: Option<&str>,
 ) -> Result<PathBuf> {
-    use crate::cache::index::{IndexEntry, add_index_entry};
     use crate::cache::paths::{
         BUNDLE_NAME_FILE, entry_repository_path, entry_resources_path, repo_cache_entry_path,
     };
@@ -43,23 +81,7 @@ pub fn ensure_bundle_cached(
 
     // Copy content to resources
     let resources = entry_resources_path(&entry_path);
-    let content_dst =
-        if let Some(plugin_name) = path_opt.and_then(|p| p.strip_prefix("$claudeplugin/")) {
-            // Marketplace: create synthetic directory
-            let synthetic_dir = resources.join(".claude-plugin");
-            fs::create_dir_all(&synthetic_dir).map_err(|e| AugentError::CacheOperationFailed {
-                message: format!(
-                    "Failed to create synthetic directory {}: {}",
-                    synthetic_dir.display(),
-                    e
-                ),
-            })?;
-            synthetic_dir.join(plugin_name)
-        } else if let Some(path) = path_opt {
-            resources.join(path)
-        } else {
-            resources.clone()
-        };
+    let content_dst = determine_content_dst(&resources, path_opt)?;
 
     fs::create_dir_all(content_dst.parent().unwrap()).map_err(|e| {
         AugentError::CacheOperationFailed {
@@ -79,13 +101,7 @@ pub fn ensure_bundle_cached(
     })?;
 
     // Add to index
-    add_index_entry(IndexEntry {
-        url: url.to_string(),
-        sha: sha.to_string(),
-        path: path_opt.map(|s| s.to_string()),
-        bundle_name: bundle_name.to_string(),
-        resolved_ref: resolved_ref.map(|s| s.to_string()),
-    })?;
+    create_and_add_index_entry(url, sha, path_opt, bundle_name, resolved_ref)?;
 
     Ok(resources)
 }

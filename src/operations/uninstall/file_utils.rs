@@ -6,6 +6,7 @@ use crate::error::Result;
 use crate::workspace::Workspace;
 
 /// Determine which files should be removed when uninstalling a bundle
+#[allow(dead_code)]
 pub fn determine_files_to_remove(
     workspace: &Workspace,
     bundle_name: &str,

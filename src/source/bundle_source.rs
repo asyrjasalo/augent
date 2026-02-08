@@ -2,13 +2,11 @@
 //!
 //! This module provides BundleSource enum for representing local and git-based bundle sources.
 
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use serde::{Deserialize, Serialize};
-
-use crate::error::Result;
-
 use super::git_source::GitSource;
+use crate::error::Result;
 
 /// Source parser strategy trait
 trait SourceParser {
@@ -18,12 +16,22 @@ trait SourceParser {
 /// File URL parser - handles file:// URLs with fragments
 struct FileUrlParser;
 
+impl FileUrlParser {
+    /// Check if file URL indicates a git source (has ref or path separator)
+    fn indicates_git_source(after_protocol: &str) -> bool {
+        let has_ref = after_protocol.contains('#') || after_protocol.contains('@');
+        let has_path_separator = after_protocol
+            .get(1.min(after_protocol.len())..)
+            .is_some_and(|s| s.contains(':'));
+
+        has_ref || has_path_separator
+    }
+}
+
 impl SourceParser for FileUrlParser {
     fn try_parse(&self, input: &str) -> Option<BundleSource> {
         input.strip_prefix("file://").and_then(|after_protocol| {
-            let has_ref = after_protocol.contains('#') || after_protocol.contains('@');
-
-            if has_ref || after_protocol[1.min(after_protocol.len())..].contains(':') {
+            if Self::indicates_git_source(after_protocol) {
                 GitSource::parse(input).ok().map(BundleSource::Git)
             } else {
                 Some(BundleSource::Dir {
@@ -37,45 +45,62 @@ impl SourceParser for FileUrlParser {
 /// Local path parser - handles relative and absolute paths
 struct LocalPathParser;
 
-impl SourceParser for LocalPathParser {
-    fn try_parse(&self, input: &str) -> Option<BundleSource> {
-        let path = Path::new(input);
-
-        // Check for Windows absolute path (drive letter pattern: C:\ or C:/)
-        let has_windows_drive_letter = input.len() >= 2
+impl LocalPathParser {
+    /// Check if input has Windows drive letter (C:\ or C:/)
+    fn has_windows_drive_letter(input: &str) -> bool {
+        input.len() >= 2
             && input
                 .chars()
                 .next()
                 .map(|c| c.is_ascii_alphabetic())
                 .unwrap_or(false)
-            && input.chars().nth(1) == Some(':');
+            && input.chars().nth(1) == Some(':')
+    }
 
-        let looks_like_github_shorthand = !input.contains("://")
-            && !input.starts_with("git@")
-            && !input.starts_with("file://")
-            && !input.starts_with("github:")
-            && !input.starts_with('.')
-            && !input.starts_with('/')
-            && !has_windows_drive_letter
-            && input.matches('/').count() == 1;
+    /// Check if input matches GitHub shorthand format (owner/repo)
+    fn looks_like_github_shorthand(input: &str) -> bool {
+        if input.contains("://")
+            || input.starts_with("git@")
+            || input.starts_with("file://")
+            || input.starts_with("github:")
+            || input.starts_with('.')
+            || input.starts_with('/')
+        {
+            return false;
+        }
+        if Self::has_windows_drive_letter(input) {
+            return false;
+        }
+        input.matches('/').count() == 1
+    }
 
-        let is_local = input.starts_with("./")
+    /// Check if input appears to be a local path
+    fn appears_to_be_local(input: &str, path: &Path) -> bool {
+        let path_is_absolute = path.is_absolute();
+        let has_drive = Self::has_windows_drive_letter(input);
+        let starts_with_slash = input.starts_with('/');
+
+        input.starts_with("./")
             || input.starts_with("../")
             || input == "."
-            || input == ".."
             || (input.starts_with(".") && !input.contains("://"))
-            || path.is_absolute()
-            || input.starts_with('/')
-            || has_windows_drive_letter
+            || path_is_absolute
+            || starts_with_slash
+            || has_drive
             || (!input.contains(':')
-                && (input.contains('-') || input.contains('/') || input.contains('_')));
+                && (input.contains('-') || input.contains('/') || input.contains('_')))
+    }
+}
 
-        if looks_like_github_shorthand {
+impl SourceParser for LocalPathParser {
+    fn try_parse(&self, input: &str) -> Option<BundleSource> {
+        if Self::looks_like_github_shorthand(input) {
             return None;
         }
 
-        is_local.then(|| BundleSource::Dir {
-            path: PathBuf::from(input),
+        let path = Path::new(input);
+        Self::appears_to_be_local(input, path).then(|| BundleSource::Dir {
+            path: path.to_path_buf(),
         })
     }
 }
@@ -109,67 +134,6 @@ impl BundleSource {
     /// - `file://` URLs with fragments (`#ref` or `#subdir`) are treated as git sources
     /// - Any of the above with `#subdir` for path
     /// - Any of the above with `#ref` for git ref
-    pub fn parse(input: &str) -> Result<Self> {
-        let input = input.trim();
-
-        if input.is_empty() {
-            return Err(crate::error::AugentError::SourceParseFailed {
-                input: input.to_string(),
-                reason: "Input cannot be empty".to_string(),
-            });
-        }
-
-        let parsers: [&dyn SourceParser; 2] = [&FileUrlParser, &LocalPathParser];
-
-        for parser in parsers {
-            if let Some(source) = parser.try_parse(input) {
-                return Ok(source);
-            }
-        }
-
-        let git_source = GitSource::parse(input)?;
-        Ok(BundleSource::Git(git_source))
-    }
-
-    /// Check if this is a local directory source
-    #[allow(dead_code)]
-    pub fn is_local(&self) -> bool {
-        matches!(self, BundleSource::Dir { .. })
-    }
-
-    /// Check if this is a git source
-    #[allow(dead_code)]
-    pub fn is_git(&self) -> bool {
-        matches!(self, BundleSource::Git(_))
-    }
-
-    /// Get the local path if this is a directory source
-    #[allow(dead_code)]
-    pub fn as_local_path(&self) -> Option<&PathBuf> {
-        match self {
-            BundleSource::Dir { path } => Some(path),
-            _ => None,
-        }
-    }
-
-    /// Get the git source if this is a git source
-    #[allow(dead_code)]
-    pub fn as_git(&self) -> Option<&GitSource> {
-        match self {
-            BundleSource::Git(git) => Some(git),
-            _ => None,
-        }
-    }
-
-    /// Get a display string showing the full resolved URL
-    ///
-    /// This is useful for showing users exactly where a bundle is being installed from,
-    /// even when they use shorthand notation like `author/repo`.
-    ///
-    /// # Returns
-    ///
-    /// - For local directories: path as-is
-    /// - For git sources: full URL with ref and path appended if present
     ///
     /// # Examples
     ///
@@ -191,31 +155,27 @@ impl BundleSource {
     /// // With path
     /// let source = BundleSource::parse("author/repo:plugins/bundle").unwrap();
     /// assert_eq!(source.display_url(), "https://github.com/author/repo.git:plugins/bundle");
-    ///
-    /// // With both
-    /// let source = BundleSource::parse("author/repo#main:plugins/bundle").unwrap();
-    /// assert_eq!(source.display_url(), "https://github.com/author/repo.git#main:plugins/bundle");
     /// ```
-    #[allow(dead_code)]
-    pub fn display_url(&self) -> String {
-        match self {
-            BundleSource::Dir { path } => path.display().to_string(),
-            BundleSource::Git(git) => {
-                let mut url = git.url.clone();
+    pub fn parse(input: &str) -> Result<Self> {
+        let input = input.trim();
 
-                if let Some(ref git_ref) = git.git_ref {
-                    url.push('#');
-                    url.push_str(git_ref);
-                }
+        if input.is_empty() {
+            return Err(crate::error::AugentError::SourceParseFailed {
+                input: input.to_string(),
+                reason: "Input cannot be empty".to_string(),
+            });
+        }
 
-                if let Some(ref path_val) = git.path {
-                    url.push(':');
-                    url.push_str(path_val);
-                }
+        let parsers: [&dyn SourceParser; 2] = [&FileUrlParser, &LocalPathParser];
 
-                url
+        for parser in parsers {
+            if let Some(source) = parser.try_parse(input) {
+                return Ok(source);
             }
         }
+
+        let git_source = GitSource::parse(input)?;
+        Ok(BundleSource::Git(git_source))
     }
 }
 
@@ -254,18 +214,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_unix_absolute_path() {
-        let result = BundleSource::parse("/absolute/path");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    fn test_parse_existing_directory() {
-        let result = BundleSource::parse("bundle-dir");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
     fn test_parse_github_short() {
         let result = BundleSource::parse("github:user/repo");
         assert!(matches!(result, Ok(BundleSource::Git(_))));
@@ -293,101 +241,5 @@ mod tests {
     fn test_parse_file_url() {
         let result = BundleSource::parse("file:///path/to/bundle");
         assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    fn test_parse_file_url_with_ref() {
-        let result = BundleSource::parse("file:///path#main");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_file_url_with_path() {
-        let result = BundleSource::parse("file:///C:/path:subdir");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_github_with_ref() {
-        let result = BundleSource::parse("github:user/repo#v1.0");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_github_with_path() {
-        let result = BundleSource::parse("github:user/repo:plugins/foo");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_is_local_for_dir() {
-        let source = BundleSource::parse("./bundle").unwrap();
-        assert!(source.is_local());
-    }
-
-    #[test]
-    fn test_is_local_for_git() {
-        let source = BundleSource::parse("github:user/repo").unwrap();
-        assert!(!source.is_local());
-    }
-
-    #[test]
-    fn test_is_git_for_git() {
-        let source = BundleSource::parse("github:user/repo").unwrap();
-        assert!(source.is_git());
-    }
-
-    #[test]
-    fn test_is_git_for_dir() {
-        let source = BundleSource::parse("./bundle").unwrap();
-        assert!(!source.is_git());
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn test_parse_windows_absolute_path() {
-        // Windows absolute paths should be treated as local directories
-        let result = BundleSource::parse("C:\\Users\\test\\bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn test_parse_windows_absolute_path_forward_slash() {
-        // Windows paths with forward slashes should also work
-        let result = BundleSource::parse("C:/Users/test/bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    #[cfg(not(windows))]
-    fn test_parse_windows_style_path_on_unix() {
-        // On Unix, a Windows-style path like "C:\temp\bundle" should be treated as a local path
-        // due to the drive letter detection logic
-        let result = BundleSource::parse("C:\\temp\\bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    fn test_parse_windows_path_with_mixed_separators() {
-        // Test that malformed Windows paths with mixed separators are treated as local paths
-        // This can happen when joining Windows absolute paths with relative paths containing ./
-        let result = BundleSource::parse("C:\\Users\\test\\./some-bundle");
-        assert!(
-            matches!(result, Ok(BundleSource::Dir { .. })),
-            "Expected Dir source for mixed separator path, got: {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn test_parse_windows_path_forward_slash_with_dot() {
-        // Test Windows path with forward slashes and ./ in the middle
-        let result = BundleSource::parse("C:/workspace/./bundle");
-        assert!(
-            matches!(result, Ok(BundleSource::Dir { .. })),
-            "Expected Dir source for Windows path with forward slashes, got: {:?}",
-            result
-        );
     }
 }

@@ -69,28 +69,24 @@ impl<'a> InstallOperation<'a> {
         args: &mut InstallArgs,
         _workspace_root: &std::path::Path,
     ) -> Result<bool> {
-        let installing_by_bundle_name = if let Some(ref source) = args.source {
-            // Check if source is a bundle name (starts with @ or doesn't look like a path/URL)
-            let is_bundle_name = source.starts_with('@')
-                || (!source.contains('/')
-                    && !source.contains('\\')
-                    && !source.starts_with('.')
-                    && !source.starts_with('/')
-                    && !source.starts_with("http")
-                    && !source.starts_with("git@")
-                    && !source.starts_with("github:"));
-
-            if is_bundle_name {
-                // Source is a bundle name - resolve from workspace or registry
-                return Ok(true);
-            }
-
-            false
-        } else {
-            false
-        };
+        let installing_by_bundle_name = args
+            .source
+            .as_ref()
+            .is_some_and(|source| InstallOperation::looks_like_bundle_name(source));
 
         Ok(installing_by_bundle_name)
+    }
+
+    /// Check if source string looks like a bundle name rather than a path/URL
+    fn looks_like_bundle_name(source: &str) -> bool {
+        source.starts_with('@')
+            || (!source.contains('/')
+                && !source.contains('\\')
+                && !source.starts_with('.')
+                && !source.starts_with('/')
+                && !source.starts_with("http")
+                && !source.starts_with("git@")
+                && !source.starts_with("github:"))
     }
 
     /// Get names of already installed bundles for menu display

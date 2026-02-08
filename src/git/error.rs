@@ -7,6 +7,7 @@
 use git2::{Error, ErrorClass};
 
 /// Internal enum for error type classification
+#[derive(Clone, Copy)]
 enum ErrorClassOrMessage {
     RepositoryNotFound,
     AuthenticationFailed,
@@ -17,36 +18,69 @@ enum ErrorClassOrMessage {
     Other(ErrorClass),
 }
 
+fn is_repo_not_found(msg: &str) -> bool {
+    msg.contains("not found")
+        || msg.contains("404")
+        || msg.contains("too many redirects")
+        || msg.contains("authentication replays")
+}
+
+fn is_auth_failed(msg: &str) -> bool {
+    msg.contains("authentication") || msg.contains("credentials")
+}
+
+fn is_permission_denied(msg: &str) -> bool {
+    msg.contains("permission denied") || msg.contains("access denied")
+}
+
+fn is_network_error(msg: &str) -> bool {
+    msg.contains("connection")
+        || msg.contains("network")
+        || msg.contains("timeout")
+        || msg.contains("timed out")
+}
+
+fn classify_error_type(msg: &str, class: ErrorClass) -> ErrorClassOrMessage {
+    for (check, result) in ERROR_CLASSIFICATIONS {
+        if check(msg, class) {
+            return *result;
+        }
+    }
+    ErrorClassOrMessage::Other(class)
+}
+
+type ErrorCheck = fn(&str, ErrorClass) -> bool;
+
+const ERROR_CLASSIFICATIONS: &[(ErrorCheck, ErrorClassOrMessage)] = &[
+    (
+        |msg, _| is_repo_not_found(msg),
+        ErrorClassOrMessage::RepositoryNotFound,
+    ),
+    (
+        |msg, _| is_auth_failed(msg),
+        ErrorClassOrMessage::AuthenticationFailed,
+    ),
+    (
+        |msg, _| is_permission_denied(msg),
+        ErrorClassOrMessage::PermissionDenied,
+    ),
+    (
+        |msg, _| is_network_error(msg),
+        ErrorClassOrMessage::NetworkError,
+    ),
+    (
+        |msg, class| class == ErrorClass::Http && msg.contains("certificate"),
+        ErrorClassOrMessage::HttpCertificate,
+    ),
+    (
+        |msg, class| class == ErrorClass::Http && msg.contains("ssl"),
+        ErrorClassOrMessage::HttpSsl,
+    ),
+];
+
 /// Interpret a git2 error and provide a more user-friendly message
 pub fn interpret_git_error(err: &Error) -> String {
     let message = err.message().to_lowercase();
-
-    // Order matters - more specific patterns first
-    fn classify_error_type(msg: &str, class: ErrorClass) -> ErrorClassOrMessage {
-        if msg.contains("not found")
-            || msg.contains("404")
-            || msg.contains("too many redirects")
-            || msg.contains("authentication replays")
-        {
-            ErrorClassOrMessage::RepositoryNotFound
-        } else if msg.contains("authentication") || msg.contains("credentials") {
-            ErrorClassOrMessage::AuthenticationFailed
-        } else if msg.contains("permission denied") || msg.contains("access denied") {
-            ErrorClassOrMessage::PermissionDenied
-        } else if msg.contains("connection")
-            || msg.contains("network")
-            || msg.contains("timeout")
-            || msg.contains("timed out")
-        {
-            ErrorClassOrMessage::NetworkError
-        } else if class == ErrorClass::Http && msg.contains("certificate") {
-            ErrorClassOrMessage::HttpCertificate
-        } else if class == ErrorClass::Http && msg.contains("ssl") {
-            ErrorClassOrMessage::HttpSsl
-        } else {
-            ErrorClassOrMessage::Other(class)
-        }
-    }
 
     // Classify the error
     let error_type = classify_error_type(message.as_str(), err.class());

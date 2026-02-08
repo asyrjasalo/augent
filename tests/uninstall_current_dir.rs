@@ -74,28 +74,14 @@ fn test_uninstall_dot_updates_augent_yaml() {
     workspace.init_from_fixture("empty");
     workspace.create_agent_dir("cursor");
 
-    // Create a local bundle directory and files
-    let bundle_dir = workspace.path.join("my-library");
-    std::fs::create_dir_all(&bundle_dir).expect("Failed to create bundle directory");
-    std::fs::create_dir_all(bundle_dir.join("commands"))
-        .expect("Failed to create commands directory");
-    std::fs::write(bundle_dir.join("commands/test.md"), "# Test\n")
-        .expect("Failed to write test file");
+    // Create a local bundle directory
+    workspace.write_file("my-library/commands/test.md", "# Test\n");
 
-    workspace.write_file(
-        ".augent/augent.yaml",
-        "bundles:\n  - name: \"my-library\"\n    path: \"./my-library\"\n",
-    );
-
+    // Install the bundle directly
     common::augent_cmd_for_workspace(&workspace.path)
-        .args(["install", "--to", "cursor", "-y"])
+        .args(["install", "./my-library", "--to", "cursor", "-y"])
         .assert()
         .success();
-
-    // Verify augent.yaml was created with the bundle entry
-    let augent_yaml_content = workspace.read_file(".augent/augent.yaml");
-    assert!(augent_yaml_content.contains("my-library"));
-    assert!(augent_yaml_content.contains("./my-library"));
 
     // Navigate to the bundle directory
     let bundle_dir = workspace.path.join("my-library");

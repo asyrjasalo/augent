@@ -81,6 +81,32 @@ pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>
     Ok(selected_bundles)
 }
 
+/// Extract unique platforms from installed file paths
+fn extract_platforms(installed_paths: &[String]) -> Vec<String> {
+    let mut platforms = std::collections::HashSet::new();
+    for path in installed_paths {
+        if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next()) {
+            platforms.insert(platform.to_string());
+        }
+    }
+    let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
+    sorted_platforms.sort();
+    sorted_platforms
+}
+
+/// Format bundle name for display, optionally including platform list
+fn format_bundle_name(name: &str, platforms: Option<&Vec<String>>) -> String {
+    if let Some(platforms) = platforms {
+        if platforms.is_empty() {
+            name.to_string()
+        } else {
+            format!("{} ({})", name, platforms.join(", "))
+        }
+    } else {
+        name.to_string()
+    }
+}
+
 /// Select bundles from a predefined list
 pub fn select_bundles_from_list(
     workspace: &Workspace,
@@ -91,49 +117,24 @@ pub fn select_bundles_from_list(
         return Ok(vec![]);
     }
 
-    if bundle_names.len() == 1 {
-        return Ok(bundle_names);
-    }
-
     // Extract bundle names to workspace bundle mapping
     let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
         .workspace_config
         .bundles
         .iter()
         .map(|wb| {
-            // Extract unique platforms from enabled files
-            let mut platforms = std::collections::HashSet::new();
-            for installed_paths in wb.enabled.values() {
-                for path in installed_paths {
-                    // Extract platform from path like ".opencode/commands/debug.md" or ".cursor/rules/debug.mdc"
-                    if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next())
-                    {
-                        platforms.insert(platform.to_string());
-                    }
-                }
-            }
-            let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
-            sorted_platforms.sort();
-            (wb.name.clone(), sorted_platforms)
+            let all_paths: Vec<String> = wb.enabled.values().flatten().cloned().collect();
+            let platforms = extract_platforms(&all_paths);
+            (wb.name.clone(), platforms)
         })
         .collect();
 
     // Preserve order from lockfile (don't sort alphabetically)
-
-    // Single-line items: "name" or "name (cursor, opencode)".
+    // Single-line items: "name" or "name (cursor, opencode)". Multi-line content
+    // breaks inquire's list layout and causes filter to match descriptions.
     let items: Vec<String> = bundle_names
         .iter()
-        .map(|name| {
-            if let Some(platforms) = workspace_bundle_map.get(name) {
-                if platforms.is_empty() {
-                    name.clone()
-                } else {
-                    format!("{} ({})", name, platforms.join(", "))
-                }
-            } else {
-                name.clone()
-            }
-        })
+        .map(|b| format_bundle_name(b, workspace_bundle_map.get(b)))
         .collect();
 
     println!();

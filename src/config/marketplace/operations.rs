@@ -67,11 +67,24 @@ impl MarketplaceConfig {
     }
 }
 
+/// Copy a single resource (file or directory) to target
+fn copy_single_resource(source: &Path, target: &Path) -> Result<()> {
+    if source.is_dir() {
+        copy_dir_recursive(source, target, CopyOptions::default()).map_err(|e| {
+            AugentError::IoError {
+                message: format!("Failed to copy directory: {}", e),
+            }
+        })?;
+    } else {
+        fs::copy(source, target).map_err(|e| AugentError::IoError {
+            message: format!("Failed to copy file: {}", e),
+        })?;
+    }
+    Ok(())
+}
+
 /// Copy list of resources to a target subdirectory
-fn copy_list<F>(resource_list: &[String], target_subdir: &str, copy_fn: F) -> Result<()>
-where
-    F: Fn(&Path, &Path) -> Result<()>,
-{
+fn copy_list(resource_list: &[String], target_subdir: &str) -> Result<()> {
     let target_path = Path::new(target_subdir);
     if !resource_list.is_empty() {
         fs::create_dir_all(target_path).map_err(|e| AugentError::IoError {
@@ -87,57 +100,29 @@ where
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "entry".to_string());
-        if source.is_dir() {
-            copy_dir_recursive(source, target_path.join(&name), CopyOptions::default())?;
-        } else {
-            copy_fn(source, &target_path.join(&name))?;
-        }
+        copy_single_resource(source, &target_path.join(&name))?;
     }
     Ok(())
 }
 
-/// Create synthetic bundle content at target_dir from marketplace plugin definition.
-/// Used by cache when storing marketplace bundles (same layout as create_synthetic_bundle in resolver).
-pub fn create_synthetic_bundle_to(
-    repo_root: &Path,
+fn find_bundle_definition<'a>(
+    config: &'a super::MarketplaceConfig,
     plugin_name: &str,
-    target_dir: &Path,
-    git_url: Option<&str>,
-) -> Result<()> {
-    let marketplace_json = repo_root.join(".claude-plugin/marketplace.json");
-    let config = super::MarketplaceConfig::from_file(&marketplace_json)?;
-    let bundle_def = config
+) -> Result<&'a MarketplaceBundle> {
+    config
         .plugins
         .iter()
         .find(|b| b.name == plugin_name)
         .ok_or_else(|| AugentError::BundleNotFound {
             name: format!("Bundle '{}' not found in marketplace.json", plugin_name),
-        })?;
+        })
+}
 
-    fs::create_dir_all(target_dir).map_err(|e| AugentError::IoError {
-        message: format!("Failed to create target dir: {}", e),
-    })?;
-
-    let copy_resource = |source: &Path, dst: &Path| -> Result<()> {
-        fs::copy(source, dst)
-            .map_err(|e| AugentError::IoError {
-                message: format!(
-                    "Failed to copy {} to {}: {}",
-                    source.display(),
-                    dst.display(),
-                    e
-                ),
-            })
-            .map(|_| ())
-    };
-
-    copy_list(&bundle_def.commands, "commands", copy_resource)?;
-    copy_list(&bundle_def.agents, "agents", copy_resource)?;
-    copy_list(&bundle_def.skills, "skills", copy_resource)?;
-    copy_list(&bundle_def.mcp_servers, "mcp_servers", copy_resource)?;
-    copy_list(&bundle_def.rules, "rules", copy_resource)?;
-    copy_list(&bundle_def.hooks, "hooks", copy_resource)?;
-
+fn write_bundle_config(
+    bundle_def: &MarketplaceBundle,
+    target_dir: &Path,
+    git_url: Option<&str>,
+) -> Result<()> {
     let bundle_name = if let Some(url) = git_url {
         string_utils::bundle_name_from_url(Some(url), &bundle_def.name)
     } else {
@@ -164,6 +149,38 @@ pub fn create_synthetic_bundle_to(
             reason: format!("Failed to write config: {}", e),
         }
     })?;
+
+    Ok(())
+}
+
+fn copy_all_bundle_resources(bundle_def: &MarketplaceBundle) -> Result<()> {
+    copy_list(&bundle_def.commands, "commands")?;
+    copy_list(&bundle_def.agents, "agents")?;
+    copy_list(&bundle_def.skills, "skills")?;
+    copy_list(&bundle_def.mcp_servers, "mcp_servers")?;
+    copy_list(&bundle_def.rules, "rules")?;
+    copy_list(&bundle_def.hooks, "hooks")?;
+    Ok(())
+}
+
+/// Create synthetic bundle content at target_dir from marketplace plugin definition.
+/// Used by cache when storing marketplace bundles (same layout as create_synthetic_bundle in resolver).
+pub fn create_synthetic_bundle_to(
+    repo_root: &Path,
+    plugin_name: &str,
+    target_dir: &Path,
+    git_url: Option<&str>,
+) -> Result<()> {
+    let marketplace_json = repo_root.join(".claude-plugin/marketplace.json");
+    let config = super::MarketplaceConfig::from_file(&marketplace_json)?;
+    let bundle_def = find_bundle_definition(&config, plugin_name)?;
+
+    fs::create_dir_all(target_dir).map_err(|e| AugentError::IoError {
+        message: format!("Failed to create target dir: {}", e),
+    })?;
+
+    copy_all_bundle_resources(bundle_def)?;
+    write_bundle_config(bundle_def, target_dir, git_url)?;
 
     Ok(())
 }

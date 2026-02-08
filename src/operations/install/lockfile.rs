@@ -8,75 +8,83 @@ use crate::hash;
 use crate::installer::discovery::discover_resources;
 use std::path::Path;
 
-/// Create a locked bundle from a resolved bundle
-pub fn create_locked_bundle_from_resolved(
-    bundle: &ResolvedBundle,
-    workspace_root: Option<&Path>,
-) -> Result<LockedBundle> {
-    // Discover files in the bundle
-    let resources = discover_resources(&bundle.source_path)?;
-    // Normalize paths to always use forward slashes (Unix-style) for cross-platform consistency
-    let files: Vec<String> = resources
-        .iter()
-        .map(|r| r.bundle_path.to_string_lossy().replace('\\', "/"))
-        .collect();
+/// Normalize paths to use forward slashes consistently
+fn normalize_path_separator(path: String) -> String {
+    path.replace('\\', "/")
+}
 
-    // Calculate hash
-    let bundle_hash = hash::hash_directory(&bundle.source_path)?;
+/// Remove redundant ./ segments from path
+fn normalize_path_segments(path_str: &mut String) {
+    loop {
+        if let Some(pos) = path_str.find("/./") {
+            *path_str = format!("{}{}", &path_str[..pos], &path_str[pos + 2..]);
+        } else if path_str.starts_with("./") {
+            *path_str = path_str[2..].to_string();
+        } else {
+            break;
+        }
+    }
+    if path_str.is_empty() {
+        *path_str = ".".to_string();
+    }
+}
 
-    let source = if let Some(git_source) = &bundle.git_source {
-        // ref = user-specified (branch/tag/SHA) or discovered default branch; sha = resolved commit for reproducibility
-        let git_ref = bundle
-            .resolved_ref
-            .clone()
-            .or_else(|| Some("main".to_string()));
-        LockedSource::Git {
-            url: git_source.url.clone(),
-            git_ref,
-            sha: bundle.resolved_sha.clone().unwrap_or_default(),
-            path: git_source.path.clone(), // Use path from git_source
-            hash: bundle_hash,
+/// Calculate relative path from workspace root
+fn calculate_relative_path(source_path: &Path, workspace_root: Option<&Path>) -> String {
+    if let Some(root) = workspace_root {
+        match source_path.strip_prefix(root) {
+            Ok(rel_path) => {
+                let mut path_str =
+                    normalize_path_separator(rel_path.to_string_lossy().into_owned());
+                normalize_path_segments(&mut path_str);
+                path_str
+            }
+            Err(_) => normalize_path_separator(source_path.to_string_lossy().into_owned()),
         }
     } else {
-        // Local directory - convert to relative path from workspace root if possible
-        let relative_path = if let Some(root) = workspace_root {
-            match bundle.source_path.strip_prefix(root) {
-                Ok(rel_path) => {
-                    let mut path_str = rel_path.to_string_lossy().replace('\\', "/");
-                    // Normalize the path - remove all redundant ./ segments
-                    loop {
-                        if let Some(pos) = path_str.find("/./") {
-                            // Replace /./ with /
-                            path_str = format!("{}{}", &path_str[..pos], &path_str[pos + 2..]);
-                        } else if path_str.starts_with("./") {
-                            // Remove leading ./
-                            path_str = path_str[2..].to_string();
-                        } else {
-                            break;
-                        }
-                    }
-                    // If path is empty (bundle is at root), use "."
-                    if path_str.is_empty() {
-                        ".".to_string()
-                    } else {
-                        path_str
-                    }
-                }
-                Err(_) => bundle.source_path.to_string_lossy().to_string(),
-            }
-        } else {
-            bundle.source_path.to_string_lossy().to_string()
-        };
+        normalize_path_separator(source_path.to_string_lossy().into_owned())
+    }
+}
 
-        LockedSource::Dir {
-            path: relative_path,
-            hash: bundle_hash,
-        }
-    };
+/// Create a git locked source
+fn create_git_locked_source(
+    bundle: &ResolvedBundle,
+    git_source: &crate::source::GitSource,
+    bundle_hash: String,
+) -> LockedSource {
+    let git_ref = bundle
+        .resolved_ref
+        .clone()
+        .or_else(|| Some("main".to_string()));
+    LockedSource::Git {
+        url: git_source.url.clone(),
+        git_ref,
+        sha: bundle.resolved_sha.clone().unwrap_or_default(),
+        path: git_source.path.clone(),
+        hash: bundle_hash,
+    }
+}
 
-    // Extract metadata from bundle config if available
-    let (description, version, author, license, homepage) = if let Some(ref config) = bundle.config
-    {
+/// Create a directory locked source
+fn create_dir_locked_source(relative_path: String, bundle_hash: String) -> LockedSource {
+    LockedSource::Dir {
+        path: relative_path,
+        hash: bundle_hash,
+    }
+}
+
+/// Bundle metadata extracted from config
+type BundleMetadata = (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
+
+/// Extract metadata from bundle config
+fn extract_metadata(bundle: &ResolvedBundle) -> BundleMetadata {
+    if let Some(ref config) = bundle.config {
         (
             config.description.clone(),
             config.version.clone(),
@@ -86,7 +94,30 @@ pub fn create_locked_bundle_from_resolved(
         )
     } else {
         (None, None, None, None, None)
+    }
+}
+
+/// Create a locked bundle from a resolved bundle
+pub fn create_locked_bundle_from_resolved(
+    bundle: &ResolvedBundle,
+    workspace_root: Option<&Path>,
+) -> Result<LockedBundle> {
+    let resources = discover_resources(&bundle.source_path)?;
+    let files: Vec<String> = resources
+        .iter()
+        .map(|r| normalize_path_separator(r.bundle_path.to_string_lossy().into_owned()))
+        .collect();
+
+    let bundle_hash = hash::hash_directory(&bundle.source_path)?;
+
+    let source = if let Some(ref git_source) = bundle.git_source {
+        create_git_locked_source(bundle, git_source, bundle_hash)
+    } else {
+        let relative_path = calculate_relative_path(&bundle.source_path, workspace_root);
+        create_dir_locked_source(relative_path, bundle_hash)
     };
+
+    let (description, version, author, license, homepage) = extract_metadata(bundle);
 
     Ok(LockedBundle {
         name: bundle.name.clone(),

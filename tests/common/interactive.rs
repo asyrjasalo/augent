@@ -26,6 +26,12 @@ pub struct InteractiveTest {
     session: expectrl::session::OsSession,
 }
 
+enum ReadResult {
+    Success,
+    Continue,
+    Error(std::io::Error),
+}
+
 #[allow(dead_code)] // Methods are part of testing infrastructure documented in INTERACTIVE_TESTING.md
 impl InteractiveTest {
     pub fn new<P: AsRef<Path>>(program: &str, args: &[&str], workdir: P) -> std::io::Result<Self> {
@@ -170,135 +176,143 @@ impl InteractiveTest {
         let mut output = String::new();
         let mut buffer = [0u8; 4096];
         let mut iteration_count = 0;
-        // Maximum iterations to prevent infinite loops (timeout / sleep_duration with safety margin)
-        // Each iteration sleeps 50ms, so for a 5s timeout we'd have ~100 iterations max
-        // Use a larger safety margin to account for processing time
         let max_iterations = (timeout.as_millis() / 50) as usize + 100;
 
-        // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
         thread::sleep(Duration::from_millis(25));
 
         loop {
             iteration_count += 1;
-            if iteration_count > max_iterations {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    format!(
-                        "Timeout waiting for text: {} (exceeded {} iterations). Output so far: {:?}",
-                        expected,
-                        max_iterations,
-                        if output.len() > 500 {
-                            format!("{}...", &output[..500])
-                        } else {
-                            output.clone()
-                        }
-                    ),
-                ));
-            }
 
-            if start.elapsed() > timeout {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    format!(
-                        "Timeout waiting for text: {} ({}ms elapsed). Output so far: {:?}",
-                        expected,
-                        start.elapsed().as_millis(),
-                        if output.len() > 500 {
-                            format!("{}...", &output[..500])
-                        } else {
-                            output.clone()
-                        }
-                    ),
-                ));
-            }
+            self.check_iteration_limit(iteration_count, max_iterations, expected, &output)?;
 
-            // Read any available data first (before checking EOF so we don't miss output)
-            match self.session.read(&mut buffer) {
-                Ok(n) if n > 0 => {
-                    let text = std::str::from_utf8(&buffer[..n]).unwrap_or("");
-                    output.push_str(text);
-                    // Check if pattern matches
-                    if output.contains(expected) {
-                        return Ok(output);
-                    }
-                }
-                Ok(_) => {
-                    // No data available (n == 0): check if process has exited
-                    if self.session.check(Eof).is_ok() {
-                        let preview = if output.len() > 500 {
-                            format!("{}...", &output[..500])
-                        } else {
-                            output.clone()
-                        };
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::UnexpectedEof,
-                            format!(
-                                "EOF before finding text: {}. Output so far: {:?}",
-                                expected, preview
-                            ),
-                        ));
-                    }
-                    thread::sleep(Duration::from_millis(25));
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    // WouldBlock is normal on Windows conpty when no data is available
-                    // Check if process has exited
-                    if self.session.check(Eof).is_ok() {
-                        let preview = if output.len() > 500 {
-                            format!("{}...", &output[..500])
-                        } else {
-                            output.clone()
-                        };
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::UnexpectedEof,
-                            format!(
-                                "EOF before finding text: {}. Output so far: {:?}",
-                                expected, preview
-                            ),
-                        ));
-                    }
-                    thread::sleep(Duration::from_millis(25));
-                }
-                Err(e) => {
-                    // Other errors: check if process exited (e.g., EIO on Linux)
-                    #[cfg(unix)]
-                    if e.raw_os_error() == Some(5) {
-                        // EIO (code 5 on Linux) can occur when process closes PTY slave
-                        // Check if we already have the text before returning error
-                        if output.contains(expected) {
-                            return Ok(output);
-                        }
-                        let preview = if output.len() > 500 {
-                            format!("{}...", &output[..500])
-                        } else {
-                            output.clone()
-                        };
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::UnexpectedEof,
-                            format!(
-                                "EIO before finding text: {}. Output so far: {:?}",
-                                expected, preview
-                            ),
-                        ));
-                    }
-                    // For Windows or other errors, check if process exited
-                    if self.session.check(Eof).is_ok() {
-                        let preview = if output.len() > 500 {
-                            format!("{}...", &output[..500])
-                        } else {
-                            output.clone()
-                        };
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::UnexpectedEof,
-                            format!(
-                                "EOF before finding text: {}. Output so far: {:?}",
-                                expected, preview
-                            ),
-                        ));
-                    }
-                    return Err(e);
+            self.check_timeout(start, timeout, expected, &output)?;
+
+            match self.read_and_process(&mut buffer, &mut output, expected) {
+                ReadResult::Success => return Ok(output),
+                ReadResult::Continue => thread::sleep(Duration::from_millis(25)),
+                ReadResult::Error(e) => return Err(e),
+            }
+        }
+    }
+
+    fn check_iteration_limit(
+        &self,
+        iteration_count: usize,
+        max_iterations: usize,
+        expected: &str,
+        output: &str,
+    ) -> std::io::Result<()> {
+        if iteration_count > max_iterations {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                format!(
+                    "Timeout waiting for text: {} (exceeded {} iterations). Output so far: {:?}",
+                    expected,
+                    max_iterations,
+                    Self::truncate_output(output)
+                ),
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_timeout(
+        &self,
+        start: std::time::Instant,
+        timeout: Duration,
+        expected: &str,
+        output: &str,
+    ) -> std::io::Result<()> {
+        if start.elapsed() > timeout {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                format!(
+                    "Timeout waiting for text: {} ({}ms elapsed). Output so far: {:?}",
+                    expected,
+                    start.elapsed().as_millis(),
+                    Self::truncate_output(output)
+                ),
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn read_and_process(
+        &mut self,
+        buffer: &mut [u8],
+        output: &mut String,
+        expected: &str,
+    ) -> ReadResult {
+        match self.session.read(buffer) {
+            Ok(n) if n > 0 => {
+                let text = std::str::from_utf8(&buffer[..n]).unwrap_or("");
+                output.push_str(text);
+                if output.contains(expected) {
+                    ReadResult::Success
+                } else {
+                    ReadResult::Continue
                 }
             }
+            Ok(_) => self.handle_no_data(output, expected),
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                self.handle_no_data(output, expected)
+            }
+            Err(e) => self.handle_read_error(e, output, expected),
+        }
+    }
+
+    fn handle_no_data(&mut self, output: &str, expected: &str) -> ReadResult {
+        if self.session.check(Eof).is_ok() {
+            ReadResult::Error(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!(
+                    "EOF before finding text: {}. Output so far: {:?}",
+                    expected,
+                    Self::truncate_output(output)
+                ),
+            ))
+        } else {
+            ReadResult::Continue
+        }
+    }
+
+    fn handle_read_error(&mut self, e: std::io::Error, output: &str, expected: &str) -> ReadResult {
+        #[cfg(unix)]
+        if e.raw_os_error() == Some(5) {
+            if output.contains(expected) {
+                return ReadResult::Success;
+            }
+            return ReadResult::Error(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!(
+                    "EIO before finding text: {}. Output so far: {:?}",
+                    expected,
+                    Self::truncate_output(output)
+                ),
+            ));
+        }
+
+        if self.session.check(Eof).is_ok() {
+            ReadResult::Error(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!(
+                    "EOF before finding text: {}. Output so far: {:?}",
+                    expected,
+                    Self::truncate_output(output)
+                ),
+            ))
+        } else {
+            ReadResult::Error(e)
+        }
+    }
+
+    fn truncate_output(output: &str) -> String {
+        if output.len() > 500 {
+            format!("{}...", &output[..500])
+        } else {
+            output.to_string()
         }
     }
 

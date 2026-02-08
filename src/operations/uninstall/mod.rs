@@ -133,68 +133,106 @@ fn resolve_named_bundle(
     }
 }
 
+/// Helper to canonicalize a path with fallbacks
+fn canonicalize_with_fallback(path: &std::path::Path) -> std::path::PathBuf {
+    path.canonicalize()
+        .ok()
+        .or_else(|| path.normalize().ok().map(|p| p.into_path_buf()))
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
 /// Resolve bundles when current directory is specified (".")
 fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
     let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
         message: format!("Failed to get current directory: {}", e),
     })?;
 
-    // Use canonicalize for reliable path comparison on all platforms
-    // Falls back to normalize if canonicalize fails (e.g., path doesn't exist)
-    let current_dir_canonical = current_dir
-        .canonicalize()
-        .ok()
-        .or_else(|| current_dir.normalize().ok().map(|p| p.into_path_buf()))
-        .unwrap_or_else(|| current_dir.clone());
+    let current_dir_canonical = canonicalize_with_fallback(&current_dir);
+    let root_canonical = canonicalize_with_fallback(&workspace.root);
 
-    let root_canonical = workspace
-        .root
-        .canonicalize()
-        .ok()
-        .or_else(|| workspace.root.normalize().ok().map(|p| p.into_path_buf()))
-        .unwrap_or_else(|| workspace.root.clone());
-
-    for bundle in &workspace.lockfile.bundles {
-        if let crate::config::lockfile::source::LockedSource::Dir { path, .. } = &bundle.source {
-            // Strip leading "./" from path to ensure consistent joining on all platforms
-            let clean_path = path.strip_prefix("./").unwrap_or(path);
-            let bundle_path = workspace.root.join(clean_path);
-            let bundle_path_canonical = bundle_path
-                .canonicalize()
-                .ok()
-                .or_else(|| bundle_path.normalize().ok().map(|p| p.into_path_buf()))
-                .unwrap_or_else(|| bundle_path.clone());
-
-            if current_dir_canonical == bundle_path_canonical {
-                println!("Uninstalling current directory bundle: {}", bundle.name);
-                return Ok(vec![bundle.name.clone()]);
-            }
-        }
+    // Check if current dir matches any bundle
+    if let Some(bundle_name) = find_bundle_matching_current_dir(workspace, &current_dir_canonical) {
+        println!("Uninstalling current directory bundle: {}", bundle_name);
+        return Ok(vec![bundle_name]);
     }
 
-    let relative_path = current_dir_canonical.strip_prefix(&root_canonical).ok();
-    if let Some(rel_path) = relative_path {
-        if let Some(first_component) = rel_path.iter().next() {
-            let potential_bundle_name = first_component.to_string_lossy();
-            if workspace
-                .lockfile
-                .bundles
-                .iter()
-                .any(|b| b.name == potential_bundle_name)
-            {
-                return Err(AugentError::BundleNotFound {
-                    name: format!(
-                        "current directory (nested subdirectory of bundle '{}')",
-                        potential_bundle_name
-                    ),
-                });
-            }
-        }
-    }
+    // Check if current dir is nested under workspace and part of a bundle
+    check_nested_bundle(workspace, &current_dir_canonical, &root_canonical)?;
 
     Err(AugentError::BundleNotFound {
         name: "current directory (not a bundle)".to_string(),
     })
+}
+
+/// Find a bundle that matches the current directory path
+fn find_bundle_matching_current_dir(
+    workspace: &Workspace,
+    current_dir_canonical: &std::path::Path,
+) -> Option<String> {
+    workspace
+        .lockfile
+        .bundles
+        .iter()
+        .find(|bundle| bundle_matches_path(workspace, bundle, current_dir_canonical))
+        .map(|b| b.name.clone())
+}
+
+/// Check if a directory bundle matches the given path
+fn bundle_matches_path(
+    workspace: &Workspace,
+    bundle: &crate::config::lockfile::bundle::LockedBundle,
+    path: &std::path::Path,
+) -> bool {
+    if let crate::config::lockfile::source::LockedSource::Dir {
+        path: bundle_path_str,
+        ..
+    } = &bundle.source
+    {
+        let clean_path = std::path::Path::new(bundle_path_str)
+            .strip_prefix("./")
+            .unwrap_or(std::path::Path::new(bundle_path_str));
+        let bundle_path = workspace.root.join(clean_path);
+        let bundle_path_canonical = canonicalize_with_fallback(&bundle_path);
+        path == bundle_path_canonical.as_path()
+    } else {
+        false
+    }
+}
+
+/// Check if current directory is nested under a bundle's directory
+fn check_nested_bundle(
+    workspace: &Workspace,
+    current_dir_canonical: &std::path::Path,
+    root_canonical: &std::path::Path,
+) -> Result<()> {
+    let rel_path = match current_dir_canonical.strip_prefix(root_canonical) {
+        Ok(path) => path,
+        Err(_) => return Ok(()), // Current dir is not under root
+    };
+
+    let first_component = rel_path
+        .iter()
+        .next()
+        .ok_or_else(|| AugentError::BundleNotFound {
+            name: "current directory (empty path)".to_string(),
+        })?;
+
+    let potential_bundle_name = first_component.to_string_lossy();
+    if workspace
+        .lockfile
+        .bundles
+        .iter()
+        .any(|b| b.name == potential_bundle_name)
+    {
+        return Err(AugentError::BundleNotFound {
+            name: format!(
+                "current directory (nested subdirectory of bundle '{}')",
+                potential_bundle_name
+            ),
+        });
+    }
+
+    Ok(())
 }
 
 /// Resolve bundles matching a scope pattern

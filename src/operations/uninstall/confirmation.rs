@@ -7,42 +7,44 @@ use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
 use inquire::Confirm;
 
+/// Count files that would be removed for a bundle
+fn count_files_to_remove(
+    workspace: &Workspace,
+    bundle_name: &str,
+    locked_bundle: &crate::config::lockfile::bundle::LockedBundle,
+) -> Result<usize> {
+    let bundle_config = workspace.workspace_config.find_bundle(bundle_name);
+    let mut file_count = 0;
+
+    for file_path in &locked_bundle.files {
+        if let Some(bundle_cfg) = &bundle_config {
+            if let Some(locations) = bundle_cfg.get_locations(file_path) {
+                for location in locations {
+                    let full_path = workspace.root.join(location);
+                    if full_path.exists() {
+                        file_count += 1;
+                    }
+                }
+            }
+        } else {
+            let full_path = workspace.root.join(file_path);
+            if full_path.exists() {
+                file_count += 1;
+            }
+        }
+    }
+
+    Ok(file_count)
+}
+
 /// Confirm uninstallation with user, showing what would be done
 pub fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String]) -> Result<bool> {
     println!("\nThe following bundle(s) will be uninstalled:");
     for bundle_name in bundles_to_uninstall {
         println!("  - {}", bundle_name);
 
-        // Show files that would be removed for this bundle
         if let Some(locked_bundle) = workspace.lockfile.find_bundle(bundle_name) {
-            let files_to_remove = super::file_utils::determine_files_to_remove(
-                workspace,
-                bundle_name,
-                &locked_bundle.files,
-            )?;
-
-            if !files_to_remove.is_empty() {
-                let bundle_config = workspace.workspace_config.find_bundle(bundle_name);
-                let mut file_count = 0;
-
-                for file_path in &files_to_remove {
-                    if let Some(bundle_cfg) = &bundle_config {
-                        if let Some(locations) = bundle_cfg.get_locations(file_path) {
-                            for location in locations {
-                                let full_path = workspace.root.join(location);
-                                if full_path.exists() {
-                                    file_count += 1;
-                                }
-                            }
-                        }
-                    } else {
-                        let full_path = workspace.root.join(file_path);
-                        if full_path.exists() {
-                            file_count += 1;
-                        }
-                    }
-                }
-
+            if let Ok(file_count) = count_files_to_remove(workspace, bundle_name, locked_bundle) {
                 if file_count > 0 {
                     println!("    {} file(s) will be removed", file_count);
                 }

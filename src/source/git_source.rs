@@ -86,76 +86,75 @@ impl GitSource {
         }
     }
 
+    /// Check if input is an SSH URL (colon is part of URL format, not path separator)
+    fn is_ssh_url(input: &str) -> bool {
+        input.starts_with("git@") || input.starts_with("ssh://")
+    }
+
+    /// Parse path from fragment containing ':'
+    fn parse_path_from_fragment(ref_frag: &str) -> Option<String> {
+        ref_frag
+            .find(':')
+            .map(|colon_pos| ref_frag[colon_pos + 1..].to_string())
+    }
+
+    /// Parse ref from fragment
+    fn parse_ref_from_fragment(ref_frag: &str) -> Option<String> {
+        if ref_frag.is_empty() {
+            None
+        } else if let Some(colon_pos) = ref_frag.find(':') {
+            Some(ref_frag[..colon_pos].to_string())
+        } else {
+            Some(ref_frag.to_string())
+        }
+    }
+
+    /// Check if URL part before colon is a valid repository
+    fn is_valid_repo_url(before_colon: &str) -> bool {
+        Self::parse_url(before_colon).is_ok()
+    }
+
     /// Parse path separator handling when main part has no fragment
     /// Returns (optional_path, optional_ref, url_part_for_parsing)
     fn parse_path_without_fragment<'a>(
         main_part: &'a str,
         ref_part: Option<&'a str>,
     ) -> (Option<String>, Option<String>, &'a str) {
-        match ref_part {
-            Some(ref_frag) => {
-                // Has fragment (# or @)
-                if ref_frag.is_empty() {
-                    // Empty fragment (# or @) means no user-specified ref
-                    (None, None, main_part)
-                } else if let Some(colon_pos) = ref_frag.find(':') {
-                    // Fragment contains ':' - split into ref:path
-                    (
-                        Some(ref_frag[colon_pos + 1..].to_string()),
-                        Some(ref_frag[..colon_pos].to_string()),
-                        main_part,
-                    )
-                } else {
-                    // Fragment is just a ref (e.g., branch name, tag, SHA)
-                    (None, Some(ref_frag.to_string()), main_part)
-                }
-            }
-            None => {
-                // No ref, check if main part has path separated by :
-                // BUT: Don't treat SSH URLs (git@host:path) as having path
-                if main_part.starts_with("git@") || main_part.starts_with("ssh://") {
-                    // SSH URL - colon is part of the URL format, not a path separator
-                    (None, None, main_part)
-                } else {
-                    // For github:author/repo:path, we want to find the path colon.
-                    // Skip protocol prefixes when looking for path separator.
-                    // For file:// on Windows, also skip the drive letter (e.g. C: or /C:)
-                    // so "file://C:\path:sub" splits at "path:sub" not at "C:".
-                    // Also skip Windows drive letters in bare paths (runtime check)
-                    // to prevent splitting "C:\path" into "C" and "\path" during cross-platform operations.
-                    let search_start = Self::find_protocol_prefix_start(main_part);
+        // Handle fragment cases first
+        if let Some(ref_frag) = ref_part {
+            return (
+                Self::parse_path_from_fragment(ref_frag),
+                Self::parse_ref_from_fragment(ref_frag),
+                main_part,
+            );
+        }
 
-                    let rest = &main_part[search_start..];
-                    // Always check for Windows drive letters (not just for file:// URLs)
-                    // because paths can come from lockfiles or be canonicalized on Windows
-                    let (drive_skip, search_in) = Self::skip_windows_drive_letter(rest);
+        // No fragment - check for path separator in main part
+        if Self::is_ssh_url(main_part) {
+            // SSH URL - colon is part of the URL format, not a path separator
+            return (None, None, main_part);
+        }
 
-                    if let Some(relative_pos) = search_in.find(':') {
-                        let colon_pos = search_start + drive_skip + relative_pos;
-                        let (before_colon, after_colon) =
-                            (&main_part[..colon_pos], &main_part[colon_pos + 1..]);
-                        // Only treat as path if before_colon is a valid repo URL/shorthand
-                        if Self::parse_url(before_colon).is_ok() {
-                            (Some(after_colon.to_string()), None, before_colon)
-                        } else {
-                            // Not a repo:path pattern - this could be:
-                            // 1. github:author/repo:path (repo + path)
-                            // 2. Invalid repo like github:wshobson/agents (no path after repo)
-                            // In case 2, treat :path as a ref (not path)
-                            // This handles patterns like github:wshobson/agents:plugins/foo
-                            let is_repo_path_pattern = Self::parse_url(before_colon).is_err();
-                            if is_repo_path_pattern {
-                                (None, Some(after_colon.to_string()), before_colon)
-                            } else {
-                                // Not a repo:path pattern, use full main_part
-                                (None, None, main_part)
-                            }
-                        }
-                    } else {
-                        (None, None, main_part)
-                    }
-                }
-            }
+        // Find path colon in non-SSH URLs
+        let search_start = Self::find_protocol_prefix_start(main_part);
+        let rest = &main_part[search_start..];
+        // Always check for Windows drive letters (not just for file:// URLs)
+        // because paths can come from lockfiles or be canonicalized on Windows
+        let (drive_skip, search_in) = Self::skip_windows_drive_letter(rest);
+
+        let colon_pos = match search_in.find(':') {
+            Some(pos) => search_start + drive_skip + pos,
+            None => return (None, None, main_part),
+        };
+
+        let (before_colon, after_colon) = (&main_part[..colon_pos], &main_part[colon_pos + 1..]);
+
+        // Determine if colon is a path separator or ref separator
+        if Self::is_valid_repo_url(before_colon) {
+            (Some(after_colon.to_string()), None, before_colon)
+        } else {
+            // Not a repo:path pattern - treat as ref
+            (None, Some(after_colon.to_string()), before_colon)
         }
     }
 

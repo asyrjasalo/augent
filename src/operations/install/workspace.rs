@@ -107,9 +107,7 @@ impl<'a> WorkspaceManager<'a> {
     /// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
     #[allow(dead_code)]
     pub fn reconstruct_augent_yaml_from_lockfile(&mut self) -> Result<()> {
-        // First pass: Collect all transitive dependencies
         let transitive_dependencies = self.collect_transitive_dependencies();
-
         let workspace_bundle_name = self.workspace.get_workspace_name();
         let mut bundles = Vec::new();
 
@@ -118,94 +116,117 @@ impl<'a> WorkspaceManager<'a> {
                 continue;
             }
 
-            let dependency = match &locked.source {
-                LockedSource::Dir { path, .. } => {
-                    // Validate that path is not absolute (to prevent non-portable lockfiles)
-                    let path_obj = std::path::Path::new(path);
-                    if path_obj.is_absolute() {
-                        return Err(AugentError::BundleValidationFailed {
-                            message: format!(
-                                "Cannot reconstruct augent.yaml: locked bundle '{}' has absolute path '{}'. \
-                                 Absolute paths in augent.lock break portability. Please fix lockfile by using relative paths.",
-                                locked.name, path
-                            ),
-                        });
-                    }
-
-                    // Convert path from workspace-root-relative to config-dir-relative
-                    // Path in lockfile is relative to workspace root (e.g., "bundles/my-bundle")
-                    // Need to convert to be relative to where augent.yaml lives (config_dir)
-                    let normalized_path = {
-                        // Strip leading "./" from path to ensure consistent joining on all platforms
-                        let clean_path = path.strip_prefix("./").unwrap_or(path);
-                        let bundle_path = self.workspace.root.join(clean_path);
-
-                        if let Ok(rel_from_config) =
-                            bundle_path.strip_prefix(&self.workspace.config_dir)
-                        {
-                            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-                            if path_str.is_empty() {
-                                ".".to_string()
-                            } else {
-                                path_str
-                            }
-                        } else if let Ok(rel_from_root) =
-                            bundle_path.strip_prefix(&self.workspace.root)
-                        {
-                            let rel_from_root_str =
-                                rel_from_root.to_string_lossy().replace('\\', "/");
-
-                            // Find how deep config_dir is relative to workspace root
-                            if let Ok(config_rel) =
-                                self.workspace.config_dir.strip_prefix(&self.workspace.root)
-                            {
-                                let config_depth = config_rel.components().count();
-                                let mut parts = vec!["..".to_string(); config_depth];
-                                if !rel_from_root_str.is_empty() {
-                                    parts.push(rel_from_root_str);
-                                }
-                                parts.join("/")
-                            } else {
-                                // config_dir is not under root (shouldn't happen), use original path
-                                path.clone()
-                            }
-                        } else {
-                            // Bundle is outside workspace - use original path
-                            path.clone()
-                        }
-                    };
-
-                    // For directory sources, use the normalized path
-                    crate::config::BundleDependency {
-                        name: locked.name.clone(),
-                        path: Some(normalized_path),
-                        git: None,
-                        git_ref: None,
-                    }
-                }
-
-                LockedSource::Git {
-                    url,
-                    git_ref,
-                    sha: _,
-                    path: _bundle_path,
-                    hash: _,
-                } => crate::config::BundleDependency {
-                    name: locked.name.clone(),
-                    path: None,
-                    git: Some(url.clone()),
-                    git_ref: match git_ref {
-                        Some(r) if r != "main" && r != "master" => Some(r.clone()),
-                        _ => None,
-                    },
-                },
-            };
-
+            let dependency = self.convert_locked_to_dependency(locked)?;
             bundles.push(dependency);
         }
 
         self.workspace.bundle_config.bundles = bundles;
         Ok(())
+    }
+
+    /// Convert a locked bundle to a bundle dependency
+    fn convert_locked_to_dependency(
+        &self,
+        locked: &crate::config::lockfile::bundle::LockedBundle,
+    ) -> Result<crate::config::BundleDependency> {
+        match &locked.source {
+            LockedSource::Dir { path, .. } => {
+                self.create_dir_dependency(locked.name.as_str(), path)
+            }
+            LockedSource::Git { url, git_ref, .. } => {
+                let git_ref_str = git_ref.as_deref();
+                Ok(self.create_git_dependency(locked.name.as_str(), url, git_ref_str))
+            }
+        }
+    }
+
+    /// Create a directory bundle dependency from path
+    fn create_dir_dependency(
+        &self,
+        name: &str,
+        path: &str,
+    ) -> Result<crate::config::BundleDependency> {
+        // Validate that path is not absolute (to prevent non-portable lockfiles)
+        let path_obj = std::path::Path::new(path);
+        if path_obj.is_absolute() {
+            return Err(AugentError::BundleValidationFailed {
+                message: format!(
+                    "Cannot reconstruct augent.yaml: locked bundle '{}' has absolute path '{}'. \
+                     Absolute paths in augent.lock break portability. Please fix lockfile by using relative paths.",
+                    name, path
+                ),
+            });
+        }
+
+        // Normalize path from workspace-root-relative to config-dir-relative
+        let normalized_path = self.normalize_path_for_config(path)?;
+        Ok(crate::config::BundleDependency {
+            name: name.to_string(),
+            path: Some(normalized_path),
+            git: None,
+            git_ref: None,
+        })
+    }
+
+    /// Normalize path from workspace-root-relative to config-dir-relative
+    fn normalize_path_for_config(&self, path: &str) -> Result<String> {
+        let clean_path = path.strip_prefix("./").unwrap_or(path);
+        let bundle_path = self.workspace.root.join(clean_path);
+
+        if let Ok(rel_from_config) = bundle_path.strip_prefix(&self.workspace.config_dir) {
+            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+            Ok(if path_str.is_empty() {
+                ".".to_string()
+            } else {
+                path_str
+            })
+        } else if let Ok(rel_from_root) = bundle_path.strip_prefix(&self.workspace.root) {
+            self.create_relative_path_from_root(rel_from_root)
+        } else {
+            Ok(path.to_string())
+        }
+    }
+
+    /// Create relative path from root using ".." components
+    fn create_relative_path_from_root(&self, rel_from_root: &std::path::Path) -> Result<String> {
+        let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
+
+        if let Ok(config_rel) = self.workspace.config_dir.strip_prefix(&self.workspace.root) {
+            let config_depth = config_rel.components().count();
+            let mut parts = vec!["..".to_string(); config_depth];
+            if !rel_from_root_str.is_empty() {
+                parts.push(rel_from_root_str);
+            }
+            Ok(parts.join("/"))
+        } else {
+            Ok(rel_from_root_str.to_string())
+        }
+    }
+
+    /// Create a git bundle dependency
+    fn create_git_dependency(
+        &self,
+        name: &str,
+        url: &str,
+        git_ref: Option<&str>,
+    ) -> crate::config::BundleDependency {
+        crate::config::BundleDependency {
+            name: name.to_string(),
+            path: None,
+            git: Some(url.to_string()),
+            git_ref: Self::filter_git_ref(git_ref),
+        }
+    }
+
+    /// Filter git ref to only include non-default branches
+    fn filter_git_ref(git_ref: Option<&str>) -> Option<String> {
+        git_ref.and_then(|r| {
+            if r == "main" || r == "master" {
+                None
+            } else {
+                Some(r.to_string())
+            }
+        })
     }
 
     #[allow(dead_code)]

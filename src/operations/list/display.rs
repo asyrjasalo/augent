@@ -10,6 +10,8 @@ use crate::config::LockedSource;
 use crate::config::WorkspaceBundle;
 use crate::config::utils::BundleContainer;
 
+type FilesByPlatform = HashMap<String, Vec<(String, String)>>;
+
 /// Display bundle in simple format
 pub fn display_bundle_simple(
     bundle: &crate::config::LockedBundle,
@@ -50,18 +52,8 @@ pub fn display_bundle_simple(
     display_resources_grouped(&bundle.files);
 }
 
-/// Display bundle in detailed format
-pub fn display_bundle_detailed(
-    workspace_root: &std::path::Path,
-    bundle: &crate::config::LockedBundle,
-    workspace_config: &crate::config::WorkspaceConfig,
-    detailed: bool,
-) {
-    let workspace_bundle = workspace_config.find_bundle(&bundle.name);
-
-    println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
-
-    // Display metadata if available
+/// Display bundle metadata fields
+fn display_bundle_metadata(bundle: &crate::config::LockedBundle) {
     if let Some(ref description) = bundle.description {
         println!(
             "    {} {}",
@@ -86,16 +78,10 @@ pub fn display_bundle_detailed(
             homepage
         );
     }
+}
 
-    println!("    {}", Style::new().bold().apply_to("Source:"));
-    display_utils::display_source_detailed_with_indent(
-        &bundle.source,
-        "      ",
-        bundle.version.as_deref(),
-        detailed,
-    );
-
-    // Plugin at same level as Source (for $claudeplugin bundles)
+/// Display Claude Marketplace plugin info if applicable
+fn display_marketplace_plugin(bundle: &crate::config::LockedBundle) {
     if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
         if p.contains("$claudeplugin") {
             println!("    {}", Style::new().bold().apply_to("Plugin:"));
@@ -109,35 +95,68 @@ pub fn display_bundle_detailed(
             }
         }
     }
+}
 
-    display_resources_grouped(&bundle.files);
-
-    if detailed && !bundle.files.is_empty() {
-        display_provided_files_grouped_by_platform(&bundle.files, workspace_bundle);
-    }
-
-    // Dependencies last (only in detailed view)
-    if detailed {
-        match config_utils::load_bundle_config(workspace_root, &bundle.source) {
-            Ok(bundle_config) => {
-                if !bundle_config.bundles.is_empty() {
-                    println!("    {}", Style::new().bold().apply_to("Dependencies:"));
-                    for dep in &bundle_config.bundles {
-                        println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-                    }
-                } else {
-                    println!(
-                        "    {}: {}",
-                        Style::new().bold().apply_to("Dependencies"),
-                        Style::new().dim().apply_to("None")
-                    );
+/// Display bundle dependencies if available
+fn display_dependencies(workspace_root: &std::path::Path, bundle: &crate::config::LockedBundle) {
+    match config_utils::load_bundle_config(workspace_root, &bundle.source) {
+        Ok(bundle_config) => {
+            if !bundle_config.bundles.is_empty() {
+                println!("    {}", Style::new().bold().apply_to("Dependencies:"));
+                for dep in &bundle_config.bundles {
+                    println!("      - {}", Style::new().cyan().apply_to(&dep.name));
                 }
-            }
-            Err(_) => {
-                // Skip dependencies if config cannot be loaded (e.g. cache missing)
+            } else {
+                println!(
+                    "    {}: {}",
+                    Style::new().bold().apply_to("Dependencies"),
+                    Style::new().dim().apply_to("None")
+                );
             }
         }
+        Err(_) => {
+            // Skip dependencies if config cannot be loaded (e.g. cache missing)
+        }
     }
+}
+
+/// Display bundle in detailed format
+pub fn display_bundle_detailed(
+    workspace_root: &std::path::Path,
+    bundle: &crate::config::LockedBundle,
+    workspace_config: &crate::config::WorkspaceConfig,
+    detailed: bool,
+) {
+    let workspace_bundle = workspace_config.find_bundle(&bundle.name);
+
+    println!("  {}", Style::new().bold().yellow().apply_to(&bundle.name));
+
+    display_bundle_metadata(bundle);
+    println!("    {}", Style::new().bold().apply_to("Source:"));
+    display_utils::display_source_detailed_with_indent(
+        &bundle.source,
+        "      ",
+        bundle.version.as_deref(),
+        detailed,
+    );
+
+    display_marketplace_plugin(bundle);
+    display_resources_grouped(&bundle.files);
+
+    if detailed {
+        display_detailed_sections(workspace_root, bundle, workspace_bundle);
+    }
+}
+
+fn display_detailed_sections(
+    workspace_root: &std::path::Path,
+    bundle: &crate::config::LockedBundle,
+    workspace_bundle: Option<&crate::config::WorkspaceBundle>,
+) {
+    if !bundle.files.is_empty() {
+        display_provided_files_grouped_by_platform(&bundle.files, workspace_bundle);
+    }
+    display_dependencies(workspace_root, bundle);
 }
 
 /// Extract resource type from file path
@@ -233,39 +252,80 @@ pub fn display_provided_files_grouped_by_platform(
 ) {
     println!("    {}", Style::new().bold().apply_to("Enabled resources:"));
 
-    if let Some(ws_bundle) = workspace_bundle {
-        // Group files by platform
-        let mut files_by_platform: HashMap<String, Vec<(String, String)>> = HashMap::new();
-        let mut uninstalled_files = Vec::new();
+    match workspace_bundle {
+        Some(ws_bundle) => display_with_workspace_bundle(files, ws_bundle),
+        None => display_without_workspace_bundle(files),
+    }
+}
 
-        for file in files {
-            if let Some(locations) = ws_bundle.get_locations(file) {
-                if locations.is_empty() {
-                    uninstalled_files.push(file.clone());
-                } else {
-                    for location in locations {
-                        let platform = extract_platform_from_location(location);
-                        files_by_platform
-                            .entry(platform)
-                            .or_default()
-                            .push((file.clone(), location.clone()));
-                    }
-                }
-            } else {
-                uninstalled_files.push(file.clone());
-            }
+/// Display files when workspace bundle info is available
+fn display_with_workspace_bundle(files: &[String], ws_bundle: &WorkspaceBundle) {
+    let (files_by_platform, uninstalled_files) = group_files_by_platform(files, ws_bundle);
+    display_sorted_platforms(&files_by_platform);
+    display_uninstalled_files(&uninstalled_files);
+}
+
+/// Display files when no workspace bundle info is available
+fn display_without_workspace_bundle(files: &[String]) {
+    for file in files {
+        println!("      {}", Style::new().dim().apply_to(file));
+    }
+}
+
+/// Group files by platform and separate uninstalled files
+fn group_files_by_platform(
+    files: &[String],
+    ws_bundle: &WorkspaceBundle,
+) -> (FilesByPlatform, Vec<String>) {
+    let mut files_by_platform = FilesByPlatform::new();
+    let mut uninstalled_files = Vec::new();
+
+    for file in files {
+        match ws_bundle.get_locations(file) {
+            Some(locations) => process_file_locations(
+                file,
+                locations,
+                &mut files_by_platform,
+                &mut uninstalled_files,
+            ),
+            None => uninstalled_files.push(file.clone()),
         }
+    }
 
-        // Sort platforms
-        let mut sorted_platforms: Vec<_> = files_by_platform.keys().collect();
-        sorted_platforms.sort();
+    (files_by_platform, uninstalled_files)
+}
 
-        // Display each platform with file mappings
-        for platform in sorted_platforms {
-            let platform_display = string_utils::capitalize_word(platform);
-            println!("      {}", Style::new().cyan().apply_to(platform_display));
+/// Process file locations and add to appropriate group
+fn process_file_locations(
+    file: &str,
+    locations: &[String],
+    files_by_platform: &mut FilesByPlatform,
+    uninstalled_files: &mut Vec<String>,
+) {
+    if locations.is_empty() {
+        uninstalled_files.push(file.to_string());
+        return;
+    }
 
-            let file_mappings = files_by_platform.get(platform).unwrap();
+    for location in locations {
+        let platform = extract_platform_from_location(location);
+        files_by_platform
+            .entry(platform)
+            .or_default()
+            .push((file.to_string(), location.clone()));
+    }
+}
+
+/// Display platforms sorted alphabetically
+fn display_sorted_platforms(files_by_platform: &FilesByPlatform) {
+    let mut sorted_platforms: Vec<_> = files_by_platform.keys().collect();
+    sorted_platforms.sort();
+
+    for platform in sorted_platforms {
+        let platform_display = string_utils::capitalize_word(platform);
+        println!("      {}", Style::new().cyan().apply_to(platform_display));
+
+        if let Some(file_mappings) = files_by_platform.get(platform) {
             for (file, location) in file_mappings {
                 println!(
                     "        {} → {}",
@@ -274,21 +334,20 @@ pub fn display_provided_files_grouped_by_platform(
                 );
             }
         }
+    }
+}
 
-        // Display uninstalled files if any
-        if !uninstalled_files.is_empty() {
-            println!("      {}", Style::new().cyan().apply_to("Not installed"));
-            for file in &uninstalled_files {
-                println!(
-                    "        {} (not installed)",
-                    Style::new().dim().apply_to(file)
-                );
-            }
-        }
-    } else {
-        // No workspace bundle info, just list files
-        for file in files {
-            println!("      {}", Style::new().dim().apply_to(file));
-        }
+/// Display list of uninstalled files
+fn display_uninstalled_files(uninstalled_files: &[String]) {
+    if uninstalled_files.is_empty() {
+        return;
+    }
+
+    println!("      {}", Style::new().cyan().apply_to("Not installed"));
+    for file in uninstalled_files {
+        println!(
+            "        {} (not installed)",
+            Style::new().dim().apply_to(file)
+        );
     }
 }

@@ -74,10 +74,10 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     }
 
     let (temp_dir, sha, resolved_ref) = clone_and_checkout(source)?;
-    let path_opt = source.path.as_deref();
+    let path_opt_str = source.path.as_deref();
 
     let (bundle_name, content_path, _synthetic_guard) = if let Some(plugin_name) =
-        path_opt.and_then(|p| p.strip_prefix("$claudeplugin/"))
+        path_opt_str.and_then(|p: &str| p.strip_prefix("$claudeplugin/"))
     {
         prepare_marketplace_bundle(plugin_name, source, &temp_dir)?
     } else {
@@ -86,18 +86,18 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         (bundle_name, content_path, None)
     };
 
-    if let Some((_, ref_name)) = super::lookup::index_lookup(&source.url, &sha, path_opt)? {
+    if let Some((_, _ref_name)) = super::lookup::index_lookup(&source.url, &sha, path_opt_str)? {
         let entry_path = super::paths::repo_cache_entry_path(&source.url, &sha)?;
         let resources = super::paths::entry_resources_path(&entry_path);
-        let content = if let Some(name) = marketplace_plugin_name(path_opt) {
+        let content = if let Some(name) = marketplace_plugin_name(path_opt_str) {
             resources.join(super::paths::SYNTHETIC_DIR).join(name)
         } else {
-            path_opt
+            path_opt_str
                 .map(|p| resources.join(p))
                 .unwrap_or_else(|| resources.clone())
         };
         if content.is_dir() {
-            return Ok((content, sha, ref_name));
+            return Ok((content, sha, resolved_ref));
         }
     }
 
@@ -105,7 +105,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         &bundle_name,
         &sha,
         &source.url,
-        path_opt,
+        source.path.as_deref(),
         temp_dir.path(),
         &content_path,
         resolved_ref.as_deref(),
