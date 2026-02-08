@@ -9,6 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::cache;
+use crate::common::fs;
 use crate::config::BundleConfig;
 use crate::config::MarketplaceConfig;
 use crate::domain::{DiscoveredBundle, ResourceCounts};
@@ -138,7 +139,7 @@ fn fetch_git_bundle(
         let target_path = resources_dir.join(entry.file_name());
 
         if entry_path.is_dir() {
-            copy_dir_recursive(&entry_path, &target_path)?;
+            fs::copy_dir_recursive(&entry_path, &target_path, fs::CopyOptions::default())?;
         } else {
             fs::copy(&entry_path, &target_path).map_err(|e| AugentError::FileWriteFailed {
                 path: target_path.display().to_string(),
@@ -200,27 +201,6 @@ fn fetch_cached_bundle(cache_entry_path: &Path, git_url: &str) -> Result<Discove
         }),
         resource_counts,
     })
-}
-
-/// Copy a directory recursively
-fn copy_dir_recursive(source: &Path, target: &Path) -> Result<()> {
-    for entry in fs::read_dir(source).map_err(|e| AugentError::IoError {
-        message: format!("Failed to read directory: {}", e),
-    })? {
-        let entry_path = entry.path();
-        let target_path = target.join(entry.file_name());
-
-        if entry_path.is_dir() {
-            fs::create_dir_all(&target_path)?;
-            copy_dir_recursive(&entry_path, &target_path)?;
-        } else {
-            fs::copy(&entry_path, &target_path).map_err(|e| AugentError::FileWriteFailed {
-                path: target_path.display().to_string(),
-                reason: e.to_string(),
-            })?;
-        }
-    }
-    Ok(())
 }
 
 /// Discover bundles from a marketplace config

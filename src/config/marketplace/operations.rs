@@ -5,6 +5,8 @@
 use std::fs;
 use std::path::Path;
 
+use crate::common::fs::{CopyOptions, copy_dir_recursive};
+use crate::common::string_utils;
 use crate::config::BundleConfig;
 use crate::error::{AugentError, Result};
 use serde::{Deserialize, Serialize};
@@ -65,37 +67,6 @@ impl MarketplaceConfig {
     }
 }
 
-/// Copy directory recursively
-pub fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
-    if src.is_dir() {
-        fs::create_dir_all(dst).map_err(|e| AugentError::IoError {
-            message: format!("Failed to create dir: {}", e),
-        })?;
-        for entry in fs::read_dir(src).map_err(|e| AugentError::IoError {
-            message: format!("Failed to read dir: {}", e),
-        })? {
-            let entry = entry.map_err(|e| AugentError::IoError {
-                message: format!("Failed to read entry: {}", e),
-            })?;
-            let src_path = entry.path();
-            let dst_path = dst.join(entry.file_name());
-            if src_path.is_dir() {
-                copy_dir_all(&src_path, &dst_path)?;
-            } else {
-                fs::copy(&src_path, &dst_path).map_err(|e| AugentError::IoError {
-                    message: format!(
-                        "Failed to copy {} to {}: {}",
-                        src_path.display(),
-                        dst_path.display(),
-                        e
-                    ),
-                })?;
-            }
-        }
-    }
-    Ok(())
-}
-
 /// Copy list of resources to a target subdirectory
 fn copy_list<F>(resource_list: &[String], target_subdir: &str, copy_fn: F) -> Result<()>
 where
@@ -117,7 +88,7 @@ where
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "entry".to_string());
         if source.is_dir() {
-            copy_dir_all(source, &target_path.join(&name))?;
+            copy_dir_recursive(source, target_path.join(&name), CopyOptions::default())?;
         } else {
             copy_fn(source, &target_path.join(&name))?;
         }
@@ -168,20 +139,7 @@ pub fn create_synthetic_bundle_to(
     copy_list(&bundle_def.hooks, "hooks", copy_resource)?;
 
     let bundle_name = if let Some(url) = git_url {
-        let url_clean = url.trim_end_matches(".git");
-        let repo_path = if let Some(colon_idx) = url_clean.find(':') {
-            &url_clean[colon_idx + 1..]
-        } else {
-            url_clean
-        };
-        let url_parts: Vec<&str> = repo_path.split('/').collect();
-        if url_parts.len() >= 2 {
-            let author = url_parts[url_parts.len() - 2];
-            let repo = url_parts[url_parts.len() - 1];
-            format!("@{}/{}/{}", author, repo, bundle_def.name)
-        } else {
-            bundle_def.name.clone()
-        }
+        string_utils::bundle_name_from_url(Some(url), &bundle_def.name)
     } else {
         bundle_def.name.clone()
     };

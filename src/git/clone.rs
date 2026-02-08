@@ -36,7 +36,7 @@ pub fn clone_local_file(url: &str, target: &Path) -> Result<Repository> {
         url: url.to_string(),
         reason: format!("Failed to create target directory: {}", e),
     })?;
-    copy_dir_recursive_for_clone(source, target, url)?;
+    copy_dir_preserving_git_errors(source, target, url)?;
     Repository::open(target).map_err(|e| AugentError::GitCloneFailed {
         url: url.to_string(),
         reason: e.message().to_string(),
@@ -44,36 +44,12 @@ pub fn clone_local_file(url: &str, target: &Path) -> Result<Repository> {
 }
 
 #[cfg(windows)]
-fn copy_dir_recursive_for_clone(src: &Path, dst: &Path, url: &str) -> Result<()> {
-    for entry in fs::read_dir(src).map_err(|e| AugentError::GitCloneFailed {
+fn copy_dir_preserving_git_errors(src: &Path, dst: &Path, url: &str) -> Result<()> {
+    use crate::common::fs::{CopyOptions, copy_dir_recursive};
+    copy_dir_recursive(src, dst, CopyOptions::default()).map_err(|e| AugentError::GitCloneFailed {
         url: url.to_string(),
-        reason: format!("Failed to read source directory: {}", e),
-    })? {
-        let entry = entry.map_err(|e| AugentError::GitCloneFailed {
-            url: url.to_string(),
-            reason: format!("Failed to read directory entry: {}", e),
-        })?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-        if src_path.is_dir() {
-            fs::create_dir_all(&dst_path).map_err(|e| AugentError::GitCloneFailed {
-                url: url.to_string(),
-                reason: format!("Failed to create directory: {}", e),
-            })?;
-            copy_dir_recursive_for_clone(&src_path, &dst_path, url)?;
-        } else {
-            fs::copy(&src_path, &dst_path).map_err(|e| AugentError::GitCloneFailed {
-                url: url.to_string(),
-                reason: format!(
-                    "Failed to copy {} to {}: {}",
-                    src_path.display(),
-                    dst_path.display(),
-                    e
-                ),
-            })?;
-        }
-    }
-    Ok(())
+        reason: format!("Failed to copy directory: {}", e),
+    })
 }
 
 /// Clone a git repository to a target directory

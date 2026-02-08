@@ -6,77 +6,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::common::fs::{CopyOptions, copy_dir_recursive};
 use crate::error::{AugentError, Result};
-
-/// Copy directory recursively (excludes .git when copying repo content to resources).
-pub fn copy_dir_recursive_exclude_git(src: &Path, dst: &Path) -> Result<()> {
-    if !dst.exists() {
-        fs::create_dir_all(dst).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to create directory {}: {}", dst.display(), e),
-        })?;
-    }
-
-    for entry in fs::read_dir(src).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read directory {}: {}", src.display(), e),
-    })? {
-        let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read entry: {}", e),
-        })?;
-        let src_path = entry.path();
-        let name = entry.file_name();
-        if name == ".git" {
-            continue;
-        }
-        let dst_path = dst.join(&name);
-
-        if src_path.is_dir() {
-            copy_dir_recursive_exclude_git(&src_path, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path).map_err(|e| AugentError::CacheOperationFailed {
-                message: format!(
-                    "Failed to copy {} to {}: {}",
-                    src_path.display(),
-                    dst_path.display(),
-                    e
-                ),
-            })?;
-        }
-    }
-    Ok(())
-}
-
-/// Copy directory recursively.
-pub fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
-    if !dst.exists() {
-        fs::create_dir_all(dst).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to create directory {}: {}", dst.display(), e),
-        })?;
-    }
-
-    for entry in fs::read_dir(src).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read directory {}: {}", src.display(), e),
-    })? {
-        let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read entry: {}", e),
-        })?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-
-        if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path).map_err(|e| AugentError::CacheOperationFailed {
-                message: format!(
-                    "Failed to copy {} to {}: {}",
-                    src_path.display(),
-                    dst_path.display(),
-                    e
-                ),
-            })?;
-        }
-    }
-    Ok(())
-}
 
 /// Ensure a bundle is cached by copying from temp directory to cache.
 ///
@@ -108,7 +39,7 @@ pub fn ensure_bundle_cached(
 
     // Copy repository
     let repo_dst = entry_repository_path(&entry_path);
-    copy_dir_recursive(temp_dir, &repo_dst)?;
+    copy_dir_recursive(temp_dir, &repo_dst, CopyOptions::default())?;
 
     // Copy content to resources
     let resources = entry_resources_path(&entry_path);
@@ -135,7 +66,7 @@ pub fn ensure_bundle_cached(
             message: format!("Failed to create content parent directory: {}", e),
         }
     })?;
-    copy_dir_recursive_exclude_git(temp_dir, &resources)?;
+    copy_dir_recursive(temp_dir, &resources, CopyOptions::exclude_git())?;
 
     // Write bundle name file
     let name_file = entry_path.join(BUNDLE_NAME_FILE);
@@ -171,7 +102,7 @@ mod tests {
         fs::create_dir_all(&src).unwrap();
         fs::write(src.join("test.txt"), "hello").unwrap();
 
-        copy_dir_recursive(&src, &dst).unwrap();
+        copy_dir_recursive(&src, &dst, CopyOptions::default()).unwrap();
         assert!(dst.join("test.txt").exists());
     }
 
@@ -184,7 +115,7 @@ mod tests {
         fs::create_dir_all(src.join(".git")).unwrap();
         fs::write(src.join("test.txt"), "hello").unwrap();
 
-        copy_dir_recursive_exclude_git(&src, &dst).unwrap();
+        copy_dir_recursive(&src, &dst, CopyOptions::exclude_git()).unwrap();
         assert!(dst.join("test.txt").exists());
         assert!(!dst.join(".git").exists());
     }

@@ -5,25 +5,13 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::common::string_utils;
 use crate::error::{AugentError, Result};
 use crate::source::GitSource;
 
 /// Derive bundle name for $claudeplugin/name from URL (e.g. @author/repo/name).
 pub fn derive_marketplace_bundle_name(url: &str, plugin_name: &str) -> String {
-    let url_clean = url.trim_end_matches(".git");
-    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
-        &url_clean[colon_idx + 1..]
-    } else {
-        url_clean
-    };
-    let parts: Vec<&str> = repo_path.split('/').collect();
-    if parts.len() >= 2 {
-        let author = parts[parts.len() - 2];
-        let repo = parts[parts.len() - 1];
-        format!("@{}/{}/{}", author, repo, plugin_name)
-    } else {
-        format!("@unknown/{}", plugin_name)
-    }
+    string_utils::bundle_name_from_url(Some(url), plugin_name)
 }
 
 /// Read bundle name from directory name (subdirectory in repo).

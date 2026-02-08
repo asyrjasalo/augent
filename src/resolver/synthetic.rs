@@ -8,6 +8,8 @@
 use std::path::Path;
 
 use crate::cache;
+use crate::common::fs::{CopyOptions, copy_dir_recursive};
+use crate::common::string_utils;
 use crate::config::MarketplaceBundle;
 use crate::error::{AugentError, Result};
 
@@ -86,7 +88,7 @@ fn copy_resources(
             let dest = target_path.join(file_name);
 
             if source.is_dir() {
-                crate::resolver::local::copy_dir_all(&source, &target_path.join(file_name))?;
+                copy_dir_recursive(&source, target_path.join(file_name), CopyOptions::default())?;
             } else {
                 std::fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
                     message: format!(
@@ -120,21 +122,7 @@ fn generate_synthetic_config(
     git_url: Option<&str>,
 ) -> Result<()> {
     let bundle_name = if let Some(url) = git_url {
-        let url_clean = url.trim_end_matches(".git");
-        let repo_path = if let Some(colon_idx) = url_clean.find(':') {
-            &url_clean[colon_idx + 1..]
-        } else {
-            url_clean
-        };
-        let url_parts: Vec<&str> = repo_path.split('/').collect();
-
-        if url_parts.len() >= 2 {
-            let author = url_parts[url_parts.len() - 2];
-            let repo = url_parts[url_parts.len() - 1];
-            format!("@{}/{}/{}", author, repo, bundle_def.name)
-        } else {
-            bundle_def.name.clone()
-        }
+        string_utils::bundle_name_from_url(Some(url), &bundle_def.name)
     } else {
         bundle_def.name.clone()
     };

@@ -140,33 +140,6 @@ pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<
     Ok(discovered)
 }
 
-/// Copy a directory recursively
-#[allow(dead_code)]
-pub fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
-    std::fs::create_dir_all(dst)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let path = entry.path();
-        let file_name = entry.file_name();
-
-        if path.is_dir() {
-            copy_dir_all(path.as_path(), dst.join(&file_name).as_path())?;
-        } else {
-            std::fs::copy(path.as_path(), dst.join(&file_name).as_path()).map_err(|e| {
-                AugentError::IoError {
-                    message: format!(
-                        "Failed to copy {} to {}: {}",
-                        path.display(),
-                        dst.join(&file_name).display(),
-                        e
-                    ),
-                }
-            })?;
-        }
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

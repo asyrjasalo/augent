@@ -6,6 +6,7 @@
 //! - SHA and resolved ref handling
 
 use crate::cache;
+use crate::common::string_utils;
 use crate::config::BundleDependency;
 use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};
@@ -85,7 +86,7 @@ fn determine_bundle_name(
     dependency: Option<&BundleDependency>,
     config: &Option<crate::config::BundleConfig>,
 ) -> String {
-    let base_name = derive_base_name(&git_source.url);
+    let base_name = string_utils::parse_git_url_to_repo_base(&git_source.url);
 
     match dependency {
         Some(dep) => dep.name.clone(),
@@ -107,45 +108,25 @@ fn determine_bundle_name(
     }
 }
 
-/// Derive base name from git URL in format @owner/repo
-fn derive_base_name(url: &str) -> String {
-    let url_clean = url.trim_end_matches(".git");
-    let repo_path = if let Some(colon_idx) = url_clean.find(':') {
-        &url_clean[colon_idx + 1..]
-    } else {
-        url_clean
-    };
-    let url_parts: Vec<&str> = repo_path.split('/').collect();
-    let (author, repo) = if url_parts.len() >= 2 {
-        (
-            url_parts[url_parts.len() - 2],
-            url_parts[url_parts.len() - 1],
-        )
-    } else {
-        ("author", repo_path)
-    };
-    format!("@{}/{}", author, repo)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_derive_base_name_from_https() {
-        let name = derive_base_name("https://github.com/owner/repo.git");
+        let name = string_utils::parse_git_url_to_repo_base("https://github.com/owner/repo.git");
         assert_eq!(name, "@owner/repo");
     }
 
     #[test]
     fn test_derive_base_name_from_ssh() {
-        let name = derive_base_name("git@github.com:owner/repo.git");
+        let name = string_utils::parse_git_url_to_repo_base("git@github.com:owner/repo.git");
         assert_eq!(name, "@owner/repo");
     }
 
     #[test]
     fn test_derive_base_name_without_git() {
-        let name = derive_base_name("https://github.com/owner/repo");
+        let name = string_utils::parse_git_url_to_repo_base("https://github.com/owner/repo");
         assert_eq!(name, "@owner/repo");
     }
 }
