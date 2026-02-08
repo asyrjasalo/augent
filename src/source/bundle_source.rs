@@ -41,12 +41,22 @@ impl SourceParser for LocalPathParser {
     fn try_parse(&self, input: &str) -> Option<BundleSource> {
         let path = Path::new(input);
 
+        // Check for Windows absolute path (drive letter pattern: C:\ or C:/)
+        let has_windows_drive_letter = input.len() >= 2
+            && input
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_alphabetic())
+                .unwrap_or(false)
+            && input.chars().nth(1) == Some(':');
+
         let looks_like_github_shorthand = !input.contains("://")
             && !input.starts_with("git@")
             && !input.starts_with("file://")
             && !input.starts_with("github:")
             && !input.starts_with('.')
             && !input.starts_with('/')
+            && !has_windows_drive_letter
             && input.matches('/').count() == 1;
 
         let is_local = input.starts_with("./")
@@ -56,6 +66,7 @@ impl SourceParser for LocalPathParser {
             || (input.starts_with(".") && !input.contains("://"))
             || path.is_absolute()
             || input.starts_with('/')
+            || has_windows_drive_letter
             || (!input.contains(':')
                 && (input.contains('-') || input.contains('/') || input.contains('_')));
 
@@ -351,30 +362,32 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn test_parse_windows_style_path_on_unix() {
-        // On Unix, a Windows-style path like "C:\temp\bundle" is not recognized as absolute
-        // This tests the fix for the Windows drive letter parsing issue
+        // On Unix, a Windows-style path like "C:\temp\bundle" should be treated as a local path
+        // due to the drive letter detection logic
         let result = BundleSource::parse("C:\\temp\\bundle");
+        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
+    }
 
-        // The fix ensures that even if the path fails to parse, it doesn't incorrectly
-        // split on the colon and try to parse just "C"
-        match result {
-            Ok(_) => {
-                // On Unix, this might be treated as a relative path component
-            }
-            Err(e) => {
-                let err_msg = e.to_string();
-                // The key test: it should fail with the FULL path, not just "C"
-                assert!(
-                    err_msg.contains("C:\\temp\\bundle") || err_msg.contains("C:/temp/bundle"),
-                    "Should fail with full path, not just 'C'. Got: {}",
-                    err_msg
-                );
-                assert!(
-                    !err_msg.contains("Failed to parse source: C\n"),
-                    "Should not fail with just 'C'. Got: {}",
-                    err_msg
-                );
-            }
-        }
+    #[test]
+    fn test_parse_windows_path_with_mixed_separators() {
+        // Test that malformed Windows paths with mixed separators are treated as local paths
+        // This can happen when joining Windows absolute paths with relative paths containing ./
+        let result = BundleSource::parse("C:\\Users\\test\\./some-bundle");
+        assert!(
+            matches!(result, Ok(BundleSource::Dir { .. })),
+            "Expected Dir source for mixed separator path, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_parse_windows_path_forward_slash_with_dot() {
+        // Test Windows path with forward slashes and ./ in the middle
+        let result = BundleSource::parse("C:/workspace/./bundle");
+        assert!(
+            matches!(result, Ok(BundleSource::Dir { .. })),
+            "Expected Dir source for Windows path with forward slashes, got: {:?}",
+            result
+        );
     }
 }
