@@ -14,7 +14,6 @@ use crate::error::Result;
 use crate::resolver::discovery::git::GitBundleContext;
 use crate::source::GitSource;
 
-mod cache;
 mod git;
 mod helpers;
 mod local;
