@@ -1,24 +1,120 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-02-08
+**Generated:** 2026-02-09
 **Commit:** N/A
 **Branch:** N/A
 
-## OVERVIEW
+## DEVELOPMENT COMMANDS
 
-Rust-based resource manager for AI coding platforms (Claude, Cursor, OpenCode). Manages bundles of capabilities (skills, commands, rules, MCP servers) via Git repositories with locking for reproducibility.
+```bash
+mise check          # Run all checks (lint + test + hooks)
+mise lint           # Clippy with strict warnings (-D warnings)
+mise test           # Cargo test (unit + integration)
+mise hooks          # Pre-commit hooks
+cargo fmt --all     # Format code
 
-## STRUCTURE
+# Run specific tests: cargo test <name>, --test <file>, --lib (unit), --test '*' (integ)
+# Building: cargo build --release, cross build --release (ARM64)
+```
+
+## CODE STYLE GUIDELINES
+
+### Imports
+
+```rust
+//! Module documentation
+use std::path::{Path, PathBuf};  // std first
+use clap::Parser;                     // external crates
+use crate::cli::InstallArgs;          // internal crate
+use crate::error::{AugentError, Result};
+```
+
+**Rules:**
+
+- Group: std → external crates → internal (use `crate::`)
+- Full paths only (`crate::module::item`, not glob imports)
+
+### Naming Conventions
+
+| Element | Convention | Example |
+|---------|-------------|---------|
+| Structs/Enums | PascalCase | `InstallOperation`, `AugentError` |
+| Functions/Methods | snake_case | `check_git_repository()`, `workspace.save()` |
+| Constants | SCREAMING_SNAKE_CASE | `WORKSPACE_DIR` |
+| Modules | snake_case | `workspace/mod.rs`, `operations/install/mod.rs` |
+
+**File naming:** `mod.rs` for dirs, `impl.rs` for large impls
+
+### Types & Formatting
+
+```rust
+/// Represents workspace
+#[derive(Debug)]
+pub struct Workspace { pub root: PathBuf }
+
+#[derive(Error, Diagnostic, Debug)]
+pub enum AugentError {
+    #[error("Bundle not found: {name}")]
+    BundleNotFound { name: String },
+}
+
+pub type Result<T> = miette::Result<T, AugentError>;
+```
+
+**Rules:** `#[allow(dead_code)]` for unused fields, `#[derive(Debug)]` on public types
+
+### Error Handling
+
+```rust
+fn do_work() -> Result<()> {
+    let workspace = Workspace::open(&path)?;  // ? operator
+    std::fs::write(&file, content).map_err(|e| AugentError::IoError {
+        message: format!("Failed: {}", e),
+    })?;
+    Ok(())
+}
+```
+
+**Rules:** Use `Result<T>` alias, `?` for propagation, `.map_err()` for context, `From` impls for std errors
+
+### Testing
+
+**Unit tests** (in `src/`):
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_something() { assert!(some_function().is_ok()); }
+}
+```
+
+**Integration tests** (in `tests/`):
+
+```rust
+use common::TestWorkspace;
+#[test]
+fn test_install_command() {
+    let workspace = TestWorkspace::new();
+    common::augent_cmd_for_workspace(&workspace.path)
+        .arg("install").arg("./bundle").assert().success();
+}
+```
+
+**Rules:** Unit: `#[cfg(test)] mod tests` in file; Integration: separate files with `assert_cmd`; Use `TestWorkspace` for isolation; `serial_test` for shared state
+
+## PROJECT STRUCTURE
 
 ```text
 augent/
 ├── src/
 │   ├── operations/    # High-level workflows (install, list, show, uninstall)
-│   ├── installer/       # File installation orchestration with submodules
-│   ├── resolver/        # Dependency resolution with graph/topology
+│   ├── installer/       # File installation with submodules
+│   ├── resolver/        # Dependency resolution (graph, topology)
 │   ├── cache/           # Bundle storage and lockfile management
 │   ├── config/          # Configuration (bundle, lockfile, index, marketplace)
-│   ├── platform/         # Platform detection and transformation (17 platforms)
+│   ├── platform/         # Platform detection (17 built-in platforms)
 │   ├── workspace/        # Workspace management and config
 │   ├── commands/         # CLI command wrappers (~100 lines each)
 │   ├── domain/          # Pure domain objects (no external deps)
@@ -27,169 +123,51 @@ augent/
 │   ├── common/           # Shared utilities (strings, fs, display, config)
 │   ├── source/           # Bundle source parsing (Git/Dir)
 │   ├── universal/         # Universal frontmatter parsing
-│   └── transaction/      # Atomic operations with rollback
+│   ├── transaction/      # Atomic operations with rollback
+│   ├── cli.rs           # Clap derive CLI arguments
+│   ├── error.rs         # Centralized AugentError enum
+│   └── main.rs         # Binary entry point (no lib.rs)
 ├── tests/               # Integration tests with fixtures
+│   ├── common/          # Test utilities (TestWorkspace, fixtures)
+│   └── test_*.rs       # Integration test files
 ├── docs/                # Documentation (implementation specs, ADRs)
-└── [config files]       # Cargo.toml, mise.toml, workflows
+├── Cargo.toml          # Edition 2024, Rust 1.85 minimum
+└── mise.toml            # Development task definitions
 ```
 
-## WHERE TO LOOK
+## ANTI-PATTERNS
 
-| Task | Location | Notes |
-|-------|----------|--------|
-| Install workflow | `src/operations/install/mod.rs` → orchestrator.rs | Main entry, 8 submodules |
-| Uninstall workflow | `src/operations/uninstall/mod.rs` | Dependency analysis, execution |
-| Dependency resolution | `src/resolver/graph.rs`, `src/resolver/topology.rs` | Graph building, topological sort |
-| Resource discovery | `src/installer/discovery.rs` | Find bundles and resources |
-| Platform detection | `src/platform/detection.rs`, `src/platform/registry.rs` | Auto-detect AI platforms |
-| Error handling | `src/error.rs` | 32 error variants, miette integration |
-| Configuration | `src/config/bundle/mod.rs`, `src/config/lockfile/mod.rs` | augent.yaml, augent.lock |
-| Cache management | `src/cache/mod.rs` | Bundle caching by SHA |
-| CLI commands | `src/commands/` | Install, uninstall, list, show, cache |
+- **NEVER** reorder git dependencies - Must maintain exact order for reproducibility
+- **NEVER** delete augent.yaml - Configuration files persist once created
+- **NEVER** create auto-commits - Always ask user before committing
+- **NEVER** use fixed delays in PTY tests - Use `wait_for_text()` instead
+- **NO semantic versioning** - Use exact Git refs and SHAs only
 
-## CODE MAP
-
-| Symbol | Type | Location | Role |
-|---------|------|----------|-------|
-| `AugentError` | Enum | `src/error.rs` | Central error type with 32 variants |
-| `Result<T>` | Type alias | `src/error.rs` | miette::Result wrapper |
-| `ResolvedBundle` | Struct | `src/domain/bundle.rs` | Fully resolved bundle with dependencies |
-| `DiscoveredBundle` | Struct | `src/domain/bundle.rs` | Initial discovery result |
-| `InstallOperation` | Struct | `src/operations/install/mod.rs` | Main install orchestrator |
-| `UninstallOperation` | Struct | `src/operations/uninstall/mod.rs` | Main uninstall orchestrator |
-| `ListOperation` | Struct | `src/operations/list/mod.rs` | List bundles workflow |
-| `ShowOperation` | Struct | `src/operations/show/mod.rs` | Show bundle details |
-| `Transaction` | Struct | `src/transaction/mod.rs` | Atomic operations with rollback |
-| `Platform` | Struct | `src/platform/mod.rs` | Platform definition (17 built-in) |
-| `ProgressReporter` | Trait | `src/ui/mod.rs` | Progress reporting interface |
-| `BundleContainer<B>` | Trait | `src/config/utils.rs` | Generic bundle iteration |
-
-## CONVENTIONS
-
-### Architecture
+## ARCHITECTURE
 
 - **Domain-Driven Design**: Clear layer separation (domain → operations → commands → CLI)
 - **Binary-only crate**: No `lib.rs`, only `main.rs` entry point
-- **Operation orchestration**: Each operation has dedicated submodules (install has 8 submodules)
-- **Custom serde**: Config submodules use `serialization.rs` with field-count optimization
-- **Test isolation**: Integration tests use `TestWorkspace` with isolated environments
-- **REAL CLI requirement**: Integration tests MUST use compiled binary via `assert_cmd`
+- **Operation orchestration**: Each operation has submodules (install has 8 submodules)
+- **Coordinator pattern**: Dedicated structs (ExecutionOrchestrator, BundleResolver, WorkspaceManager)
+- **Lifetime-patterned**: `Operation<'a>` for mutable workspace borrowing
+- **Transaction pattern**: `Transaction` struct tracks created/modified files, auto-rollback on Drop
 
-### Error Handling
+## WHERE TO LOOK
 
-- Centralized `AugentError` enum with diagnostic codes
-- Use `Result<T>` alias (miette wrapper)
-- Automatic `From` conversions for std lib errors
-- Use `.map_err()` for adding context to errors
-- `?` operator for propagation
-
-### Testing
-
-- **Two-tier**: Unit tests in `src/` modules, integration tests in `tests/`
-- **Fixture-based**: `tests/common/fixtures/` for test data
-- **PTY testing**: `InteractiveTest` for CLI menu workflows
-- **Test isolation**: Unique temp workspaces per test, isolated cache dirs
-- **serial_test**: For tests sharing process-wide state
-
-### Serialization Patterns
-
-- **Custom serde**: `serialization.rs` in config submodules
-- **Field counting**: Optimize output by skipping None fields
-- **Name injection**: Serialize empty name, replace from filesystem
-- **Tagged enums**: `#[serde(tag = "type")]` for variant discrimination
-
-### Module Organization
-
-- **Depth 9**: Deepest modules (config submodules, operation submodules)
-- **Re-export strategy**: Parent modules re-export key types/functions
-- **Trait-based abstractions**: `BundleContainer<B>` trait for polymorphism
-- **Lifetime-patterned orchestrators**: `Operation<'a>` for mutable workspace borrowing
-
-## ANTI-PATTERNS (THIS PROJECT)
-
-- **NEVER reorder git dependencies** - Must maintain exact order for reproducibility
-- **NEVER delete augent.yaml** - Configuration files persist once created
-- **NEVER create auto-commits** - Always ask user before committing
-- **NEVER use fixed delays in PTY tests** - Use `wait_for_text()` instead
-- **ALWAYS add tests after bug fixes** - Regression testing required
-- **NO semantic versioning** - Use exact Git refs and SHAs only
-- **NO central registry** - Bundles distributed via Git repositories
-
-## UNIQUE STYLES
-
-### Git Dependency Ordering
-
-Git dependencies maintain exact installation order (never reordered). Local (dir) bundles appended at end. Ensures reproducibility and correct override behavior.
-
-### Workspace Isolation
-
-Each test creates isolated workspace with unique temp directory and cache. `configure_augent_cmd()` removes inherited env vars.
-
-### Configuration Serialization
-
-Custom serde implementation with field counting optimization. Empty name serialized, then injected from filesystem path during YAML formatting.
-
-### Transaction Pattern
-
-`Transaction` struct tracks created/modified files. Auto-rollback on Drop unless committed explicitly. Ensures atomic operations.
-
-### Operation Modularization
-
-Complex workflows split into coordinator structs: `ExecutionOrchestrator`, `BundleResolver`, `WorkspaceManager`, `ConfigUpdater`, `NameFixer`.
-
-### Platform Detection
-
-17 built-in platforms defined in JSONC config. Auto-detection via directory/file patterns (`.claude`, `.cursor`, etc.).
-
-## COMMANDS
-
-```bash
-# Development
-mise check          # Run all checks (lint + test + hooks)
-mise lint           # Clippy with strict warnings
-mise test           # Cargo test
-mise hooks          # Pre-commit hooks
-
-# Testing
-cargo test --all    # All tests
-cargo test           # Unit tests only
-cargo test --test '*' # Integration tests only
-
-# Building
-cargo build --release
-cross build --release  # Cross-compilation for ARM64
-
-# Linting
-cargo fmt --all
-cargo clippy --all-targets --all-features -- -D warnings
-```
+| Task | Location |
+|-------|----------|
+| Install workflow | `src/operations/install/mod.rs` → `orchestrator.rs` |
+| Uninstall workflow | `src/operations/uninstall/mod.rs` |
+| Dependency resolution | `src/resolver/graph.rs`, `src/resolver/topology.rs` |
+| Resource discovery | `src/installer/discovery.rs` |
+| Platform detection | `src/platform/detection.rs`, `src/platform/registry.rs` |
+| Error handling | `src/error.rs` (32 error variants, miette integration) |
+| Configuration | `src/config/bundle/mod.rs`, `src/config/lockfile/mod.rs` |
+| CLI commands | `src/commands/` (Install, Uninstall, List, Show, Cache) |
 
 ## NOTES
 
-### Gotchas
-
-1. **Workspaces must be Git repositories** - Commands require git repo detection
-2. **Test cache isolation** - Use `AUGENT_TEST_CACHE_DIR` for CI
-3. **Cross-compilation** - ARM64 Linux uses `cross` tool via Docker
-4. **Version synchronization** - Release requires matching version across Cargo.toml, pyproject.toml, package.json, CHANGELOG.md
-5. **Multi-platform publishing** - Releases to crates.io, npm, PyPI simultaneously
-6. **Interactive test limitations** - PTY tests ignored on ARM64 Linux and Windows
-7. **BLAKE3 hashing** - Content integrity verification with prefix normalization
-
-### Key Files
-
-- **CLAUDE.md**: Project guidelines for AI agents (NO auto-commits rule)
-- **Cargo.toml**: Edition 2024, Rust 1.85 minimum
-- **.github/workflows/ci.yml**: Multi-platform matrix testing (Linux/macOS/Windows x64/ARM64)
-- **.github/workflows/release.yml**: Automated publishing to 3 registries
-- **mise.toml**: Development tool management (mise/rtsx/asdf)
-
-### External Dependencies
-
-- **git2**: Git operations (vendored OpenSSL for portability)
-- **clap**: CLI parsing with derive
-- **serde**: YAML/JSON/TOML serialization
-- **miette/thiserror**: Error handling and pretty diagnostics
-- **wax**: Glob pattern matching
-- **blake3**: Content hashing
-- **expectrl**: PTY-based interactive testing
+- Workspaces must be Git repositories - Commands require git repo detection
+- Test cache isolation - Use `AUGENT_TEST_CACHE_DIR` for CI
+- Cross-compilation - ARM64 Linux uses `cross` tool via Docker
+- PTY test limitations - Interactive tests ignored on ARM64 Linux and Windows
