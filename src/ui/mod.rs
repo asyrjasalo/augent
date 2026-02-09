@@ -4,11 +4,16 @@
 //! - Progress reporting for installations and other long-running operations
 //! - Interactive progress bars using indicatif
 //! - Silent progress for dry-run mode
+//! - Display utilities for bundles and resources
 //!
 //! All progress reporting goes through the ProgressReporter trait, allowing
 //! different implementations based on command-line flags (e.g., --quiet, --verbose).
 
 use indicatif::{ProgressBar, ProgressStyle};
+
+pub mod display;
+pub mod formatter;
+pub mod platform_extractor;
 
 /// Progress reporter trait for long-running operations
 ///

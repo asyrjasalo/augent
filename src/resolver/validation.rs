@@ -57,47 +57,45 @@ fn resolve_workspace_canonical(workspace_root: &Path) -> Result<PathBuf> {
         .map(|p| p.into_path_buf())
 }
 
+fn canonicalize_parent_with_filename(path: &Path) -> Option<PathBuf> {
+    let parent = path.parent()?;
+    let parent_canonical = fs::canonicalize(parent).ok()?;
+    let file_name = path.file_name()?;
+    Some(parent_canonical.join(file_name))
+}
+
+fn normalize_or_as_path(path: &Path) -> PathBuf {
+    path.normalize()
+        .map(|p| p.into_path_buf())
+        .unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn try_canonicalize_variants(path: &Path) -> Option<PathBuf> {
+    if let Ok(canonical) = fs::canonicalize(path) {
+        return Some(canonical);
+    }
+
+    if let Some(result) = canonicalize_parent_with_filename(path) {
+        return Some(result);
+    }
+
+    Some(normalize_or_as_path(path))
+}
+
 fn resolve_full_path_canonical(full_path: &Path, workspace_canonical: &Path) -> PathBuf {
-    // Use fs::canonicalize if path exists (resolves Windows 8.3 short names)
-    if let Ok(canonical) = fs::canonicalize(full_path) {
-        return canonical;
+    if let Some(result) = try_canonicalize_variants(full_path) {
+        return result;
     }
 
-    // For non-existing paths, try to canonicalize what we can
-    if full_path.is_absolute() {
-        // Try to canonicalize parent directory if it exists
-        if let Some(parent) = full_path.parent() {
-            if let Ok(parent_canonical) = fs::canonicalize(parent) {
-                if let Some(file_name) = full_path.file_name() {
-                    return parent_canonical.join(file_name);
-                }
-            }
+    if !full_path.is_absolute() {
+        let resolved = workspace_canonical.join(full_path);
+        if let Some(result) = try_canonicalize_variants(&resolved) {
+            return result;
         }
-
-        // Fallback to normalize
-        if let Ok(normalized) = full_path.normalize() {
-            return normalized.into_path_buf();
-        }
-
-        return full_path.to_path_buf();
+        return resolved;
     }
 
-    // Relative path: resolve relative to workspace
-    let resolved = workspace_canonical.join(full_path);
-    if let Ok(canonical) = fs::canonicalize(&resolved) {
-        return canonical;
-    }
-
-    // Try to canonicalize parent of resolved path
-    if let Some(parent) = resolved.parent() {
-        if let Ok(parent_canonical) = fs::canonicalize(parent) {
-            if let Some(file_name) = resolved.file_name() {
-                return parent_canonical.join(file_name);
-            }
-        }
-    }
-
-    resolved
+    full_path.to_path_buf()
 }
 
 fn check_path_within_workspace(
