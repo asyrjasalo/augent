@@ -163,7 +163,6 @@ impl PlatformLoader {
         }
     }
 
-    /// Strip JSONC comments from content
     #[cfg(test)]
     #[allow(dead_code)]
     pub(crate) fn strip_jsonc_comments(content: &str) -> String {

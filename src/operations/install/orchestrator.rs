@@ -178,7 +178,7 @@ impl<'a> InstallOperation<'a> {
         // Fix bundle names (immutable borrow)
         let resolved_bundles = {
             let name_fixer = NameFixer::new(self.workspace);
-            name_fixer.fix_bundle_names_for_execute(resolved_bundles)?
+            name_fixer.fix_dir_bundle_names(resolved_bundles)?
         };
 
         // Detect and preserve modified files (mutable borrow - must happen after immutable operations complete)

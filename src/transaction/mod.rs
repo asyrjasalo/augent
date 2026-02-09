@@ -1,11 +1,11 @@
 //! Transaction support for atomic operations
 //!
 //! This module provides a transaction pattern for Augent operations,
-//! ensuring that the workspace is never left in an inconsistent state.
+//! ensuring that workspace is never left in an inconsistent state.
 //!
 //! ## Usage
 //!
-//! ```ignore
+//! \`\`\`ignore
 //! let mut transaction = Transaction::new(&workspace);
 //! transaction.backup_configs()?;
 //!
@@ -17,7 +17,7 @@
 //!
 //! // On error (automatic via Drop if not committed):
 //! // rollback happens automatically
-//! ```
+//! \`\`\`
 
 use std::collections::HashSet;
 use std::fs;
@@ -53,7 +53,7 @@ pub struct Transaction {
     /// Directories created during this transaction
     created_dirs: HashSet<PathBuf>,
 
-    /// Whether the transaction has been committed
+    /// Whether transaction has been committed
     committed: bool,
 
     /// Whether rollback is enabled (can be disabled for testing)
@@ -123,14 +123,12 @@ impl Transaction {
             return Ok(());
         }
 
-        // Remove created files
         for path in &self.created_files {
             if path.exists() {
                 let _ = fs::remove_file(path);
             }
         }
 
-        // Restore modified files
         for backup in &self.modified_files {
             if let Err(e) = fs::write(&backup.path, &backup.content) {
                 eprintln!(
@@ -141,22 +139,19 @@ impl Transaction {
             }
         }
 
-        // Remove created directories (in reverse order to handle nesting)
         let mut dirs: Vec<_> = self.created_dirs.iter().collect();
         dirs.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
         for path in dirs {
-            if path.exists() && path.is_dir() {
-                // Only remove if empty
-                if fs::read_dir(path)
+            if path.exists()
+                && path.is_dir()
+                && fs::read_dir(path)
                     .map(|mut d| d.next().is_none())
                     .unwrap_or(false)
-                {
-                    let _ = fs::remove_dir(path);
-                }
+            {
+                let _ = fs::remove_dir(path);
             }
         }
 
-        // Restore configuration file backups
         for backup in &self.config_backups {
             if let Err(e) = fs::write(&backup.path, &backup.content) {
                 eprintln!(
@@ -198,7 +193,7 @@ mod tests {
         fs::write(augent_dir.join("augent.yaml"), "name: \"@test/workspace\"").unwrap();
         fs::write(
             augent_dir.join("augent.lock"),
-            "{\"name\":\"@test/workspace\",\"bundles\":[]}",
+            r#"{"name":"@test/workspace","bundles":[]}"#,
         )
         .unwrap();
 

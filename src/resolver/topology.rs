@@ -8,6 +8,61 @@
 use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};
 
+fn build_dependency_list(
+    resolved: &std::collections::HashMap<String, ResolvedBundle>,
+) -> std::collections::HashMap<String, Vec<String>> {
+    let mut deps = std::collections::HashMap::new();
+    for (name, bundle) in resolved {
+        let bundle_deps = bundle
+            .config
+            .as_ref()
+            .map(|cfg| cfg.bundles.iter().map(|dep| dep.name.clone()).collect())
+            .unwrap_or_default();
+        deps.insert(name.clone(), bundle_deps);
+    }
+    deps
+}
+
+fn validate_dependencies(
+    deps: &std::collections::HashMap<String, Vec<String>>,
+    resolved: &std::collections::HashMap<String, ResolvedBundle>,
+) -> Result<()> {
+    for (name, bundle_deps) in deps {
+        for dep_name in bundle_deps {
+            if !resolved.contains_key(dep_name) {
+                let resolved_names: Vec<&str> = resolved.keys().map(|k| k.as_str()).collect();
+
+                return Err(AugentError::BundleValidationFailed {
+                    message: format!(
+                        "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
+                     Available bundles: {}",
+                        dep_name,
+                        name,
+                        resolved_names.join(", ")
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn process_bundles(
+    bundle_names: &[String],
+    deps: &std::collections::HashMap<String, Vec<String>>,
+    visited: &mut std::collections::HashSet<String>,
+    temp_visited: &mut std::collections::HashSet<String>,
+    result: &mut Vec<ResolvedBundle>,
+    resolved: &std::collections::HashMap<String, ResolvedBundle>,
+) -> Result<()> {
+    for name in bundle_names {
+        if !visited.contains(name) {
+            topo_dfs(name, deps, visited, temp_visited, result, resolved)?;
+        }
+    }
+    Ok(())
+}
+
 /// Perform topological sort to get installation order
 ///
 /// Returns bundles in dependency order (dependencies first, dependents last).
@@ -29,72 +84,33 @@ pub fn topological_sort(
     let mut visited = std::collections::HashSet::new();
     let mut temp_visited = std::collections::HashSet::new();
 
-    // Build adjacency list with actual resolved bundle names
-    // This handles cases where dependency names don't match resolved names
-    let mut deps: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-    for (name, bundle) in resolved {
-        let mut bundle_deps = Vec::new();
-        if let Some(ref cfg) = bundle.config {
-            for dep in &cfg.bundles {
-                bundle_deps.push(dep.name.clone());
-            }
-        }
-        deps.insert(name.clone(), bundle_deps);
-    }
+    let deps = build_dependency_list(resolved);
+    validate_dependencies(&deps, resolved)?;
 
-    // Validate that all dependencies exist in resolved bundles
-    // This catches cases where dependency names don't match resolved names
-    for (name, bundle_deps) in &deps {
-        for dep_name in bundle_deps {
-            if !resolved.contains_key(dep_name) {
-                let resolved_names: Vec<&str> = resolved.keys().map(|k| k.as_str()).collect();
+    process_bundles(
+        resolution_order,
+        &deps,
+        &mut visited,
+        &mut temp_visited,
+        &mut result,
+        resolved,
+    )?;
 
-                return Err(AugentError::BundleValidationFailed {
-                    message: format!(
-                        "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
-                     Available bundles: {}",
-                        dep_name,
-                        name,
-                        resolved_names.join(", ")
-                    ),
-                });
-            }
-        }
-    }
-
-    // DFS topological sort using resolution_order as iteration order
-    // This ensures bundles are processed in order they were specified
-    for name in resolution_order {
-        if !visited.contains(name) {
-            topo_dfs(
-                name,
-                &deps,
-                &mut visited,
-                &mut temp_visited,
-                &mut result,
-                resolved,
-            )?;
-        }
-    }
-
-    // Process any bundles not in resolution_order (e.g., transitive dependencies)
-    // Sort for deterministic order on all platforms
     let mut remaining: Vec<String> = resolved
         .keys()
         .filter(|name| !visited.contains(name.as_str()))
         .cloned()
         .collect();
     remaining.sort();
-    for name in remaining {
-        topo_dfs(
-            &name,
-            &deps,
-            &mut visited,
-            &mut temp_visited,
-            &mut result,
-            resolved,
-        )?;
-    }
+
+    process_bundles(
+        &remaining,
+        &deps,
+        &mut visited,
+        &mut temp_visited,
+        &mut result,
+        resolved,
+    )?;
 
     Ok(result)
 }

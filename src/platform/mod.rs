@@ -16,7 +16,6 @@ pub use merge::MergeStrategy;
 pub mod detection;
 pub mod loader;
 pub mod merge;
-pub mod merger;
 pub mod registry;
 pub mod transformer;
 

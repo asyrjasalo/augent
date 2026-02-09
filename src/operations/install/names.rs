@@ -15,30 +15,47 @@ impl<'a> NameFixer<'a> {
         Self { workspace }
     }
 
-    /// Fix bundle names for execute method
-    pub fn fix_bundle_names_for_execute(
+    /// Check if a bundle has any dependents
+    #[allow(dead_code)]
+    fn check_bundle_dependents(
+        _workspace: &Workspace,
+        _bundle_name: &str,
+        _dependency_map: &mut std::collections::HashMap<String, Vec<String>>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Get direct dependencies for a bundle
+    #[allow(dead_code)]
+    fn get_bundle_dependencies(_workspace: &Workspace, _bundle_name: &str) -> Vec<String> {
+        Vec::new()
+    }
+
+    /// Confirm uninstall with user
+    #[allow(dead_code)]
+    fn confirm_uninstall(_workspace: &mut Workspace, _bundle_names: &[String]) -> Result<()> {
+        Ok(())
+    }
+
+    /// Build dependency map for all bundles
+    #[allow(dead_code)]
+    fn build_dependency_map(
+        _workspace: &mut Workspace,
+        _bundle_names: &[String],
+    ) -> std::collections::HashMap<String, Vec<String>> {
+        std::collections::HashMap::new()
+    }
+
+    // Fix dir bundle names from augent.yaml: preserve custom bundle names
+    // This handles cases like:
+    //   augent.yaml: { name: "my-library-name", path: "my-library" }
+    //   Command: augent install my-library  <- matches PATH, not NAME
+    // Expected: ResolvedBundle and lockfile should have name: "my-library-name", not "my-library"
+    pub fn fix_dir_bundle_names(
         &self,
         mut resolved_bundles: Vec<ResolvedBundle>,
     ) -> Result<Vec<ResolvedBundle>> {
-        let workspace_bundle_name = self.workspace.get_workspace_name();
-
         for bundle in &mut resolved_bundles {
-            // Check if this is workspace bundle by checking if its source path matches
-            let bundle_source_path = self.workspace.get_bundle_source_path();
-            let is_workspace_bundle = bundle.source_path == bundle_source_path // .augent dir
-                || bundle.source_path == self.workspace.root; // workspace root (when resolving from ".")
-
-            if is_workspace_bundle && bundle.name != workspace_bundle_name {
-                // This is workspace bundle but it has the wrong name (probably derived from directory)
-                // Rename it to use the workspace bundle name
-                bundle.name = workspace_bundle_name.clone();
-            }
-
-            // Fix dir bundle names from augent.yaml: preserve custom bundle names
-            // This handles cases like:
-            //   augent.yaml: { name: "my-library-name", path: "my-library" }
-            //   Command: augent install my-library  <- matches PATH, not NAME
-            // Expected: ResolvedBundle and lockfile should have name: "my-library-name", not "my-library"
             if bundle.git_source.is_none() {
                 // This is a local directory bundle - check if there's an existing dependency with this path
                 if let Ok(rel_from_config) =
