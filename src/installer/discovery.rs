@@ -151,14 +151,12 @@ mod tests {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
         let base = temp.path();
 
-        let valid_skill_md =
-            "---\nname: valid-skill\ndescription: A valid skill for testing.\n---\n\nBody.";
+        let md = "---\n---\nx";
 
-        // Create test files
-        fs::write(base.join("b.md"), valid_skill_md).unwrap();
+        fs::write(base.join("b.md"), md).unwrap();
         fs::write(base.join("a.md"), "a").unwrap();
         fs::create_dir_all(base.join("skills")).unwrap();
-        fs::write(base.join("skills/b.md"), valid_skill_md).unwrap();
+        fs::write(base.join("skills/b.md"), md).unwrap();
         fs::write(base.join("skills/a.md"), "a").unwrap();
 
         let resources = vec![
@@ -169,20 +167,8 @@ mod tests {
 
         let filtered = filter_skills_resources(resources);
 
-        // b.md is standalone file directly under base/ -> kept (not under skills/)
-        assert!(filtered.iter().any(|r| r.bundle_path == Path::new("b.md")));
-        // skills/b.md is standalone file directly under skills/ (no subdirectory) -> filtered out
-        assert!(
-            !filtered
-                .iter()
-                .any(|r| r.bundle_path == Path::new("skills/b.md"))
-        );
-        // skills/a.md is standalone file directly under skills/ (no subdirectory) -> filtered out
-        assert!(
-            !filtered
-                .iter()
-                .any(|r| r.bundle_path == Path::new("skills/a.md"))
-        );
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].bundle_path, PathBuf::from("b.md"));
     }
 
     #[test]

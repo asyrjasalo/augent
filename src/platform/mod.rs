@@ -180,22 +180,32 @@ mod unit_tests {
         assert_eq!(platforms.len(), 17);
 
         let ids: Vec<_> = platforms.iter().map(|p| p.id.as_str()).collect();
-        assert!(ids.contains(&"antigravity"));
-        assert!(ids.contains(&"augment"));
-        assert!(ids.contains(&"claude"));
-        assert!(ids.contains(&"claude-plugin"));
-        assert!(ids.contains(&"codex"));
-        assert!(ids.contains(&"copilot"));
-        assert!(ids.contains(&"cursor"));
-        assert!(ids.contains(&"factory"));
-        assert!(ids.contains(&"gemini"));
-        assert!(ids.contains(&"junie"));
-        assert!(ids.contains(&"kilo"));
-        assert!(ids.contains(&"kiro"));
-        assert!(ids.contains(&"opencode"));
-        assert!(ids.contains(&"qwen"));
-        assert!(ids.contains(&"roo"));
-        assert!(ids.contains(&"warp"));
-        assert!(ids.contains(&"windsurf"));
+        let expected_ids = &[
+            "antigravity",
+            "augment",
+            "claude",
+            "claude-plugin",
+            "codex",
+            "copilot",
+            "cursor",
+            "factory",
+            "gemini",
+            "junie",
+            "kilo",
+            "kiro",
+            "opencode",
+            "qwen",
+            "roo",
+            "warp",
+            "windsurf",
+        ];
+
+        for &expected_id in expected_ids {
+            assert!(
+                ids.contains(&expected_id),
+                "Missing expected platform: {}",
+                expected_id
+            );
+        }
     }
 }

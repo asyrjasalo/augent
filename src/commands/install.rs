@@ -74,22 +74,48 @@ fn execute_install(
     install_op.execute(args, bundles, transaction, false)
 }
 
+fn prepare_install_operation<'a>(
+    workspace: &'a mut Workspace,
+    args: &InstallArgs,
+    workspace_root: &std::path::Path,
+) -> Result<InstallOperation<'a>> {
+    let mut install_op = InstallOperation::new(workspace, InstallOptions::from(args));
+    let platforms = install_op.select_or_detect_platforms(args, workspace_root, false)?;
+    if platforms.is_empty() {
+        return Err(crate::error::AugentError::NoPlatformsDetected);
+    }
+    Ok(install_op)
+}
+
+fn discover_and_select_bundles(
+    args: &InstallArgs,
+    workspace_root: &std::path::Path,
+    installing_by_bundle_name: bool,
+) -> Result<Vec<DiscoveredBundle>> {
+    let source_str = args
+        .source
+        .as_deref()
+        .ok_or_else(|| crate::error::AugentError::IoError {
+            message: "No source provided".to_string(),
+        })?;
+    let _source = BundleSource::parse(source_str)?;
+    let mut resolver = crate::resolver::Resolver::new(workspace_root);
+    let discovered = resolver.discover_bundles(source_str)?;
+
+    select_bundles(
+        args,
+        workspace_root,
+        &discovered,
+        &installing_by_bundle_name,
+    )
+}
+
 fn install_from_source(
     workspace_root: &std::path::Path,
     args: &mut InstallArgs,
     installing_by_bundle_name: bool,
 ) -> Result<()> {
-    let source_str = args.source.as_ref().unwrap().as_str();
-    let _source = BundleSource::parse(source_str)?;
-    let mut resolver = crate::resolver::Resolver::new(workspace_root);
-    let discovered = resolver.discover_bundles(source_str)?;
-
-    let selected = select_bundles(
-        args,
-        workspace_root,
-        &discovered,
-        &installing_by_bundle_name,
-    )?;
+    let selected = discover_and_select_bundles(args, workspace_root, installing_by_bundle_name)?;
     if selected.is_empty() {
         return Ok(());
     }
@@ -98,19 +124,11 @@ fn install_from_source(
     let mut transaction = Transaction::new(&workspace);
     transaction.backup_configs()?;
 
-    let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&*args));
-    let platforms = install_op.select_or_detect_platforms(args, workspace_root, false)?;
-    if platforms.is_empty() {
-        return Err(crate::error::AugentError::NoPlatformsDetected);
-    }
+    let mut install_op = prepare_install_operation(&mut workspace, args, workspace_root)?;
+    execute_install(&mut install_op, args, &selected, &mut transaction)?;
+    transaction.commit();
 
-    match execute_install(&mut install_op, args, &selected, &mut transaction) {
-        Ok(()) => {
-            transaction.commit();
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
+    Ok(())
 }
 
 fn install_from_config(workspace_root: &std::path::Path, args: &mut InstallArgs) -> Result<()> {

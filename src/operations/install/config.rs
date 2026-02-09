@@ -8,6 +8,7 @@ use crate::config::{
 use crate::error::Result;
 use crate::workspace::Workspace;
 use normpath::PathExt;
+use std::path::PathBuf;
 
 /// Configuration updater for install operation
 pub struct ConfigUpdater<'a> {
@@ -112,42 +113,45 @@ impl<'a> ConfigUpdater<'a> {
         }
     }
 
-    fn get_relative_path(&self, bundle_path: &std::path::Path) -> String {
-        // Normalize paths to handle symlinks (e.g., /tmp -> /private/tmp on macOS)
-        let config_dir_normalized = self.workspace.config_dir.normalize().ok();
-        let root_normalized = self.workspace.root.normalize().ok();
-        let bundle_path_normalized = bundle_path.normalize().ok();
+    fn normalize_path(path: &std::path::Path) -> PathBuf {
+        path.normalize()
+            .map(|norm| norm.as_path().to_path_buf())
+            .unwrap_or_else(|_| path.to_path_buf())
+    }
 
-        let config_dir_ref = config_dir_normalized
-            .as_ref()
-            .map(|p| p.as_path())
-            .unwrap_or(&self.workspace.config_dir);
-        let root_ref = root_normalized
-            .as_ref()
-            .map(|p| p.as_path())
-            .unwrap_or(&self.workspace.root);
-        let bundle_path_ref = bundle_path_normalized
-            .as_ref()
-            .map(|p| p.as_path())
-            .unwrap_or(bundle_path);
+    fn path_to_normalized_str(path: &std::path::Path) -> String {
+        path.to_string_lossy().replace('\\', "/")
+    }
 
-        if let Ok(rel_from_config) = bundle_path_ref.strip_prefix(config_dir_ref) {
-            let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-            if path_str.is_empty() {
-                ".".to_string()
-            } else {
-                path_str
-            }
-        } else if let Ok(rel_from_root) = bundle_path_ref.strip_prefix(root_ref) {
-            let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
-            if !rel_from_root_str.is_empty() {
-                format!("./{}", rel_from_root_str)
-            } else {
-                bundle_path.to_string_lossy().to_string()
-            }
+    fn get_relative_from_prefix(
+        path: &std::path::Path,
+        prefix: &std::path::Path,
+    ) -> Option<String> {
+        let rel_path = path.strip_prefix(prefix).ok()?;
+        let path_str = Self::path_to_normalized_str(rel_path);
+        if path_str.is_empty() {
+            Some(".".to_string())
         } else {
-            bundle_path.to_string_lossy().to_string()
+            Some(path_str)
         }
+    }
+
+    fn get_relative_path(&self, bundle_path: &std::path::Path) -> String {
+        let config_dir = Self::normalize_path(&self.workspace.config_dir);
+        let root = Self::normalize_path(&self.workspace.root);
+        let bundle_path_ref = Self::normalize_path(bundle_path);
+
+        if let Some(rel) = Self::get_relative_from_prefix(&bundle_path_ref, &config_dir) {
+            return rel;
+        }
+
+        if let Some(rel_from_root) = Self::get_relative_from_prefix(&bundle_path_ref, &root) {
+            if !rel_from_root.is_empty() {
+                return format!("./{}", rel_from_root);
+            }
+        }
+
+        Self::path_to_normalized_str(bundle_path)
     }
 
     fn update_lockfile_with_bundles(
@@ -181,50 +185,61 @@ impl<'a> ConfigUpdater<'a> {
         Ok(())
     }
 
+    fn replace_and_add_bundles(&mut self, bundles: Vec<LockedBundle>) {
+        for bundle in bundles {
+            self.workspace.lockfile.remove_bundle(&bundle.name);
+            self.workspace.lockfile.add_bundle(bundle);
+        }
+    }
+
+    fn update_existing_bundles_in_place(&mut self, bundles: Vec<LockedBundle>) {
+        for bundle in bundles {
+            if let Some(pos) = self
+                .workspace
+                .lockfile
+                .bundles
+                .iter()
+                .position(|b| b.name == bundle.name)
+            {
+                self.workspace.lockfile.bundles.remove(pos);
+                self.workspace.lockfile.bundles.insert(pos, bundle);
+            } else {
+                self.workspace.lockfile.add_bundle(bundle);
+            }
+        }
+    }
+
+    fn get_lockfile_bundle_names(&self, workspace_name: &str) -> Vec<String> {
+        self.workspace
+            .lockfile
+            .bundles
+            .iter()
+            .filter(|b| b.name != workspace_name)
+            .map(|b| b.name.clone())
+            .collect()
+    }
+
     fn merge_bundles_to_lockfile(
         &mut self,
         already_installed: Vec<LockedBundle>,
         new_bundles: Vec<LockedBundle>,
     ) {
         if !new_bundles.is_empty() {
-            for locked_bundle in already_installed {
-                self.workspace.lockfile.remove_bundle(&locked_bundle.name);
-                self.workspace.lockfile.add_bundle(locked_bundle);
-            }
-            for locked_bundle in new_bundles {
-                self.workspace.lockfile.add_bundle(locked_bundle);
+            self.replace_and_add_bundles(already_installed);
+            for bundle in new_bundles {
+                self.workspace.lockfile.add_bundle(bundle);
             }
         } else {
-            for locked_bundle in already_installed {
-                if let Some(pos) = self
-                    .workspace
-                    .lockfile
-                    .bundles
-                    .iter()
-                    .position(|b| b.name == locked_bundle.name)
-                {
-                    self.workspace.lockfile.bundles.remove(pos);
-                    self.workspace.lockfile.bundles.insert(pos, locked_bundle);
-                } else {
-                    self.workspace.lockfile.add_bundle(locked_bundle);
-                }
-            }
+            self.update_existing_bundles_in_place(already_installed);
         }
 
         let workspace_name = self.workspace.get_workspace_name();
         self.workspace.lockfile.reorganize(Some(&workspace_name));
 
-        let lockfile_bundle_names: Vec<String> = self
-            .workspace
-            .lockfile
-            .bundles
-            .iter()
-            .filter(|b| b.name != workspace_name)
-            .map(|b| b.name.clone())
-            .collect();
+        let bundle_names = self.get_lockfile_bundle_names(&workspace_name);
         self.workspace
             .bundle_config
-            .reorder_dependencies(&lockfile_bundle_names);
+            .reorder_dependencies(&bundle_names);
     }
 
     fn reorganize_configs_and_backfill_refs(&mut self) {

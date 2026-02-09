@@ -19,7 +19,7 @@ pub mod writer;
 pub mod files;
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::config::WorkspaceBundle;
 use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
@@ -35,6 +35,15 @@ pub struct Installer<'a> {
     dry_run: bool,
     #[allow(dead_code)]
     progress: Option<&'a mut dyn ProgressReporter>,
+}
+
+/// Context for installing a single resource
+struct ResourceInstallContext<'a, 'b> {
+    installer: &'a Installer<'b>,
+    target_path: PathBuf,
+    platform: &'a Platform,
+    bundle_name: &'a str,
+    resource_type: &'a str,
 }
 
 impl<'a> Installer<'a> {
@@ -71,42 +80,69 @@ impl<'a> Installer<'a> {
         discovery::discover_resources(bundle_path)
     }
 
+    fn calculate_target_path(
+        &self,
+        resource: &DiscoveredResource,
+        bundle: &ResolvedBundle,
+        platform: &Platform,
+    ) -> PathBuf {
+        let platform_root = self.workspace_root.join(&platform.directory);
+        platform_root.join(
+            resource
+                .bundle_path
+                .strip_prefix(&bundle.source_path)
+                .unwrap_or(&resource.bundle_path),
+        )
+    }
+
+    fn install_resource_for_platform(
+        ctx: ResourceInstallContext<'_, '_>,
+        resource: &DiscoveredResource,
+        installed_files: &mut HashMap<String, InstalledFile>,
+    ) -> Result<()> {
+        use crate::installer::files;
+
+        files::copy_file(
+            &resource.absolute_path,
+            &ctx.target_path,
+            std::slice::from_ref(ctx.platform),
+            ctx.installer.workspace_root,
+        )?;
+
+        let key = resource.bundle_path.display().to_string();
+        let entry = installed_files
+            .entry(key.clone())
+            .or_insert_with(|| InstalledFile {
+                bundle_path: ctx.bundle_name.to_string(),
+                resource_type: ctx.resource_type.to_string(),
+                target_paths: vec![],
+            });
+        entry
+            .target_paths
+            .push(ctx.target_path.display().to_string());
+
+        Ok(())
+    }
+
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
         let resources = Installer::discover_resources_internal(&bundle.source_path)?;
         let resources = discovery::filter_skills_resources(resources);
-
-        use crate::installer::files;
 
         let mut installed_files = HashMap::new();
 
         for resource in &resources {
             for platform in &self.platforms {
-                let platform_root = self.workspace_root.join(&platform.directory);
-                let target_path = platform_root.join(
-                    resource
-                        .bundle_path
-                        .strip_prefix(&bundle.source_path)
-                        .unwrap_or(&resource.bundle_path),
-                );
+                let target_path = self.calculate_target_path(resource, bundle, platform);
 
                 if !self.dry_run {
-                    files::copy_file(
-                        &resource.absolute_path,
-                        &target_path,
-                        std::slice::from_ref(platform),
-                        self.workspace_root,
-                    )?;
-
-                    let key = resource.bundle_path.display().to_string();
-                    let entry =
-                        installed_files
-                            .entry(key.clone())
-                            .or_insert_with(|| InstalledFile {
-                                bundle_path: bundle.name.clone(),
-                                resource_type: resource.resource_type.clone(),
-                                target_paths: vec![],
-                            });
-                    entry.target_paths.push(target_path.display().to_string());
+                    let ctx = ResourceInstallContext {
+                        installer: self,
+                        target_path: target_path.clone(),
+                        platform,
+                        bundle_name: &bundle.name,
+                        resource_type: &resource.resource_type,
+                    };
+                    Self::install_resource_for_platform(ctx, resource, &mut installed_files)?;
                 }
             }
         }

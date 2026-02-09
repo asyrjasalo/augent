@@ -139,6 +139,36 @@ struct GitBundleContext<'a> {
     resolved_ref: &'a Option<String>,
 }
 
+fn create_cache_metadata<'a>(
+    bundle_name: &'a str,
+    ctx: &'a GitBundleContext<'_>,
+    subdirectory: &'a Option<String>,
+) -> crate::cache::populate::BundleCacheMetadata<'a> {
+    crate::cache::populate::BundleCacheMetadata {
+        bundle_name,
+        sha: ctx.sha,
+        url: &ctx.source.url,
+        path_opt: subdirectory.as_deref(),
+        resolved_ref: ctx.resolved_ref.as_deref(),
+    }
+}
+
+fn update_bundle_git_source(
+    bundle: &mut DiscoveredBundle,
+    ctx: &GitBundleContext<'_>,
+    subdirectory: Option<String>,
+) {
+    bundle.git_source = Some(GitSource {
+        url: ctx.source.url.clone(),
+        path: subdirectory.or_else(|| ctx.source.path.clone()),
+        git_ref: ctx
+            .resolved_ref
+            .clone()
+            .or_else(|| ctx.source.git_ref.clone()),
+        resolved_sha: Some(ctx.sha.to_string()),
+    });
+}
+
 fn process_git_bundle(bundle: &mut DiscoveredBundle, ctx: &GitBundleContext<'_>) -> Result<()> {
     let (subdirectory, bundle_name_for_cache) = determine_bundle_subdirectory_and_cache_name(
         ctx.repo_path,
@@ -155,27 +185,10 @@ fn process_git_bundle(bundle: &mut DiscoveredBundle, ctx: &GitBundleContext<'_>)
         ctx.source,
     )?;
 
-    let subdirectory_ref = subdirectory.as_deref();
-    let resolved_ref_opt = ctx.resolved_ref.as_deref();
-    let metadata = crate::cache::populate::BundleCacheMetadata {
-        bundle_name: &bundle_name_for_cache,
-        sha: ctx.sha,
-        url: &ctx.source.url,
-        path_opt: subdirectory_ref,
-        resolved_ref: resolved_ref_opt,
-    };
-
+    let metadata = create_cache_metadata(&bundle_name_for_cache, ctx, &subdirectory);
     cache::ensure_bundle_cached(&metadata, ctx.repo_path, &bundle_content_path)?;
 
-    bundle.git_source = Some(GitSource {
-        url: ctx.source.url.clone(),
-        path: subdirectory.clone().or_else(|| ctx.source.path.clone()),
-        git_ref: ctx
-            .resolved_ref
-            .clone()
-            .or_else(|| ctx.source.git_ref.clone()),
-        resolved_sha: Some(ctx.sha.to_string()),
-    });
+    update_bundle_git_source(bundle, ctx, subdirectory);
 
     Ok(())
 }
@@ -232,6 +245,33 @@ fn get_description_for_bundle(
     }
 }
 
+struct CachedBundleInfo<'a> {
+    short_name: String,
+    resources_path: &'a Path,
+    description: Option<String>,
+}
+
+fn create_discovered_bundle_from_cache(
+    info: CachedBundleInfo<'_>,
+    source: &GitSource,
+    sha: &str,
+    path_opt: &Option<String>,
+    resolved_ref: &Option<String>,
+) -> DiscoveredBundle {
+    DiscoveredBundle {
+        name: info.short_name,
+        path: info.resources_path.to_path_buf(),
+        description: info.description,
+        git_source: Some(GitSource {
+            url: source.url.clone(),
+            path: path_opt.clone(),
+            git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
+            resolved_sha: Some(sha.to_string()),
+        }),
+        resource_counts: ResourceCounts::from_path(info.resources_path),
+    }
+}
+
 fn load_cached_bundles_from_marketplace(
     source: &GitSource,
     sha: &str,
@@ -244,24 +284,22 @@ fn load_cached_bundles_from_marketplace(
         let mut discovered = Vec::with_capacity(mc.plugins.len());
         for entry in &cache::list_cached_entries_for_url_sha(&source.url, sha)? {
             let (path_opt, bundle_name, resources_path, resolved_ref) = entry;
-
             let short_name = extract_short_name(bundle_name);
-
             let description = get_description_for_bundle(path_opt, &short_name, mc, &repo_path);
 
-            let resource_counts = ResourceCounts::from_path(resources_path);
-            discovered.push(DiscoveredBundle {
-                name: short_name,
-                path: resources_path.clone(),
+            let bundle_info = CachedBundleInfo {
+                short_name,
+                resources_path,
                 description,
-                git_source: Some(GitSource {
-                    url: source.url.clone(),
-                    path: path_opt.clone(),
-                    git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
-                    resolved_sha: Some(sha.to_string()),
-                }),
-                resource_counts,
-            });
+            };
+
+            discovered.push(create_discovered_bundle_from_cache(
+                bundle_info,
+                source,
+                sha,
+                path_opt,
+                resolved_ref,
+            ));
         }
         Ok(discovered)
     } else {

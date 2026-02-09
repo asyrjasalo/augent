@@ -41,32 +41,38 @@ fn check_git_repository(workspace_path: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
+fn needs_git_repo(command: &Commands) -> bool {
+    matches!(
+        command,
+        Commands::Install(_) | Commands::Uninstall(_) | Commands::List(_) | Commands::Show(_)
+    )
+}
+
+fn execute_command(workspace: Option<PathBuf>, command: Commands) -> Result<()> {
+    match command {
+        Commands::Install(args) => commands::install::run(workspace, args),
+        Commands::Uninstall(args) => commands::uninstall::run(workspace, args),
+        Commands::List(args) => commands::list::run(workspace, args),
+        Commands::Show(args) => commands::show::run(workspace, args),
+        Commands::Cache(args) => commands::clean_cache::run(args),
+        Commands::Version => commands::version::run(),
+        Commands::Completions(args) => commands::completions::run(args),
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
     // Check git repository for commands that require it
     // Cache, version, and completions commands can be run outside a git repository
-    let needs_git_repo = matches!(
-        cli.command,
-        Commands::Install(_) | Commands::Uninstall(_) | Commands::List(_) | Commands::Show(_)
-    );
-
-    if needs_git_repo {
+    if needs_git_repo(&cli.command) {
         if let Err(e) = check_git_repository(cli.workspace.clone()) {
             eprintln!("Error: {}", e);
             std::process::exit(1);
         }
     }
 
-    let result = match cli.command {
-        Commands::Install(args) => commands::install::run(cli.workspace, args),
-        Commands::Uninstall(args) => commands::uninstall::run(cli.workspace, args),
-        Commands::List(args) => commands::list::run(cli.workspace, args),
-        Commands::Show(args) => commands::show::run(cli.workspace, args),
-        Commands::Cache(args) => commands::clean_cache::run(args),
-        Commands::Version => commands::version::run(),
-        Commands::Completions(args) => commands::completions::run(args),
-    };
+    let result = execute_command(cli.workspace, cli.command);
 
     if let Err(e) = result {
         eprintln!("Error: {}", e);

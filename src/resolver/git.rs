@@ -12,6 +12,41 @@ use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};
 use crate::source::GitSource;
 
+fn create_bundle_not_found_error(git_source: &GitSource) -> AugentError {
+    let ref_suffix = git_source
+        .git_ref
+        .as_deref()
+        .map(|r| format!("@{}", r))
+        .unwrap_or_default();
+    let bundle_name = git_source.path.as_deref().unwrap_or("");
+    AugentError::BundleNotFound {
+        name: format!(
+            "Bundle '{}' not found in {}{}",
+            bundle_name, git_source.url, ref_suffix
+        ),
+    }
+}
+
+struct BundleBuildInfo {
+    name: String,
+    content_path: std::path::PathBuf,
+    sha: String,
+    resolved_ref: Option<String>,
+    dependency: Option<BundleDependency>,
+}
+
+fn create_resolved_bundle(info: BundleBuildInfo, git_source: &GitSource) -> ResolvedBundle {
+    ResolvedBundle {
+        name: info.name,
+        dependency: info.dependency,
+        source_path: info.content_path,
+        resolved_sha: Some(info.sha),
+        resolved_ref: info.resolved_ref,
+        git_source: Some(git_source.clone()),
+        config: None,
+    }
+}
+
 /// Resolve a git bundle from a GitSource
 ///
 /// # Arguments
@@ -36,23 +71,10 @@ pub fn resolve_git(
     let (content_path, sha, resolved_ref) = cache::cache_bundle(git_source)?;
 
     if !content_path.is_dir() {
-        let ref_suffix = git_source
-            .git_ref
-            .as_deref()
-            .map(|r| format!("@{}", r))
-            .unwrap_or_default();
-        let bundle_name = git_source.path.as_deref().unwrap_or("");
-        return Err(AugentError::BundleNotFound {
-            name: format!(
-                "Bundle '{}' not found in {}{}",
-                bundle_name, git_source.url, ref_suffix
-            ),
-        });
+        return Err(create_bundle_not_found_error(git_source));
     }
 
-    let config: Option<crate::config::BundleConfig> = None;
-
-    let name = determine_bundle_name(git_source, dependency, &config);
+    let name = determine_bundle_name(git_source, dependency, &None);
 
     crate::resolver::validation::check_cycle(&name, resolution_stack)?;
 
@@ -62,17 +84,15 @@ pub fn resolve_git(
         }
     }
 
-    let resolved = ResolvedBundle {
-        name: name.clone(),
-        dependency: dependency.cloned(),
-        source_path: content_path,
-        resolved_sha: Some(sha),
+    let build_info = BundleBuildInfo {
+        name,
+        content_path,
+        sha,
         resolved_ref,
-        git_source: Some(git_source.clone()),
-        config,
+        dependency: dependency.cloned(),
     };
 
-    Ok(resolved)
+    Ok(create_resolved_bundle(build_info, git_source))
 }
 
 /// Determine bundle name from git source

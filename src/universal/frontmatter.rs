@@ -43,19 +43,21 @@ pub fn parse_frontmatter_and_body(content: &str) -> Option<(Value, String)> {
     Some((value, body))
 }
 
-fn process_mapping_entry(
-    key: &Value,
-    value: &Value,
-    platform_id: &str,
-    known: &std::collections::HashSet<&str>,
-    out: &mut Mapping,
-    platform_block: &mut Option<Value>,
-) {
-    let key_str = key.as_str().unwrap_or("");
-    if key_str == platform_id {
-        *platform_block = Some(value.clone());
-    } else if !known.contains(key_str) {
-        out.insert(key.clone(), value.clone());
+struct MappingProcessor<'a> {
+    platform_id: &'a str,
+    known: &'a std::collections::HashSet<&'a str>,
+    out: &'a mut Mapping,
+    platform_block: &'a mut Option<Value>,
+}
+
+impl<'a> MappingProcessor<'a> {
+    fn process_entry(&mut self, key: &Value, value: &Value) {
+        let key_str = key.as_str().unwrap_or("");
+        if key_str == self.platform_id {
+            *self.platform_block = Some(value.clone());
+        } else if !self.known.contains(key_str) {
+            self.out.insert(key.clone(), value.clone());
+        }
     }
 }
 
@@ -86,7 +88,13 @@ pub fn merge_frontmatter_for_platform(
     let mut platform_block = None;
 
     for (k, v) in mapping {
-        process_mapping_entry(k, v, platform_id, &known, &mut out, &mut platform_block);
+        let mut processor = MappingProcessor {
+            platform_id,
+            known: &known,
+            out: &mut out,
+            platform_block: &mut platform_block,
+        };
+        processor.process_entry(k, v);
     }
 
     if let Some(ref block) = platform_block {

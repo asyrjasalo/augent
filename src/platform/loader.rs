@@ -112,42 +112,38 @@ impl PlatformLoader {
         Self::parse_platforms_json_impl(json_content, path)
     }
 
+    fn create_parse_error(path: &str, reason: impl Into<String>) -> AugentError {
+        AugentError::ConfigParseFailed {
+            path: path.to_string(),
+            reason: reason.into(),
+        }
+    }
+
     /// Parse platforms JSON, supporting both array format and object with "platforms" key
     fn parse_platforms_json_impl(json_content: &str, path: &str) -> Result<Vec<Platform>> {
-        let value: serde_json::Value =
-            serde_json::from_str(json_content).map_err(|e| AugentError::ConfigParseFailed {
-                path: path.to_string(),
-                reason: e.to_string(),
-            })?;
+        let value: serde_json::Value = serde_json::from_str(json_content)
+            .map_err(|e| Self::create_parse_error(path, e.to_string()))?;
 
         match value {
             serde_json::Value::Array(platforms) => {
-                serde_json::from_value(serde_json::Value::Array(platforms.clone())).map_err(|e| {
-                    AugentError::ConfigParseFailed {
-                        path: path.to_string(),
-                        reason: e.to_string(),
-                    }
-                })
+                serde_json::from_value(serde_json::Value::Array(platforms.clone()))
+                    .map_err(|e| Self::create_parse_error(path, e.to_string()))
             }
             serde_json::Value::Object(obj) => {
                 if let Some(platforms_value) = obj.get("platforms").and_then(|v| v.as_array()) {
                     serde_json::from_value(serde_json::Value::Array(platforms_value.clone()))
-                        .map_err(|e| AugentError::ConfigParseFailed {
-                            path: path.to_string(),
-                            reason: e.to_string(),
-                        })
+                        .map_err(|e| Self::create_parse_error(path, e.to_string()))
                 } else {
-                    Err(AugentError::ConfigParseFailed {
-                        path: path.to_string(),
-                        reason: "Expected array of platforms or object with 'platforms' key"
-                            .to_string(),
-                    })
+                    Err(Self::create_parse_error(
+                        path,
+                        "Expected array of platforms or object with 'platforms' key".to_string(),
+                    ))
                 }
             }
-            _ => Err(AugentError::ConfigParseFailed {
-                path: path.to_string(),
-                reason: "Invalid JSON format".to_string(),
-            }),
+            _ => Err(Self::create_parse_error(
+                path,
+                "Invalid JSON format".to_string(),
+            )),
         }
     }
 

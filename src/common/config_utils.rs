@@ -7,44 +7,43 @@ use crate::config::{BundleConfig, LockedSource};
 use crate::error::{AugentError, Result};
 use std::path::Path;
 
-/// Load bundle config (augent.yaml) from a locked source.
-///
-/// This function attempts to locate and load the bundle's augent.yaml
-/// configuration file based on its locked source type.
-///
-/// # Arguments
-/// * `workspace_root` - The root path of the workspace
-/// * `source` - The locked source information for the bundle
-///
-/// # Returns
-/// * `Ok(BundleConfig)` - The loaded configuration, or an empty config if not found
-/// * `Err(AugentError)` - If the config exists but cannot be parsed
-pub fn load_bundle_config(workspace_root: &Path, source: &LockedSource) -> Result<BundleConfig> {
-    let bundle_path = match source {
+fn get_cache_dir() -> std::path::PathBuf {
+    dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
+        .join("augent/bundles")
+}
+
+fn get_bundle_path(workspace_root: &Path, source: &LockedSource) -> std::path::PathBuf {
+    match source {
         LockedSource::Dir { path, .. } => workspace_root.join(path),
         LockedSource::Git {
             path: Some(subdir), ..
-        } => {
-            let cache_dir = dirs::cache_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
-                .join("augent/bundles");
-            cache_dir.join(subdir)
-        }
+        } => get_cache_dir().join(subdir),
         LockedSource::Git { url, sha, .. } => {
-            let cache_dir = dirs::cache_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from(".cache"))
-                .join("augent/bundles");
-
             let repo_name = url
                 .rsplit('/')
                 .next()
                 .unwrap_or_default()
                 .trim_end_matches(".git");
-
-            cache_dir.join(format!("{}_{}", repo_name, sha))
+            get_cache_dir().join(format!("{}_{}", repo_name, sha))
         }
-    };
+    }
+}
 
+/// Load bundle config (augent.yaml) from a locked source.
+///
+/// This function attempts to locate and load bundle's augent.yaml
+/// configuration file based on its locked source type.
+///
+/// # Arguments
+/// * `workspace_root` - The root path of workspace
+/// * `source` - The locked source information for bundle
+///
+/// # Returns
+/// * `Ok(BundleConfig)` - The loaded configuration, or an empty config if not found
+/// * `Err(AugentError)` - If the config exists but cannot be parsed
+pub fn load_bundle_config(workspace_root: &Path, source: &LockedSource) -> Result<BundleConfig> {
+    let bundle_path = get_bundle_path(workspace_root, source);
     let config_path = bundle_path.join("augent.yaml");
 
     if !config_path.exists() {
