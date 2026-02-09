@@ -4,6 +4,19 @@
 **Commit:** N/A
 **Branch:** N/A
 
+## HIERARCHY
+
+- `./AGENTS.md` (root)
+- `src/config/AGENTS.md` - Configuration file handling
+- `src/operations/AGENTS.md` - Workflow orchestration
+- `src/resolver/AGENTS.md` - Dependency resolution
+- `src/source/AGENTS.md` - Bundle source parsing
+- `src/platform/AGENTS.md` - Platform detection and transformation
+- `src/error/AGENTS.md` - Centralized error handling
+- `src/transaction/AGENTS.md` - Atomic operations with rollback
+- `src/installer/AGENTS.md` - File installation
+- `src/workspace/AGENTS.md` - Workspace management
+
 ## OVERVIEW
 
 Augent manages bundles for AI coding platforms (Claude, Cursor, OpenCode, etc.) with Git-based reproducibility. Binary-only Rust app (no lib.rs).
@@ -27,7 +40,7 @@ augent/
 │   ├── installer/    # File installation, 17 platforms, format conversion
 │   ├── resolver/     # Dependency resolution (graph, topology, discovery)
 │   ├── cache/        # Bundle storage, lockfile management, index
-│   ├── config/       # Three config types (bundle, lockfile, index)
+│   ├── config/       # Four config types (bundle, lockfile, index, marketplace)
 │   ├── workspace/    # Workspace management and config
 │   ├── platform/     # Platform detection (17 built-in platforms)
 │   ├── commands/     # CLI command wrappers (~100 lines each)
@@ -39,7 +52,11 @@ augent/
 │   ├── transaction/   # Atomic operations with rollback
 │   ├── common/       # Shared utilities
 │   ├── universal/     # Frontmatter parsing
-│   ├── cli.rs        # Clap CLI arguments
+│   ├── cli/          # Clap CLI argument definitions
+│   ├── hash.rs       # Hash utilities
+│   ├── path_utils.rs  # Path utilities
+│   ├── progress.rs    # Progress utilities
+│   ├── temp.rs       # Temporary directory utilities
 │   └── main.rs      # Binary entry (no lib.rs)
 ├── tests/            # Integration tests with fixtures
 ├── docs/             # Implementation docs, ADRs
@@ -51,15 +68,10 @@ augent/
 
 | Task | Location |
 |-------|----------|
-| Install workflow | `src/operations/install/` → `orchestrator.rs` |
-| Uninstall workflow | `src/operations/uninstall/mod.rs` |
-| Dependency resolution | `src/resolver/graph.rs`, `src/resolver/topology.rs` |
-| Bundle discovery | `src/resolver/discovery.rs` |
 | Platform detection | `src/platform/detection.rs`, `src/platform/loader.rs` |
 | File installation | `src/installer/mod.rs` (348 lines) |
 | Cache management | `src/cache/` |
 | Error handling | `src/error/mod.rs` (32 variants) |
-| Configuration | `src/config/bundle/`, `lockfile/`, `index/` |
 | CLI commands | `src/commands/` (Install, Uninstall, List, Show, Cache) |
 | Workspace management | `src/workspace/` |
 | Git operations | `src/git/` |
