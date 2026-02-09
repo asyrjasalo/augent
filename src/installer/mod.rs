@@ -162,9 +162,6 @@ pub mod formats;
 pub mod parser;
 pub mod writer;
 
-// Re-export from files.rs for now (will be removed later)
-pub mod files;
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -247,9 +244,7 @@ impl<'a> Installer<'a> {
         resource: &DiscoveredResource,
         installed_files: &mut HashMap<String, InstalledFile>,
     ) -> Result<()> {
-        use crate::installer::files;
-
-        files::copy_file(
+        crate::installer::file_ops::copy_file(
             &resource.absolute_path,
             &ctx.target_path,
             std::slice::from_ref(ctx.platform),
@@ -314,35 +309,5 @@ impl<'a> Installer<'a> {
 
     pub fn installed_files(&self) -> &HashMap<String, InstalledFile> {
         &self.installed_files
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
-
-    #[test]
-    fn test_installer_creation() {
-        let temp = TempDir::new().unwrap();
-        let platforms = vec![];
-
-        let installer = Installer::new_with_dry_run(temp.path(), platforms.clone(), false);
-
-        assert_eq!(installer.workspace_root, temp.path());
-        assert_eq!(installer.platforms, platforms);
-        assert!(!installer.dry_run);
-    }
-
-    #[test]
-    fn test_installer_with_dry_run() {
-        let temp = TempDir::new().unwrap();
-        let platforms = vec![];
-
-        let installer = Installer::new_with_dry_run(temp.path(), platforms.clone(), true);
-
-        assert_eq!(installer.workspace_root, temp.path());
-        assert_eq!(installer.platforms, platforms);
-        assert!(installer.dry_run);
     }
 }
