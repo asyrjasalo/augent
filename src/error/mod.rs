@@ -51,7 +51,7 @@ pub use fs::{
 #[allow(unused_imports)]
 pub use git::{
     checkout_failed, clone_failed, fetch_failed, open_failed,
-    operation_failed as git_operation_failed, ref_resolution_failed, ref_resolve_failed,
+    operation_failed as git_operation_failed, ref_resolve_failed,
 };
 #[allow(unused_imports)]
 pub use lockfile::hash_mismatch;
@@ -117,11 +117,6 @@ pub enum AugentError {
     )]
     #[allow(dead_code, unused_assignments)]
     GitCloneFailed { url: String, reason: String },
-
-    #[error("Failed to resolve ref '{reference}' to SHA")]
-    #[diagnostic(code(augent::git::ref_resolution_failed))]
-    #[allow(dead_code, unused_assignments)]
-    GitRefResolutionFailed { reference: String },
 
     #[error("Failed to resolve git ref '{git_ref}': {reason}")]
     #[diagnostic(code(augent::git::ref_resolve_failed))]
@@ -254,10 +249,6 @@ pub enum AugentError {
     #[error("Cache operation failed: {message}")]
     #[diagnostic(code(augent::cache::operation_failed))]
     CacheOperationFailed { message: String },
-
-    #[error("Feature not implemented: {feature}")]
-    #[diagnostic(code(augent::feature::not_implemented))]
-    NotImplemented { feature: String },
 }
 
 impl From<std::io::Error> for AugentError {
@@ -450,10 +441,10 @@ mod tests {
     }
 
     #[test]
-    fn test_git_ref_resolution_failed() {
-        let err = ref_resolution_failed("nonexistent-branch");
-        assert!(matches!(err, AugentError::GitRefResolutionFailed { .. }));
-        assert!(err.to_string().contains("Failed to resolve ref"));
+    fn test_git_ref_resolve_failed() {
+        let err = ref_resolve_failed("nonexistent-branch", "reference not found");
+        assert!(matches!(err, AugentError::GitRefResolveFailed { .. }));
+        assert!(err.to_string().contains("Failed to resolve git ref"));
     }
 
     // Workspace error tests

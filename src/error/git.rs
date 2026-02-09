@@ -17,13 +17,6 @@ pub fn clone_failed(url: impl Into<String>, reason: impl Into<String>) -> Augent
     }
 }
 
-/// Creates a Git ref resolution failed error
-pub fn ref_resolution_failed(reference: impl Into<String>) -> AugentError {
-    AugentError::GitRefResolutionFailed {
-        reference: reference.into(),
-    }
-}
-
 /// Creates a Git ref resolve failed error
 pub fn ref_resolve_failed(git_ref: impl Into<String>, reason: impl Into<String>) -> AugentError {
     AugentError::GitRefResolveFailed {
