@@ -1,9 +1,90 @@
 //! Dependency graph operations for bundle resolution
 //!
-//! This module handles:
-//! - Building dependency graphs from bundles
-//! - Topological sorting for installation order
-//! - Circular dependency detection
+//! This module provides a directed graph implementation for modeling bundle dependencies
+//! and computing installation order via topological sorting.
+//!
+//! ## Graph Structure
+//!
+//! The dependency graph is a directed acyclic graph (DAG) where:
+//!
+//! - **Nodes** represent bundles (identified by name)
+//! - **Edges** represent dependency relationships (dependent → dependency)
+//! - Direction: Edges go from dependent bundles TO their dependencies
+//!
+//! ```text
+//! bundle-a depends on bundle-b depends on bundle-c
+//!
+//! bundle-a ─────► bundle-b ─────► bundle-c
+//!     (dependent)     (dependency)
+//! ```
+//!
+//! In this example:
+//! - `bundle-a` is dependent on `bundle-b`
+//! - `bundle-b` is dependent on `bundle-c`
+//! - `bundle-c` has no dependencies
+//!
+//! For installation, we need `bundle-c` first, then `bundle-b`, then `bundle-a`.
+//!
+//! ## Algorithms
+//!
+//! ### Topological Sort
+//!
+//! The module uses depth-first search (DFS) based topological sorting:
+//!
+//! 1. **Visit each bundle** in the graph
+//! 2. **Recursively visit dependencies** before processing the bundle itself
+//! 3. **Track visited state** to detect cycles
+//! 4. **Build result list** in reverse visitation order (post-order)
+//!
+//! The algorithm maintains three node states:
+//!
+//! - **Unvisited**: Node hasn't been processed yet
+//! - **Temporarily visited**: Node is in current recursion stack (for cycle detection)
+//! - **Permanently visited**: Node has been fully processed
+//!
+//! Cycle detection works by checking if a node is "temporarily visited":
+//! if we encounter a node that's already in the current DFS path,
+//! we've found a circular dependency.
+//!
+//! ### Time Complexity
+//!
+//! - **Graph construction**: O(V + E) where V = bundles, E = dependencies
+//! - **Topological sort**: O(V + E) for DFS traversal
+//! - **Cycle detection**: O(V + E) integrated into DFS
+//!
+//! ## Usage Example
+//!
+//! ```rust,no_run
+//! use augent::resolver::graph::DependencyGraph;
+//! use augent::domain::ResolvedBundle;
+//!
+//! // Create a dependency graph
+//! let mut graph = DependencyGraph::new();
+//!
+//! // Add bundles with dependencies
+//! graph.add_bundle(&bundle_c);  // No dependencies
+//! graph.add_bundle(&bundle_b);  // Depends on bundle-c
+//! graph.add_bundle(&bundle_a);  // Depends on bundle-b
+//!
+//! // Compute installation order
+//! let sorted = graph.topological_sort()?;
+//!
+//! // sorted = ["bundle-c", "bundle-b", "bundle-a"]
+//! // Dependencies come before dependents
+//! ```
+//!
+//! ## Error Handling
+//!
+//! The module detects and reports circular dependencies:
+//!
+//! ```rust,ignore
+//! // If bundle-a depends on bundle-b, and bundle-b depends on bundle-a:
+//! let result = graph.topological_sort();
+//! assert!(matches!(result, Err(AugentError::CircularDependency { .. })));
+//! ```
+//!
+//! Circular dependencies are immediately detected and reported with a chain
+//! showing the cycle path.
 
 use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};

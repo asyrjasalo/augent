@@ -7,11 +7,11 @@
 ## DEVELOPMENT COMMANDS
 
 ```bash
-mise check          # Run all checks (lint + test + hooks)
+mise check          # Run all checks (format + lint + test)
+mise fmt            # Format code (cargo fmt)
 mise lint           # Clippy with strict warnings (-D warnings)
 mise test           # Cargo test (unit + integration)
 mise hooks          # Pre-commit hooks
-cargo fmt --all     # Format code
 
 # Run specific tests: cargo test <name>, --test <file>, --lib (unit), --test '*' (integ)
 # Building: cargo build --release, cross build --release (ARM64)
@@ -29,10 +29,7 @@ use crate::cli::InstallArgs;          // internal crate
 use crate::error::{AugentError, Result};
 ```
 
-**Rules:**
-
-- Group: std → external crates → internal (use `crate::`)
-- Full paths only (`crate::module::item`, not glob imports)
+**Rules:** Group std → external crates → internal (use `crate::`); Full paths only, no glob imports
 
 ### Naming Conventions
 
@@ -45,10 +42,9 @@ use crate::error::{AugentError, Result};
 
 **File naming:** `mod.rs` for dirs, `impl.rs` for large impls
 
-### Types & Formatting
+### Types & Error Handling
 
 ```rust
-/// Represents workspace
 #[derive(Debug)]
 pub struct Workspace { pub root: PathBuf }
 
@@ -59,15 +55,9 @@ pub enum AugentError {
 }
 
 pub type Result<T> = miette::Result<T, AugentError>;
-```
 
-**Rules:** `#[allow(dead_code)]` for unused fields, `#[derive(Debug)]` on public types
-
-### Error Handling
-
-```rust
 fn do_work() -> Result<()> {
-    let workspace = Workspace::open(&path)?;  // ? operator
+    let workspace = Workspace::open(&path)?;
     std::fs::write(&file, content).map_err(|e| AugentError::IoError {
         message: format!("Failed: {}", e),
     })?;
@@ -75,64 +65,42 @@ fn do_work() -> Result<()> {
 }
 ```
 
-**Rules:** Use `Result<T>` alias, `?` for propagation, `.map_err()` for context, `From` impls for std errors
+**Rules:** `#[allow(dead_code)]` for unused fields, `#[derive(Debug)]` on public types
 
 ### Testing
 
-**Unit tests** (in `src/`):
-
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_something() { assert!(some_function().is_ok()); }
-}
-```
-
-**Integration tests** (in `tests/`):
-
-```rust
-use common::TestWorkspace;
-#[test]
-fn test_install_command() {
-    let workspace = TestWorkspace::new();
-    common::augent_cmd_for_workspace(&workspace.path)
-        .arg("install").arg("./bundle").assert().success();
-}
-```
-
-**Rules:** Unit: `#[cfg(test)] mod tests` in file; Integration: separate files with `assert_cmd`; Use `TestWorkspace` for isolation; `serial_test` for shared state
+**Unit tests** (`src/`): `#[cfg(test)] mod tests` in file
+**Integration tests** (`tests/`): Separate files with `assert_cmd` and `TestWorkspace` for isolation; `serial_test` for shared state
 
 ## PROJECT STRUCTURE
 
 ```text
 augent/
 ├── src/
-│   ├── operations/    # High-level workflows (install, list, show, uninstall)
-│   ├── installer/       # File installation with submodules
-│   ├── resolver/        # Dependency resolution (graph, topology)
-│   ├── cache/           # Bundle storage and lockfile management
-│   ├── config/          # Configuration (bundle, lockfile, index, marketplace)
-│   ├── platform/         # Platform detection (17 built-in platforms)
-│   ├── workspace/        # Workspace management and config
-│   ├── commands/         # CLI command wrappers (~100 lines each)
-│   ├── domain/          # Pure domain objects (no external deps)
-│   ├── ui/              # Progress reporting (interactive/silent)
-│   ├── git/             # Git operations (clone, checkout, resolve)
-│   ├── common/           # Shared utilities (strings, fs, display, config)
-│   ├── source/           # Bundle source parsing (Git/Dir)
-│   ├── universal/         # Universal frontmatter parsing
-│   ├── transaction/      # Atomic operations with rollback
-│   ├── cli.rs           # Clap derive CLI arguments
-│   ├── error.rs         # Centralized AugentError enum
-│   └── main.rs         # Binary entry point (no lib.rs)
-├── tests/               # Integration tests with fixtures
-│   ├── common/          # Test utilities (TestWorkspace, fixtures)
-│   └── test_*.rs       # Integration test files
-├── docs/                # Documentation (implementation specs, ADRs)
-├── Cargo.toml          # Edition 2024, Rust 1.85 minimum
-└── mise.toml            # Development task definitions
+│   ├── operations/  # High-level workflows (install, list, show, uninstall)
+│   ├── installer/    # File installation with submodules
+│   ├── resolver/     # Dependency resolution (graph, topology)
+│   ├── cache/        # Bundle storage and lockfile management
+│   ├── config/       # Configuration (bundle, lockfile, index, marketplace)
+│   ├── platform/     # Platform detection (17 built-in platforms)
+│   ├── workspace/    # Workspace management and config
+│   ├── commands/     # CLI command wrappers (~100 lines each)
+│   ├── domain/       # Pure domain objects (no external deps)
+│   ├── ui/           # Progress reporting (interactive/silent)
+│   ├── git/          # Git operations (clone, checkout, resolve)
+│   ├── common/       # Shared utilities (strings, fs, display, config)
+│   ├── source/       # Bundle source parsing (Git/Dir)
+│   ├── universal/     # Universal frontmatter parsing
+│   ├── transaction/  # Atomic operations with rollback
+│   ├── cli.rs        # Clap derive CLI arguments
+│   ├── error.rs      # Centralized AugentError enum
+│   └── main.rs      # Binary entry point (no lib.rs)
+├── tests/            # Integration tests with fixtures
+│   ├── common/       # Test utilities (TestWorkspace, fixtures)
+│   └── test_*.rs    # Integration test files
+├── docs/             # Documentation (implementation specs, ADRs)
+├── Cargo.toml        # Edition 2024, Rust 1.85 minimum
+└── mise.toml         # Development task definitions
 ```
 
 ## ANTI-PATTERNS

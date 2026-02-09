@@ -1,9 +1,131 @@
 //! Topological sorting for bundle dependency resolution
 //!
-//! This module provides:
-//! - Topological sort using DFS
-//! - Dependency graph construction from resolved bundles
-//! - Installation order determination
+//! This module provides topological sort implementation using depth-first search (DFS)
+//! to determine the correct installation order for bundles with dependencies.
+//!
+//! ## Algorithm Overview
+//!
+//! Topological sorting orders vertices in a directed acyclic graph (DAG) such that
+//! for every directed edge (u → v), vertex u comes before vertex v in the ordering.
+//!
+//! In the context of bundle dependencies:
+//! - **Vertices**: Bundles (identified by name)
+//! - **Edges**: Dependency relationships (dependent → dependency)
+//! - **Goal**: Order bundles so dependencies are installed before dependents
+//!
+//! ```text
+//! Example dependency graph:
+//!
+//!     bundle-a ─────► bundle-b ─────► bundle-c
+//!         │               │
+//!         └─────► bundle-d
+//!
+//! Topological order: [bundle-c, bundle-b, bundle-d, bundle-a]
+//!                  ^^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^
+//!                  deps       first      then       last
+//!                  first
+//! ```
+//!
+//! In this example:
+//! - `bundle-c` has no dependencies → installed first
+//! - `bundle-b` depends on `bundle-c` → installed second
+//! - `bundle-d` depends on `bundle-b` → installed third
+//! - `bundle-a` depends on `bundle-b` and `bundle-d` → installed last
+//!
+//! ## Implementation Details
+//!
+//! The algorithm uses DFS with three-color marking:
+//!
+//! 1. **WHITE** (unvisited): Node hasn't been processed
+//! 2. **GRAY** (temporarily visited): Node is in current recursion stack
+//! 3. **BLACK** (permanently visited): Node has been fully processed
+//!
+//! ### DFS Traversal
+//!
+//! ```text
+//! DFS(bundle):
+//!     if bundle is BLACK:
+//!         return  // Already processed, skip
+//!
+//!     if bundle is GRAY:
+//!         error: Circular dependency detected!
+//!
+//!     Mark bundle as GRAY
+//!
+//!     for each dependency of bundle:
+//!         DFS(dependency)
+//!
+//!     Mark bundle as BLACK
+//!     Add bundle to result (post-order)
+//! ```
+//!
+//! The post-order means we add bundles to result after visiting all dependencies,
+//! which naturally produces the correct installation order.
+//!
+//! ### Cycle Detection
+//!
+//! Cycles are detected by checking if a node is already GRAY (in current path):
+//!
+//! ```text
+//! Cycle example:
+//!
+//!     bundle-a ─────► bundle-b
+//!         ▲               │
+//!         └───────────────┘
+//!
+//! DFS traversal:
+//! 1. Visit bundle-a (mark GRAY)
+//! 2. Visit bundle-b (mark GRAY)
+//! 3. Try to visit bundle-a again
+//! 4. bundle-a is already GRAY → Cycle detected!
+//! ```
+//!
+//! ## Dependency Validation
+//!
+//! Before sorting, the module validates that all referenced dependencies exist:
+//!
+//! ```rust,ignore
+//! // If bundle-a depends on "missing-bundle":
+//! let result = topological_sort(&resolved, &order);
+//! // Returns error: "Dependency 'missing-bundle' not found in resolved bundles"
+//! ```
+//!
+//! ## Preservation of Order
+//!
+//! The algorithm preserves two types of order:
+//!
+//! 1. **Dependency order**: Dependencies always come before dependents (required)
+//! 2. **Source order**: For independent bundles, preserve user's resolution order
+//!
+//! ```text
+//! User specifies: ["bundle-x", "bundle-y"]
+//! Neither has dependencies
+//!
+//! Result order: ["bundle-x", "bundle-y"]
+//!                 ^^^^^^^^^  ^^^^^^^^^
+//!                 preserved (alphabetical fallback)
+//! ```
+//!
+//! ## Usage Example
+//!
+//! ```rust,no_run
+//! use augent::resolver::topology::topological_sort;
+//! use std::collections::HashMap;
+//!
+//! let mut resolved = HashMap::new();
+//! resolved.insert("bundle-a".to_string(), bundle_a);
+//! resolved.insert("bundle-b".to_string(), bundle_b);
+//! resolved.insert("bundle-c".to_string(), bundle_c);
+//!
+//! let resolution_order = vec!["bundle-a".to_string()];
+//!
+//! let sorted = topological_sort(&resolved, &resolution_order)?;
+//!
+//! // sorted contains bundles in correct installation order
+//! for bundle in sorted {
+//!     println!("Installing: {}", bundle.name);
+//! }
+//! ```
 
 use crate::domain::ResolvedBundle;
 use crate::error::{AugentError, Result};

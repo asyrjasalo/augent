@@ -1,20 +1,127 @@
 //! Bundle caching system for Augent
 //!
-//! This module handles caching of git bundles to avoid re-cloning on every install.
+//! This module provides a SHA-based caching mechanism for git bundles to avoid
+//! re-cloning repositories on every install. The cache ensures reproducibility
+//! by storing bundles at exact commit SHAs.
 //!
 //! ## Cache Structure
 //!
+//! The cache is organized by repository and SHA:
+//!
 //! ```text
 //! AUGENT_CACHE_DIR/bundles/
-//! └── <repo_key>/            (path-safe: @author/repo -> author-repo, one per repo)
-//!     └── <sha>/
-//!         ├── repository/    (shallow clone, full repo)
-//!         └── resources/     (full repo content without .git; sub-bundles under subdirs)
+//! └── <repo_key>/            # Path-safe repo name: @author/repo -> author-repo
+//!     └── <sha>/              # Exact commit SHA (one per repo+sha, not per bundle)
+//!         ├── repository/        # Shallow clone, full git repository
+//!         └── resources/         # Repo content without .git/ (for file access)
 //! ```
 //!
-//! The cache key is composed of:
-//! - Repo name from URL (e.g. @author/repo) so one entry per repo+sha, not per sub-bundle
-//! - Git SHA: exact commit SHA for reproducibility
+//! ### Cache Key Composition
+//!
+//! - **Repository key**: Derived from the repository name/URL, sanitized for filesystem safety
+//!   - `@author/repo` → `author-repo`
+//!   - `github:author/repo` → `author-repo`
+//!   - `https://github.com/author/repo.git` → `author-repo`
+//! - **SHA**: Exact 40-character commit SHA for reproducibility
+//!
+//! This design means:
+//! - One cache entry per repository+SHA combination
+//! - Multiple bundles from the same repository share the same cache entry
+//! - Sub-bundles are located under subdirectories within `resources/`
+//!
+//! ## Operations
+//!
+//! ### Caching Bundles
+//!
+//! ```rust,no_run
+//! use augent::cache::ensure_bundle_cached;
+//!
+//! // Cache a git bundle at a specific SHA
+//! let cache_path = ensure_bundle_cached(
+//!     "https://github.com/author/repo.git",
+//!     "abc123def456...",
+//!     "/workspace/path"
+//! )?;
+//! ```
+//!
+//! The cache operation:
+//! 1. Checks if bundle is already cached at the given SHA
+//! 2. If not, performs shallow clone and checkout to the SHA
+//! 3. Stores the full repository in `repository/` directory
+//! 4. Exports repository content (without .git/) to `resources/` directory
+//! 5. Returns the cache path for later use
+//!
+//! ### Cache Lookup
+//!
+//! ```rust,no_run
+//! use augent::cache::list_cached_entries_for_url_sha;
+//!
+//! // Find all cached bundles for a specific URL and SHA
+//! let entries = list_cached_entries_for_url_sha(
+//!     "https://github.com/author/repo.git",
+//!     "abc123def456..."
+//! )?;
+//! ```
+//!
+//! ### Cache Management
+//!
+//! ```rust,no_run
+//! use augent::cache::{cache_stats, clear_cache, remove_cached_bundle};
+//!
+//! // Get cache statistics
+//! let stats = cache_stats()?;
+//! println!("Cache size: {} bytes", stats.total_size);
+//!
+//! // List all cached bundles
+//! let bundles = list_cached_bundles()?;
+//!
+//! // Remove a specific bundle from cache
+//! remove_cached_bundle("@author/repo")?;
+//!
+//! // Clear entire cache
+//! clear_cache()?;
+//! ```
+//!
+//! ## Path Safety
+//!
+//! Cache keys are sanitized to be filesystem-safe across all platforms:
+//!
+//! - Replaces `@`, `/`, `:`, `\`, and other special characters with `-`
+//! - Ensures Windows path compatibility
+//! - Handles edge cases like file:// URLs on Windows
+//!
+//! ```rust
+//! # use augent::cache::bundle_name_to_cache_key;
+//! assert_eq!(bundle_name_to_cache_key("@author/repo"), "author-repo");
+//! assert_eq!(bundle_name_to_cache_key("@org/sub/repo"), "org-sub-repo");
+//! assert_eq!(bundle_name_to_cache_key("nested-repo:packages/pkg-a"), "nested-repo-packages-pkg-a");
+//! ```
+//!
+//! ## Reproducibility
+//!
+//! The cache is SHA-based to ensure exact reproducibility:
+//!
+//! - Every bundle is cached at a specific commit SHA
+//! - The same SHA always produces the same bundle contents
+//! - Lockfiles reference exact SHAs to pin bundle versions
+//! - Cache invalidation only occurs when SHA changes
+//!
+//! This design aligns with Augent's reproducibility goals: teams can
+//! share exact bundle versions via lockfiles, and the cache ensures
+//! consistent behavior across installations.
+//!
+//! ## Module Organization
+//!
+//! The cache module is organized into specialized submodules:
+//!
+//! - **bundle_name**: Bundle name derivation from repo URLs
+//! - **cache_entry**: Single cache entry operations
+//! - **clone**: Git cloning and checkout operations
+//! - **index**: Cache index management for workspace tracking
+//! - **lookup**: Cache lookup and validation
+//! - **paths**: Path utilities and cache structure constants
+//! - **populate**: High-level "ensure cached" operations
+//! - **stats**: Cache statistics and management commands
 
 pub mod bundle_name;
 pub mod cache_entry;

@@ -1,4 +1,135 @@
 //! Merge strategies for combining resource files
+//!
+//! This module provides configurable merge strategies for handling conflicts when
+//! multiple bundles attempt to install to the same file.
+//!
+//! ## Merge Strategies
+//!
+//! Augent supports four merge strategies, each designed for different file types:
+//!
+//! ### Replace (Default)
+//!
+//! Completely replaces the existing file with new content. Used for:
+//! - Most resource files (default behavior)
+//! - Files where bundles should not be combined
+//! - Configuration files where last write wins
+//!
+//! ```text
+//! Existing: "old content"
+//! New:      "new content"
+//! Result:    "new content"
+//! ```
+//!
+//! ### Shallow
+//!
+//! Merges only top-level JSON keys. New values override existing values,
+//! but nested objects are replaced entirely (not merged recursively).
+//!
+//! ```json
+//! Existing: {"a": 1, "b": {"x": 1, "y": 2}}
+//! New:      {"b": {"y": 3, "z": 4}, "c": 3}
+//! Result:    {"a": 1, "b": {"y": 3, "z": 4}, "c": 3}
+//!                                         ^^^^^^^^
+//!                                   Entire "b" object replaced
+//! ```
+//!
+//! Use shallow merge when:
+//! - You want top-level keys to be combined
+//! - But nested objects should be cleanly replaced
+//! - Avoiding deep merge complexity
+//!
+//! ### Deep
+//!
+//! Recursively merges nested JSON objects. New values override existing values
+//! at the same path, but deeply nested objects are merged.
+//!
+//! ```json
+//! Existing: {"a": 1, "b": {"x": 1, "y": 2}}
+//! New:      {"b": {"y": 3, "z": 4}, "c": 3}
+//! Result:    {"a": 1, "b": {"x": 1, "y": 3, "z": 4}, "c": 3}
+//!                                         ^^^^^^^^^^^^^^^^^^^^
+//!                                   Deep merge: preserves "x", updates "y", adds "z"
+//! ```
+//!
+//! Use deep merge when:
+//! - Configuration files need incremental updates
+//! - You want to preserve nested values not present in new content
+//! - Combining configurations from multiple bundles
+//!
+//! ### Composite
+//!
+//! Appends new content with a clear separator. Designed for text files
+//! like AGENTS.md that combine documentation from multiple bundles.
+//!
+//! ```text
+//! Existing: "# Bundle A\nContent from bundle A"
+//! New:      "# Bundle B\nContent from bundle B"
+//!
+//! Result:
+//! # Bundle A
+//! Content from bundle A
+//!
+//! <!-- Augent: Additional content below -->
+//!
+//! # Bundle B
+//! Content from bundle B
+//! ```
+//!
+//! Use composite merge when:
+//! - Combining markdown documentation files
+//! - Preserving all content is important
+//! - A clear visual separator is desired
+//!
+//! ## Array Handling
+//!
+//! Both shallow and deep merge strategies handle arrays differently:
+//!
+//! - **Shallow merge**: Arrays are replaced entirely (new array wins)
+//! - **Deep merge**: Arrays are deduplicated and merged (no duplicates)
+//!
+//! ```json
+//! // Shallow merge
+//! Existing: {"items": [1, 2, 3]}
+//! New:      {"items": [3, 4, 5]}
+//! Result:    {"items": [3, 4, 5]}  // New array replaces old
+//!
+//! // Deep merge
+//! Existing: {"items": [1, 2, 3]}
+//! New:      {"items": [3, 4, 5]}
+//! Result:    {"items": [1, 2, 3, 4, 5]}  // Deduplicated and merged
+//! ```
+//!
+//! ## Usage Example
+//!
+//! ```rust,no_run
+//! use augent::platform::MergeStrategy;
+//!
+//! let existing = r#"{"name": "old"}"#;
+//! let new_content = r#"{"name": "new", "age": 30}"#;
+//!
+//! // Shallow merge - combines top-level keys
+//! let result = MergeStrategy::Shallow.merge_strings(existing, new_content)?;
+//! // result = {"name": "new", "age": 30}
+//!
+//! // Deep merge - recursively combines nested objects
+//! let result = MergeStrategy::Deep.merge_strings(existing, new_content)?;
+//! // result = {"name": "new", "age": 30}
+//!
+//! // Replace - completely overwrites
+//! let result = MergeStrategy::Replace.merge_strings(existing, new_content)?;
+//! // result = {"name": "new", "age": 30}
+//! ```
+//!
+//! ## Error Handling
+//!
+//! The merge strategies require valid JSON for Shallow and Deep merges:
+//!
+//! ```rust,ignore
+//! let result = MergeStrategy::Deep.merge_strings("not json", "{}");
+//! assert!(matches!(result, Err(AugentError::ConfigParseFailed { .. })));
+//! ```
+//!
+//! Replace and Composite strategies work with any string content.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -9,7 +140,7 @@ use crate::error::{AugentError, Result};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MergeStrategy {
-    /// Replace the entire file (default for most resources)
+    /// Replace entire file (default for most resources)
     #[default]
     Replace,
     /// Merge top-level keys only

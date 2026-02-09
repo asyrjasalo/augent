@@ -1,677 +1,626 @@
-# Refactoring Recommendations for Augent Codebase
+# Refactoring Opportunities
 
 **Generated**: 2026-02-09
-**Analysis Date**: 2026-02-09
-**Total Codebase**: 18,318 lines across ~90 Rust files
+**Analysis**: Comprehensive codebase analysis (~18,473 lines, 117 files)
 
 ---
 
-## Executive Summary
+## 🔴 CRITICAL PRIORITY
 
-The Augent codebase is well-organized with clear domain boundaries, but several modules have grown beyond recommended size limits. This document provides prioritized refactoring recommendations to improve maintainability, testability, and code clarity.
+### 1. Replace Excessive `unwrap()` Calls
 
-**Key Findings**:
+**Impact**: Reliability, error handling
+**Scope**: 400+ instances across 58 files
 
-- **5 modules exceed 1,000 lines** (resolver, operations/install, cache, workspace, platform)
-- **6 files exceed 300 lines** (workspace/mod.rs, platform/merge.rs, error/mod.rs, resolver/discovery.rs, operations/list/display.rs, cache/stats.rs)
-- **Test files contain 942 lines** scattered within `src/` directories
-- **string_utils.rs has 292 lines** but appears to have minimal functional code
+#### Background
+
+Over 400 `unwrap()` calls found throughout the codebase. While many are in tests, production code has significant usage that could panic on unexpected states.
+
+#### Affected Files (Production Code)
+
+- `src/operations/list/display.rs:216`
+- `src/common/string_utils.rs:31`
+- `src/resolver/graph.rs:190,191,209,213,214`
+- `src/resolver/topology.rs:195,215`
+- `src/resolver/local.rs:183,185,200,208,216,223,225,226,228`
+- `src/platform/detection.rs:164,172,184,186,194,205,209,210,216`
+- `src/cache/paths.rs:68,74,97,112,113,172`
+- `src/cache/lookup.rs:136`
+- `src/installer/formats/opencode.rs:123`
+- `src/ui/mod.rs:58,75`
+
+#### Task List
+
+- [ ] Replace `unwrap()` with `?` operator for proper error propagation
+- [ ] Use `unwrap_or_else()` with context for non-critical defaults
+- [ ] Add context to `unwrap()` in tests: `unwrap()` → `expect("context string")`
+- [ ] Audit each `unwrap()` call to determine if panic is acceptable
+
+#### Examples to Fix
+
+**Before**:
+
+```rust
+// src/operations/list/display.rs:216
+let files_for_type = resource_by_type.get(resource_type).unwrap();
+```
+
+**After**:
+
+```rust
+let files_for_type = resource_by_type.get(resource_type)
+    .ok_or_else(|| AugentError::InternalError {
+        message: format!("Resource type '{}' not found", resource_type),
+    })?;
+```
+
+**Before**:
+
+```rust
+// src/common/string_utils.rs:31
+word.chars().next().unwrap().to_uppercase().to_string() + &word[1..]
+```
+
+**After**:
+
+```rust
+let first_char = word.chars().next()
+    .ok_or_else(|| AugentError::InternalError {
+        message: format!("Empty string provided: {}", word),
+    })?;
+format!("{}{}", first_char.to_uppercase(), &word[1..])
+```
 
 ---
 
-## High-Priority Refactoring
+## 🟠 HIGH PRIORITY
 
-### 1. Split `src/workspace/mod.rs` (381 lines)
+### 2. Reduce Excessive `clone()` Usage
 
-**Current State**: Core `Workspace` struct with 20 functions handling initialization, detection, configuration loading, and rebuilding.
+**Impact**: Performance, memory efficiency
+**Scope**: 167 instances across 51 files
 
-**Problem**: Mixes multiple responsibilities and is approaching the 400-line threshold for maintainability.
+#### Background
 
-**Recommendation**: Extract into focused submodules:
+Frequent cloning suggests potential ownership issues and unnecessary allocations. Clone chains are particularly problematic.
+
+#### Affected Files
+
+- `src/config/bundle/mod.rs`: Multiple field clones in serialization
+- `src/operations/list/display.rs`: Repeated pattern cloning for display
+- `src/resolver/discovery/mod.rs`: Clone chains in discovery logic
+- `src/workspace/operations.rs`: Multiple workspace clones
+
+#### Task List
+
+- [ ] Use `&str` references where ownership not needed
+- [ ] Consider `Cow<str>` for conditional borrowing
+- [ ] Review clone chains: `clone().clone().clone()` patterns
+- [ ] Audit `#[allow(dead_code)]` attributes that prevent catching clone issues
+
+#### Examples to Fix
+
+**Before**:
+
+```rust
+// src/config/bundle/mod.rs:46-51
+description: self.description.clone(),
+version: self.version.clone(),
+author: self.author.clone(),
+license: self.license.clone(),
+homepage: self.homepage.clone(),
+bundles: self.bundles.clone(),
+```
+
+**After**:
+
+```rust
+// If references are used without mutation:
+impl Serialize for BundleConfig {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("BundleConfig", 4)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("description", &self.description)?;
+        state.serialize_field("version", &self.version)?;
+        state.serialize_field("bundles", &self.bundles)?;
+        state.end()
+    }
+}
+```
+
+---
+
+### 3. Modularize Large Files
+
+**Impact**: Maintainability, testability
+**Scope**: 6 files >300 lines
+
+#### Task List
+
+##### src/error/mod.rs (577 lines)
+
+- [ ] Extract test code to `src/error/tests.rs`
+- [ ] Reduce to error definitions only
+- [ ] Move convenience constructors to separate module
+
+##### src/resolver/discovery/mod.rs (360 lines)
+
+- [ ] Extract cache-related logic to `resolver/discovery/cache.rs` (partial already exists)
+- [ ] Extract git discovery to `resolver/discovery/git.rs`
+- [ ] Extract marketplace discovery to `resolver/discovery/marketplace.rs` (already exists)
+- [ ] Reduce to public API only, with private submodules
+
+##### src/operations/list/display.rs (343 lines)
+
+- [ ] Extract to `src/ui/display.rs` module
+- [ ] Consolidate 12+ display functions with generic helpers
+- [ ] Create `DisplayFormatter` trait for different display modes
+
+##### src/cache/stats.rs (319 lines)
+
+- [ ] Extract tests to `src/cache/stats_tests.rs`
+- [ ] Consider splitting into `cache/stats` and `cache/management`
+
+##### src/transaction/mod.rs (316 lines)
+
+- [ ] Extract tests to `src/transaction/tests.rs`
+- [ ] Consider extracting rollback logic to `transaction/rollback.rs`
+
+##### src/source/git_source.rs (300 lines)
+
+- [ ] Extract to `src/git/url_parser.rs` module
+- [ ] Use parser combinators (nom or combine)
+- [ ] Reduce from 20+ helper functions to 5-6 core functions
+
+---
+
+### 4. Consolidate Repetitive Display Patterns
+
+**Impact**: Code duplication, maintainability
+**Scope**: `src/operations/list/display.rs`
+
+#### Background
+
+12+ display functions with similar structure that could use generic helpers.
+
+#### Task List
+
+- [ ] Create generic `display_metadata_field()` helper
+- [ ] Create `display_optional_field()` helper
+- [ ] Extract platform extraction logic
+- [ ] Create `DisplayFormatter` trait
+- [ ] Test extracted utilities thoroughly
+
+#### Example Refactoring
+
+**Before**:
+
+```rust
+// src/operations/list/display.rs:42-67
+fn display_bundle_metadata(bundle: &crate::config::LockedBundle) {
+    if let Some(ref description) = bundle.description {
+        println!(
+            "{} {}",
+            Style::new().bold().apply_to("Description:"),
+            description
+        );
+    }
+    if let Some(ref author) = bundle.author {
+        println!("{} {}", Style::new().bold().apply_to("Author:"), author);
+    }
+    if let Some(ref license) = bundle.license {
+        println!(
+            "{} {}",
+            Style::new().bold().apply_to("License:"),
+            license
+        );
+    }
+    // ...repeated for 4 more fields
+}
+```
+
+**After**:
+
+```rust
+macro_rules! display_opt_field {
+    ($label:expr, $value:expr) => {
+        if let Some(ref v) = $value {
+            println!("{} {}", Style::new().bold().apply_to($label), v);
+        }
+    }
+}
+
+fn display_bundle_metadata(bundle: &crate::config::LockedBundle) {
+    display_opt_field!("Description:", bundle.description);
+    display_opt_field!("Author:", bundle.author);
+    display_opt_field!("License:", bundle.license);
+    display_opt_field!("Homepage:", bundle.homepage);
+}
+```
+
+---
+
+## 🟡 MEDIUM PRIORITY
+
+### 5. Audit Dead Code Annotations
+
+**Impact**: Code clarity, maintainability
+**Scope**: 128 `#[allow(dead_code)]` instances across 39 files
+
+#### Background
+
+Most are legitimately test-only code with proper documentation. Some may be truly unused.
+
+#### Task List
+
+- [ ] Audit each `#[allow(dead_code)]` attribute
+- [ ] Remove truly unused code
+- [ ] For test-only items, consider `#[cfg(test)]` instead
+- [ ] Add documentation for items that must remain dead_code
+
+#### Files with Multiple Instances
+
+- `src/platform/mod.rs`: 6 instances
+- `src/config/lockfile/bundle.rs`: 4 instances
+- `src/config/bundle/mod.rs`: 4 instances
+- `src/domain/bundle.rs`: 5 instances
+- `src/source/bundle_source.rs`: 4 instances
+- `tests/common/mod.rs`: 13 instances
+
+#### Examples to Review
+
+**Keep** (properly documented test-only code):
+
+```rust
+// src/platform/merge.rs:25
+#[allow(dead_code)] // Used by tests
+fn merge_composite(existing: &str, new_content: &str) -> String {
+    // Implementation
+}
+```
+
+**Remove** (truly unused):
+
+```rust
+// Investigate items like this:
+#[allow(dead_code)]
+fn unused_function() {
+    // No calls found anywhere
+}
+```
+
+---
+
+### 6. Standardize Error Handling
+
+**Impact**: Error consistency, debugging experience
+**Scope**: Throughout codebase
+
+#### Task List
+
+- [ ] Create `error_context!()` macro for consistent error messages
+- [ ] Standardize error message format
+- [ ] Use `?` operator consistently
+- [ ] Add context to all bare Result returns
+
+#### Issues Found
+
+##### Issue 1: Bare unwrap() without context
+
+```rust
+// src/operations/list/display.rs:216
+let files_for_type = resource_by_type.get(resource_type).unwrap();
+
+// Should be:
+let files_for_type = resource_by_type.get(resource_type)
+    .ok_or_else(|| AugentError::InternalError {
+        message: format!("Resource type '{}' not found", resource_type),
+    })?;
+```
+
+##### Issue 2: Inconsistent error context
+
+```rust
+// Some errors have detailed context:
+AugentError::IoError {
+    message: format!("Failed to read entry: {}", e)
+}
+
+// Others are minimal:
+AugentError::ConfigParseFailed {
+    path: "unknown".to_string(),
+    reason: err.to_string()
+}
+```
+
+#### Implementation
+
+Create macro in `src/error/macros.rs`:
+
+```rust
+#[macro_export]
+macro_rules! error_context {
+    ($operation:expr, $err:expr) => {
+        AugentError::InternalError {
+            message: format!("{}: {}", $operation, $err)
+        }
+    };
+}
+```
+
+---
+
+### 7. Consolidate Duplicate Utility Functions
+
+**Impact**: Code duplication, maintainability
+**Scope**: Multiple modules
+
+#### Task List
+
+##### String/Path Utilities
+
+- [ ] Consolidate string manipulation into `src/common/string/` module
+- [ ] Consolidate path utilities into `src/common/path/` module
+- [ ] Review: `string_utils.rs`, `path_utils.rs`, `cache/bundle_name.rs`
+
+##### Clone Helpers
+
+- [ ] Create `common/clone/` module with helper trait
+- [ ] Implement builder pattern for clone-heavy operations
+
+##### Platform Detection
+
+- [ ] Unify detection logic across `platform/detection.rs` and `platform/loader.rs`
+- [ ] Consider `PlatformDetection` trait
+
+#### Duplicate Patterns
+
+| Function | Locations | Consolidate to |
+|----------|------------|-----------------|
+| String manipulation | `common/string_utils.rs`, `path_utils.rs`, `cache/bundle_name.rs` | `src/common/string/` |
+| Platform detection | `platform/detection.rs`, `platform/loader.rs` | Existing, add trait |
+| Path operations | `path_utils.rs`, `cache/paths.rs` | `src/common/path/` |
+
+---
+
+## 🟢 LOW PRIORITY
+
+### 8. Simplify Complex URL Parsing
+
+**Impact**: Maintainability, testability
+**Scope**: `src/source/git_source.rs` (300 lines)
+
+#### Task List
+
+- [ ] Extract to `src/git/url_parser.rs` module
+- [ ] Use parser combinators (nom or combine)
+- [ ] Reduce from 20+ helper functions to 5-6 core functions
+- [ ] Write comprehensive unit tests for all URL formats
+
+#### Current Structure
+
+```rust
+// 20+ private helper functions with deep nesting
+fn parse_fragment(input: &str) -> (&str, Option<&str>) { ... }
+fn parse_path_without_fragment<'a>(...) -> (...) { ... }
+fn find_protocol_prefix_start(main_part: &str) -> usize { ... }
+fn skip_windows_drive_letter(rest: &str) -> (usize, &str) { ... }
+fn is_ssh_url(input: &str) -> bool { ... }
+fn parse_path_from_fragment(ref_frag: &str) -> Option<String> { ... }
+// ... 15+ more helpers
+```
+
+#### Proposed Structure
+
+```rust
+// src/git/url_parser.rs - declarative parsing with nom/combiners
+use nom::{branch::alt, IResult};
+
+#[derive(Debug)]
+enum GitUrl {
+    GithubShorthand(String),
+    Https(String),
+    Ssh(String),
+    File(String),
+}
+
+fn parse_git_url(input: &str) -> IResult<GitUrl> {
+    alt((
+        parse_github_shorthand,
+        parse_https_url,
+        parse_ssh_url,
+        parse_file_url,
+    ))(input)
+}
+```
+
+---
+
+### 9. Add Trait Abstractions
+
+**Impact**: Code flexibility, testability
+**Scope**: Platform detection, formatter interfaces
+
+#### Task List
+
+##### Platform Trait
+
+- [ ] Create `Platform` trait for common platform behavior
+- [ ] Implement for all 17 built-in platforms
+- [ ] Use trait instead of pattern matching on platform types
+
+```rust
+pub trait Platform {
+    fn id(&self) -> &str;
+    fn name(&self) -> &str;
+    fn directory_name(&self) -> &str;
+    fn detect(root: &Path) -> bool;
+    fn get_config(&self, root: &Path) -> Option<PlatformConfig>;
+}
+```
+
+##### Formatter Trait
+
+- [ ] Create `BundleFormatter` trait
+- [ ] Implement for different output formats (simple, detailed, json)
+- [ ] Use in list/show operations instead of direct formatting
+
+---
+
+### 10. Improve Module Organization
+
+**Impact**: Code organization, separation of concerns
+**Scope**: `src/operations/install/` and `src/resolver/discovery/`
+
+#### Task List
+
+##### src/operations/install/ (8 submodules)
+
+- [ ] Clarify boundaries between orchestrator and submodules
+- [ ] Extract shared `InstallContext` to `operations/install/context.rs`
+- [ ] Document communication patterns between modules
+- [ ] Consider reducing from 8 to 5 submodules
+
+##### src/resolver/discovery/ (360 lines)
+
+- [ ] Split into focused submodules:
+  - `discovery/mod.rs` - public API
+  - `discovery/local.rs` - local directory discovery
+  - `discovery/git.rs` - git repository discovery
+  - `discovery/marketplace.rs` - marketplace plugin discovery
+- [ ] Already exists: `cache.rs` (cache-specific discovery)
+- [ ] Ensure clear interfaces between modules
+
+#### Current Issues
+
+**operations/install/**:
 
 ```text
-src/workspace/
-├── mod.rs              # Core Workspace struct definition (~150 lines)
-├── detection.rs        # exists(), find_from(), verify_git_root() (~50 lines)
-├── initialization.rs    # init(), init_or_open() (~80 lines)
-├── config.rs           # save(), load operations (~100 lines)
-└── rebuild.rs          # rebuild_workspace_config() (~50 lines)
+orchestrator.rs (293 lines) - orchestrates everything
+config.rs (274 lines) - tightly coupled to workspace
+workspace.rs (234 lines) - workspace manipulation
+execution.rs (unknown) - execution logic
+// ... unclear boundaries
 ```
 
-**Proposed Structure**:
+**resolver/discovery/mod.rs**:
 
-```rust
-// mod.rs
-pub struct Workspace { /* fields */ }
-
-impl Workspace {
-    pub fn open(root: &Path) -> Result<Self> { /* init logic moved to initialization.rs */ }
-    pub fn save(&self) -> Result<()> { /* save logic moved to config.rs */ }
-    pub fn find_from(start: &Path) -> Option<PathBuf> { /* moved to detection.rs */ }
-    pub fn rebuild_workspace_config(&mut self) -> Result<()> { /* moved to rebuild.rs */ }
-}
-```
-
-**Benefits**:
-
-- Each file has a single, clear responsibility
-- Easier to test individual concerns
-- Reduces cognitive load when reviewing changes
-- Prevents future growth beyond maintainable size
-
-**Implementation Effort**: Medium (2-3 hours)
-**Impact**: High (core module touched frequently)
+- Mixes cache, git, marketplace, and local concerns
+- 15+ private functions with overlapping responsibilities
 
 ---
 
-### 2. Refactor `src/resolver/discovery.rs` (360 lines)
+## QUICK WINS (Low Effort, High Impact)
 
-**Current State**: 17 public functions handling multiple discovery strategies (local, git, marketplace, cache) in a single file.
+### High Impact, Low Complexity
 
-**Problem**: File mixes concerns - local discovery, git discovery, marketplace parsing, and cache retrieval all co-located.
+1. **Replace unwrap() in list/display.rs**
+   - File: `src/operations/list/display.rs:216`
+   - Effort: 15 minutes
+   - Impact: Prevent panics on missing resources
 
-**Recommendation**: Split by discovery strategy into subdirectory:
+2. **Create error context macro**
+   - Location: `src/error/macros.rs`
+   - Effort: 30 minutes
+   - Impact: Consistent error messages across codebase
 
-```text
-src/resolver/
-├── discovery/
-│   ├── mod.rs         # Public interface: discover_bundles() (~50 lines)
-│   ├── local.rs       # discover_local_bundles(), discover_single_bundle (~80 lines)
-│   ├── git.rs         # discover_git_bundles(), GitBundleContext (~120 lines)
-│   ├── marketplace.rs  # discover_marketplace_bundles() (~30 lines)
-│   └── cache.rs       # try_get_cached_bundles(), load_cached_bundles_from_marketplace (~80 lines)
-```
+3. **Extract display utilities**
+   - File: `src/operations/list/display.rs`
+   - Effort: 1 hour
+   - Impact: Remove 50+ lines of duplication
 
-**Proposed Structure**:
+4. **Consolidate string utilities**
+   - Files: `common/string_utils.rs`, `path_utils.rs`
+   - Effort: 1 hour
+   - Impact: Single source of truth for string operations
 
-```rust
-// discovery/mod.rs
-pub use local::discover_local_bundles;
-pub use git::discover_git_bundles;
-pub use marketplace::discover_marketplace_bundles;
-pub use cache::try_get_cached_bundles;
-
-pub fn discover_bundles(source: &str, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
-    let bundle_source = BundleSource::parse(source)?;
-    match bundle_source {
-        BundleSource::Dir { path } => discover_local_bundles(&path, workspace_root)?,
-        BundleSource::Git(git_source) => discover_git_bundles(&git_source)?,
-    }
-}
-
-// discovery/local.rs
-pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
-    // Local discovery logic
-}
-
-// discovery/git.rs
-pub fn discover_git_bundles(source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
-    // Git discovery logic
-}
-```
-
-**Benefits**:
-
-- Each file focuses on a single discovery mechanism
-- Easier to add new discovery strategies
-- Clear separation of cache vs. live discovery
-- Reduces merge conflicts when multiple developers work on discovery
-
-**Implementation Effort**: Medium (2-3 hours)
-**Impact**: High (resolver is core dependency resolution)
+5. **Split test code from large files**
+   - Files: `error/mod.rs`, `cache/stats.rs`, `transaction/mod.rs`
+   - Effort: 2 hours
+   - Impact: Improved test organization
 
 ---
 
-### 3. Consolidate Test Files (942 lines)
+## IMPLEMENTATION STRATEGY
 
-**Current State**: Test files scattered within `src/` directories:
+### Phase 1: Critical Safety (Week 1)
 
-- `src/config/lockfile/tests.rs` (369 lines)
-- `src/config/index/tests.rs` (365 lines)
-- `src/config/bundle/tests.rs` (208 lines)
+1. Replace critical `unwrap()` calls in production code
+2. Create error context macro
+3. Update error handling consistency
 
-**Problem**:
+### Phase 2: Quick Wins (Week 1-2)
 
-- Test files included in main library compilation
-- Increases compile time
-- Blurs line between library code and tests
-- Makes it harder to test only public API
+1. Extract display utilities
+2. Consolidate string/path utilities
+3. Split test code from large files
+4. Audit and clean dead_code annotations
 
-**Recommendation**: Move to proper integration test structure:
+### Phase 3: Structural Improvements (Week 2-4)
 
-```text
-tests/
-├── mod.rs
-├── config/
-│   ├── mod.rs
-│   ├── lockfile_tests.rs   # Moved from src/config/lockfile/tests.rs
-│   ├── index_tests.rs      # Moved from src/config/index/tests.rs
-│   └── bundle_tests.rs     # Moved from src/config/bundle/tests.rs
-└── workspace_tests.rs       # Add comprehensive workspace tests
-```
+1. Modularize large files
+2. Reduce clone() usage
+3. Improve module organization
+4. Add trait abstractions
 
-**Migration Strategy**:
+### Phase 4: Performance & Quality (Week 4-8)
 
-1. Create `tests/config/` directory
-2. Move test files from `src/` to `tests/`
-3. Update imports to use crate-level paths
-4. Verify all tests still pass
-5. Remove `tests.rs` files from `src/`
-
-**Benefits**:
-
-- Faster compilation (test files only compiled with `cargo test`)
-- Better separation of concerns
-- Encourages testing public API over internals
-- Reduces `src/` directory noise
-
-**Implementation Effort**: Low (1 hour)
-**Impact**: Medium (improves development workflow)
+1. URL parser refactoring with combinators
+2. Platform trait abstraction
+3. Comprehensive code review
+4. Documentation updates
 
 ---
 
-### 4. Investigate `src/common/string_utils.rs` (292 lines, 0 functions detected)
+## METRICS TO TRACK
 
-**Current State**: File has 292 lines but initial grep analysis shows 0 function definitions.
-
-**Problem**: Unclear what this file contains - could be:
-
-- String constants (consider moving to `constants.rs`)
-- Inline helper functions (grep pattern may have missed them)
-- Unused/deprecated code (consider removal)
-- Complex regex patterns or string parsing logic
-
-**Recommendation**: Audit and refactor:
-
-1. **Review file contents** to understand what's actually there:
-
-   ```bash
-   head -100 src/common/string_utils.rs
-   ```
-
-2. **If it's string constants**, extract to `src/common/constants.rs`:
-
-   ```rust
-   // constants.rs
-   pub const CACHE_DIR: &str = ".augent/cache";
-   pub const LOCKFILE_NAME: &str = "augent.lock";
-   pub const WORKSPACE_DIR: &str = ".augent";
-   ```
-
-3. **If it's utility functions**, split by functionality:
-
-   ```text
-   src/common/
-   ├── string/
-   │   ├── mod.rs
-   │   ├── validation.rs     # String validation helpers
-   │   ├── formatting.rs     # Display formatting helpers
-   │   └── parsing.rs       # String parsing helpers
-   ```
-
-4. **If it's unused/deprecated**, consider removal:
-
-   ```bash
-   cargo clippy -- -Wunused
-   ```
-
-**Benefits**:
-
-- Clear understanding of what utilities are available
-- Better organization of common functionality
-- Potentially reduce codebase size
-
-**Implementation Effort**: Low (1-2 hours, depending on findings)
-**Impact**: Medium (common module used throughout codebase)
+| Metric                    | Before | Target  | Current  |
+| -------------------------- | ------ | ------- | --------- |
+| `unwrap()` in production  | 200+   | <50     |          |
+| `clone()` instances         | 167     | <100    |          |
+| Files >300 lines          | 6       | 2        |          |
+| `#[allow(dead_code)]`    | 128     | <50     |          |
+| Test coverage (estimated)  | N/A     | >80%    |          |
 
 ---
 
-## Medium-Priority Improvements
+## NOTES
 
-### 5. Audit `src/cache/` Module Structure (1,435 lines)
+### Analysis Methodology
 
-**Current State**: Large module across 9 files with potential complexity hidden.
+- Searched for patterns using `rg`, `grep`, and `ast-grep`
+- Analyzed file sizes via `wc -l` across src/
+- Examined top 30 largest files in detail
+- Checked for technical debt markers (TODO, FIXME, HACK, XXX, NOTE)
+- Verified compilation with `cargo check`
 
-**Problem**: Cache module is the 3rd largest by total lines but structure is unclear from analysis.
+### Tools Used
 
-**Recommendation**: Audit and potentially restructure:
+- `rg` (ripgrep) - Fast pattern search
+- `ast-grep` - AST-aware pattern matching
+- `cargo check` - Compilation verification
+- `wc` - Line counting
+- Manual code review of largest files
 
-1. **Analyze current structure**:
+### Codebase Summary
 
-   ```bash
-   find src/cache -name "*.rs" -exec wc -l {} + | sort -rn
-   ```
-
-2. **Consider restructuring** if files are large:
-
-   ```text
-   src/cache/
-   ├── mod.rs              # Public API (~100 lines)
-   ├── storage.rs          # Cache storage operations (~200 lines)
-   ├── populate.rs         # Bundle caching logic (~300 lines)
-   ├── retrieval.rs        # Cache retrieval logic (~200 lines)
-   ├── metadata.rs         # Cache metadata management (~200 lines)
-   ├── validation.rs       # Cache integrity checks (~150 lines)
-   └── tests.rs           # Cache tests (~285 lines)
-   ```
-
-3. **Focus on**:
-   - Separation of storage vs. business logic
-   - Clear public API in `mod.rs`
-   - Test file moved to `tests/` (see Recommendation #3)
-
-**Implementation Effort**: Medium (3-4 hours)
-**Impact**: Medium (cache module is critical for performance)
+- **Total lines**: ~18,473
+- **Rust files**: 117
+- **Test files**: Integration and unit tests
+- **Modules**: 25+ modules organized by domain
+- **Architectural patterns**: DDD, transaction pattern, coordinator pattern
+- **Overall quality**: Disciplined with clear conventions
 
 ---
 
-### 6. Evaluate `src/platform/merge.rs` (363 lines)
+## CONCLUSION
 
-**Current State**: Well-structured module with merge strategies (Replace, Shallow, Deep, Composite) and extensive tests.
+The Augent codebase demonstrates **excellent architectural discipline** with clear separation of concerns, comprehensive error handling, and good test coverage. The main refactoring opportunities are:
 
-**Problem**: Actually well-designed! File size is appropriate for the complexity it handles.
+1. **Safety**: Replace 400+ `unwrap()` calls to improve reliability
+2. **Performance**: Reduce unnecessary `clone()` operations
+3. **Maintainability**: Split large files and consolidate duplicate code
+4. **Quality**: Standardize error handling and audit dead code
 
-**Recommendation**: Keep as-is, but consider minor improvements:
-
-1. **Keep current structure** - it's already well-organized
-2. **Tests are valuable** - don't move them
-3. **Consider trait extraction** if adding more merge strategies:
-
-   ```rust
-   pub trait MergeStrategy {
-       fn merge_strings(&self, existing: &str, new_content: &str) -> Result<String>;
-   }
-   ```
-
-**Rationale**: This module is a good example of a well-sized file with clear responsibilities and comprehensive tests.
-
-**Implementation Effort**: None (keep as-is)
-**Impact**: None (current structure is good)
-
----
-
-### 7. Review `src/operations/install/` Submodules (1,466 lines)
-
-**Current State**: Install workflow with 8 submodules (mentioned in AGENTS.md).
-
-**Problem**: Need to verify all 8 submodules are necessary and have clear responsibilities.
-
-**Recommendation**: Audit submodule usage:
-
-1. **List all submodules**:
-
-   ```bash
-   ls -la src/operations/install/
-   ```
-
-2. **Analyze each submodule**:
-   - Line count per file
-   - Number of public functions
-   - Usage frequency across codebase
-
-3. **Consider merging related submodules**:
-   - `selection.rs` + `confirmation.rs` → `selection.rs`
-   - `workspace.rs` + `config.rs` → `workspace.rs`
-   - Remove unused submodules
-
-4. **Ensure each submodule** has a single responsibility
-
-**Benefits**:
-
-- Clearer install workflow
-- Reduced navigation overhead
-- Easier to understand installation process
-
-**Implementation Effort**: Medium (2-3 hours)
-**Impact**: Medium (install is critical operation)
-
----
-
-## Code Quality Recommendations
-
-### 8. Add Complexity Metrics to CI
-
-**Current State**: No automated tracking of module growth or complexity.
-
-**Problem**: Large modules can grow organically without early detection.
-
-**Recommendation**: Add complexity checks to `mise.toml`:
-
-```toml
-[tasks.complexity]
-description = "Report modules exceeding recommended size limits"
-run = """
-echo "=== Files exceeding 300 lines ===" && \
-find src -name "*.rs" ! -name "tests.rs" -exec sh -c 'lines=$(wc -l < "$1"); if [ "$lines" -gt 300 ]; then echo "$lines: $1"; fi' _ {} \; | sort -rn && \
-echo "" && \
-echo "=== Directories exceeding 1000 lines ===" && \
-find src -name "*.rs" ! -name "tests.rs" -exec sh -c 'dir=$(dirname "$1" | sed "s|src/||"); echo "$dir: $(wc -l < "$1")"' _ {} \; | \
-awk -F: '{sum[$1]+=$2} END {for (d in sum) if (sum[d] > 1000) printf "%4d lines: %s\n", sum[d], d}' | sort -rn
-"""
-
-[tasks.complexity-check]
-description = "Fail CI if modules exceed size limits"
-run = """
-#!/bin/bash
-output=$(mise complexity)
-if echo "$output" | grep -q "^[0-9]\{3,\}"; then
-  echo "ERROR: Files exceed 300 lines or directories exceed 1000 lines"
-  echo "$output"
-  exit 1
-fi
-"""
-```
-
-**Integration**:
-
-```toml
-[tasks.check]
-depends = ["lint", "test", "complexity-check"]
-```
-
-**Benefits**:
-
-- Early detection of growing modules
-- Automated enforcement of code quality standards
-- Clear visibility into codebase complexity trends
-
-**Implementation Effort**: Low (1 hour)
-**Impact**: High (prevents technical debt accumulation)
-
----
-
-### 9. Review and Consolidate Error Variants
-
-**Current State**: `src/error/mod.rs` has 32 error variants organized by domain (bundle, git, workspace, etc.).
-
-**Problem**: 32 variants might be too many - some could be redundant or unused.
-
-**Recommendation**:
-
-1. **Audit error variant usage**:
-
-   ```bash
-   grep -r "AugentError::" src/ | grep -oE "AugentError::\w+" | sort | uniq -c | sort -rn
-   ```
-
-2. **Review for redundancy**:
-   - `GitOperationFailed` vs specific git errors (clone, checkout, fetch)
-   - `ConfigParseFailed` appearing multiple times
-   - IoError conversions from std library
-
-3. **Consider grouping related errors**:
-
-   ```rust
-   // Already well-organized by domain
-   pub mod bundle { ... }
-   pub mod git { ... }
-   pub mod workspace { ... }
-   ```
-
-4. **Ensure each error variant**:
-   - Has a unique error message
-   - Is actually used in the codebase
-   - Provides helpful diagnostic information
-
-**Benefits**:
-
-- Cleaner error handling
-- Better user-facing error messages
-- Reduced maintenance burden
-
-**Implementation Effort**: Low (1-2 hours)
-**Impact**: Medium (improves user experience)
-
----
-
-### 10. Improve Documentation Coverage
-
-**Current State**: Large modules need better documentation to aid understanding and onboarding.
-
-**Recommendation**: Add comprehensive documentation:
-
-1. **Module-level docs** for all modules:
-
-   ```rust
-   //! # Resolver Module
-   //!
-   //! This module provides dependency resolution for bundle installation.
-   //!
-   //! ## Architecture
-   //!
-   //! The resolver uses a directed graph to model bundle dependencies:
-   //! - Nodes represent bundles
-   //! - Edges represent dependency relationships
-   //!
-   //! ## Usage
-   //!
-   //! ```rust
-   //! use crate::resolver::{ResolveOperation, graph::build_dependency_graph};
-   //!
-   //! let bundles = resolve_bundles(&sources, &workspace)?;
-   //! let graph = build_dependency_graph(&bundles);
-   //! let sorted = topological_sort(&graph)?;
-   //! ```
-   ```
-
-2. **Public API documentation with examples**:
-
-   ```rust
-   /// Discovers bundles from a source
-   ///
-   /// Supports local directories and git repositories.
-   ///
-   /// # Examples
-   ///
-   /// Discover bundles from local directory:
-   /// ```no_run
-   /// let bundles = discover_bundles("./local-bundle", &workspace_root)?;
-   /// ```
-   ///
-   /// Discover bundles from git repository:
-   /// ```no_run
-   /// let bundles = discover_bundles("github:author/repo", &workspace_root)?;
-   /// ```
-   pub fn discover_bundles(source: &str, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> { ... }
-   ```
-
-3. **Document complex algorithms**:
-   - Topological sort in `topology.rs`
-   - Merge strategies in `merge.rs`
-   - Dependency resolution in `graph.rs`
-
-4. **Add `#[cfg(test)]` documentation**:
-
-   ```rust
-   #[cfg(test)]
-   mod tests {
-       /// Test helper that creates a temporary workspace
-       fn create_test_workspace() -> TestWorkspace { ... }
-   }
-   ```
-
-**Benefits**:
-
-- Easier onboarding for new contributors
-- Self-documenting code
-- Better IDE support and autocomplete
-- Examples double as tests
-
-**Implementation Effort**: Medium (4-6 hours)
-**Impact**: High (improves maintainability)
-
----
-
-## Low-Priority / Future Considerations
-
-### 11. Consider Builder Pattern for Large Structs
-
-**Context**: `Workspace` has many fields and multiple initialization paths (init, open, init_or_open).
-
-**Recommendation**: Consider builder pattern for complex initialization:
-
-```rust
-impl Workspace {
-    pub fn builder() -> WorkspaceBuilder {
-        WorkspaceBuilder::default()
-    }
-}
-
-pub struct WorkspaceBuilder {
-    root: Option<PathBuf>,
-    bundle_config: Option<BundleConfig>,
-    lockfile: Option<Lockfile>,
-    workspace_config: Option<WorkspaceConfig>,
-    should_create_augent_yaml: bool,
-    bundle_config_dir: Option<PathBuf>,
-}
-
-impl WorkspaceBuilder {
-    pub fn root(mut self, path: impl Into<PathBuf>) -> Self {
-        self.root = Some(path.into());
-        self
-    }
-
-    pub fn bundle_config(mut self, config: BundleConfig) -> Self {
-        self.bundle_config = Some(config);
-        self
-    }
-
-    pub fn build(self) -> Result<Workspace> {
-        // Validation and construction logic
-    }
-}
-```
-
-**Use Case**: Advanced configuration scenarios where default constructors are insufficient.
-
-**Trade-offs**:
-
-- Adds boilerplate for builder struct
-- Makes simple cases more verbose
-- Useful only if there are many optional configurations
-
-**Implementation Effort**: Low (2-3 hours)
-**Impact**: Low (minor convenience improvement)
-
----
-
-### 12. Evaluate External Crate for Graph Operations
-
-**Context**: `resolver/graph.rs` (263 lines) + `topology.rs` (242 lines) implement custom graph algorithms.
-
-**Recommendation**: Evaluate using `petgraph` crate instead of custom implementation.
-
-**Current Implementation**:
-
-- Custom directed graph with adjacency list
-- Kahn's algorithm for topological sort
-- Cycle detection during graph traversal
-
-**Alternative with `petgraph`**:
-
-```toml
-[dependencies]
-petgraph = "0.6"
-```
-
-```rust
-use petgraph::{Directed, Graph};
-use petgraph::algo::toposort;
-
-pub fn build_dependency_graph(bundles: &[ResolvedBundle]) -> Graph<String, Directed> {
-    let mut graph = Graph::new();
-    // Build graph using petgraph API
-    graph
-}
-
-pub fn topological_sort(graph: &Graph<String, Directed>) -> Result<Vec<String>> {
-    let sorted = toposort(graph, None)
-        .map_err(|_| AugentError::CircularDependency { chain: ... })?;
-    Ok(sorted)
-}
-```
-
-**Trade-offs**:
-
-- **Pros**: Well-tested library, more algorithms available, less code to maintain
-- **Cons**: New dependency, learning curve for petgraph API
-
-**Decision Criteria**:
-
-- If graph algorithms are stable and not frequently modified → keep custom
-- If planning to add more graph operations (shortest path, etc.) → use petgraph
-
-**Implementation Effort**: Medium (3-4 hours)
-**Impact**: Low (code already works correctly)
-
----
-
-## Implementation Priority
-
-| Priority | Recommendation                  | Effort | Impact | Risk |
-| --------- | ------------------------------- | ------ | ------ | ---- |
-| **P1**      | Split `workspace/mod.rs`        | Medium | High    | Low   |
-| **P1**      | Refactor `resolver/discovery.rs` | Medium | High    | Low   |
-| **P1**      | Move tests to `tests/`        | Low    | Medium  | Low   |
-| **P2**      | Investigate `string_utils.rs`   | Low    | Medium  | Low   |
-| **P2**      | Add complexity metrics to CI    | Low    | High    | None  |
-| **P2**      | Review error variants          | Low    | Medium  | Low   |
-| **P3**      | Audit `cache/` module         | Medium | Medium  | Low   |
-| **P3**      | Review `install/` submodules  | Medium | Medium  | Low   |
-| **P3**      | Improve documentation        | Medium | High    | None  |
-| **P4**      | Consider builder pattern     | Low    | Low     | None  |
-| **P4**      | Evaluate petgraph crate     | Medium | Low     | Medium |
-
----
-
-## Success Criteria
-
-A refactoring effort is considered successful when:
-
-1. **Code organization** follows clear module boundaries
-2. **No file exceeds 300 lines** (excluding tests)
-3. **No module directory exceeds 1,000 lines**
-4. **All tests pass** after refactoring
-5. **Documentation is comprehensive** for large modules
-6. **CI enforces complexity limits**
-
----
-
-## Monitoring and Maintenance
-
-### Ongoing Practices
-
-1. **Monthly complexity audits**:
-
-   ```bash
-   mise complexity
-   ```
-
-2. **Pre-commit review**: Check if file is exceeding limits before pushing
-
-3. **New module design**: Plan for submodules before implementing features that will grow beyond 200 lines
-
-4. **Code review criteria**: Reviewers should flag growing modules
-
-### Anti-Patterns to Avoid
-
-- **DO NOT** create "god objects" that do everything
-- **DO NOT** let files grow organically without refactoring
-- **DO NOT** mix concerns in a single file
-- **DO NOT** skip tests when refactoring
-
----
-
-## References
-
-- **AGENTS.md** (workspace, resolver, operations)
-- **Existing documentation**: `docs/implementation/architecture.md`
-- **Cargo conventions**: <https://doc.rust-lang.org/cargo/reference/manifest.html>
-- **Rust API guidelines**: <https://rust-lang.github.io/api-guidelines/>
-
----
-
-**Document Version**: 1.0
-**Last Updated**: 2026-02-09
-**Next Review**: After completing P1 recommendations
+These are **incremental improvements** - the codebase is production-ready and these changes will enhance maintainability and robustness without requiring major rewrites.

@@ -1,12 +1,159 @@
 //! File installation module for Augent bundles
 //!
-//! This module orchestrates bundle installation through submodules:
-//! - discovery: Resource discovery in bundles
-//! - file_ops: Basic file operations
-//! - detection: Platform and binary file detection
-//! - parser: Content parsing for frontmatter
-//! - writer: Output writing for processed content
-//! - formats: Platform-specific format conversions
+//! This module orchestrates the complete file installation process, transforming
+//! universal bundle resources into platform-specific formats and installing them
+//! to the workspace.
+//!
+//! ## Installation Pipeline
+//!
+//! The installation process follows a multi-stage pipeline:
+//!
+//! ```text
+//! 1. Discovery
+//!    └─ Scan bundle directory for resources
+//!    └─ Identify resource types (commands, skills, mcp.json, etc.)
+//!    └─ Parse frontmatter (platform-specific metadata)
+//!
+//! 2. Platform Detection
+//!    └─ Detect target platforms in workspace
+//!    └─ Identify platform-specific directories (.claude/, .cursor/, etc.)
+//!    └─ Select platforms for installation
+//!
+//! 3. Format Conversion
+//!    └─ Transform universal format to platform format
+//!    └─ Apply platform-specific conventions
+//!    └─ Handle merge strategies (Replace, Shallow, Deep, Composite)
+//!
+//! 4. File Installation
+//!    └─ Resolve target paths in platform directories
+//!    └─ Handle file conflicts (merge or error)
+//!    └─ Copy/merge files to target location
+//!    └─ Track installed files for index
+//! ```
+//!
+//! ## Module Organization
+//!
+//! The installer is organized into specialized submodules:
+//!
+//! - **discovery**: Resource discovery and filtering in bundle directories
+//! - **file_ops**: Basic file operations (copy, merge, read, write)
+//! - **detection**: Platform directory and binary file detection
+//! - **parser**: Frontmatter parsing for platform-specific metadata
+//! - **writer**: Output writing for processed content
+//! - **formats**: Platform-specific format conversions (17 platforms supported)
+//!
+//! ## Resource Types
+//!
+//! The installer recognizes and processes these resource types:
+//!
+//! | Type | Description | Example |
+//! |-------|-------------|----------|
+//! | `command` | Universal commands | `commands/fix.md` |
+//! | `skill` | Agent skills | `skills/web-browser.md` |
+//! | `mcp` | MCP server config | `mcp.jsonc` |
+//! | `rule` | Universal rules | `rules/fix-lint.md` |
+//! | `agent` | AGENTS.md knowledge base | `AGENTS.md` |
+//!
+//! ## Platform Support
+//!
+//! The installer supports 17 AI coding platforms with automatic detection:
+//!
+//! ```text
+//! claude           | Claude Code / Claude Desktop
+//! cursor           | Cursor IDE
+//! copilot          | GitHub Copilot
+//! opencode         | OpenCode
+//! continue         | Continue.dev
+//! junie            | Junie
+//! aider            | Aider
+//! fabric            | Fabric
+//! roo              | Roo Cline
+//! bolt             | Bolt.new
+//! devon            | Devon
+//! windsurf         | Windsurf
+//! codeium          | Codeium
+//! supermaven       | Supermaven
+//! sourcegraph       | Sourcegraph Cody
+//! ```
+//!
+//! Each platform has:
+//! - A target directory name (e.g., `.cursor/`, `.claude/`)
+//! - Specific file naming conventions
+//! - Format converters for universal resources
+//! - Merge strategies for conflict resolution
+//!
+//! ## Merge Strategies
+//!
+//! When multiple bundles install to the same file, the installer applies merge strategies:
+//!
+//! - **Replace**: Default - completely replaces file (last write wins)
+//! - **Shallow**: Merges top-level JSON keys (objects replaced)
+//! - **Deep**: Recursively merges nested JSON objects
+//! - **Composite**: Appends text with separator (for AGENTS.md)
+//!
+//! See [`crate::platform::MergeStrategy`] for detailed documentation.
+//!
+//! ## Usage Example
+//!
+//! ```rust,no_run
+//! use augent::installer::Installer;
+//! use augent::platform::Platform;
+//!
+//! // Create installer for workspace
+//! let platforms = vec![Platform::Cursor, Platform::Claude];
+//! let mut installer = Installer::new_with_dry_run(
+//!     &workspace_root,
+//!     platforms,
+//!     false  // not a dry run
+//! );
+//!
+//! // Install a single bundle
+//! let workspace_bundle = installer.install_bundle(&bundle)?;
+//!
+//! // Install multiple bundles
+//! let bundles = installer.install_bundles(&bundles)?;
+//!
+//! // Get all installed files
+//! let installed = installer.installed_files();
+//! for (path, file) in installed {
+//!     println!("{} -> {}", path, file.bundle_path);
+//! }
+//! ```
+//!
+//! ## Dry Run Mode
+//!
+//! The installer supports dry run mode for previewing changes:
+//!
+//! ```rust,ignore
+//! let mut installer = Installer::new_with_dry_run(
+//!     &workspace_root,
+//!     platforms,
+//!     true  // dry run enabled
+//! );
+//!
+//! // Discover and process resources
+//! // Files are NOT copied to disk
+//! installer.install_bundle(&bundle)?;
+//! ```
+//!
+//! In dry run mode:
+//! - Resources are discovered and processed
+//! - Merge logic is applied
+//! - Target paths are calculated
+//! - But NO files are written to disk
+//!
+//! ## Progress Reporting
+//!
+//! The installer can report progress through a progress reporter:
+//!
+//! ```rust,ignore
+//! let mut installer = Installer::new_with_progress(
+//!     &workspace_root,
+//!     platforms,
+//!     false,
+//!     Some(&mut progress_reporter)
+//! );
+//! ```
 
 pub mod detection;
 pub mod discovery;
