@@ -52,6 +52,7 @@ walkdir = "2"
 tempfile = "3"
 dirs = "5"
 normpath = "1.5"
+dunce = "1"
 
 # Hashing
 blake3 = "1"
