@@ -91,20 +91,29 @@ impl<'a> ExecutionOrchestrator<'a> {
 
     pub fn update_and_save_workspace(
         &mut self,
-        _args: &InstallArgs,
-        _resolved_bundles: &[ResolvedBundle],
-        _workspace_bundles: Vec<WorkspaceBundle>,
+        args: &InstallArgs,
+        resolved_bundles: &[ResolvedBundle],
+        workspace_bundles: Vec<WorkspaceBundle>,
         workspace_root: &std::path::Path,
         should_update_augent_yaml: bool,
     ) -> Result<()> {
-        let _source_str = _args.source.as_deref().unwrap_or("");
-        if _args.dry_run {
+        let source_str = args.source.as_deref().unwrap_or("");
+        if args.dry_run {
             println!("[DRY RUN] Would update configuration files...");
         } else {
+            use super::config::ConfigUpdater;
+
+            let mut config_updater = ConfigUpdater::new(self.workspace);
+            config_updater.update_configs(
+                source_str,
+                resolved_bundles,
+                workspace_bundles,
+                should_update_augent_yaml,
+            )?;
             self.workspace.should_create_augent_yaml = should_update_augent_yaml;
         }
 
-        if _args.dry_run {
+        if args.dry_run {
             println!("[DRY RUN] Would save workspace...");
         } else {
             self.workspace.save()?;

@@ -6,7 +6,6 @@
 pub mod confirmation;
 pub mod dependency;
 pub mod execution;
-pub mod file_utils;
 pub mod selection;
 
 use crate::cli::UninstallArgs;
@@ -74,6 +73,29 @@ impl UninstallOperation {
         Ok(())
     }
 
+    fn rebuild_workspace_if_needed(ws: &mut Workspace) -> Result<bool> {
+        let needs_rebuild =
+            ws.workspace_config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
+        if needs_rebuild {
+            println!("Workspace configuration is missing. Rebuilding from installed files...");
+            ws.rebuild_workspace_config()?;
+        }
+        Ok(needs_rebuild)
+    }
+
+    fn validate_dependencies_and_confirm(
+        ws: &Workspace,
+        args: &UninstallArgs,
+        bundle_names: &[String],
+    ) -> Result<bool> {
+        Self::check_all_bundle_dependents(ws, bundle_names)?;
+        if !args.yes && !confirm_uninstall(ws, bundle_names)? {
+            println!("Uninstall cancelled.");
+            return Ok(false);
+        }
+        Ok(true)
+    }
+
     pub fn execute(
         &mut self,
         workspace: Option<std::path::PathBuf>,
@@ -81,13 +103,7 @@ impl UninstallOperation {
     ) -> Result<()> {
         let mut ws = Self::validate_and_resolve_workspace(workspace)?;
 
-        // Check if workspace config is missing or empty - if so, rebuild it by scanning filesystem
-        let needs_rebuild =
-            ws.workspace_config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
-        if needs_rebuild {
-            println!("Workspace configuration is missing. Rebuilding from installed files...");
-            ws.rebuild_workspace_config()?;
-        }
+        Self::rebuild_workspace_if_needed(&mut ws)?;
 
         let bundle_names = resolve_bundle_names(&ws, &args)?;
 
@@ -95,12 +111,8 @@ impl UninstallOperation {
             return Ok(());
         }
 
-        // Check for bundles that depend on ones we're uninstalling
-        Self::check_all_bundle_dependents(&ws, &bundle_names)?;
-
-        // Confirm with user unless --yes flag
-        if !args.yes && !confirm_uninstall(&ws, &bundle_names)? {
-            println!("Uninstall cancelled.");
+        let should_proceed = Self::validate_dependencies_and_confirm(&ws, &args, &bundle_names)?;
+        if !should_proceed {
             return Ok(());
         }
 

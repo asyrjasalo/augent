@@ -205,28 +205,37 @@ pub fn cache_stats() -> Result<CacheStats> {
 
         if entry.path().is_dir() {
             stats.repositories += 1;
-
-            let sha_entries = match fs::read_dir(entry.path()) {
-                Ok(entries) => entries,
-                Err(_) => continue,
-            };
-
-            for sha_entry in sha_entries {
-                let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
-                    message: format!("Failed to read SHA entry: {}", e),
-                })?;
-
-                if sha_entry.path().is_dir() {
-                    stats.versions += 1;
-                    if let Ok(size) = dir_size(&sha_entry.path()) {
-                        stats.total_size += size;
-                    }
-                }
-            }
+            count_entries_in_dir(&entry.path(), &mut stats);
         }
     }
 
     Ok(stats)
+}
+
+fn count_entries_in_dir(entry_path: &Path, stats: &mut CacheStats) {
+    let sha_entries = match fs::read_dir(entry_path) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for sha_entry in sha_entries {
+        let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to read SHA entry: {}", e),
+        });
+
+        if let Ok(entry) = sha_entry {
+            if entry.path().is_dir() {
+                stats.versions += 1;
+                add_dir_size_if_exists(&entry.path(), stats);
+            }
+        }
+    }
+}
+
+fn add_dir_size_if_exists(dir_path: &Path, stats: &mut CacheStats) {
+    if let Ok(size) = dir_size(dir_path) {
+        stats.total_size += size;
+    }
 }
 
 /// Clear the entire bundle cache (and index)

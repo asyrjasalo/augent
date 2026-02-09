@@ -9,11 +9,13 @@ use crate::installer::discovery::discover_resources;
 use std::path::Path;
 
 /// Normalize paths to use forward slashes consistently
+#[allow(dead_code)]
 fn normalize_path_separator(path: String) -> String {
     path.replace('\\', "/")
 }
 
 /// Remove redundant ./ segments from path
+#[allow(dead_code)]
 fn normalize_path_segments(path_str: &mut String) {
     loop {
         if let Some(pos) = path_str.find("/./") {
@@ -30,6 +32,7 @@ fn normalize_path_segments(path_str: &mut String) {
 }
 
 /// Calculate relative path from workspace root
+#[allow(dead_code)]
 fn calculate_relative_path(source_path: &Path, workspace_root: Option<&Path>) -> String {
     if let Some(root) = workspace_root {
         match source_path.strip_prefix(root) {
@@ -47,6 +50,7 @@ fn calculate_relative_path(source_path: &Path, workspace_root: Option<&Path>) ->
 }
 
 /// Create a git locked source
+#[allow(dead_code)]
 fn create_git_locked_source(
     bundle: &ResolvedBundle,
     git_source: &crate::source::GitSource,
@@ -66,6 +70,7 @@ fn create_git_locked_source(
 }
 
 /// Create a directory locked source
+#[allow(dead_code)]
 fn create_dir_locked_source(relative_path: String, bundle_hash: String) -> LockedSource {
     LockedSource::Dir {
         path: relative_path,
@@ -74,6 +79,7 @@ fn create_dir_locked_source(relative_path: String, bundle_hash: String) -> Locke
 }
 
 /// Bundle metadata extracted from config
+#[allow(dead_code)]
 type BundleMetadata = (
     Option<String>,
     Option<String>,
@@ -83,6 +89,7 @@ type BundleMetadata = (
 );
 
 /// Extract metadata from bundle config
+#[allow(dead_code)]
 fn extract_metadata(bundle: &ResolvedBundle) -> BundleMetadata {
     if let Some(ref config) = bundle.config {
         (
@@ -98,6 +105,7 @@ fn extract_metadata(bundle: &ResolvedBundle) -> BundleMetadata {
 }
 
 /// Create a locked bundle from a resolved bundle
+#[allow(dead_code)]
 pub fn create_locked_bundle_from_resolved(
     bundle: &ResolvedBundle,
     workspace_root: Option<&Path>,

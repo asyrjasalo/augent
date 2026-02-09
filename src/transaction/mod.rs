@@ -21,7 +21,7 @@
 
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
@@ -123,13 +123,24 @@ impl Transaction {
             return Ok(());
         }
 
-        for path in &self.created_files {
+        Self::remove_created_files(&self.created_files);
+        Self::restore_file_backups(&self.modified_files);
+        Self::remove_empty_created_dirs(&self.created_dirs);
+        Self::restore_config_backups(&self.config_backups);
+
+        Ok(())
+    }
+
+    fn remove_created_files(files: &HashSet<PathBuf>) {
+        for path in files {
             if path.exists() {
                 let _ = fs::remove_file(path);
             }
         }
+    }
 
-        for backup in &self.modified_files {
+    fn restore_file_backups(backups: &[ConfigBackup]) {
+        for backup in backups {
             if let Err(e) = fs::write(&backup.path, &backup.content) {
                 eprintln!(
                     "Warning: Failed to restore {}: {}",
@@ -138,21 +149,29 @@ impl Transaction {
                 );
             }
         }
+    }
 
-        let mut dirs: Vec<_> = self.created_dirs.iter().collect();
-        dirs.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
-        for path in dirs {
-            if path.exists()
-                && path.is_dir()
-                && fs::read_dir(path)
-                    .map(|mut d| d.next().is_none())
-                    .unwrap_or(false)
-            {
+    fn remove_empty_created_dirs(dirs: &HashSet<PathBuf>) {
+        let mut sorted_dirs: Vec<_> = dirs.iter().collect();
+        sorted_dirs.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
+
+        for path in sorted_dirs {
+            if Self::is_empty_directory(path) {
                 let _ = fs::remove_dir(path);
             }
         }
+    }
 
-        for backup in &self.config_backups {
+    fn is_empty_directory(path: &Path) -> bool {
+        path.exists()
+            && path.is_dir()
+            && fs::read_dir(path)
+                .map(|mut d| d.next().is_none())
+                .unwrap_or(false)
+    }
+
+    fn restore_config_backups(backups: &[ConfigBackup]) {
+        for backup in backups {
             if let Err(e) = fs::write(&backup.path, &backup.content) {
                 eprintln!(
                     "Warning: Failed to restore config {}: {}",
@@ -161,8 +180,6 @@ impl Transaction {
                 );
             }
         }
-
-        Ok(())
     }
 }
 

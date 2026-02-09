@@ -51,3 +51,7 @@ run = [
 [tasks.cov]
 description = "Run tests with coverage"
 run = "cargo tarpaulin"
+
+[tasks.lizard]
+description = "Run lizard complexity analysis"
+run = "uvx lizard -C 10 src/"

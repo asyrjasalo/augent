@@ -172,9 +172,7 @@ impl PlatformLoader {
     /// Strip JSONC comments from content
     fn strip_jsonc_comments_impl(content: &str) -> String {
         let mut result = String::new();
-        let mut in_string = false;
-        let mut in_single_comment = false;
-        let mut in_multi_comment = false;
+        let mut state = JsoncParserState::Default;
         let chars: Vec<char> = content.chars().collect();
         let len = chars.len();
         let mut i = 0;
@@ -182,47 +180,83 @@ impl PlatformLoader {
         while i < len {
             let c = chars[i];
             let next = chars.get(i + 1).copied();
+            let (new_state, added_char) = Self::process_char(c, next, state, &chars, i);
 
-            if in_single_comment {
-                if c == '\n' {
-                    in_single_comment = false;
-                    result.push(c);
-                }
-            } else if in_multi_comment {
-                if c == '*' && next == Some('/') {
-                    in_multi_comment = false;
-                    i += 1;
-                }
-            } else if in_string {
+            state = new_state;
+            i += added_char;
+
+            if matches!(
+                state,
+                JsoncParserState::Default | JsoncParserState::InString
+            ) {
                 result.push(c);
-                if c == '"' && (i == 0 || chars[i - 1] != '\\') {
-                    in_string = false;
-                }
-            } else {
-                match (c, next) {
-                    ('/', Some('/')) => {
-                        in_single_comment = true;
-                        i += 1;
-                    }
-                    ('/', Some('*')) => {
-                        in_multi_comment = true;
-                        i += 1;
-                    }
-                    ('"', _) => {
-                        in_string = true;
-                        result.push(c);
-                    }
-                    _ => {
-                        result.push(c);
-                    }
-                }
             }
-
-            i += 1;
         }
 
         result
     }
+
+    /// Process a single character and return (new_state, char_count_to_advance)
+    fn process_char(
+        c: char,
+        next: Option<char>,
+        state: JsoncParserState,
+        chars: &[char],
+        i: usize,
+    ) -> (JsoncParserState, usize) {
+        match state {
+            JsoncParserState::InSingleLineComment => Self::handle_single_line_comment(c),
+            JsoncParserState::InMultiLineComment => Self::handle_multi_line_comment(c, next),
+            JsoncParserState::InString => Self::handle_string_char(c, chars, i),
+            JsoncParserState::Default => Self::process_default_state_char(c, next),
+        }
+    }
+
+    /// Handle character when in single-line comment
+    fn handle_single_line_comment(c: char) -> (JsoncParserState, usize) {
+        if c == '\n' {
+            (JsoncParserState::Default, 1)
+        } else {
+            (JsoncParserState::InSingleLineComment, 1)
+        }
+    }
+
+    /// Handle character when in multi-line comment
+    fn handle_multi_line_comment(c: char, next: Option<char>) -> (JsoncParserState, usize) {
+        if c == '*' && next == Some('/') {
+            (JsoncParserState::Default, 2)
+        } else {
+            (JsoncParserState::InMultiLineComment, 1)
+        }
+    }
+
+    /// Handle character when in string
+    fn handle_string_char(c: char, chars: &[char], i: usize) -> (JsoncParserState, usize) {
+        if c == '"' && (i == 0 || chars[i - 1] != '\\') {
+            (JsoncParserState::Default, 1)
+        } else {
+            (JsoncParserState::InString, 1)
+        }
+    }
+
+    /// Process character when in default state
+    fn process_default_state_char(c: char, next: Option<char>) -> (JsoncParserState, usize) {
+        match (c, next) {
+            ('/', Some('/')) => (JsoncParserState::InSingleLineComment, 2),
+            ('/', Some('*')) => (JsoncParserState::InMultiLineComment, 2),
+            ('"', _) => (JsoncParserState::InString, 1),
+            _ => (JsoncParserState::Default, 1),
+        }
+    }
+}
+
+/// Parser state for JSONC comment stripping
+#[derive(Clone, Copy)]
+enum JsoncParserState {
+    Default,
+    InSingleLineComment,
+    InMultiLineComment,
+    InString,
 }
 
 #[cfg(test)]

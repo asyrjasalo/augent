@@ -45,6 +45,7 @@ pub fn hash_file(path: &Path) -> Result<String> {
 ///
 /// This hashes all files in the directory recursively, sorted by path
 /// for deterministic results. Excludes augent.lock and augent.index.yaml.
+#[allow(dead_code)]
 pub fn hash_directory(path: &Path) -> Result<String> {
     if !path.is_dir() {
         return Err(AugentError::FileNotFound {

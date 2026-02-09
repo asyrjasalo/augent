@@ -69,17 +69,6 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
         return Ok(Some((content_path, sha.to_string(), resolved_ref)));
     }
 
-    // Derive sha from entry_path (cache key is entry_path's directory name)
-    let _sha = entry_path
-        .file_name()
-        .ok_or_else(|| AugentError::CacheOperationFailed {
-            message: "Failed to get SHA from cache entry path".to_string(),
-        })?
-        .to_str()
-        .ok_or_else(|| AugentError::CacheOperationFailed {
-            message: "Failed to get SHA from cache entry path".to_string(),
-        })?;
-
     Ok(None)
 }
 

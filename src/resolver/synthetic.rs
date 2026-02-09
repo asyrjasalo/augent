@@ -5,7 +5,7 @@
 //! - Resource copying and organization
 //! - Config generation for synthetic bundles
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::cache;
 use crate::common::fs::{CopyOptions, copy_dir_recursive};
@@ -61,32 +61,50 @@ fn copy_resources(
     target_dir: &Path,
     bundle_def: &MarketplaceBundle,
 ) -> Result<()> {
-    let source_dir = if let Some(ref source_path) = bundle_def.source {
-        repo_root.join(source_path.trim_start_matches("./"))
-    } else {
-        repo_root.to_path_buf()
-    };
+    let source_dir = resolve_source_dir(repo_root, bundle_def.source.as_ref());
 
-    let copy_resource_list = |resource_list: &[String], target_subdir: &str| -> Result<()> {
-        let target_path = target_dir.join(target_subdir);
-        if !resource_list.is_empty() {
-            std::fs::create_dir_all(&target_path)?;
-        }
+    copy_resource_type(&source_dir, target_dir, &bundle_def.commands, "commands")?;
+    copy_resource_type(&source_dir, target_dir, &bundle_def.agents, "agents")?;
+    copy_resource_type(&source_dir, target_dir, &bundle_def.skills, "skills")?;
+    copy_resource_type(
+        &source_dir,
+        target_dir,
+        &bundle_def.mcp_servers,
+        "mcp_servers",
+    )?;
+    copy_resource_type(&source_dir, target_dir, &bundle_def.rules, "rules")?;
+    copy_resource_type(&source_dir, target_dir, &bundle_def.hooks, "hooks")?;
 
-        for resource_path in resource_list {
-            copy_single_resource(&source_dir, resource_path, &target_path)?;
-        }
+    Ok(())
+}
 
-        Ok(())
-    };
+fn resolve_source_dir(repo_root: &Path, source_path: Option<&String>) -> PathBuf {
+    match source_path {
+        Some(path) => repo_root.join(path.trim_start_matches("./")),
+        None => repo_root.to_path_buf(),
+    }
+}
 
-    copy_resource_list(&bundle_def.commands, "commands")?;
-    copy_resource_list(&bundle_def.agents, "agents")?;
-    copy_resource_list(&bundle_def.skills, "skills")?;
-    copy_resource_list(&bundle_def.mcp_servers, "mcp_servers")?;
-    copy_resource_list(&bundle_def.rules, "rules")?;
-    copy_resource_list(&bundle_def.hooks, "hooks")?;
+fn copy_resource_type(
+    source_dir: &Path,
+    target_dir: &Path,
+    resource_list: &[String],
+    subdir_name: &str,
+) -> Result<()> {
+    let target_path = target_dir.join(subdir_name);
+    ensure_target_dir_exists(&target_path, resource_list)?;
 
+    for resource_path in resource_list {
+        copy_single_resource(source_dir, resource_path, &target_path)?;
+    }
+
+    Ok(())
+}
+
+fn ensure_target_dir_exists(target_path: &Path, resource_list: &[String]) -> Result<()> {
+    if !resource_list.is_empty() {
+        std::fs::create_dir_all(target_path)?;
+    }
     Ok(())
 }
 

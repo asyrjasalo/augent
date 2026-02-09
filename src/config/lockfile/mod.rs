@@ -147,6 +147,7 @@ impl Lockfile {
     /// "latest comes last" ordering.
     ///
     /// New git bundles are always added at the end of git bundles (before any dir bundles).
+    #[allow(dead_code)]
     pub fn add_bundle(&mut self, bundle: LockedBundle) {
         use crate::config::lockfile::source::LockedSource;
 
@@ -207,6 +208,7 @@ impl Lockfile {
     }
 
     /// Remove a bundle from the lockfile
+    #[allow(dead_code)]
     pub fn remove_bundle(&mut self, name: &str) -> Option<LockedBundle> {
         if let Some(pos) = self.bundles.iter().position(|b| b.name == name) {
             Some(self.bundles.remove(pos))

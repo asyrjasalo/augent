@@ -77,20 +77,41 @@ pub fn is_platform_resource_file(
     platforms: &[Platform],
     workspace_root: &Path,
 ) -> bool {
-    if platform_id_from_target(target, platforms, workspace_root).is_none() {
-        return false;
-    }
+    is_under_platform_directory(target, platforms, workspace_root)
+        && is_resource_type_directory(target)
+}
+
+fn is_under_platform_directory(
+    target: &Path,
+    platforms: &[Platform],
+    workspace_root: &Path,
+) -> bool {
+    platform_id_from_target(target, platforms, workspace_root).is_some()
+}
+
+fn is_resource_type_directory(target: &Path) -> bool {
     let path_str = target.to_string_lossy();
-    path_str.contains("/commands/")
-        || path_str.contains("/rules/")
-        || path_str.contains("/agents/")
-        || path_str.contains("/skills/")
-        || path_str.contains("/workflows/")
-        || path_str.contains("/prompts/")
-        || path_str.contains("/instructions/")
-        || path_str.contains("/guidelines")
-        || path_str.contains("/droids/")
-        || path_str.contains("/steering/")
+    is_any_resource_directory(&path_str)
+}
+
+fn is_any_resource_directory(path_str: &str) -> bool {
+    use std::collections::HashSet;
+
+    const RESOURCE_DIRS: &[&str] = &[
+        "commands/",
+        "rules/",
+        "agents/",
+        "skills/",
+        "workflows/",
+        "prompts/",
+        "instructions/",
+        "guidelines",
+        "droids/",
+        "steering/",
+    ];
+
+    let resource_set: HashSet<&str> = RESOURCE_DIRS.iter().cloned().collect();
+    resource_set.iter().any(|dir| path_str.contains(dir))
 }
 
 #[cfg(test)]

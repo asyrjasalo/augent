@@ -35,6 +35,7 @@ impl<'a> WorkspaceManager<'a> {
 
     /// Collect all transitive dependencies from git bundles' augent.yaml files.
     /// A transitive dependency is any bundle that appears in another bundle's augent.yaml.
+    #[allow(dead_code)]
     fn collect_transitive_dependencies(&self) -> std::collections::HashSet<String> {
         let mut transitive_dependencies = std::collections::HashSet::new();
 
@@ -76,6 +77,7 @@ impl<'a> WorkspaceManager<'a> {
     }
 
     /// Determine if a bundle should be skipped during augent.yaml reconstruction.
+    #[allow(dead_code)]
     fn should_skip_bundle(
         &self,
         locked: &crate::config::lockfile::bundle::LockedBundle,
@@ -104,27 +106,8 @@ impl<'a> WorkspaceManager<'a> {
         false
     }
 
-    /// Reconstruct augent.yaml from lockfile when augent.yaml is missing but lockfile exists.
-    #[allow(dead_code)]
-    pub fn reconstruct_augent_yaml_from_lockfile(&mut self) -> Result<()> {
-        let transitive_dependencies = self.collect_transitive_dependencies();
-        let workspace_bundle_name = self.workspace.get_workspace_name();
-        let mut bundles = Vec::new();
-
-        for locked in &self.workspace.lockfile.bundles {
-            if self.should_skip_bundle(locked, &workspace_bundle_name, &transitive_dependencies) {
-                continue;
-            }
-
-            let dependency = self.convert_locked_to_dependency(locked)?;
-            bundles.push(dependency);
-        }
-
-        self.workspace.bundle_config.bundles = bundles;
-        Ok(())
-    }
-
     /// Convert a locked bundle to a bundle dependency
+    #[allow(dead_code)]
     fn convert_locked_to_dependency(
         &self,
         locked: &crate::config::lockfile::bundle::LockedBundle,
@@ -141,6 +124,7 @@ impl<'a> WorkspaceManager<'a> {
     }
 
     /// Create a directory bundle dependency from path
+    #[allow(dead_code)]
     fn create_dir_dependency(
         &self,
         name: &str,
@@ -169,6 +153,7 @@ impl<'a> WorkspaceManager<'a> {
     }
 
     /// Normalize path from workspace-root-relative to config-dir-relative
+    #[allow(dead_code)]
     fn normalize_path_for_config(&self, path: &str) -> Result<String> {
         let clean_path = path.strip_prefix("./").unwrap_or(path);
         let bundle_path = self.workspace.root.join(clean_path);
@@ -188,6 +173,7 @@ impl<'a> WorkspaceManager<'a> {
     }
 
     /// Create relative path from root using ".." components
+    #[allow(dead_code)]
     fn create_relative_path_from_root(&self, rel_from_root: &std::path::Path) -> Result<String> {
         let rel_from_root_str = rel_from_root.to_string_lossy().replace('\\', "/");
 
@@ -204,6 +190,7 @@ impl<'a> WorkspaceManager<'a> {
     }
 
     /// Create a git bundle dependency
+    #[allow(dead_code)]
     fn create_git_dependency(
         &self,
         name: &str,
@@ -219,6 +206,7 @@ impl<'a> WorkspaceManager<'a> {
     }
 
     /// Filter git ref to only include non-default branches
+    #[allow(dead_code)]
     fn filter_git_ref(git_ref: Option<&str>) -> Option<String> {
         git_ref.and_then(|r| {
             if r == "main" || r == "master" {
@@ -227,23 +215,5 @@ impl<'a> WorkspaceManager<'a> {
                 Some(r.to_string())
             }
         })
-    }
-
-    #[allow(dead_code)]
-    pub fn handle_missing_augent_yaml(&mut self) -> Result<(bool, crate::config::Lockfile)> {
-        let augent_yaml_missing = self.workspace.bundle_config.bundles.is_empty()
-            && !self.workspace.lockfile.bundles.is_empty();
-
-        if augent_yaml_missing {
-            println!(
-                "augent.yaml is missing but augent.lock contains {} bundle(s).",
-                self.workspace.lockfile.bundles.len()
-            );
-            println!("Reconstructing augent.yaml from augent.lock...");
-            self.reconstruct_augent_yaml_from_lockfile()?;
-        }
-
-        let original_lockfile = self.workspace.lockfile.clone();
-        Ok((augent_yaml_missing, original_lockfile))
     }
 }

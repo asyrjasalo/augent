@@ -25,51 +25,74 @@ pub fn ensure_parent_dir(path: &Path) -> Result<()> {
 }
 
 /// Copy a single file with platform-specific transformations
-///
-/// This function orchestrates the file copy process:
-/// 1. Detect if the target is a platform resource file
-/// 2. Check if source is a binary file
-/// 3. Parse frontmatter if applicable
-/// 4. Apply platform-specific transformations
-/// 5. Write the output
 pub fn copy_file(
     source: &Path,
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
 ) -> Result<()> {
-    if detection::is_platform_resource_file(target, platforms, workspace_root)
-        && !detection::is_likely_binary_file(source)
-    {
-        let content = std::fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
-            path: source.display().to_string(),
-            reason: e.to_string(),
-        })?;
-        let known: Vec<String> = platforms.iter().map(|p| p.id.clone()).collect();
-        if let Some((fm, body)) = crate::universal::parse_frontmatter_and_body(&content) {
-            if let Some(pid) = detection::platform_id_from_target(target, platforms, workspace_root)
-            {
-                let merged = crate::universal::merge_frontmatter_for_platform(&fm, pid, &known);
-                if detection::is_gemini_command_file(target) {
-                    return formats::gemini::convert_from_merged(&merged, &body, target);
-                }
-                return writer::write_merged_frontmatter_markdown(&merged, &body, target);
-            }
-        }
+    let is_resource = detection::is_platform_resource_file(target, platforms, workspace_root);
+    let is_binary = detection::is_likely_binary_file(source);
 
-        if detection::is_gemini_command_file(target) {
-            return formats::gemini::convert_from_markdown(source, target);
-        }
-        if detection::is_opencode_metadata_file(target) {
-            return formats::opencode::convert(source, target);
-        }
+    if !is_resource {
+        return perform_simple_copy(source, target);
     }
 
+    if is_binary {
+        return perform_simple_copy(source, target);
+    }
+
+    handle_text_file(source, target, platforms, workspace_root)
+}
+
+fn perform_simple_copy(source: &Path, target: &Path) -> Result<()> {
     ensure_parent_dir(target)?;
-    std::fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
+    std::fs::copy(source, target)
+        .map_err(|e| AugentError::FileWriteFailed {
+            path: target.display().to_string(),
+            reason: e.to_string(),
+        })
+        .map(|_| ())
+}
+
+fn handle_text_file(
+    source: &Path,
+    target: &Path,
+    platforms: &[Platform],
+    workspace_root: &Path,
+) -> Result<()> {
+    ensure_parent_dir(target)?;
+
+    let content = std::fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
+        path: source.display().to_string(),
+        reason: e.to_string(),
+    })?;
+
+    let known: Vec<String> = platforms.iter().map(|p| p.id.clone()).collect();
+
+    if let Some((fm, body)) = crate::universal::parse_frontmatter_and_body(&content) {
+        if let Some(pid) = detection::platform_id_from_target(target, platforms, workspace_root) {
+            let merged = crate::universal::merge_frontmatter_for_platform(&fm, pid, &known);
+            return formats::gemini::convert_from_merged(&merged, &body, target);
+        }
+
+        let _ = writer::write_merged_frontmatter_markdown(&fm, &body, target);
+        return Ok(());
+    }
+
+    if detection::is_gemini_command_file(target) {
+        return formats::gemini::convert_from_markdown(source, target);
+    }
+
+    if detection::is_opencode_metadata_file(target) {
+        return formats::opencode::convert(source, target);
+    }
+
+    std::fs::write(target, content).map_err(|e| AugentError::FileWriteFailed {
         path: target.display().to_string(),
         reason: e.to_string(),
     })?;
+
     Ok(())
 }
 
@@ -85,5 +108,16 @@ mod tests {
         let result = ensure_parent_dir(&file_path);
         assert!(result.is_ok());
         assert!(file_path.parent().unwrap().exists());
+    }
+
+    #[test]
+    fn test_copy_file() {
+        use tempfile::TempDir;
+
+        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let src = temp.path().join("source.txt");
+        let dst = temp.path().join("target.txt");
+        std::fs::write(&src, "content").unwrap();
+        std::fs::copy(&src, &dst).unwrap();
     }
 }

@@ -154,6 +154,71 @@ impl<'a> InstallOperation<'a> {
         Ok(platforms)
     }
 
+    fn is_installing_by_bundle_name(&self, args: &InstallArgs) -> bool {
+        args.source
+            .as_ref()
+            .is_some_and(|source| InstallOperation::looks_like_bundle_name(source))
+    }
+
+    fn select_and_validate_platforms(&mut self, args: &InstallArgs) -> Result<Vec<Platform>> {
+        use super::execution::ExecutionOrchestrator;
+
+        let workspace_root = self.workspace.root.clone();
+        let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
+        let platforms = exec_orchestrator.get_or_select_platforms(args, &workspace_root, false)?;
+
+        if platforms.is_empty() {
+            return Err(AugentError::NoPlatformsDetected);
+        }
+
+        Ok(platforms)
+    }
+
+    fn install_bundles_and_update_configs(
+        &mut self,
+        args: &InstallArgs,
+        resolved_bundles: &[crate::domain::ResolvedBundle],
+        platforms: &[Platform],
+        transaction: &mut Transaction,
+    ) -> Result<(
+        Vec<crate::config::WorkspaceBundle>,
+        std::collections::HashMap<String, crate::domain::InstalledFile>,
+    )> {
+        use super::execution::ExecutionOrchestrator;
+
+        let workspace_root = self.workspace.root.clone();
+
+        let bundle_result = {
+            let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
+            exec_orchestrator.install_bundles_with_progress(args, resolved_bundles, platforms)?
+        };
+        let workspace_bundles = bundle_result.0.clone();
+        let installed_files_map = bundle_result.1;
+
+        {
+            let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
+            exec_orchestrator.track_installed_files_in_transaction(
+                &workspace_root,
+                &installed_files_map,
+                transaction,
+            );
+        }
+
+        let should_update_augent_yaml = args.source.is_some() && !args.frozen;
+        {
+            let mut exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
+            exec_orchestrator.update_and_save_workspace(
+                args,
+                resolved_bundles,
+                workspace_bundles.clone(),
+                &workspace_root,
+                should_update_augent_yaml,
+            )?;
+        }
+
+        Ok((workspace_bundles, installed_files_map))
+    }
+
     /// Execute the install operation
     pub fn execute(
         &mut self,
@@ -162,9 +227,7 @@ impl<'a> InstallOperation<'a> {
         transaction: &mut Transaction,
         _force_interactive: bool,
     ) -> Result<()> {
-        use super::config::ConfigUpdater;
         use super::display;
-        use super::execution::ExecutionOrchestrator;
         use super::names::NameFixer;
         use super::resolution::BundleResolver;
         use super::workspace::WorkspaceManager;
@@ -188,11 +251,7 @@ impl<'a> InstallOperation<'a> {
         };
 
         // Ensure workspace bundle is in list if we have modified files (immutable borrow)
-        let installing_by_bundle_name = args
-            .source
-            .as_ref()
-            .map(|s| s.starts_with('@'))
-            .unwrap_or(false);
+        let installing_by_bundle_name = self.is_installing_by_bundle_name(args);
         let resolved_bundles = {
             let name_fixer = NameFixer::new(self.workspace);
             name_fixer.ensure_workspace_bundle_in_list_for_execute(
@@ -203,8 +262,7 @@ impl<'a> InstallOperation<'a> {
         };
 
         // Select/detect platforms (mutable borrow through select_or_detect_platforms)
-        let workspace_root = self.workspace.root.clone();
-        let platforms = self.select_or_detect_platforms(args, &workspace_root, false)?;
+        let platforms = self.select_and_validate_platforms(args)?;
         if platforms.is_empty() {
             return Err(AugentError::NoPlatformsDetected);
         }
@@ -212,45 +270,12 @@ impl<'a> InstallOperation<'a> {
         // Print platform info
         display::print_platform_info(args, &platforms);
 
-        // Install bundles with progress (mutable borrow)
-        let (workspace_bundles, installed_files_map) = {
-            let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            exec_orchestrator.install_bundles_with_progress(args, &resolved_bundles, &platforms)?
-        };
-
-        // Track installed files in transaction
-        {
-            let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            exec_orchestrator.track_installed_files_in_transaction(
-                &workspace_root,
-                &installed_files_map,
-                transaction,
-            );
-        }
-
-        // Update configs (mutable borrow)
-        let should_update_augent_yaml = args.source.is_some() && !args.frozen;
-        {
-            let mut config_updater = ConfigUpdater::new(self.workspace);
-            config_updater.update_configs(
-                args.source.as_deref().unwrap_or(""),
-                &resolved_bundles,
-                workspace_bundles.clone(),
-                should_update_augent_yaml,
-            )?;
-        }
-
-        // Update and save workspace (mutable borrow)
-        {
-            let mut exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            exec_orchestrator.update_and_save_workspace(
-                args,
-                &resolved_bundles,
-                workspace_bundles,
-                &workspace_root,
-                should_update_augent_yaml,
-            )?;
-        }
+        let (_workspace_bundles, installed_files_map) = self.install_bundles_and_update_configs(
+            args,
+            &resolved_bundles,
+            &platforms,
+            transaction,
+        )?;
 
         // Print summary
         display::print_install_summary(&resolved_bundles, &installed_files_map, args.dry_run);

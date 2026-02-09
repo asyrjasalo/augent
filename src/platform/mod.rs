@@ -2,9 +2,7 @@
 //!
 //! This module handles:
 //! - Platform definitions (Platform, TransformRule, MergeStrategy)
-//! - Platform registration and lookup (via PlatformRegistry)
 //! - Platform detection (via detection module)
-//! - Resource transformation (via Transformer module)
 //! - Merge strategies for combining files (via merge module)
 
 use std::path::{Path, PathBuf};
@@ -16,8 +14,6 @@ pub use merge::MergeStrategy;
 pub mod detection;
 pub mod loader;
 pub mod merge;
-pub mod registry;
-pub mod transformer;
 
 /// A supported AI coding platform
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -80,6 +76,7 @@ impl Platform {
     }
 
     /// Get the platform directory path
+    #[allow(dead_code)]
     pub fn directory_path(&self, workspace_root: &Path) -> PathBuf {
         workspace_root.join(&self.directory)
     }

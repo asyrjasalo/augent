@@ -105,6 +105,7 @@ impl WorkspaceConfig {
     }
 
     /// Remove a bundle from the workspace
+    #[allow(dead_code)]
     pub fn remove_bundle(&mut self, name: &str) -> Option<WorkspaceBundle> {
         if let Some(pos) = self.bundles.iter().position(|b| b.name == name) {
             Some(self.bundles.remove(pos))

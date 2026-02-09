@@ -77,9 +77,11 @@ impl ResourceCounts {
 #[derive(Debug, Clone)]
 pub struct ResolvedBundle {
     pub name: String,
+    #[allow(dead_code)]
     pub dependency: Option<BundleDependency>,
     pub source_path: std::path::PathBuf,
     pub resolved_sha: Option<String>,
+    #[allow(dead_code)]
     pub resolved_ref: Option<String>,
     pub git_source: Option<GitSource>,
     pub config: Option<BundleConfig>,

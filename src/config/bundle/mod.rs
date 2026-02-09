@@ -144,6 +144,7 @@ impl BundleConfig {
     ///
     /// IMPORTANT: Git dependencies are NEVER reordered. They maintain their exact order.
     /// New git dependencies are always added immediately before any local dependencies.
+    #[allow(dead_code)]
     pub fn add_dependency(&mut self, dep: BundleDependency) {
         let is_local_dep = dep.git.is_none();
 
@@ -164,12 +165,14 @@ impl BundleConfig {
     }
 
     /// Check if a dependency with given name exists
+    #[allow(dead_code)]
     pub fn has_dependency(&self, name: &str) -> bool {
         self.bundles.iter().any(|dep| dep.name == name)
     }
 
     /// Reorder dependencies to match the order in lockfile
     /// This ensures augent.yaml dependencies are in the same order as augent.lock bundles
+    #[allow(dead_code)]
     pub fn reorder_dependencies(&mut self, lockfile_bundle_names: &[String]) {
         use std::collections::HashMap;
 

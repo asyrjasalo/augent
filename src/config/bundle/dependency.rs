@@ -38,6 +38,7 @@ impl BundleDependency {
     }
 
     /// Create a new git dependency
+    #[allow(dead_code)]
     pub fn git(name: impl Into<String>, url: impl Into<String>, git_ref: Option<String>) -> Self {
         Self {
             name: name.into(),

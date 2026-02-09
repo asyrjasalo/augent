@@ -1,8 +1,9 @@
 //! Cache index management
 //!
-//! This module handles the cache index that tracks cached bundles.
+//! This module handles cache index that tracks cached bundles.
 
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -122,35 +123,51 @@ pub fn list_cached_entries_for_url_sha(url: &str, sha: &str) -> Result<Vec<Cache
         return Ok(Vec::new());
     }
 
+    build_cached_entries_from_index(url, sha, &resources)
+}
+
+fn build_cached_entries_from_index(
+    url: &str,
+    sha: &str,
+    resources: &Path,
+) -> Result<Vec<CachedEntryForUrlSha>> {
     let entries = read_index()?;
     let mut result = Vec::new();
 
-    for e in &entries {
-        if e.url != url || e.sha != sha {
+    for entry in &entries {
+        if entry.url != url || entry.sha != sha {
             continue;
         }
 
-        let content_path = if let Some(name) = marketplace_plugin_name(e.path.as_deref()) {
-            resources.join(SYNTHETIC_DIR).join(name)
-        } else {
-            e.path
-                .as_ref()
-                .map(|p| resources.join(p))
-                .unwrap_or_else(|| resources.clone())
-        };
-
-        // Include entry if content exists, or if marketplace (synthetic created on demand when installed)
-        if content_path.is_dir() || marketplace_plugin_name(e.path.as_deref()).is_some() {
+        let (path, content_path) = resolve_entry_path(entry, resources);
+        if should_include_entry(&content_path, &entry.path) {
             result.push((
-                e.path.clone(),
-                e.bundle_name.clone(),
+                path,
+                entry.bundle_name.clone(),
                 content_path,
-                e.resolved_ref.clone(),
+                entry.resolved_ref.clone(),
             ));
         }
     }
 
     Ok(result)
+}
+
+fn resolve_entry_path(entry: &IndexEntry, resources: &Path) -> (Option<String>, PathBuf) {
+    let content_path = if let Some(name) = marketplace_plugin_name(entry.path.as_deref()) {
+        resources.join(SYNTHETIC_DIR).join(name)
+    } else {
+        entry
+            .path
+            .as_ref()
+            .map(|p| resources.join(p))
+            .unwrap_or_else(|| resources.to_path_buf())
+    };
+    (entry.path.clone(), content_path)
+}
+
+fn should_include_entry(content_path: &Path, entry_path: &Option<String>) -> bool {
+    content_path.is_dir() || marketplace_plugin_name(entry_path.as_deref()).is_some()
 }
 
 #[cfg(test)]
