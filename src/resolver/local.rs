@@ -176,44 +176,46 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_is_bundle_directory_with_config() {
+    fn run_bundle_test<F>(test: F)
+    where
+        F: FnOnce(&Path),
+    {
         let temp = TempDir::new().unwrap();
         let bundle_dir = temp.path().join("test-bundle");
         std::fs::create_dir(&bundle_dir).unwrap();
-        std::fs::write(bundle_dir.join("augent.yaml"), "name: test\n").unwrap();
+        test(&bundle_dir);
+    }
 
-        assert!(is_bundle_directory(&bundle_dir));
+    #[test]
+    fn test_is_bundle_directory_with_config() {
+        run_bundle_test(|dir| {
+            std::fs::write(dir.join("augent.yaml"), "name: test\n").unwrap();
+            assert!(is_bundle_directory(dir));
+        });
     }
 
     #[test]
     fn test_is_bundle_directory_with_commands() {
-        let temp = TempDir::new().unwrap();
-        let bundle_dir = temp.path().join("test-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
-        std::fs::create_dir(bundle_dir.join("commands")).unwrap();
-
-        assert!(is_bundle_directory(&bundle_dir));
+        run_bundle_test(|dir| {
+            std::fs::create_dir(dir.join("commands")).unwrap();
+            assert!(is_bundle_directory(dir));
+        });
     }
 
     #[test]
     fn test_is_bundle_directory_not_a_bundle() {
-        let temp = TempDir::new().unwrap();
-        let bundle_dir = temp.path().join("test-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
-        std::fs::write(bundle_dir.join("README.md"), "# Test").unwrap();
-
-        assert!(!is_bundle_directory(&bundle_dir));
+        run_bundle_test(|dir| {
+            std::fs::write(dir.join("README.md"), "# Test").unwrap();
+            assert!(!is_bundle_directory(dir));
+        });
     }
 
     #[test]
     fn test_get_bundle_name() {
-        let temp = TempDir::new().unwrap();
-        let bundle_dir = temp.path().join("my-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
-
-        let name = get_bundle_name(&bundle_dir).unwrap();
-        assert_eq!(name, "my-bundle");
+        run_bundle_test(|dir| {
+            let name = get_bundle_name(dir).unwrap();
+            assert_eq!(name, "test-bundle");
+        });
     }
 
     #[test]

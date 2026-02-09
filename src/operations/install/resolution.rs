@@ -88,47 +88,57 @@ impl<'a> BundleResolver<'a> {
         Ok(all_bundles)
     }
 
+    fn create_progress_bar(dry_run: bool) -> Option<ProgressBar> {
+        if dry_run {
+            return None;
+        }
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner} Resolving bundles and dependencies...")
+                .unwrap()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+        Some(pb)
+    }
+
+    /// Resolve multiple local bundles
+    fn resolve_local_bundles(
+        selected_bundles: &[crate::domain::DiscoveredBundle],
+        bundle_resolver: &mut Resolver,
+    ) -> Result<Vec<ResolvedBundle>> {
+        let selected_paths: Vec<String> = selected_bundles
+            .iter()
+            .map(|b| b.path.to_string_lossy().to_string())
+            .collect();
+        bundle_resolver.resolve_multiple(&selected_paths)
+    }
+
     pub fn resolve_selected_bundles(
         &self,
         args: &crate::cli::InstallArgs,
         selected_bundles: &[crate::domain::DiscoveredBundle],
     ) -> Result<Vec<ResolvedBundle>> {
         let mut bundle_resolver = Resolver::new(&self.workspace.root);
+        let pb = Self::create_progress_bar(args.dry_run);
 
-        let pb = if !args.dry_run {
-            let pb = ProgressBar::new_spinner();
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner} Resolving bundles and dependencies...")
-                    .unwrap()
-                    .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-            );
-            pb.enable_steady_tick(std::time::Duration::from_millis(80));
-            Some(pb)
-        } else {
-            None
-        };
-
-        let resolved_bundles = if selected_bundles.is_empty() {
-            if let Some(source) = &args.source {
-                bundle_resolver.resolve(source, false)
-            } else {
-                self.collect_workspace_bundles(&mut bundle_resolver)
+        let resolved_bundles = match selected_bundles.len() {
+            0 => {
+                if let Some(source) = &args.source {
+                    bundle_resolver.resolve(source, false)
+                } else {
+                    self.collect_workspace_bundles(&mut bundle_resolver)
+                }
             }
-        } else if selected_bundles.len() == 1 {
-            Self::resolve_single_bundle(&selected_bundles[0], &mut bundle_resolver)
-        } else {
-            let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
-
-            if has_git_source {
-                Self::resolve_git_bundles(selected_bundles, &mut bundle_resolver)
-            } else {
-                let selected_paths: Vec<String> = selected_bundles
-                    .iter()
-                    .map(|b| b.path.to_string_lossy().to_string())
-                    .collect();
-
-                bundle_resolver.resolve_multiple(&selected_paths)
+            1 => Self::resolve_single_bundle(&selected_bundles[0], &mut bundle_resolver),
+            _ => {
+                let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
+                if has_git_source {
+                    Self::resolve_git_bundles(selected_bundles, &mut bundle_resolver)
+                } else {
+                    Self::resolve_local_bundles(selected_bundles, &mut bundle_resolver)
+                }
             }
         }?;
 

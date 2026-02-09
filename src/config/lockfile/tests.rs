@@ -310,12 +310,22 @@ mod tests {
         };
     }
 
-    fn verify_dir_bundles_last(lockfile: &Lockfile) {
-        assert_eq!(lockfile.bundles.len(), 4);
+    fn verify_standard_bundle_order(lockfile: &Lockfile) {
         assert_bundle_at!(lockfile, 0, "git-bundle-1", LockedSource::Git { .. });
         assert_bundle_at!(lockfile, 1, "git-bundle-2", LockedSource::Git { .. });
         assert_bundle_at!(lockfile, 2, "local-bundle-1", LockedSource::Dir { .. });
         assert_bundle_at!(lockfile, 3, "local-bundle-2", LockedSource::Dir { .. });
+    }
+
+    fn verify_dir_bundles_last(lockfile: &Lockfile) {
+        assert_eq!(lockfile.bundles.len(), 4);
+        verify_standard_bundle_order(lockfile);
+    }
+
+    fn verify_reorganized_order(lockfile: &Lockfile) {
+        assert_eq!(lockfile.bundles.len(), 5);
+        verify_standard_bundle_order(lockfile);
+        assert_bundle_at!(lockfile, 4, "@test/bundle", LockedSource::Dir { .. });
     }
 
     fn add_bundles_in_wrong_order(lockfile: &mut Lockfile) {
@@ -355,14 +365,5 @@ mod tests {
             "blake3:hash5",
             vec!["agents/ai.md".to_string()],
         ));
-    }
-
-    fn verify_reorganized_order(lockfile: &Lockfile) {
-        assert_eq!(lockfile.bundles.len(), 5);
-        assert_bundle_at!(lockfile, 0, "git-bundle-1", LockedSource::Git { .. });
-        assert_bundle_at!(lockfile, 1, "git-bundle-2", LockedSource::Git { .. });
-        assert_bundle_at!(lockfile, 2, "local-bundle-1", LockedSource::Dir { .. });
-        assert_bundle_at!(lockfile, 3, "local-bundle-2", LockedSource::Dir { .. });
-        assert_bundle_at!(lockfile, 4, "@test/bundle", LockedSource::Dir { .. });
     }
 }

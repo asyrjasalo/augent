@@ -70,17 +70,11 @@ pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>>
     Ok(resources)
 }
 
-/// Filter skills so we only install leaf directories that contain a SKILL.md.
-///
-/// - Skip standalone files directly under skills/ (e.g. skills/web-design-guidelines.zip).
-/// - Include only leaf skill dirs: if both skills/claude.ai/ and skills/claude.ai/vercel-deploy-claimable/
-///   have SKILL.md, treat only vercel-deploy-claimable as a skill (not claude.ai).
-pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<DiscoveredResource> {
-    const SKILLS_PREFIX: &str = "skills/";
+/// Collect all skill directories that contain SKILL.md files
+fn collect_skill_dirs(resources: &[DiscoveredResource]) -> HashSet<String> {
     const SKILL_MD_NAME: &str = "SKILL.md";
 
-    // Set of all skill dirs that contain a SKILL.md
-    let all_skill_dirs: HashSet<String> = resources
+    resources
         .iter()
         .filter(|r| r.resource_type == "skills")
         .filter(|r| r.bundle_path.file_name().and_then(|n| n.to_str()) == Some(SKILL_MD_NAME))
@@ -88,18 +82,39 @@ pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<Discov
             let parent = r.bundle_path.parent()?;
             Some(parent.to_string_lossy().replace('\\', "/"))
         })
-        .collect();
+        .collect()
+}
 
-    // Keep only leaf skill dirs (remove any dir that is a strict prefix of another)
-    let leaf_skill_dirs: HashSet<String> = all_skill_dirs
+/// Find leaf directories (no other directory is a subdirectory of these)
+fn find_leaf_dirs(all_dirs: &HashSet<String>) -> HashSet<String> {
+    all_dirs
         .iter()
         .filter(|dir| {
-            !all_skill_dirs
+            !all_dirs
                 .iter()
                 .any(|other| *other != **dir && other.starts_with(&format!("{}/", dir)))
         })
         .cloned()
-        .collect();
+        .collect()
+}
+
+/// Check if a resource path is within a leaf skill directory
+fn is_in_leaf_dir(path_str: &str, leaf_dirs: &HashSet<String>) -> bool {
+    leaf_dirs
+        .iter()
+        .any(|skill_dir| path_str == *skill_dir || path_str.starts_with(&format!("{}/", skill_dir)))
+}
+
+/// Filter skills so we only install leaf directories that contain a SKILL.md.
+///
+/// - Skip standalone files directly under skills/ (e.g. skills/web-design-guidelines.zip).
+/// - Include only leaf skill dirs: if both skills/claude.ai/ and skills/claude.ai/vercel-deploy-claimable/
+///   have SKILL.md, treat only vercel-deploy-claimable as a skill (not claude.ai).
+pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<DiscoveredResource> {
+    const SKILLS_PREFIX: &str = "skills/";
+
+    let all_skill_dirs = collect_skill_dirs(&resources);
+    let leaf_skill_dirs = find_leaf_dirs(&all_skill_dirs);
 
     resources
         .into_iter()
@@ -112,14 +127,10 @@ pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<Discov
                 return true;
             }
             let after_skills = path_str.trim_start_matches(SKILLS_PREFIX);
-            // Standalone file directly under skills/ (e.g. skills/web-design-guidelines.zip) -> skip
             if !after_skills.contains('/') {
                 return false;
             }
-            // Include only if path is inside a leaf skill dir (e.g. vercel-deploy-claimable, not claude.ai)
-            leaf_skill_dirs.iter().any(|skill_dir| {
-                path_str == *skill_dir || path_str.starts_with(&format!("{}/", skill_dir))
-            })
+            is_in_leaf_dir(&path_str, &leaf_skill_dirs)
         })
         .collect()
 }

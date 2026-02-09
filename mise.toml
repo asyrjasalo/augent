@@ -53,9 +53,5 @@ description = "Run tests with coverage"
 run = "cargo tarpaulin"
 
 [tasks.lizard]
-description = "Run lizard complexity analysis"
-run = "echo 'Rules:\n- Cyclomatic complexity threshold (warn if CCN > 10)\n- Length of function threshold (warn if function has > 50 lines)\n- Number of parameters threshold (warn if function has > 5 parameters)\n' && uvx lizard -C 10 -L 50 -a 5 --warnings_only src/"
-
-[tasks.lizard-dup]
-description = "Run lizard with duplicate detection"
-run = "echo 'Rules:\n- Cyclomatic complexity threshold (warn if CCN > 10)\n- Length of function threshold (warn if function has > 50 lines)\n- Number of parameters threshold (warn if function has > 5 parameters)\n- Duplicate detection enabled\n' && uvx lizard -C 10 -L 50 -a 5 -Eduplicate --warnings_only src/"
+description = "Run lizard complexity analysis with duplicate detection"
+run = "echo 'Rules:\n- Cyclomatic complexity threshold (warn if CCN > 10)\n- Length of function threshold (warn if function has > 50 lines)\n- Number of parameters threshold (warn if function has > 5 parameters)\n- Duplicate detection enabled\n- Token count threshold (warn if > 300 tokens)\n' && uvx lizard -C 10 -L 50 -a 5 -T token_count=300 -Eduplicate --warnings_only src/"

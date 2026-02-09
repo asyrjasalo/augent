@@ -55,6 +55,25 @@ fn perform_simple_copy(source: &Path, target: &Path) -> Result<()> {
         .map(|_| ())
 }
 
+fn handle_frontmatter_file(
+    content: &str,
+    target: &Path,
+    platforms: &[Platform],
+    workspace_root: &Path,
+) -> Option<Result<()>> {
+    let (fm, body) = crate::universal::parse_frontmatter_and_body(content)?;
+
+    let known: Vec<String> = platforms.iter().map(|p| p.id.clone()).collect();
+
+    if let Some(pid) = detection::platform_id_from_target(target, platforms, workspace_root) {
+        let merged = crate::universal::merge_frontmatter_for_platform(&fm, pid, &known);
+        return Some(formats::gemini::convert_from_merged(&merged, &body, target));
+    }
+
+    let _ = writer::write_merged_frontmatter_markdown(&fm, &body, target);
+    Some(Ok(()))
+}
+
 fn handle_text_file(
     source: &Path,
     target: &Path,
@@ -68,16 +87,8 @@ fn handle_text_file(
         reason: e.to_string(),
     })?;
 
-    let known: Vec<String> = platforms.iter().map(|p| p.id.clone()).collect();
-
-    if let Some((fm, body)) = crate::universal::parse_frontmatter_and_body(&content) {
-        if let Some(pid) = detection::platform_id_from_target(target, platforms, workspace_root) {
-            let merged = crate::universal::merge_frontmatter_for_platform(&fm, pid, &known);
-            return formats::gemini::convert_from_merged(&merged, &body, target);
-        }
-
-        let _ = writer::write_merged_frontmatter_markdown(&fm, &body, target);
-        return Ok(());
+    if let Some(result) = handle_frontmatter_file(&content, target, platforms, workspace_root) {
+        return result;
     }
 
     if detection::is_gemini_command_file(target) {

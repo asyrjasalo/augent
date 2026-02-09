@@ -78,11 +78,60 @@ bundles:
         assert_eq!(parsed.bundles.len(), 3);
     }
 
+    fn create_git_bundle(
+        name: &str,
+        url: &str,
+        sha: &str,
+        hash: &str,
+        file: &str,
+    ) -> crate::config::lockfile::bundle::LockedBundle {
+        crate::config::lockfile::bundle::LockedBundle::git(
+            name,
+            url,
+            sha,
+            hash,
+            vec![file.to_string()],
+        )
+    }
+
+    fn create_dir_bundle(
+        name: &str,
+        path: &str,
+        hash: &str,
+        file: &str,
+    ) -> crate::config::lockfile::bundle::LockedBundle {
+        crate::config::lockfile::bundle::LockedBundle::dir(name, path, hash, vec![file.to_string()])
+    }
+
+    fn create_reorder_lockfile() -> crate::config::Lockfile {
+        let mut lockfile = crate::config::Lockfile::new();
+        lockfile.add_bundle(create_git_bundle(
+            "git-bundle-1",
+            "https://github.com/test/repo1.git",
+            "sha123",
+            "blake3:hash1",
+            "file2.md",
+        ));
+        lockfile.add_bundle(create_git_bundle(
+            "git-bundle-2",
+            "https://github.com/test/repo2.git",
+            "sha456",
+            "blake3:hash2",
+            "file3.md",
+        ));
+        lockfile.add_bundle(create_dir_bundle(
+            "local-bundle",
+            ".augent/local-bundle",
+            "blake3:hash3",
+            "file1.md",
+        ));
+        lockfile
+    }
+
     #[test]
     fn test_workspace_config_reorder_to_match_lockfile() {
         let mut workspace_config = WorkspaceConfig::new();
 
-        // Add bundles in one order in workspace config
         let mut bundle1 = WorkspaceBundle::new("local-bundle");
         bundle1.add_file("file1.md", vec![".augent/file1.md".to_string()]);
         workspace_config.add_bundle(bundle1);
@@ -95,33 +144,9 @@ bundles:
         bundle3.add_file("file3.md", vec![".claude/file3.md".to_string()]);
         workspace_config.add_bundle(bundle3);
 
-        // Create a lockfile with different order (git bundles first, then local)
-        let mut lockfile = crate::config::Lockfile::new();
-        lockfile.add_bundle(crate::config::lockfile::bundle::LockedBundle::git(
-            "git-bundle-1",
-            "https://github.com/test/repo1.git",
-            "sha123",
-            "blake3:hash1",
-            vec!["file2.md".to_string()],
-        ));
-        lockfile.add_bundle(crate::config::lockfile::bundle::LockedBundle::git(
-            "git-bundle-2",
-            "https://github.com/test/repo2.git",
-            "sha456",
-            "blake3:hash2",
-            vec!["file3.md".to_string()],
-        ));
-        lockfile.add_bundle(crate::config::lockfile::bundle::LockedBundle::dir(
-            "local-bundle",
-            ".augent/local-bundle",
-            "blake3:hash3",
-            vec!["file1.md".to_string()],
-        ));
-
-        // Reorder workspace config to match lockfile
+        let lockfile = create_reorder_lockfile();
         workspace_config.reorder_to_match_lockfile(&lockfile);
 
-        // Verify new order
         assert_eq!(workspace_config.bundles.len(), 3);
         assert_eq!(workspace_config.bundles[0].name, "git-bundle-1");
         assert_eq!(workspace_config.bundles[1].name, "git-bundle-2");
