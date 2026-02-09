@@ -197,63 +197,63 @@ impl BundleSource {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_parse_empty_string() {
-        let result = BundleSource::parse("");
-        assert!(result.is_err());
+    macro_rules! test_parse_ok {
+        ($test_name:ident, $input:expr, $expected:pat) => {
+            #[test]
+            fn $test_name() {
+                let result = BundleSource::parse($input);
+                assert!(matches!(result, Ok($expected)));
+            }
+        };
     }
 
-    #[test]
-    fn test_parse_relative_path_current_dir() {
-        let result = BundleSource::parse("./bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
+    macro_rules! test_parse_err {
+        ($test_name:ident, $input:expr) => {
+            #[test]
+            fn $test_name() {
+                let result = BundleSource::parse($input);
+                assert!(result.is_err());
+            }
+        };
     }
 
-    #[test]
-    fn test_parse_relative_path_parent() {
-        let result = BundleSource::parse("../bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
+    test_parse_err!(test_parse_empty_string, "");
 
-    #[test]
-    fn test_parse_absolute_path_unix() {
-        let result = BundleSource::parse("/absolute/path/to/bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    fn test_parse_dot_not_protocol() {
-        let result = BundleSource::parse(".bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
-
-    #[test]
-    fn test_parse_github_short() {
-        let result = BundleSource::parse("github:user/repo");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_github_at() {
-        let result = BundleSource::parse("@user/repo");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_user_repo() {
-        let result = BundleSource::parse("user/repo");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_https_url() {
-        let result = BundleSource::parse("https://github.com/user/repo.git");
-        assert!(matches!(result, Ok(BundleSource::Git(_))));
-    }
-
-    #[test]
-    fn test_parse_file_url() {
-        let result = BundleSource::parse("file:///path/to/bundle");
-        assert!(matches!(result, Ok(BundleSource::Dir { .. })));
-    }
+    test_parse_ok!(
+        test_parse_relative_path_current_dir,
+        "./bundle",
+        BundleSource::Dir { .. }
+    );
+    test_parse_ok!(
+        test_parse_relative_path_parent,
+        "../bundle",
+        BundleSource::Dir { .. }
+    );
+    test_parse_ok!(
+        test_parse_absolute_path_unix,
+        "/absolute/path/to/bundle",
+        BundleSource::Dir { .. }
+    );
+    test_parse_ok!(
+        test_parse_dot_not_protocol,
+        ".bundle",
+        BundleSource::Dir { .. }
+    );
+    test_parse_ok!(
+        test_parse_github_short,
+        "github:user/repo",
+        BundleSource::Git(_)
+    );
+    test_parse_ok!(test_parse_github_at, "@user/repo", BundleSource::Git(_));
+    test_parse_ok!(test_parse_user_repo, "user/repo", BundleSource::Git(_));
+    test_parse_ok!(
+        test_parse_https_url,
+        "https://github.com/user/repo.git",
+        BundleSource::Git(_)
+    );
+    test_parse_ok!(
+        test_parse_file_url,
+        "file:///path/to/bundle",
+        BundleSource::Dir { .. }
+    );
 }

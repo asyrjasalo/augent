@@ -303,32 +303,19 @@ mod tests {
         ));
     }
 
+    macro_rules! assert_bundle_at {
+        ($lockfile:expr, $index:expr, $name:expr, $source:pat) => {
+            assert_eq!($lockfile.bundles[$index].name, $name);
+            assert!(matches!($lockfile.bundles[$index].source, $source));
+        };
+    }
+
     fn verify_dir_bundles_last(lockfile: &Lockfile) {
         assert_eq!(lockfile.bundles.len(), 4);
-
-        assert_eq!(lockfile.bundles[0].name, "git-bundle-1");
-        assert!(matches!(
-            lockfile.bundles[0].source,
-            LockedSource::Git { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[1].name, "git-bundle-2");
-        assert!(matches!(
-            lockfile.bundles[1].source,
-            LockedSource::Git { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[2].name, "local-bundle-1");
-        assert!(matches!(
-            lockfile.bundles[2].source,
-            LockedSource::Dir { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[3].name, "local-bundle-2");
-        assert!(matches!(
-            lockfile.bundles[3].source,
-            LockedSource::Dir { .. }
-        ));
+        assert_bundle_at!(lockfile, 0, "git-bundle-1", LockedSource::Git { .. });
+        assert_bundle_at!(lockfile, 1, "git-bundle-2", LockedSource::Git { .. });
+        assert_bundle_at!(lockfile, 2, "local-bundle-1", LockedSource::Dir { .. });
+        assert_bundle_at!(lockfile, 3, "local-bundle-2", LockedSource::Dir { .. });
     }
 
     fn add_bundles_in_wrong_order(lockfile: &mut Lockfile) {
@@ -372,35 +359,10 @@ mod tests {
 
     fn verify_reorganized_order(lockfile: &Lockfile) {
         assert_eq!(lockfile.bundles.len(), 5);
-
-        assert_eq!(lockfile.bundles[0].name, "git-bundle-1");
-        assert!(matches!(
-            lockfile.bundles[0].source,
-            LockedSource::Git { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[1].name, "git-bundle-2");
-        assert!(matches!(
-            lockfile.bundles[1].source,
-            LockedSource::Git { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[2].name, "local-bundle-1");
-        assert!(matches!(
-            lockfile.bundles[2].source,
-            LockedSource::Dir { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[3].name, "local-bundle-2");
-        assert!(matches!(
-            lockfile.bundles[3].source,
-            LockedSource::Dir { .. }
-        ));
-
-        assert_eq!(lockfile.bundles[4].name, "@test/bundle");
-        assert!(matches!(
-            lockfile.bundles[4].source,
-            LockedSource::Dir { .. }
-        ));
+        assert_bundle_at!(lockfile, 0, "git-bundle-1", LockedSource::Git { .. });
+        assert_bundle_at!(lockfile, 1, "git-bundle-2", LockedSource::Git { .. });
+        assert_bundle_at!(lockfile, 2, "local-bundle-1", LockedSource::Dir { .. });
+        assert_bundle_at!(lockfile, 3, "local-bundle-2", LockedSource::Dir { .. });
+        assert_bundle_at!(lockfile, 4, "@test/bundle", LockedSource::Dir { .. });
     }
 }

@@ -131,31 +131,38 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_validate_absolute_path_in_dependency() {
-        let workspace_root = Path::new("/workspace");
-        let user_path = Path::new("/absolute/path");
-        let full_path = Path::new("/absolute/path");
-
-        let result = validate_local_bundle_path(full_path, user_path, true, workspace_root);
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            AugentError::BundleValidationFailed { .. }
-        ));
+    macro_rules! test_validate_error {
+        ($test_name:ident, $workspace_root:expr, $user_path:expr, $full_path:expr, $is_dependency:expr) => {
+            #[test]
+            fn $test_name() {
+                let result = validate_local_bundle_path(
+                    $full_path,
+                    $user_path,
+                    $is_dependency,
+                    $workspace_root,
+                );
+                assert!(result.is_err());
+                assert!(matches!(
+                    result.unwrap_err(),
+                    AugentError::BundleValidationFailed { .. }
+                ));
+            }
+        };
     }
 
-    #[test]
-    fn test_validate_path_outside_workspace() {
-        let workspace_root = Path::new("/workspace");
-        let user_path = Path::new("../outside");
-        let full_path = Path::new("/outside");
+    test_validate_error!(
+        test_validate_absolute_path_in_dependency,
+        Path::new("/workspace"),
+        Path::new("/absolute/path"),
+        Path::new("/absolute/path"),
+        true
+    );
 
-        let result = validate_local_bundle_path(full_path, user_path, true, workspace_root);
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            AugentError::BundleValidationFailed { .. }
-        ));
-    }
+    test_validate_error!(
+        test_validate_path_outside_workspace,
+        Path::new("/workspace"),
+        Path::new("../outside"),
+        Path::new("/outside"),
+        true
+    );
 }

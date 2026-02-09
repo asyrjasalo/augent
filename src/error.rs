@@ -248,6 +248,23 @@ pub type Result<T> = miette::Result<T, AugentError>;
 mod tests {
     use super::*;
 
+    macro_rules! test_error_contains {
+        ($test_name:ident, $err:expr, $($contains:expr),+ $(,)?) => {
+            #[test]
+            fn $test_name() {
+                let err = $err;
+                let error_string = err.to_string();
+                $(
+                    assert!(error_string.contains($contains),
+                        "Error message should contain '{}', got: {}",
+                        $contains,
+                        error_string
+                    );
+                )+
+            }
+        };
+    }
+
     #[test]
     fn test_error_display() {
         let err = AugentError::BundleNotFound {
@@ -274,233 +291,224 @@ mod tests {
         assert!(matches!(augent_err, AugentError::IoError { .. }));
     }
 
-    #[test]
-    fn test_circular_dependency_error() {
-        let err = AugentError::CircularDependency {
+    test_error_contains!(
+        test_circular_dependency_error,
+        AugentError::CircularDependency {
             chain: "a -> b -> c -> a".to_string(),
-        };
-        assert!(err.to_string().contains("Circular dependency"));
-        assert!(err.to_string().contains("a -> b -> c -> a"));
-    }
+        },
+        "Circular dependency",
+        "a -> b -> c -> a"
+    );
 
-    #[test]
-    fn test_invalid_bundle_name_error() {
-        let err = AugentError::InvalidBundleName {
+    test_error_contains!(
+        test_invalid_bundle_name_error,
+        AugentError::InvalidBundleName {
             name: "invalid-name".to_string(),
-        };
-        assert!(err.to_string().contains("Invalid bundle name"));
-        assert!(err.to_string().contains("invalid-name"));
-    }
+        },
+        "Invalid bundle name",
+        "invalid-name"
+    );
 
-    #[test]
-    fn test_bundle_validation_failed_error() {
-        let err = AugentError::BundleValidationFailed {
+    test_error_contains!(
+        test_bundle_validation_failed_error,
+        AugentError::BundleValidationFailed {
             message: "missing required field".to_string(),
-        };
-        assert!(err.to_string().contains("Bundle validation failed"));
-        assert!(err.to_string().contains("missing required field"));
-    }
+        },
+        "Bundle validation failed",
+        "missing required field"
+    );
 
-    #[test]
-    fn test_invalid_source_url_error() {
-        let err = AugentError::InvalidSourceUrl {
+    test_error_contains!(
+        test_invalid_source_url_error,
+        AugentError::InvalidSourceUrl {
             url: "invalid://url".to_string(),
-        };
-        assert!(err.to_string().contains("Invalid source URL"));
-        assert!(err.to_string().contains("invalid://url"));
-    }
+        },
+        "Invalid source URL",
+        "invalid://url"
+    );
 
-    #[test]
-    fn test_source_parse_failed_error() {
-        let err = AugentError::SourceParseFailed {
+    test_error_contains!(
+        test_source_parse_failed_error,
+        AugentError::SourceParseFailed {
             input: "github:user".to_string(),
             reason: "missing repository name".to_string(),
-        };
-        assert!(err.to_string().contains("Failed to parse source"));
-        assert!(err.to_string().contains("github:user"));
-    }
+        },
+        "Failed to parse source",
+        "github:user"
+    );
 
-    #[test]
-    fn test_git_operation_failed_error() {
-        let err = AugentError::GitOperationFailed {
+    test_error_contains!(
+        test_git_operation_failed_error,
+        AugentError::GitOperationFailed {
             message: "connection timed out".to_string(),
-        };
-        assert!(err.to_string().contains("Git operation failed"));
-        assert!(err.to_string().contains("connection timed out"));
-    }
+        },
+        "Git operation failed",
+        "connection timed out"
+    );
 
-    #[test]
-    fn test_not_in_git_repository_error() {
-        let err = AugentError::NotInGitRepository;
-        assert!(err.to_string().contains("Not in a git repository"));
-    }
+    test_error_contains!(
+        test_not_in_git_repository_error,
+        AugentError::NotInGitRepository,
+        "Not in a git repository"
+    );
 
-    #[test]
-    fn test_git_clone_failed_error() {
-        let err = AugentError::GitCloneFailed {
+    test_error_contains!(
+        test_git_clone_failed_error,
+        AugentError::GitCloneFailed {
             url: "https://github.com/user/repo.git".to_string(),
             reason: "authentication failed".to_string(),
-        };
-        assert!(err.to_string().contains("Failed to clone repository"));
-        assert!(err.to_string().contains("https://github.com/user/repo.git"));
-    }
+        },
+        "Failed to clone repository",
+        "https://github.com/user/repo.git"
+    );
 
-    #[test]
-    fn test_git_ref_resolution_failed_error() {
-        let err = AugentError::GitRefResolutionFailed {
+    test_error_contains!(
+        test_git_ref_resolution_failed_error,
+        AugentError::GitRefResolutionFailed {
             reference: "nonexistent-branch".to_string(),
-        };
-        assert!(err.to_string().contains("Failed to resolve ref"));
-        assert!(err.to_string().contains("nonexistent-branch"));
-    }
+        },
+        "Failed to resolve ref",
+        "nonexistent-branch"
+    );
 
-    #[test]
-    fn test_workspace_not_found_error() {
-        let err = AugentError::WorkspaceNotFound {
+    test_error_contains!(
+        test_workspace_not_found_error,
+        AugentError::WorkspaceNotFound {
             path: "/path/to/workspace".to_string(),
-        };
-        assert!(err.to_string().contains("Workspace not found"));
-        assert!(err.to_string().contains("/path/to/workspace"));
-    }
+        },
+        "Workspace not found",
+        "/path/to/workspace"
+    );
 
-    #[test]
-    fn test_config_not_found_error() {
-        let err = AugentError::ConfigNotFound {
+    test_error_contains!(
+        test_config_not_found_error,
+        AugentError::ConfigNotFound {
             path: "/path/to/config.yaml".to_string(),
-        };
-        assert!(err.to_string().contains("Configuration file not found"));
-        assert!(err.to_string().contains("/path/to/config.yaml"));
-    }
+        },
+        "Configuration file not found",
+        "/path/to/config.yaml"
+    );
 
-    #[test]
-    fn test_config_parse_failed_error() {
-        let err = AugentError::ConfigParseFailed {
+    test_error_contains!(
+        test_config_parse_failed_error,
+        AugentError::ConfigParseFailed {
             path: "/path/to/config.yaml".to_string(),
             reason: "invalid YAML".to_string(),
-        };
-        assert!(
-            err.to_string()
-                .contains("Failed to parse configuration file")
-        );
-        assert!(err.to_string().contains("/path/to/config.yaml"));
-    }
+        },
+        "Failed to parse configuration file",
+        "/path/to/config.yaml"
+    );
 
-    #[test]
-    fn test_config_invalid_error() {
-        let err = AugentError::ConfigInvalid {
+    test_error_contains!(
+        test_config_invalid_error,
+        AugentError::ConfigInvalid {
             message: "missing required field 'name'".to_string(),
-        };
-        assert!(err.to_string().contains("Invalid configuration"));
-        assert!(err.to_string().contains("missing required field 'name'"));
-    }
+        },
+        "Invalid configuration",
+        "missing required field 'name'"
+    );
 
-    #[test]
-    fn test_lockfile_outdated_error() {
-        let err = AugentError::LockfileOutdated;
-        assert!(err.to_string().contains("Lockfile is out of date"));
-    }
+    test_error_contains!(
+        test_lockfile_outdated_error,
+        AugentError::LockfileOutdated,
+        "Lockfile is out of date"
+    );
 
-    #[test]
-    fn test_lockfile_missing_error() {
-        let err = AugentError::LockfileMissing;
-        assert!(err.to_string().contains("Lockfile is missing"));
-    }
+    test_error_contains!(
+        test_lockfile_missing_error,
+        AugentError::LockfileMissing,
+        "Lockfile is missing"
+    );
 
-    #[test]
-    fn test_hash_mismatch_error() {
-        let err = AugentError::HashMismatch {
+    test_error_contains!(
+        test_hash_mismatch_error,
+        AugentError::HashMismatch {
             name: "@test/bundle".to_string(),
-        };
-        assert!(err.to_string().contains("Hash mismatch"));
-        assert!(err.to_string().contains("@test/bundle"));
-    }
+        },
+        "Hash mismatch",
+        "@test/bundle"
+    );
 
-    #[test]
-    fn test_dependency_not_found_error() {
-        let err = AugentError::DependencyNotFound {
+    test_error_contains!(
+        test_dependency_not_found_error,
+        AugentError::DependencyNotFound {
             name: "@missing/dep".to_string(),
-        };
-        assert!(err.to_string().contains("Dependency not found"));
-        assert!(err.to_string().contains("@missing/dep"));
-    }
+        },
+        "Dependency not found",
+        "@missing/dep"
+    );
 
-    #[test]
-    fn test_platform_not_supported_error() {
-        let err = AugentError::PlatformNotSupported {
+    test_error_contains!(
+        test_platform_not_supported_error,
+        AugentError::PlatformNotSupported {
             platform: "unknown-platform".to_string(),
-        };
-        assert!(err.to_string().contains("Platform not supported"));
-        assert!(err.to_string().contains("unknown-platform"));
-    }
+        },
+        "Platform not supported",
+        "unknown-platform"
+    );
 
-    #[test]
-    fn test_no_platforms_detected_error() {
-        let err = AugentError::NoPlatformsDetected;
-        assert!(err.to_string().contains("No platforms detected"));
-    }
+    test_error_contains!(
+        test_no_platforms_detected_error,
+        AugentError::NoPlatformsDetected,
+        "No platforms detected"
+    );
 
-    #[test]
-    fn test_platform_config_failed_error() {
-        let err = AugentError::PlatformConfigFailed {
+    test_error_contains!(
+        test_platform_config_failed_error,
+        AugentError::PlatformConfigFailed {
             message: "invalid JSON".to_string(),
-        };
-        assert!(
-            err.to_string()
-                .contains("Failed to load platform configuration")
-        );
-        assert!(err.to_string().contains("invalid JSON"));
-    }
+        },
+        "Failed to load platform configuration",
+        "invalid JSON"
+    );
 
-    #[test]
-    fn test_file_not_found_error() {
-        let err = AugentError::FileNotFound {
+    test_error_contains!(
+        test_file_not_found_error,
+        AugentError::FileNotFound {
             path: "/path/to/file.txt".to_string(),
-        };
-        assert!(err.to_string().contains("File not found"));
-        assert!(err.to_string().contains("/path/to/file.txt"));
-    }
+        },
+        "File not found",
+        "/path/to/file.txt"
+    );
 
-    #[test]
-    fn test_file_read_failed_error() {
-        let err = AugentError::FileReadFailed {
+    test_error_contains!(
+        test_file_read_failed_error,
+        AugentError::FileReadFailed {
             path: "/path/to/file.txt".to_string(),
             reason: "permission denied".to_string(),
-        };
-        assert!(err.to_string().contains("Failed to read file"));
-        assert!(err.to_string().contains("/path/to/file.txt"));
-    }
+        },
+        "Failed to read file",
+        "/path/to/file.txt"
+    );
 
-    #[test]
-    fn test_config_read_failed_error() {
-        let err = AugentError::ConfigReadFailed {
+    test_error_contains!(
+        test_config_read_failed_error,
+        AugentError::ConfigReadFailed {
             path: "/path/to/config.yaml".to_string(),
             reason: "file corrupted".to_string(),
-        };
-        assert!(
-            err.to_string()
-                .contains("Failed to read configuration file")
-        );
-        assert!(err.to_string().contains("/path/to/config.yaml"));
-    }
+        },
+        "Failed to read configuration file",
+        "/path/to/config.yaml"
+    );
 
-    #[test]
-    fn test_file_write_failed_error() {
-        let err = AugentError::FileWriteFailed {
+    test_error_contains!(
+        test_file_write_failed_error,
+        AugentError::FileWriteFailed {
             path: "/path/to/file.txt".to_string(),
             reason: "disk full".to_string(),
-        };
-        assert!(err.to_string().contains("Failed to write file"));
-        assert!(err.to_string().contains("/path/to/file.txt"));
-    }
+        },
+        "Failed to write file",
+        "/path/to/file.txt"
+    );
 
-    #[test]
-    fn test_cache_operation_failed_error() {
-        let err = AugentError::CacheOperationFailed {
+    test_error_contains!(
+        test_cache_operation_failed_error,
+        AugentError::CacheOperationFailed {
             message: "cache directory missing".to_string(),
-        };
-        assert!(err.to_string().contains("Cache operation failed"));
-        assert!(err.to_string().contains("cache directory missing"));
-    }
+        },
+        "Cache operation failed",
+        "cache directory missing"
+    );
 
     #[test]
     fn test_yaml_error_conversion() {

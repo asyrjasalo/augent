@@ -70,105 +70,98 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    #[test]
-    fn test_discovered_resource_validate_success() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let file_path = temp.path().join("commands/debug.md");
-        std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
-        std::fs::write(&file_path, "test").unwrap();
+    macro_rules! test_discovered_resource {
+        ($test_name:ident, $bundle_path:expr, $resource_type:expr, $should_succeed:expr) => {
+            #[test]
+            fn $test_name() {
+                let temp = tempfile::TempDir::new().unwrap();
+                let file_path = temp.path().join("commands/debug.md");
+                std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
+                std::fs::write(&file_path, "test").unwrap();
 
-        let resource = DiscoveredResource {
-            bundle_path: PathBuf::from("commands/debug.md"),
-            absolute_path: file_path,
-            resource_type: "command".to_string(),
+                let resource = DiscoveredResource {
+                    bundle_path: PathBuf::from($bundle_path),
+                    absolute_path: file_path,
+                    resource_type: $resource_type.to_string(),
+                };
+
+                if $should_succeed {
+                    assert!(resource.validate().is_ok());
+                } else {
+                    let result = resource.validate();
+                    assert!(result.is_err());
+                    assert!(result.unwrap_err().contains("empty"));
+                }
+            }
         };
-
-        assert!(resource.validate().is_ok());
     }
 
-    #[test]
-    fn test_discovered_resource_validate_empty_bundle_path() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let file_path = temp.path().join("commands/debug.md");
-        std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
-        std::fs::write(&file_path, "test").unwrap();
+    test_discovered_resource!(
+        test_discovered_resource_validate_success,
+        "commands/debug.md",
+        "command",
+        true
+    );
+    test_discovered_resource!(
+        test_discovered_resource_validate_empty_bundle_path,
+        "",
+        "command",
+        false
+    );
+    test_discovered_resource!(
+        test_discovered_resource_validate_empty_type,
+        "commands/debug.md",
+        "",
+        false
+    );
 
-        let resource = DiscoveredResource {
-            bundle_path: PathBuf::from(""),
-            absolute_path: file_path,
-            resource_type: "command".to_string(),
+    macro_rules! test_installed_file {
+        ($test_name:ident, $bundle_path:expr, $resource_type:expr, $target_paths:expr, $should_succeed:expr) => {
+            #[test]
+            fn $test_name() {
+                let file = InstalledFile {
+                    bundle_path: $bundle_path.to_string(),
+                    resource_type: $resource_type.to_string(),
+                    target_paths: $target_paths,
+                };
+
+                if $should_succeed {
+                    assert!(file.validate().is_ok());
+                } else {
+                    let result = file.validate();
+                    assert!(result.is_err());
+                    assert!(result.unwrap_err().contains("empty"));
+                }
+            }
         };
-
-        let result = resource.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("empty"));
     }
 
-    #[test]
-    fn test_discovered_resource_validate_empty_type() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let file_path = temp.path().join("commands/debug.md");
-        std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
-        std::fs::write(&file_path, "test").unwrap();
-
-        let resource = DiscoveredResource {
-            bundle_path: PathBuf::from("commands/debug.md"),
-            absolute_path: file_path,
-            resource_type: "".to_string(),
-        };
-
-        let result = resource.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("empty"));
-    }
-
-    #[test]
-    fn test_installed_file_validate_success() {
-        let file = InstalledFile {
-            bundle_path: "commands/debug.md".to_string(),
-            resource_type: "command".to_string(),
-            target_paths: vec![".cursor/.cursor/commands/debug.md".to_string()],
-        };
-
-        assert!(file.validate().is_ok());
-    }
-
-    #[test]
-    fn test_installed_file_validate_empty_bundle_path() {
-        let file = InstalledFile {
-            bundle_path: "".to_string(),
-            resource_type: "command".to_string(),
-            target_paths: vec![".cursor/.cursor/commands/debug.md".to_string()],
-        };
-
-        let result = file.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("empty"));
-    }
-
-    #[test]
-    fn test_installed_file_validate_empty_type() {
-        let file = InstalledFile {
-            bundle_path: "commands/debug.md".to_string(),
-            resource_type: "".to_string(),
-            target_paths: vec![".cursor/.cursor/commands/debug.md".to_string()],
-        };
-
-        let result = file.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("empty"));
-    }
-
-    #[test]
-    fn test_installed_file_validate_empty_target_paths() {
-        let file = InstalledFile {
-            bundle_path: "commands/debug.md".to_string(),
-            resource_type: "command".to_string(),
-            target_paths: vec![],
-        };
-
-        let result = file.validate();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("empty"));
-    }
+    test_installed_file!(
+        test_installed_file_validate_success,
+        "commands/debug.md",
+        "command",
+        vec![".cursor/.cursor/commands/debug.md".to_string()],
+        true
+    );
+    test_installed_file!(
+        test_installed_file_validate_empty_bundle_path,
+        "",
+        "command",
+        vec![".cursor/.cursor/commands/debug.md".to_string()],
+        false
+    );
+    test_installed_file!(
+        test_installed_file_validate_empty_type,
+        "commands/debug.md",
+        "",
+        vec![".cursor/.cursor/commands/debug.md".to_string()],
+        false
+    );
+    test_installed_file!(
+        test_installed_file_validate_empty_target_paths,
+        "commands/debug.md",
+        "command",
+        vec![],
+        false
+    );
 }

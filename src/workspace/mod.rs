@@ -216,6 +216,16 @@ mod tests {
     use normpath::PathExt;
     use tempfile::TempDir;
 
+    fn create_git_repo(temp: &TempDir) {
+        git2::Repository::init(temp.path()).unwrap();
+    }
+
+    fn normalize_path(path: &Path) -> PathBuf {
+        fs::canonicalize(path)
+            .or_else(|_| path.normalize().map(|np| np.into_path_buf()))
+            .unwrap_or_else(|_| path.to_path_buf())
+    }
+
     #[test]
     fn test_workspace_exists() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
@@ -229,8 +239,7 @@ mod tests {
     #[test]
     fn test_workspace_find_from() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        git2::Repository::init(temp.path()).unwrap();
+        create_git_repo(&temp);
         fs::create_dir(temp.path().join(WORKSPACE_DIR)).unwrap();
 
         let nested = temp.path().join("src/deep/nested");
@@ -239,21 +248,15 @@ mod tests {
         let found = Workspace::find_from(&nested);
         assert!(found.is_some());
 
-        let found_path = found.unwrap();
-        let found_canonical = fs::canonicalize(&found_path)
-            .or_else(|_| found_path.normalize().map(|np| np.into_path_buf()))
-            .unwrap_or_else(|_| found_path.to_path_buf());
-        let temp_canonical = fs::canonicalize(temp.path())
-            .or_else(|_| temp.path().normalize().map(|np| np.into_path_buf()))
-            .unwrap_or_else(|_| temp.path().to_path_buf());
+        let found_canonical = normalize_path(&found.unwrap());
+        let temp_canonical = normalize_path(temp.path());
         assert_eq!(found_canonical, temp_canonical);
     }
 
     #[test]
     fn test_workspace_find_from_not_found() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        git2::Repository::init(temp.path()).unwrap();
+        create_git_repo(&temp);
 
         let nested = temp.path().join("src/deep/nested");
         fs::create_dir_all(&nested).unwrap();
@@ -265,8 +268,7 @@ mod tests {
     #[test]
     fn test_workspace_init() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        git2::Repository::init(temp.path()).unwrap();
+        create_git_repo(&temp);
 
         let workspace = Workspace::init(temp.path()).unwrap();
 
@@ -295,8 +297,7 @@ mod tests {
     #[test]
     fn test_workspace_init_or_open() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        git2::Repository::init(temp.path()).unwrap();
+        create_git_repo(&temp);
 
         let workspace1 = Workspace::init_or_open(temp.path()).unwrap();
         let name1 = workspace1.get_workspace_name();
@@ -308,8 +309,7 @@ mod tests {
     #[test]
     fn test_workspace_save_order() {
         let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-
-        git2::Repository::init(temp.path()).unwrap();
+        create_git_repo(&temp);
 
         let mut workspace = Workspace::init(temp.path()).unwrap();
 

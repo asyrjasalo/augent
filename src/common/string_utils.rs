@@ -239,33 +239,44 @@ mod tests {
         assert_eq!(strip_ansi(&styled), "Hello");
     }
 
-    #[test]
-    fn test_parse_git_url_https() {
-        let (url, base) = parse_git_url("https://github.com/author/repo.git");
-        assert_eq!(url.as_deref(), Some("https://github.com/author/repo.git"));
-        assert_eq!(base, "github.com/author/repo");
+    macro_rules! test_parse_git_url {
+        ($test_name:ident, $input:expr, $expected_url:expr, $expected_base:expr) => {
+            #[test]
+            fn $test_name() {
+                let (url, base) = parse_git_url($input);
+                assert_eq!(url.as_deref(), $expected_url);
+                assert_eq!(base, $expected_base);
+            }
+        };
     }
 
-    #[test]
-    fn test_parse_git_url_ssh() {
-        let (url, base) = parse_git_url("git@github.com:author/repo");
-        assert_eq!(url.as_deref(), Some("git@github.com:author/repo"));
-        assert_eq!(base, "github.com:author/repo");
-    }
+    test_parse_git_url!(
+        test_parse_git_url_https,
+        "https://github.com/author/repo.git",
+        Some("https://github.com/author/repo.git"),
+        "github.com/author/repo"
+    );
 
-    #[test]
-    fn test_parse_git_url_file() {
-        let (url, base) = parse_git_url("file:///path/to/repo");
-        assert_eq!(url.as_deref(), Some("file:///path/to/repo"));
-        assert_eq!(base, "path/to/repo");
-    }
+    test_parse_git_url!(
+        test_parse_git_url_ssh,
+        "git@github.com:author/repo",
+        Some("git@github.com:author/repo"),
+        "github.com:author/repo"
+    );
 
-    #[test]
-    fn test_parse_git_url_no_repo_name() {
-        let (url, base) = parse_git_url("https://github.com/author");
-        assert_eq!(url.as_deref(), Some("https://github.com/author"));
-        assert_eq!(base, "github.com/author");
-    }
+    test_parse_git_url!(
+        test_parse_git_url_file,
+        "file:///path/to/repo",
+        Some("file:///path/to/repo"),
+        "path/to/repo"
+    );
+
+    test_parse_git_url!(
+        test_parse_git_url_no_repo_name,
+        "https://github.com/author",
+        Some("https://github.com/author"),
+        "github.com/author"
+    );
 
     #[test]
     fn test_bundle_name_from_url_with_url() {
