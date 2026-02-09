@@ -40,7 +40,6 @@
 pub mod config;
 pub mod discovery;
 pub mod git;
-pub mod graph;
 pub mod local;
 pub mod operation;
 pub mod synthetic;

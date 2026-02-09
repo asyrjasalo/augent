@@ -5,6 +5,7 @@
 //! - Bundle directory detection
 //! - Path resolution relative to workspace
 
+use normpath::PathExt;
 use std::path::{Path, PathBuf};
 
 use crate::config::BundleDependency;
@@ -44,15 +45,27 @@ fn get_bundle_description(path: &Path) -> Option<String> {
 }
 
 fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
-    if path.is_absolute() {
-        Ok(path.to_path_buf())
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
     } else if path == Path::new(".") {
         std::env::current_dir().map_err(|e| AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
-        })
+        })?
     } else {
-        Ok(workspace_root.join(path))
-    }
+        workspace_root.join(path)
+    };
+
+    // Normalize to remove ./ and ../ components and resolve Windows 8.3 short names
+    // Try canonicalize first (resolves symlinks and Windows short names)
+    // Fall back to normalize if path doesn't exist yet
+    std::fs::canonicalize(&joined).or_else(|_| {
+        joined
+            .normalize()
+            .map(|p| p.into_path_buf())
+            .map_err(|_| AugentError::IoError {
+                message: format!("Failed to normalize path: {}", joined.display()),
+            })
+    })
 }
 
 fn get_bundle_name_from_dependency_or_path(
@@ -136,15 +149,7 @@ pub fn resolve_local(ctx: ResolveLocalContext) -> Result<ResolvedBundle> {
 #[allow(dead_code)]
 /// Discover bundles in a local directory
 fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
-    let full_path = if path.is_absolute() {
-        path.to_path_buf()
-    } else if path == Path::new(".") {
-        std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
-        })?
-    } else {
-        workspace_root.join(path)
-    };
+    let full_path = resolve_full_path(path, workspace_root)?;
 
     // Validate path before checking existence to catch outside-repo paths early
     crate::resolver::validation::validate_local_bundle_path(
