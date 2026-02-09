@@ -25,6 +25,16 @@ impl PathNormalizer {
     /// * `workspace_root` - The root directory of the workspace (where .git is)
     /// * `config_dir` - The configuration directory (typically .augent/)
     pub fn new(workspace_root: PathBuf, config_dir: PathBuf) -> Self {
+        // Normalize the roots once during construction to ensure consistent prefix matching
+        let workspace_root = workspace_root
+            .normalize()
+            .map(|p| p.as_path().to_path_buf())
+            .unwrap_or(workspace_root);
+        let config_dir = config_dir
+            .normalize()
+            .map(|p| p.as_path().to_path_buf())
+            .unwrap_or(config_dir);
+
         Self {
             workspace_root,
             config_dir,
@@ -53,10 +63,9 @@ impl PathNormalizer {
     /// Returns `None` if the path is not under the config directory.
     pub fn relative_from_config(&self, path: &Path) -> Option<String> {
         let norm_path = self.normalize(path);
-        let config_dir = self.normalize(&self.config_dir);
-
+        // Use the already-normalized config_dir from construction
         norm_path
-            .strip_prefix(&config_dir)
+            .strip_prefix(&self.config_dir)
             .ok()
             .map(|rel| self.to_normalized_str(rel))
             .map(|s| if s.is_empty() { ".".to_string() } else { s })
@@ -67,10 +76,9 @@ impl PathNormalizer {
     /// Returns `None` if the path is not under the workspace root.
     pub fn relative_from_root(&self, path: &Path) -> Option<String> {
         let norm_path = self.normalize(path);
-        let root = self.normalize(&self.workspace_root);
-
+        // Use the already-normalized workspace_root from construction
         norm_path
-            .strip_prefix(&root)
+            .strip_prefix(&self.workspace_root)
             .ok()
             .map(|rel| self.to_normalized_str(rel))
             .map(|s| if s.is_empty() { ".".to_string() } else { s })
