@@ -10,6 +10,23 @@ pub struct NameFixer<'a> {
     workspace: &'a Workspace,
 }
 
+fn normalize_bundle_path(rel_from_config: &std::path::Path) -> String {
+    let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
+    if path_str.is_empty() {
+        ".".to_string()
+    } else {
+        path_str
+    }
+}
+
+fn paths_match(existing_path: &str, normalized_path: &str) -> bool {
+    let normalized_existing = existing_path
+        .strip_prefix("./")
+        .or_else(|| existing_path.strip_prefix("../"))
+        .unwrap_or(existing_path);
+    normalized_existing == normalized_path
+}
+
 impl<'a> NameFixer<'a> {
     pub fn new(workspace: &'a Workspace) -> Self {
         Self { workspace }
@@ -46,6 +63,17 @@ impl<'a> NameFixer<'a> {
         std::collections::HashMap::new()
     }
 
+    fn find_existing_dependency_with_path(
+        &self,
+        normalized_path: &str,
+    ) -> Option<&crate::config::BundleDependency> {
+        self.workspace.bundle_config.bundles.iter().find(|dep| {
+            dep.path
+                .as_ref()
+                .is_some_and(|p| paths_match(p, normalized_path))
+        })
+    }
+
     // Fix dir bundle names from augent.yaml: preserve custom bundle names
     // This handles cases like:
     //   augent.yaml: { name: "my-library-name", path: "my-library" }
@@ -57,32 +85,14 @@ impl<'a> NameFixer<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         for bundle in &mut resolved_bundles {
             if bundle.git_source.is_none() {
-                // This is a local directory bundle - check if there's an existing dependency with this path
                 if let Ok(rel_from_config) =
                     bundle.source_path.strip_prefix(&self.workspace.config_dir)
                 {
-                    // Bundle is under config_dir - construct relative path for comparison
-                    let path_str = rel_from_config.to_string_lossy().replace('\\', "/");
-                    let normalized_path = if path_str.is_empty() {
-                        ".".to_string()
-                    } else {
-                        path_str
-                    };
+                    let normalized_path = normalize_bundle_path(rel_from_config);
 
-                    // Check if any existing dependency has this path in augent.yaml
                     if let Some(existing_dep) =
-                        self.workspace.bundle_config.bundles.iter().find(|dep| {
-                            dep.path.as_ref().is_some_and(|p| {
-                                // Normalize both paths for comparison
-                                let normalized_existing = p
-                                    .strip_prefix("./")
-                                    .or_else(|| p.strip_prefix("../"))
-                                    .unwrap_or(p);
-                                normalized_existing == normalized_path
-                            })
-                        })
+                        self.find_existing_dependency_with_path(&normalized_path)
                     {
-                        // Use the name from the existing dependency (preserves custom bundle name)
                         if bundle.name != existing_dep.name {
                             bundle.name = existing_dep.name.clone();
                         }

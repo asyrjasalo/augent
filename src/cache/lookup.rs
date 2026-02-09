@@ -72,6 +72,19 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
     Ok(None)
 }
 
+fn extract_sha_from_entry_path(entry_path: &Path) -> Result<String> {
+    entry_path
+        .file_name()
+        .ok_or_else(|| AugentError::CacheOperationFailed {
+            message: "Failed to get SHA from cache entry path".to_string(),
+        })?
+        .to_str()
+        .ok_or_else(|| AugentError::CacheOperationFailed {
+            message: "Failed to get SHA from cache entry path".to_string(),
+        })
+        .map(|s| s.to_string())
+}
+
 /// Try to create a synthetic bundle for marketplace plugins
 #[allow(dead_code)]
 fn try_create_marketplace_synthetic_bundle(
@@ -97,16 +110,7 @@ fn try_create_marketplace_synthetic_bundle(
     let repo_dst = super::paths::entry_repository_path(entry_path);
     operations::create_synthetic_bundle_to(&repo_dst, plugin_name, content_path, Some(source_url))?;
 
-    let sha = entry_path
-        .file_name()
-        .ok_or_else(|| AugentError::CacheOperationFailed {
-            message: "Failed to get SHA from cache entry path".to_string(),
-        })?
-        .to_str()
-        .ok_or_else(|| AugentError::CacheOperationFailed {
-            message: "Failed to get SHA from cache entry path".to_string(),
-        })?
-        .to_string();
+    let sha = extract_sha_from_entry_path(entry_path)?;
 
     Ok((content_path.to_path_buf(), sha, None))
 }

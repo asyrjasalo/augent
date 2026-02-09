@@ -63,6 +63,22 @@ impl CacheStats {
     }
 }
 
+fn aggregate_by_name(
+    bundles: impl IntoIterator<Item = ShaBundleStats>,
+) -> HashMap<String, (usize, u64)> {
+    let mut by_name: HashMap<String, (usize, u64)> = HashMap::new();
+    for sha_bundle in bundles {
+        by_name
+            .entry(sha_bundle.name.clone())
+            .and_modify(|(versions, total)| {
+                *versions += 1;
+                *total += sha_bundle.size;
+            })
+            .or_insert((1, sha_bundle.size));
+    }
+    by_name
+}
+
 /// List all cached bundles (by bundle name, aggregated across SHAs)
 pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
     let path = super::bundles_cache_dir()?;
@@ -71,11 +87,12 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
         return Ok(Vec::new());
     }
 
-    let mut by_name: HashMap<String, (usize, u64)> = HashMap::new();
-
-    for entry in fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
+    let entries = fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
         message: format!("Failed to read cache directory: {}", e),
-    })? {
+    })?;
+
+    let mut sha_bundles = Vec::new();
+    for entry in entries {
         let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
             message: format!("Failed to read entry: {}", e),
         })?;
@@ -84,16 +101,10 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
             continue;
         }
 
-        for sha_bundle in collect_sha_bundles(&entry.path())? {
-            by_name
-                .entry(sha_bundle.name.clone())
-                .and_modify(|(versions, total)| {
-                    *versions += 1;
-                    *total += sha_bundle.size;
-                })
-                .or_insert((1, sha_bundle.size));
-        }
+        sha_bundles.extend(collect_sha_bundles(&entry.path())?);
     }
+
+    let by_name = aggregate_by_name(sha_bundles);
 
     let mut bundles: Vec<CachedBundle> = by_name
         .into_iter()

@@ -165,6 +165,33 @@ pub fn extract_resource_type(file: &str) -> &'static str {
     }
 }
 
+fn group_resources_by_type(files: &[String]) -> HashMap<&str, Vec<String>> {
+    let mut resource_by_type: HashMap<&str, Vec<String>> = HashMap::new();
+    for file in files {
+        let resource_type = extract_resource_type(file);
+        resource_by_type
+            .entry(resource_type)
+            .or_default()
+            .push(file.clone());
+    }
+    resource_by_type
+}
+
+fn display_resource_type(name: &str, files: &[String]) {
+    let type_display = string_utils::capitalize_word(name);
+    let n = files.len();
+    let type_label = if n == 1 { "file" } else { "files" };
+    println!(
+        "      {} ({} {})",
+        Style::new().cyan().apply_to(type_display),
+        n,
+        type_label
+    );
+    for file in files {
+        println!("        {}", Style::new().dim().apply_to(file));
+    }
+}
+
 /// Display resources grouped by type with consistent layout
 pub fn display_resources_grouped(files: &[String]) {
     if files.is_empty() {
@@ -180,37 +207,14 @@ pub fn display_resources_grouped(files: &[String]) {
         files_label
     );
 
-    // Group by resource type
-    let mut resource_by_type: HashMap<&str, Vec<String>> = HashMap::new();
-    for file in files {
-        let resource_type = extract_resource_type(file);
-        resource_by_type
-            .entry(resource_type)
-            .or_default()
-            .push(file.clone());
-    }
+    let resource_by_type = group_resources_by_type(files);
 
-    // Sort resource types
     let mut sorted_types: Vec<_> = resource_by_type.keys().copied().collect();
     sorted_types.sort();
 
-    // Display each resource type with simple file list
-    for resource_type in sorted_types.iter() {
-        let type_display = string_utils::capitalize_word(resource_type);
+    for resource_type in sorted_types {
         let files_for_type = resource_by_type.get(resource_type).unwrap();
-        let n = files_for_type.len();
-        let type_label = if n == 1 { "file" } else { "files" };
-        println!(
-            "      {} ({} {})",
-            Style::new().cyan().apply_to(type_display),
-            n,
-            type_label
-        );
-
-        // File rows
-        for file in files_for_type {
-            println!("        {}", Style::new().dim().apply_to(file));
-        }
+        display_resource_type(resource_type, files_for_type);
     }
 }
 

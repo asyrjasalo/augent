@@ -24,48 +24,54 @@ const RESOURCE_DIRS: &[&str] = &["commands", "rules", "agents", "skills", "root"
 /// Known resource files in bundles (at root level)
 const RESOURCE_FILES: &[&str] = &["mcp.jsonc", "AGENTS.md"];
 
+fn discover_files_in_resource_dir(bundle_path: &Path, dir_name: &str) -> Vec<DiscoveredResource> {
+    let dir_path = bundle_path.join(dir_name);
+    if !dir_path.is_dir() {
+        return Vec::new();
+    }
+
+    WalkDir::new(&dir_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|entry| {
+            let absolute_path = entry.path().to_path_buf();
+            let bundle_path = entry
+                .path()
+                .strip_prefix(bundle_path)
+                .unwrap_or(entry.path())
+                .to_path_buf();
+            DiscoveredResource {
+                bundle_path,
+                absolute_path,
+                resource_type: dir_name.to_string(),
+            }
+        })
+        .collect()
+}
+
+fn discover_root_files(bundle_path: &Path) -> Vec<DiscoveredResource> {
+    RESOURCE_FILES
+        .iter()
+        .filter(|file_name| bundle_path.join(file_name).is_file())
+        .map(|file_name| DiscoveredResource {
+            bundle_path: PathBuf::from(*file_name),
+            absolute_path: bundle_path.join(file_name),
+            resource_type: "root".to_string(),
+        })
+        .collect()
+}
+
 /// Discover all resource files in a bundle directory
 pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
     let mut resources = Vec::new();
 
-    // Discover files in resource directories
     for dir_name in RESOURCE_DIRS {
-        let dir_path = bundle_path.join(dir_name);
-        if dir_path.is_dir() {
-            for entry in WalkDir::new(&dir_path)
-                .follow_links(true)
-                .into_iter()
-                .filter_map(|e| e.ok())
-            {
-                if entry.file_type().is_file() {
-                    let absolute_path = entry.path().to_path_buf();
-                    let bundle_path = entry
-                        .path()
-                        .strip_prefix(bundle_path)
-                        .unwrap_or(entry.path())
-                        .to_path_buf();
-
-                    resources.push(DiscoveredResource {
-                        bundle_path,
-                        absolute_path,
-                        resource_type: (*dir_name).to_string(),
-                    });
-                }
-            }
-        }
+        resources.extend(discover_files_in_resource_dir(bundle_path, dir_name));
     }
 
-    // Discover root-level resource files
-    for file_name in RESOURCE_FILES {
-        let file_path = bundle_path.join(file_name);
-        if file_path.is_file() {
-            resources.push(DiscoveredResource {
-                bundle_path: PathBuf::from(file_name),
-                absolute_path: file_path,
-                resource_type: "root".to_string(),
-            });
-        }
-    }
+    resources.extend(discover_root_files(bundle_path));
 
     Ok(resources)
 }

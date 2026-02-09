@@ -33,47 +33,62 @@ impl<'a> WorkspaceManager<'a> {
         }
     }
 
+    fn extract_dependencies_from_git_bundle(
+        locked: &crate::config::lockfile::bundle::LockedBundle,
+    ) -> Vec<String> {
+        let LockedSource::Git {
+            url,
+            sha,
+            path: bundle_path,
+            ..
+        } = &locked.source
+        else {
+            return Vec::new();
+        };
+
+        let cache_entry = match cache::repo_cache_entry_path(url, sha) {
+            Ok(entry) => entry,
+            Err(_) => return Vec::new(),
+        };
+
+        let bundle_cache_dir = cache::entry_repository_path(&cache_entry);
+        let bundle_resources_dir = match bundle_path {
+            Some(path) => bundle_cache_dir.join(path),
+            None => bundle_cache_dir,
+        };
+        let bundle_augent_yaml = bundle_resources_dir.join("augent.yaml");
+
+        if !bundle_augent_yaml.exists() {
+            return Vec::new();
+        }
+
+        let yaml_content = match std::fs::read_to_string(&bundle_augent_yaml) {
+            Ok(content) => content,
+            Err(_) => return Vec::new(),
+        };
+
+        let bundle_config = match BundleConfig::from_yaml(&yaml_content) {
+            Ok(config) => config,
+            Err(_) => return Vec::new(),
+        };
+
+        bundle_config
+            .bundles
+            .iter()
+            .map(|dep| dep.name.clone())
+            .collect()
+    }
+
     /// Collect all transitive dependencies from git bundles' augent.yaml files.
     /// A transitive dependency is any bundle that appears in another bundle's augent.yaml.
     #[allow(dead_code)]
     fn collect_transitive_dependencies(&self) -> std::collections::HashSet<String> {
-        let mut transitive_dependencies = std::collections::HashSet::new();
-
-        for locked in &self.workspace.lockfile.bundles {
-            // Only git bundles can have dependencies (dir bundles do not have augent.yaml)
-            if let LockedSource::Git {
-                url,
-                sha,
-                path: bundle_path,
-                git_ref: _,
-                hash: _,
-            } = &locked.source
-            {
-                let cache_entry = match cache::repo_cache_entry_path(url, sha) {
-                    Ok(entry) => entry,
-                    Err(_) => continue,
-                };
-                let bundle_cache_dir = cache::entry_repository_path(&cache_entry);
-                let bundle_resources_dir = if let Some(path) = bundle_path {
-                    bundle_cache_dir.join(path)
-                } else {
-                    bundle_cache_dir
-                };
-                let bundle_augent_yaml = bundle_resources_dir.join("augent.yaml");
-
-                if bundle_augent_yaml.exists() {
-                    if let Ok(yaml_content) = std::fs::read_to_string(&bundle_augent_yaml) {
-                        if let Ok(bundle_config) = BundleConfig::from_yaml(&yaml_content) {
-                            for dep in &bundle_config.bundles {
-                                transitive_dependencies.insert(dep.name.clone());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        transitive_dependencies
+        self.workspace
+            .lockfile
+            .bundles
+            .iter()
+            .flat_map(Self::extract_dependencies_from_git_bundle)
+            .collect()
     }
 
     /// Determine if a bundle should be skipped during augent.yaml reconstruction.

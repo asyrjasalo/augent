@@ -49,25 +49,28 @@ pub fn validate_git_repository_root(path: &Path) -> Result<()> {
     Ok(())
 }
 
+fn paths_represent_same_location(
+    canonical_root: &Option<PathBuf>,
+    git_root: &Path,
+    git_root_normalized: &Option<PathBuf>,
+    path: &Path,
+) -> bool {
+    canonical_root.as_ref().map(|p| p.as_path()) == Some(git_root)
+        || path == git_root
+        || canonical_root.as_ref() == git_root_normalized.as_ref()
+        || canonical_root.as_ref().is_some_and(|cr| cr == path)
+        || git_root_normalized.as_ref().is_some_and(|gr| gr == path)
+}
+
 /// Verify path is at git repository root using normalization
 pub fn verify_git_root(path: &Path) -> Result<()> {
-    // Try to normalize root to handle symlinks (e.g., /var -> /private on macOS)
-    // If normalization fails, use the path as-is (can happen on Windows with temp paths)
     let canonical_root = path.normalize().ok().map(|np| np.into_path_buf());
-
-    // Normalize git_root as well for consistent comparison on Windows
     let git_root_normalized = find_git_repository_root(path)
         .as_ref()
         .and_then(|p| p.normalize().ok().map(|np| np.into_path_buf()));
 
     if let Some(git_root) = find_git_repository_root(path) {
-        // Compare both as-is and normalized versions to handle different path representations
-        let paths_match = canonical_root.as_ref() == Some(&git_root)
-            || path == git_root
-            || canonical_root.as_ref() == git_root_normalized.as_ref()
-            || canonical_root.as_ref().is_some_and(|cr| cr == path)
-            || git_root_normalized.as_ref().is_some_and(|gr| gr == path);
-        if !paths_match {
+        if !paths_represent_same_location(&canonical_root, &git_root, &git_root_normalized, path) {
             return Err(AugentError::WorkspaceNotFound {
                 path: path.display().to_string(),
             });

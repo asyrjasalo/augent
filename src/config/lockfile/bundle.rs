@@ -41,29 +41,94 @@ pub struct LockedBundle {
     pub files: Vec<String>,
 }
 
+fn count_optional_fields(
+    description: &Option<String>,
+    version: &Option<String>,
+    author: &Option<String>,
+    license: &Option<String>,
+    homepage: &Option<String>,
+) -> usize {
+    [description, version, author, license, homepage]
+        .iter()
+        .filter(|f| f.is_some())
+        .count()
+}
+
+fn serialize_optional_fields<S>(
+    state: &mut S::SerializeStruct,
+    bundle: &LockedBundle,
+) -> std::result::Result<(), S::Error>
+where
+    S: serde::Serializer,
+{
+    for (name, value) in [
+        ("description", bundle.description.as_ref()),
+        ("version", bundle.version.as_ref()),
+        ("author", bundle.author.as_ref()),
+        ("license", bundle.license.as_ref()),
+        ("homepage", bundle.homepage.as_ref()),
+    ] {
+        if let Some(v) = value {
+            state.serialize_field(name, v)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_dir_source(name: &str, path: &str, hash: &str) -> Result<()> {
+    if path.is_empty() {
+        return Err(AugentError::ConfigInvalid {
+            message: format!("Bundle '{}' has empty path", name),
+        });
+    }
+    if !hash.starts_with("blake3:") {
+        return Err(AugentError::ConfigInvalid {
+            message: format!("Bundle '{}' has invalid hash format", name),
+        });
+    }
+    Ok(())
+}
+
+fn validate_git_source(name: &str, url: &str, sha: &str, hash: &str) -> Result<()> {
+    if url.is_empty() {
+        return Err(AugentError::ConfigInvalid {
+            message: format!("Bundle '{}' has empty URL", name),
+        });
+    }
+    if sha.is_empty() {
+        return Err(AugentError::ConfigInvalid {
+            message: format!("Bundle '{}' has empty SHA", name),
+        });
+    }
+    if !hash.starts_with("blake3:") {
+        return Err(AugentError::ConfigInvalid {
+            message: format!("Bundle '{}' has invalid hash format", name),
+        });
+    }
+    Ok(())
+}
+
 impl Serialize for LockedBundle {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("LockedBundle", 9)?;
+        let optional_count = count_optional_fields(
+            &self.description,
+            &self.version,
+            &self.author,
+            &self.license,
+            &self.homepage,
+        );
+        let field_count = 3 + optional_count;
+
+        let mut state = serializer.serialize_struct("LockedBundle", field_count)?;
         state.serialize_field("name", &self.name)?;
 
-        for (name, value) in [
-            ("description", self.description.as_ref()),
-            ("version", self.version.as_ref()),
-            ("author", self.author.as_ref()),
-            ("license", self.license.as_ref()),
-            ("homepage", self.homepage.as_ref()),
-        ] {
-            if let Some(v) = value {
-                state.serialize_field(name, v)?;
-            }
-        }
+        serialize_optional_fields::<S>(&mut state, self)?;
 
         state.serialize_field("source", &self.source)?;
 
-        // Sort files alphabetically before serialization
         let mut sorted_files = self.files.clone();
         sorted_files.sort();
         state.serialize_field("files", &sorted_files)?;
@@ -143,33 +208,10 @@ impl LockedBundle {
 
         match &self.source {
             LockedSource::Dir { path, hash } => {
-                if path.is_empty() {
-                    return Err(AugentError::ConfigInvalid {
-                        message: format!("Bundle '{}' has empty path", self.name),
-                    });
-                }
-                if !hash.starts_with("blake3:") {
-                    return Err(AugentError::ConfigInvalid {
-                        message: format!("Bundle '{}' has invalid hash format", self.name),
-                    });
-                }
+                validate_dir_source(&self.name, path, hash)?;
             }
             LockedSource::Git { url, sha, hash, .. } => {
-                if url.is_empty() {
-                    return Err(AugentError::ConfigInvalid {
-                        message: format!("Bundle '{}' has empty URL", self.name),
-                    });
-                }
-                if sha.is_empty() {
-                    return Err(AugentError::ConfigInvalid {
-                        message: format!("Bundle '{}' has empty SHA", self.name),
-                    });
-                }
-                if !hash.starts_with("blake3:") {
-                    return Err(AugentError::ConfigInvalid {
-                        message: format!("Bundle '{}' has invalid hash format", self.name),
-                    });
-                }
+                validate_git_source(&self.name, url, sha, hash)?;
             }
         }
 

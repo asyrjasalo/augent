@@ -29,6 +29,19 @@ macro_rules! extract_map_field {
     };
 }
 
+fn count_optional_fields(
+    description: &Option<String>,
+    version: &Option<String>,
+    author: &Option<String>,
+    license: &Option<String>,
+    homepage: &Option<String>,
+) -> usize {
+    [description, version, author, license, homepage]
+        .iter()
+        .filter(|f| f.is_some())
+        .count()
+}
+
 /// Serialize BundleConfig (empty name field, name injected externally)
 pub fn serialize_bundle_config<S>(
     config: &BundleConfigData,
@@ -46,29 +59,12 @@ where
         bundles,
     } = config;
 
-    // Count fields: name (always serialized) + optional fields + bundles
-    let mut field_count = 2; // name + bundles
-    if description.is_some() {
-        field_count += 1;
-    }
-    if version.is_some() {
-        field_count += 1;
-    }
-    if author.is_some() {
-        field_count += 1;
-    }
-    if license.is_some() {
-        field_count += 1;
-    }
-    if homepage.is_some() {
-        field_count += 1;
-    }
+    let optional_count = count_optional_fields(description, version, author, license, homepage);
+    let field_count = 2 + optional_count;
 
     let mut state = serializer.serialize_struct("BundleConfig", field_count)?;
 
-    // Note: name is injected externally during file write, we serialize empty string
     state.serialize_field("name", "")?;
-
     serialize_optional_field!(state, "description", description);
     serialize_optional_field!(state, "version", version);
     serialize_optional_field!(state, "author", author);

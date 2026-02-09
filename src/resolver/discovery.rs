@@ -34,6 +34,22 @@ pub fn discover_bundles(source: &str, workspace_root: &Path) -> Result<Vec<Disco
     Ok(discovered)
 }
 
+fn discover_single_bundle(full_path: &Path) -> Option<DiscoveredBundle> {
+    if !crate::resolver::local::is_bundle_directory(full_path) {
+        return None;
+    }
+
+    let name = crate::resolver::local::get_bundle_name(full_path).ok()?;
+    let resource_counts = ResourceCounts::from_path(full_path);
+    Some(DiscoveredBundle {
+        name,
+        path: full_path.to_path_buf(),
+        description: crate::resolver::local::get_bundle_description(full_path),
+        git_source: None,
+        resource_counts,
+    })
+}
+
 /// Discover bundles in a local directory
 pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
     let full_path = if path.is_absolute() {
@@ -42,7 +58,6 @@ pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<
         workspace_root.join(path)
     };
 
-    // Validate path before checking existence to catch outside-repo paths early
     crate::resolver::validation::validate_local_bundle_path(
         &full_path,
         path,
@@ -54,26 +69,12 @@ pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<
         return Ok(vec![]);
     }
 
-    let mut discovered = Vec::new();
-
     let marketplace_json = full_path.join(".claude-plugin/marketplace.json");
     if marketplace_json.is_file() {
         return discover_marketplace_bundles(&marketplace_json, &full_path);
     }
 
-    if crate::resolver::local::is_bundle_directory(&full_path) {
-        let name = crate::resolver::local::get_bundle_name(&full_path)?;
-        let resource_counts = ResourceCounts::from_path(&full_path);
-        discovered.push(DiscoveredBundle {
-            name,
-            path: full_path.clone(),
-            description: crate::resolver::local::get_bundle_description(&full_path),
-            git_source: None,
-            resource_counts,
-        });
-    }
-
-    Ok(discovered)
+    Ok(discover_single_bundle(&full_path).into_iter().collect())
 }
 
 /// Discover bundles from marketplace.json

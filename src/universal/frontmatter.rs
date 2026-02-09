@@ -43,8 +43,32 @@ pub fn parse_frontmatter_and_body(content: &str) -> Option<(Value, String)> {
     Some((value, body))
 }
 
+fn process_mapping_entry(
+    key: &Value,
+    value: &Value,
+    platform_id: &str,
+    known: &std::collections::HashSet<&str>,
+    out: &mut Mapping,
+    platform_block: &mut Option<Value>,
+) {
+    let key_str = key.as_str().unwrap_or("");
+    if key_str == platform_id {
+        *platform_block = Some(value.clone());
+    } else if !known.contains(key_str) {
+        out.insert(key.clone(), value.clone());
+    }
+}
+
+fn merge_platform_block(block: &Value, out: &mut Mapping) {
+    if let Some(block_map) = block.as_mapping() {
+        for (k, v) in block_map {
+            out.insert(k.clone(), v.clone());
+        }
+    }
+}
+
 /// Merge frontmatter for a given platform: common keys (all keys that are not
-/// a known platform id) plus the platform's block (platform overrides common).
+/// a known platform id) plus platform's block (platform overrides common).
 /// Returns a new Value mapping. If `frontmatter` is not a mapping, returns it cloned.
 pub fn merge_frontmatter_for_platform(
     frontmatter: &Value,
@@ -55,25 +79,20 @@ pub fn merge_frontmatter_for_platform(
         Some(m) => m,
         None => return frontmatter.clone(),
     };
+
     let known: std::collections::HashSet<_> =
         known_platform_ids.iter().map(String::as_str).collect();
     let mut out = Mapping::new();
     let mut platform_block = None;
+
     for (k, v) in mapping {
-        let key_str = k.as_str().unwrap_or("");
-        if key_str == platform_id {
-            platform_block = Some(v.clone());
-        } else if !known.contains(key_str) {
-            out.insert(k.clone(), v.clone());
-        }
+        process_mapping_entry(k, v, platform_id, &known, &mut out, &mut platform_block);
     }
-    if let Some(block) = platform_block {
-        if let Some(block_map) = block.as_mapping() {
-            for (k, v) in block_map {
-                out.insert(k.clone(), v.clone());
-            }
-        }
+
+    if let Some(ref block) = platform_block {
+        merge_platform_block(block, &mut out);
     }
+
     Value::Mapping(out)
 }
 
