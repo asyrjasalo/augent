@@ -8,9 +8,9 @@ use std::collections::HashMap;
 
 use super::platform_extractor::extract_platform_from_location;
 use crate::common::{config_utils, display_utils, string_utils};
+use crate::config::utils::BundleContainer;
 use crate::config::LockedSource;
 use crate::config::WorkspaceBundle;
-use crate::config::utils::BundleContainer;
 
 type FilesByPlatform = HashMap<String, Vec<(String, String)>>;
 
@@ -208,9 +208,9 @@ pub fn display_resources_grouped(files: &[String]) {
     sorted_types.sort();
 
     for resource_type in sorted_types {
-        let files_for_type = resource_by_type
-            .get(resource_type)
-            .expect("resource_type should exist in resource_by_type");
+        let Some(files_for_type) = resource_by_type.get(resource_type) else {
+            continue;
+        };
         display_resource_type(resource_type, files_for_type);
     }
 }

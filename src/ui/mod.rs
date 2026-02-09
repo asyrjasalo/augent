@@ -58,9 +58,11 @@ pub struct InteractiveProgressReporter {
 impl InteractiveProgressReporter {
     /// Create a new interactive progress reporter with total bundle count
     pub fn new(total_bundles: u64) -> Self {
+        // ProgressStyle::template() returns Result, but template strings are static and valid
+        // Using unwrap_or_else to provide fallback if template parsing fails
         let bundle_style = ProgressStyle::default_bar()
             .template("[{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .expect("template string should be valid")
+            .unwrap_or_else(|_| ProgressStyle::default_bar())
             .progress_chars("#>-");
 
         let bundle_pb = ProgressBar::new(total_bundles);
@@ -75,9 +77,11 @@ impl InteractiveProgressReporter {
 
 impl ProgressReporter for InteractiveProgressReporter {
     fn init_file_progress(&mut self, total_files: u64) {
+        // ProgressStyle::template() returns Result, but template strings are static and valid
+        // Using unwrap_or_else to provide fallback if template parsing fails
         let file_style = ProgressStyle::default_bar()
             .template("  [{bar:40.green/yellow}] {pos}/{len} files {msg}")
-            .expect("template string should be valid")
+            .unwrap_or_else(|_| ProgressStyle::default_bar())
             .progress_chars("█▉▊▋▌▍▎▏  ");
 
         let file_pb = ProgressBar::new(total_files);
