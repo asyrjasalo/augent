@@ -25,16 +25,6 @@ impl PathNormalizer {
     /// * `workspace_root` - The root directory of the workspace (where .git is)
     /// * `config_dir` - The configuration directory (typically .augent/)
     pub fn new(workspace_root: PathBuf, config_dir: PathBuf) -> Self {
-        // Normalize the roots once during construction to ensure consistent prefix matching
-        let workspace_root = workspace_root
-            .normalize()
-            .map(|p| p.as_path().to_path_buf())
-            .unwrap_or(workspace_root);
-        let config_dir = config_dir
-            .normalize()
-            .map(|p| p.as_path().to_path_buf())
-            .unwrap_or(config_dir);
-
         Self {
             workspace_root,
             config_dir,
@@ -44,11 +34,47 @@ impl PathNormalizer {
     /// Normalize a path (canonicalize with Windows path handling)
     ///
     /// Converts backslashes to forward slashes and resolves the path if possible.
-    /// Returns the original path if normalization fails.
+    /// For non-existent paths, normalizes the longest existing ancestor and appends
+    /// the remaining components to ensure consistent symlink resolution (e.g., /var -> /private/var on macOS).
     pub fn normalize(&self, path: &Path) -> PathBuf {
-        path.normalize()
+        // Try to normalize the full path first
+        if let Ok(norm) = path.normalize() {
+            return norm.as_path().to_path_buf();
+        }
+
+        // If the path doesn't exist, find the longest existing ancestor and normalize it
+        let mut current = path;
+        let mut components = Vec::new();
+
+        // Walk up the tree until we find an existing path
+        while !current.exists() {
+            if let Some(file_name) = current.file_name() {
+                components.push(file_name);
+                if let Some(parent) = current.parent() {
+                    current = parent;
+                } else {
+                    // No parent, can't normalize
+                    return path.to_path_buf();
+                }
+            } else {
+                // No file name, can't normalize
+                return path.to_path_buf();
+            }
+        }
+
+        // Normalize the existing ancestor
+        let normalized_base = current
+            .normalize()
             .map(|norm| norm.as_path().to_path_buf())
-            .unwrap_or_else(|_| path.to_path_buf())
+            .unwrap_or_else(|_| current.to_path_buf());
+
+        // Append the non-existent components back
+        let mut result = normalized_base;
+        for component in components.iter().rev() {
+            result = result.join(component);
+        }
+
+        result
     }
 
     /// Convert a path to normalized forward-slash string representation
@@ -63,9 +89,10 @@ impl PathNormalizer {
     /// Returns `None` if the path is not under the config directory.
     pub fn relative_from_config(&self, path: &Path) -> Option<String> {
         let norm_path = self.normalize(path);
-        // Use the already-normalized config_dir from construction
+        let norm_config = self.normalize(&self.config_dir);
+
         norm_path
-            .strip_prefix(&self.config_dir)
+            .strip_prefix(&norm_config)
             .ok()
             .map(|rel| self.to_normalized_str(rel))
             .map(|s| if s.is_empty() { ".".to_string() } else { s })
@@ -76,9 +103,10 @@ impl PathNormalizer {
     /// Returns `None` if the path is not under the workspace root.
     pub fn relative_from_root(&self, path: &Path) -> Option<String> {
         let norm_path = self.normalize(path);
-        // Use the already-normalized workspace_root from construction
+        let norm_root = self.normalize(&self.workspace_root);
+
         norm_path
-            .strip_prefix(&self.workspace_root)
+            .strip_prefix(&norm_root)
             .ok()
             .map(|rel| self.to_normalized_str(rel))
             .map(|s| if s.is_empty() { ".".to_string() } else { s })
