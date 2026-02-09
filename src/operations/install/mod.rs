@@ -1,11 +1,11 @@
 //! Complete install workflow orchestration for Augent bundles
 //!
-//! This module provides the complete installation workflow, from bundle discovery
+//! This module provides complete installation workflow, from bundle discovery
 //! through dependency resolution to final resource installation and configuration updates.
 //!
 //! ## Architecture
 //!
-//! The install operation follows a modular coordinator pattern with 8 specialized submodules:
+//! The install operation follows a modular coordinator pattern with specialized submodules:
 //!
 //! - **orchestrator**: Main workflow coordinator that coordinates all other submodules
 //! - **resolution**: Bundle resolver that handles dependency graph construction
@@ -15,6 +15,7 @@
 //! - **names**: Name fixer that ensures correct bundle naming conventions
 //! - **lockfile**: Lockfile helpers for SHA tracking and hash verification
 //! - **display**: Display utilities for user-facing output
+//! - **context**: Shared context consolidating coordinator instances and common state
 //!
 //! ## Installation Workflow
 //!
@@ -54,6 +55,7 @@
 //! Each major concern has a dedicated coordinator struct:
 //!
 //! - **InstallOperation**: Main workflow coordinator
+//! - **InstallContext**: Shared context for all coordinators
 //! - **BundleResolver**: Dependency resolution coordinator
 //! - **ExecutionOrchestrator**: Installation execution coordinator
 //! - **WorkspaceManager**: Workspace operations coordinator
@@ -118,6 +120,7 @@
 //! ```
 
 pub mod config;
+pub mod context;
 pub mod display;
 pub mod execution;
 pub mod lockfile;

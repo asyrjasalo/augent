@@ -11,6 +11,7 @@ use crate::workspace::Workspace;
 ///
 /// This consolidates all coordinator instances and shared state to avoid
 /// repeatedly creating them and passing them around between modules.
+#[allow(dead_code)]
 pub struct InstallContext<'a> {
     /// Mutable workspace reference
     pub workspace: &'a mut Workspace,
@@ -19,6 +20,7 @@ pub struct InstallContext<'a> {
     pub args: &'a InstallArgs,
 }
 
+#[allow(dead_code)]
 impl<'a> InstallContext<'a> {
     /// Create a new install context
     pub fn new(workspace: &'a mut Workspace, args: &'a InstallArgs) -> Self {
@@ -43,23 +45,5 @@ impl<'a> InstallContext<'a> {
     /// Get mutable workspace reference
     pub fn workspace_mut(&mut self) -> &mut Workspace {
         self.workspace
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_install_context_creation() {
-        // Note: This test shows the structure but cannot execute
-        // without a full workspace setup.
-        // The key benefit demonstrated here is the single
-        // creation point for all coordinators.
-        let context = InstallContext {
-            workspace: unsafe { &mut *std::ptr::null_mut() }, // Not executed, just for structure
-            args: &InstallArgs::default(),
-        };
-        assert!(matches!(context, InstallContext { .. }));
     }
 }

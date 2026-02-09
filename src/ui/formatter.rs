@@ -262,24 +262,15 @@ impl JsonFormatter {
                         for location in locations {
                             let platform =
                                 super::platform_extractor::extract_platform_from_location(location);
-                            if !grouped.contains_key(&platform) {
-                                grouped.insert(platform.clone(), serde_json::json!([]));
-                            }
-                            if let Some(arr) = grouped.get_mut(&platform) {
-                                if let Some(arr_mut) = arr.as_array_mut() {
-                                    arr_mut.push(serde_json::json!({
-                                        "file": file,
-                                        "location": location
-                                    }));
-                                }
-                            }
-                            if let Some(arr) = grouped.get_mut(&platform) {
-                                if let Some(arr_mut) = arr.as_array_mut() {
-                                    arr_mut.push(serde_json::json!({
-                                        "file": file,
-                                        "location": location
-                                    }));
-                                }
+                            let arr = grouped
+                                .entry(&platform)
+                                .or_insert_with(|| serde_json::json!([]))
+                                .as_array_mut();
+                            if let Some(arr) = arr {
+                                arr.push(serde_json::json!({
+                                    "file": file,
+                                    "location": location
+                                }));
                             }
                         }
                     }
