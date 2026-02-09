@@ -8,9 +8,9 @@ use std::collections::HashMap;
 
 use super::platform_extractor::extract_platform_from_location;
 use crate::common::{config_utils, display_utils, string_utils};
-use crate::config::utils::BundleContainer;
 use crate::config::LockedSource;
 use crate::config::WorkspaceBundle;
+use crate::config::utils::BundleContainer;
 
 type FilesByPlatform = HashMap<String, Vec<(String, String)>>;
 
