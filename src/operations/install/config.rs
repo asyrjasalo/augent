@@ -2,22 +2,27 @@
 //!
 //! This module handles updating bundle configurations, lockfiles, and workspace configs
 
+use crate::common::path_normalizer::PathNormalizer;
 use crate::config::{
     BundleDependency, LockedBundle, LockedSource, WorkspaceBundle, utils::BundleContainer,
 };
 use crate::error::Result;
 use crate::workspace::Workspace;
-use normpath::PathExt;
-use std::path::PathBuf;
 
 /// Configuration updater for install operation
 pub struct ConfigUpdater<'a> {
     workspace: &'a mut Workspace,
+    path_normalizer: PathNormalizer,
 }
 
 impl<'a> ConfigUpdater<'a> {
     pub fn new(workspace: &'a mut Workspace) -> Self {
-        Self { workspace }
+        let path_normalizer =
+            PathNormalizer::new(workspace.root.clone(), workspace.config_dir.clone());
+        Self {
+            workspace,
+            path_normalizer,
+        }
     }
 
     /// Update workspace configuration files
@@ -113,45 +118,8 @@ impl<'a> ConfigUpdater<'a> {
         }
     }
 
-    fn normalize_path(path: &std::path::Path) -> PathBuf {
-        path.normalize()
-            .map(|norm| norm.as_path().to_path_buf())
-            .unwrap_or_else(|_| path.to_path_buf())
-    }
-
-    fn path_to_normalized_str(path: &std::path::Path) -> String {
-        path.to_string_lossy().replace('\\', "/")
-    }
-
-    fn get_relative_from_prefix(
-        path: &std::path::Path,
-        prefix: &std::path::Path,
-    ) -> Option<String> {
-        let rel_path = path.strip_prefix(prefix).ok()?;
-        let path_str = Self::path_to_normalized_str(rel_path);
-        if path_str.is_empty() {
-            Some(".".to_string())
-        } else {
-            Some(path_str)
-        }
-    }
-
     fn get_relative_path(&self, bundle_path: &std::path::Path) -> String {
-        let config_dir = Self::normalize_path(&self.workspace.config_dir);
-        let root = Self::normalize_path(&self.workspace.root);
-        let bundle_path_ref = Self::normalize_path(bundle_path);
-
-        if let Some(rel) = Self::get_relative_from_prefix(&bundle_path_ref, &config_dir) {
-            return rel;
-        }
-
-        if let Some(rel_from_root) = Self::get_relative_from_prefix(&bundle_path_ref, &root) {
-            if !rel_from_root.is_empty() {
-                return format!("./{}", rel_from_root);
-            }
-        }
-
-        Self::path_to_normalized_str(bundle_path)
+        self.path_normalizer.get_relative_path(bundle_path)
     }
 
     fn update_lockfile_with_bundles(
