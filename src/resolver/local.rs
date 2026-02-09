@@ -44,6 +44,36 @@ fn get_bundle_description(path: &Path) -> Option<String> {
         .and_then(|c| c.description)
 }
 
+/// Strip Windows extended-length path prefix (\\?\) if present
+/// This prefix is added by fs::canonicalize on Windows but breaks portability
+fn strip_windows_prefix(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    {
+        use std::path::Component;
+        // Check if path starts with \\?\ prefix (verbatim disk prefix on Windows)
+        let mut components = path.components();
+        if let Some(Component::Prefix(prefix)) = components.next() {
+            use std::path::Prefix;
+            if matches!(
+                prefix.kind(),
+                Prefix::VerbatimDisk(_) | Prefix::VerbatimUNC(..)
+            ) {
+                // Reconstruct path without the verbatim prefix
+                // For VerbatimDisk, we get something like \\?\C:\ and want C:\
+                let path_str = path.to_string_lossy();
+                if let Some(stripped) = path_str.strip_prefix(r"\\?\") {
+                    return PathBuf::from(stripped);
+                }
+            }
+        }
+        path
+    }
+    #[cfg(not(windows))]
+    {
+        path
+    }
+}
+
 fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
     let joined = if path.is_absolute() {
         path.to_path_buf()
@@ -58,14 +88,18 @@ fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
     // Normalize to remove ./ and ../ components and resolve Windows 8.3 short names
     // Try canonicalize first (resolves symlinks and Windows short names)
     // Fall back to normalize if path doesn't exist yet
-    std::fs::canonicalize(&joined).or_else(|_| {
-        joined
-            .normalize()
-            .map(|p| p.into_path_buf())
-            .map_err(|_| AugentError::IoError {
-                message: format!("Failed to normalize path: {}", joined.display()),
-            })
-    })
+    let resolved = std::fs::canonicalize(&joined)
+        .map(strip_windows_prefix)
+        .or_else(|_| {
+            joined
+                .normalize()
+                .map(|p| p.into_path_buf())
+                .map_err(|_| AugentError::IoError {
+                    message: format!("Failed to normalize path: {}", joined.display()),
+                })
+        })?;
+
+    Ok(resolved)
 }
 
 fn get_bundle_name_from_dependency_or_path(
