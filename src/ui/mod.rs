@@ -55,7 +55,7 @@ impl InteractiveProgressReporter {
     pub fn new(total_bundles: u64) -> Self {
         let bundle_style = ProgressStyle::default_bar()
             .template("[{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .unwrap()
+            .expect("template string should be valid")
             .progress_chars("#>-");
 
         let bundle_pb = ProgressBar::new(total_bundles);
@@ -72,7 +72,7 @@ impl ProgressReporter for InteractiveProgressReporter {
     fn init_file_progress(&mut self, total_files: u64) {
         let file_style = ProgressStyle::default_bar()
             .template("  [{bar:40.green/yellow}] {pos}/{len} files {msg}")
-            .unwrap()
+            .expect("template string should be valid")
             .progress_chars("█▉▊▋▌▍▎▏  ");
 
         let file_pb = ProgressBar::new(total_files);

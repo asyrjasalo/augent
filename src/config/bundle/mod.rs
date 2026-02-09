@@ -207,8 +207,7 @@ impl BundleConfig {
             // Check if this is a full bundle name (e.g., "author/repo/subdir")
             // and match against name + path combination
             if let Some(path) = &dep.path {
-                let full_name = format!("{}/{}", dep.name, path);
-                return full_name == name;
+                return format!("{}/{}", dep.name, path) == name;
             }
 
             false

@@ -263,13 +263,21 @@ mod tests {
         graph.add_bundle(&bundle_b);
         graph.add_bundle(&bundle_c);
 
-        let result = graph.topological_sort().unwrap();
+        let result = graph
+            .topological_sort()
+            .expect("topological sort should succeed");
         assert_eq!(result.len(), 3);
         assert!(result.contains(&"bundle-a".to_string()));
         assert!(result.contains(&"bundle-b".to_string()));
         assert!(result.contains(&"bundle-c".to_string()));
-        let pos_b = result.iter().position(|x| x == "bundle-b").unwrap();
-        let pos_a = result.iter().position(|x| x == "bundle-a").unwrap();
+        let pos_b = result
+            .iter()
+            .position(|x| x == "bundle-b")
+            .expect("bundle-b should be in result");
+        let pos_a = result
+            .iter()
+            .position(|x| x == "bundle-a")
+            .expect("bundle-a should be in result");
         assert!(pos_b < pos_a);
     }
 
@@ -287,12 +295,23 @@ mod tests {
         graph.add_bundle(&bundle_c);
         graph.add_bundle(&bundle_d);
 
-        let result = graph.topological_sort().unwrap();
+        let result = graph
+            .topological_sort()
+            .expect("topological sort should succeed");
         assert_eq!(result.len(), 4);
         // Verify order: b before {a, c}, c before d
-        let pos_b = result.iter().position(|x| x == "bundle-b").unwrap();
-        let pos_c = result.iter().position(|x| x == "bundle-c").unwrap();
-        let pos_d = result.iter().position(|x| x == "bundle-d").unwrap();
+        let pos_b = result
+            .iter()
+            .position(|x| x == "bundle-b")
+            .expect("bundle-b should be in result");
+        let pos_c = result
+            .iter()
+            .position(|x| x == "bundle-c")
+            .expect("bundle-c should be in result");
+        let pos_d = result
+            .iter()
+            .position(|x| x == "bundle-d")
+            .expect("bundle-d should be in result");
         assert!(pos_b < pos_c);
         assert!(pos_c < pos_d);
     }
@@ -338,7 +357,9 @@ mod tests {
         graph.add_bundle(&bundle_b);
         graph.add_bundle(&bundle_c);
 
-        let cycles = graph.detect_cycles().unwrap();
+        let cycles = graph
+            .detect_cycles()
+            .expect("cycle detection should succeed");
         assert!(cycles.is_none());
     }
 }

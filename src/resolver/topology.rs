@@ -314,7 +314,8 @@ mod tests {
         resolved.insert("bundle-b".to_string(), bundle_b);
 
         let resolution_order = vec!["bundle-a".to_string()];
-        let result = topological_sort(&resolved, &resolution_order).unwrap();
+        let result = topological_sort(&resolved, &resolution_order)
+            .expect("topological sort should succeed");
 
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].name, "bundle-b");
@@ -334,7 +335,8 @@ mod tests {
         resolved.insert("bundle-d".to_string(), bundle_d);
 
         let resolution_order = vec!["bundle-d".to_string()];
-        let result = topological_sort(&resolved, &resolution_order).unwrap();
+        let result = topological_sort(&resolved, &resolution_order)
+            .expect("topological sort should succeed");
 
         assert_eq!(result.len(), 3);
         assert_eq!(result[0].name, "bundle-b");

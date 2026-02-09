@@ -111,17 +111,17 @@ fn build_opencode_frontmatter(
 pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
     let (frontmatter, body) = parse_frontmatter(content);
 
-    if frontmatter.is_none() {
+    let new_frontmatter = if let Some(fm) = frontmatter {
+        let frontmatter_map = build_frontmatter_map(&fm);
+        build_opencode_frontmatter(&frontmatter_map, target)
+    } else {
         file_ops::ensure_parent_dir(target)?;
         std::fs::write(target, body).map_err(|e| AugentError::FileWriteFailed {
             path: target.display().to_string(),
             reason: e.to_string(),
         })?;
         return Ok(());
-    }
-
-    let frontmatter_map = build_frontmatter_map(frontmatter.as_ref().unwrap());
-    let new_frontmatter = build_opencode_frontmatter(&frontmatter_map, target);
+    };
 
     file_ops::ensure_parent_dir(target)?;
     std::fs::write(target, format!("{}{}", new_frontmatter, body)).map_err(|e| {

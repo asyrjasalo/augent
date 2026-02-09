@@ -172,7 +172,7 @@ fn group_resources_by_type(files: &[String]) -> HashMap<&str, Vec<String>> {
         resource_by_type
             .entry(resource_type)
             .or_default()
-            .push(file.clone());
+            .push(file.to_string());
     }
     resource_by_type
 }
@@ -213,7 +213,9 @@ pub fn display_resources_grouped(files: &[String]) {
     sorted_types.sort();
 
     for resource_type in sorted_types {
-        let files_for_type = resource_by_type.get(resource_type).unwrap();
+        let files_for_type = resource_by_type
+            .get(resource_type)
+            .expect("resource_type should exist in resource_by_type");
         display_resource_type(resource_type, files_for_type);
     }
 }
@@ -278,7 +280,7 @@ fn group_files_by_platform(
                 &mut files_by_platform,
                 &mut uninstalled_files,
             ),
-            None => uninstalled_files.push(file.clone()),
+            None => uninstalled_files.push(file.to_string()),
         }
     }
 
@@ -302,7 +304,7 @@ fn process_file_locations(
         files_by_platform
             .entry(platform)
             .or_default()
-            .push((file.to_string(), location.clone()));
+            .push((file.to_string(), location.to_string()));
     }
 }
 
