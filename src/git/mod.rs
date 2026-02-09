@@ -17,6 +17,7 @@ pub mod clone;
 pub mod error;
 pub mod refs;
 pub mod url;
+pub mod url_parser;
 
 // Re-export public API from submodules
 pub use checkout::checkout_commit;

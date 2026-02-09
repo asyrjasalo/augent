@@ -19,6 +19,7 @@ pub struct ResourceCounts {
 }
 
 impl ResourceCounts {
+    #[allow(dead_code)]
     pub fn from_marketplace(bundle: &crate::config::MarketplaceBundle) -> Self {
         ResourceCounts {
             commands: bundle.commands.len(),

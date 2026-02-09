@@ -7,7 +7,7 @@ use std::path::Path;
 
 use crate::config::MarketplaceConfig;
 use crate::domain::{DiscoveredBundle, ResourceCounts};
-use crate::error::{AugentError, Result};
+use crate::error::Result;
 
 /// Discover bundles from marketplace.json
 ///
@@ -20,6 +20,7 @@ use crate::error::{AugentError, Result};
 ///
 /// # Returns
 /// * `Result<Vec<DiscoveredBundle>>` - List of discovered bundles
+#[allow(dead_code)]
 pub fn discover_marketplace_bundles(
     marketplace_json: &Path,
     repo_root: &Path,

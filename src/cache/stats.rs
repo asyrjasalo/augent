@@ -281,39 +281,3 @@ fn dir_size(path: &Path) -> Result<u64> {
     }
     Ok(size)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_cached_bundle_formatted_size() {
-        let bundle = CachedBundle {
-            name: "test".to_string(),
-            versions: 1,
-            size: 1024,
-        };
-        assert_eq!(bundle.formatted_size(), "1.0 KB");
-    }
-
-    #[test]
-    fn test_cache_stats_formatted_size() {
-        let stats = CacheStats {
-            repositories: 1,
-            versions: 1,
-            total_size: 1024,
-        };
-        assert_eq!(stats.formatted_size(), "1.0 KB");
-    }
-
-    #[test]
-    fn test_dir_size() {
-        let temp_dir = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let test_dir = temp_dir.path().join("test");
-        std::fs::create_dir_all(&test_dir).unwrap();
-        let file_path = test_dir.join("test.txt");
-        std::fs::write(&file_path, b"hello world").unwrap();
-        let size = dir_size(&test_dir).unwrap();
-        assert_eq!(size, 11);
-    }
-}

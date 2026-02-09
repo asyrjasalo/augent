@@ -132,6 +132,9 @@ pub mod paths;
 pub mod populate;
 pub mod stats;
 
+#[cfg(test)]
+mod stats_tests;
+
 // Re-export public API from submodules
 pub use bundle_name::{content_path_in_repo, derive_marketplace_bundle_name};
 pub use cache_entry::cache_bundle;

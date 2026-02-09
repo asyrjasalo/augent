@@ -12,6 +12,14 @@ use crate::config::utils::BundleContainer;
 
 type FilesByPlatform = HashMap<String, Vec<(String, String)>>;
 
+macro_rules! display_opt_field {
+    ($label:expr, $value:expr) => {
+        if let Some(ref v) = $value {
+            println!("{} {}", Style::new().bold().apply_to($label), v);
+        }
+    };
+}
+
 /// Display bundle in simple format
 pub fn display_bundle_simple(
     bundle: &crate::config::LockedBundle,
@@ -40,30 +48,10 @@ pub fn display_bundle_simple(
 
 /// Display bundle metadata fields
 fn display_bundle_metadata(bundle: &crate::config::LockedBundle) {
-    if let Some(ref description) = bundle.description {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("Description:"),
-            description
-        );
-    }
-    if let Some(ref author) = bundle.author {
-        println!("    {} {}", Style::new().bold().apply_to("Author:"), author);
-    }
-    if let Some(ref license) = bundle.license {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("License:"),
-            license
-        );
-    }
-    if let Some(ref homepage) = bundle.homepage {
-        println!(
-            "    {} {}",
-            Style::new().bold().apply_to("Homepage:"),
-            homepage
-        );
-    }
+    display_opt_field!("Description:", bundle.description);
+    display_opt_field!("Author:", bundle.author);
+    display_opt_field!("License:", bundle.license);
+    display_opt_field!("Homepage:", bundle.homepage);
 }
 
 /// Display Claude Marketplace plugin info if applicable

@@ -11,8 +11,9 @@ use crate::config::BundleDependency;
 use crate::domain::{DiscoveredBundle, ResolvedBundle, ResourceCounts};
 use crate::error::{AugentError, Result};
 
+#[allow(dead_code)]
 /// Check if a path is a bundle directory
-pub fn is_bundle_directory(path: &Path) -> bool {
+fn is_bundle_directory(path: &Path) -> bool {
     if path.join("augent.yaml").exists() {
         return true;
     }
@@ -22,8 +23,9 @@ pub fn is_bundle_directory(path: &Path) -> bool {
         .any(|dir| path.join(dir).is_dir())
 }
 
+#[allow(dead_code)]
 /// Bundle name for discovery. Per spec: dir bundle name is always dir-name.
-pub fn get_bundle_name(path: &Path) -> Result<String> {
+fn get_bundle_name(path: &Path) -> Result<String> {
     path.file_name()
         .and_then(|n| n.to_str())
         .map(|s| s.to_string())
@@ -32,8 +34,9 @@ pub fn get_bundle_name(path: &Path) -> Result<String> {
         })
 }
 
+#[allow(dead_code)]
 /// Get bundle description from augent.yaml if present
-pub fn get_bundle_description(path: &Path) -> Option<String> {
+fn get_bundle_description(path: &Path) -> Option<String> {
     crate::resolver::config::load_bundle_config(path)
         .ok()
         .flatten()
@@ -130,8 +133,9 @@ pub fn resolve_local(ctx: ResolveLocalContext) -> Result<ResolvedBundle> {
     Ok(resolved)
 }
 
+#[allow(dead_code)]
 /// Discover bundles in a local directory
-pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
+fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<DiscoveredBundle>> {
     let full_path = if path.is_absolute() {
         path.to_path_buf()
     } else if path == Path::new(".") {

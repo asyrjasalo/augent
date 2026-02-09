@@ -3,13 +3,12 @@
 //! Handles discovery of bundles from git repositories, including
 //! cloning, caching, and processing of git sources.
 
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use std::path::Path;
 
 use crate::cache;
 use crate::config::MarketplaceConfig;
-use crate::domain::{DiscoveredBundle, ResourceCounts};
-use crate::error::{AugentError, Result};
+use crate::domain::DiscoveredBundle;
+use crate::error::Result;
 use crate::git;
 use crate::resolver::discovery::helpers;
 use crate::source::GitSource;
