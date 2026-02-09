@@ -8,6 +8,57 @@ use crate::workspace::Workspace;
 use inquire::MultiSelect;
 use std::collections::HashMap;
 
+fn build_workspace_bundle_map(workspace: &Workspace) -> HashMap<String, Vec<String>> {
+    workspace
+        .workspace_config
+        .bundles
+        .iter()
+        .map(|wb| {
+            let platforms = extract_platforms_from_bundle(wb);
+            (wb.name.clone(), platforms)
+        })
+        .collect()
+}
+
+fn extract_platforms_from_bundle(wb: &crate::config::WorkspaceBundle) -> Vec<String> {
+    let mut platforms = std::collections::HashSet::new();
+    for installed_paths in wb.enabled.values() {
+        for path in installed_paths {
+            if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next()) {
+                platforms.insert(platform.to_string());
+            }
+        }
+    }
+    let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
+    sorted_platforms.sort();
+    sorted_platforms
+}
+
+fn create_selection_items(
+    lockfile_bundles: &[crate::config::LockedBundle],
+    workspace_bundle_map: &HashMap<String, Vec<String>>,
+) -> Vec<String> {
+    lockfile_bundles
+        .iter()
+        .map(|b| {
+            if let Some(platforms) = workspace_bundle_map.get(&b.name) {
+                format_bundle_name(&b.name, Some(platforms))
+            } else {
+                b.name.clone()
+            }
+        })
+        .collect()
+}
+
+fn extract_bundle_name_from_display(display: &str) -> String {
+    display
+        .split(" (")
+        .next()
+        .unwrap_or(display)
+        .trim()
+        .to_string()
+}
+
 /// Select bundles interactively from installed bundles
 pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
     if workspace.lockfile.bundles.is_empty() {
@@ -15,48 +66,12 @@ pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>
         std::process::exit(0);
     }
 
-    // Extract bundle names to workspace bundle mapping
-    let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
-        .workspace_config
-        .bundles
-        .iter()
-        .map(|wb| {
-            // Extract unique platforms from enabled files
-            let mut platforms = std::collections::HashSet::new();
-            for installed_paths in wb.enabled.values() {
-                for path in installed_paths {
-                    // Extract platform from path like ".opencode/commands/debug.md" or ".cursor/rules/debug.mdc"
-                    if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next())
-                    {
-                        platforms.insert(platform.to_string());
-                    }
-                }
-            }
-            let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
-            sorted_platforms.sort();
-            (wb.name.clone(), sorted_platforms)
-        })
-        .collect();
+    let workspace_bundle_map = build_workspace_bundle_map(workspace);
 
     // Use bundles in lockfile order (as they appear in .augent files)
     // Single-line items: "name" or "name (cursor, opencode)". Multi-line content
     // breaks inquire's list layout and causes filter to match descriptions.
-    let items: Vec<String> = workspace
-        .lockfile
-        .bundles
-        .iter()
-        .map(|b| {
-            if let Some(platforms) = workspace_bundle_map.get(&b.name) {
-                if platforms.is_empty() {
-                    b.name.clone()
-                } else {
-                    format!("{} ({})", b.name, platforms.join(", "))
-                }
-            } else {
-                b.name.clone()
-            }
-        })
-        .collect();
+    let items = create_selection_items(&workspace.lockfile.bundles, &workspace_bundle_map);
 
     println!();
 
@@ -72,26 +87,12 @@ pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>
         None => return Ok(vec![]),
     };
 
-    // Map display strings back to bundle names (name is part before " (")
     let selected_bundles: Vec<String> = selection
         .iter()
-        .map(|s| s.split(" (").next().unwrap_or(s).trim().to_string())
+        .map(|s| extract_bundle_name_from_display(s.as_str()))
         .collect();
 
     Ok(selected_bundles)
-}
-
-/// Extract unique platforms from installed file paths
-fn extract_platforms(installed_paths: &[String]) -> Vec<String> {
-    let mut platforms = std::collections::HashSet::new();
-    for path in installed_paths {
-        if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next()) {
-            platforms.insert(platform.to_string());
-        }
-    }
-    let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
-    sorted_platforms.sort();
-    sorted_platforms
 }
 
 /// Format bundle name for display, optionally including platform list
@@ -117,17 +118,7 @@ pub fn select_bundles_from_list(
         return Ok(vec![]);
     }
 
-    // Extract bundle names to workspace bundle mapping
-    let workspace_bundle_map: HashMap<String, Vec<String>> = workspace
-        .workspace_config
-        .bundles
-        .iter()
-        .map(|wb| {
-            let all_paths: Vec<String> = wb.enabled.values().flatten().cloned().collect();
-            let platforms = extract_platforms(&all_paths);
-            (wb.name.clone(), platforms)
-        })
-        .collect();
+    let workspace_bundle_map = build_workspace_bundle_map(workspace);
 
     // Preserve order from lockfile (don't sort alphabetically)
     // Single-line items: "name" or "name (cursor, opencode)". Multi-line content
@@ -151,10 +142,9 @@ pub fn select_bundles_from_list(
         None => return Ok(vec![]),
     };
 
-    // Map display strings back to bundle names (name is part before " (")
     let selected_bundles: Vec<String> = selection
         .iter()
-        .map(|s| s.split(" (").next().unwrap_or(s).trim().to_string())
+        .map(|s| extract_bundle_name_from_display(s.as_str()))
         .collect();
 
     Ok(selected_bundles)

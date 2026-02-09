@@ -57,22 +57,7 @@ impl PlatformLoader {
     /// Load platforms.jsonc from workspace
     fn load_workspace_platforms(&self) -> Result<Option<Vec<Platform>>> {
         let platforms_path = self.workspace_root.join("platforms.jsonc");
-
-        if !platforms_path.exists() {
-            return Ok(None);
-        }
-
-        let content =
-            fs::read_to_string(&platforms_path).map_err(|e| AugentError::ConfigReadFailed {
-                path: platforms_path.to_string_lossy().to_string(),
-                reason: e.to_string(),
-            })?;
-
-        let json_content = Self::strip_jsonc_comments_impl(&content);
-        let loaded =
-            Self::parse_platforms_json_impl(&json_content, &platforms_path.to_string_lossy())?;
-
-        Ok(Some(loaded))
+        self.load_platforms_from_path(&platforms_path)
     }
 
     /// Load global platforms.jsonc from ~/.config/augent/
@@ -82,13 +67,16 @@ impl PlatformLoader {
         })?;
 
         let platforms_path = config_dir.join("augent").join("platforms.jsonc");
+        self.load_platforms_from_path(&platforms_path)
+    }
 
+    fn load_platforms_from_path(&self, platforms_path: &PathBuf) -> Result<Option<Vec<Platform>>> {
         if !platforms_path.exists() {
             return Ok(None);
         }
 
         let content =
-            fs::read_to_string(&platforms_path).map_err(|e| AugentError::ConfigReadFailed {
+            fs::read_to_string(platforms_path).map_err(|e| AugentError::ConfigReadFailed {
                 path: platforms_path.to_string_lossy().to_string(),
                 reason: e.to_string(),
             })?;

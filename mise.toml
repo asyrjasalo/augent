@@ -54,4 +54,4 @@ run = "cargo tarpaulin"
 
 [tasks.lizard]
 description = "Run lizard complexity analysis"
-run = "uvx lizard -C 10 -L 100 -a 7 --warnings_only src/"
+run = "uvx lizard -C 10 -L 50 -a 5 -Eduplicate --warnings_only src/"

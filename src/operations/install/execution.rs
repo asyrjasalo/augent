@@ -21,6 +21,32 @@ impl<'a> ExecutionOrchestrator<'a> {
         Self { workspace }
     }
 
+    fn create_installer<'b>(
+        &'b self,
+        workspace_root: &'b std::path::Path,
+        platforms: &[Platform],
+        dry_run: bool,
+        progress: Option<&'b mut crate::ui::InteractiveProgressReporter>,
+    ) -> crate::installer::Installer<'b> {
+        if let Some(p) = progress {
+            Installer::new_with_progress(workspace_root, platforms.to_vec(), dry_run, Some(p))
+        } else {
+            Installer::new_with_dry_run(workspace_root, platforms.to_vec(), dry_run)
+        }
+    }
+
+    fn handle_progress_result(
+        progress: &mut Option<crate::ui::InteractiveProgressReporter>,
+        result: &Result<Vec<WorkspaceBundle>>,
+    ) {
+        if let Some(p) = progress {
+            match result {
+                Ok(_) => p.finish_files(),
+                Err(_) => p.abandon(),
+            }
+        }
+    }
+
     pub fn install_bundles_with_progress(
         &self,
         args: &InstallArgs,
@@ -45,32 +71,14 @@ impl<'a> ExecutionOrchestrator<'a> {
             };
 
         let (workspace_bundles_result, installed_files_map) = {
-            let mut installer = if let Some(ref mut progress) = progress {
-                Installer::new_with_progress(
-                    &workspace_root,
-                    platforms.to_vec(),
-                    args.dry_run,
-                    Some(progress),
-                )
-            } else {
-                Installer::new_with_dry_run(&workspace_root, platforms.to_vec(), args.dry_run)
-            };
-
+            let mut installer =
+                self.create_installer(&workspace_root, platforms, args.dry_run, progress.as_mut());
             let result = installer.install_bundles(resolved_bundles);
             let installed_files = installer.installed_files().clone();
             (result, installed_files)
         };
 
-        if let Some(ref mut progress) = progress {
-            match &workspace_bundles_result {
-                Ok(_) => {
-                    progress.finish_files();
-                }
-                Err(_) => {
-                    progress.abandon();
-                }
-            }
-        }
+        Self::handle_progress_result(&mut progress, &workspace_bundles_result);
 
         Ok((workspace_bundles_result?, installed_files_map))
     }

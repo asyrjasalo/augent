@@ -5,7 +5,7 @@
 //! - Bundle directory detection
 //! - Path resolution relative to workspace
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::config::BundleDependency;
 use crate::domain::{DiscoveredBundle, ResolvedBundle, ResourceCounts};
@@ -40,6 +40,32 @@ pub fn get_bundle_description(path: &Path) -> Option<String> {
         .and_then(|c| c.description)
 }
 
+fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
+    if path.is_absolute() {
+        Ok(path.to_path_buf())
+    } else if path == Path::new(".") {
+        std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {}", e),
+        })
+    } else {
+        Ok(workspace_root.join(path))
+    }
+}
+
+fn get_bundle_name_from_dependency_or_path(
+    dependency: Option<&BundleDependency>,
+    path: &Path,
+) -> String {
+    match dependency {
+        Some(dep) => dep.name.clone(),
+        None => path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "bundle".to_string()),
+    }
+}
+
 /// Resolve a local directory bundle
 ///
 /// # Arguments
@@ -60,15 +86,7 @@ pub fn resolve_local(
     resolution_stack: &[String],
     _resolved: &std::collections::HashMap<String, ResolvedBundle>,
 ) -> Result<ResolvedBundle> {
-    let full_path = if path.is_absolute() {
-        path.to_path_buf()
-    } else if path == Path::new(".") {
-        std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
-        })?
-    } else {
-        workspace_root.join(path)
-    };
+    let full_path = resolve_full_path(path, workspace_root)?;
 
     crate::resolver::validation::validate_local_bundle_path(
         &full_path,
@@ -83,14 +101,7 @@ pub fn resolve_local(
         });
     }
 
-    let name = match dependency {
-        Some(dep) => dep.name.clone(),
-        None => path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "bundle".to_string()),
-    };
+    let name = get_bundle_name_from_dependency_or_path(dependency, path);
 
     crate::resolver::validation::check_cycle(&name, resolution_stack)?;
 

@@ -48,6 +48,54 @@ fn create_and_add_index_entry(
     })
 }
 
+fn create_cache_entry_dir(entry_path: &Path) -> Result<()> {
+    fs::create_dir_all(entry_path).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!(
+            "Failed to create cache entry directory {}: {}",
+            entry_path.display(),
+            e
+        ),
+    })
+}
+
+fn copy_repository_to_cache(temp_dir: &Path, repo_dst: &Path) -> Result<()> {
+    copy_dir_recursive(temp_dir, repo_dst, CopyOptions::default()).map_err(|e| {
+        AugentError::IoError {
+            message: format!("Failed to copy repository to cache: {}", e),
+        }
+    })
+}
+
+fn copy_content_to_resources(
+    temp_dir: &Path,
+    resources: &Path,
+    path_opt: Option<&str>,
+) -> Result<()> {
+    let content_dst = determine_content_dst(resources, path_opt)?;
+
+    fs::create_dir_all(content_dst.parent().unwrap()).map_err(|e| {
+        AugentError::CacheOperationFailed {
+            message: format!("Failed to create content parent directory: {}", e),
+        }
+    })?;
+    copy_dir_recursive(temp_dir, resources, CopyOptions::exclude_git())?;
+
+    Ok(())
+}
+
+fn write_bundle_name_file(entry_path: &Path, bundle_name: &str) -> Result<()> {
+    use crate::cache::paths::BUNDLE_NAME_FILE;
+
+    let name_file = entry_path.join(BUNDLE_NAME_FILE);
+    fs::write(&name_file, bundle_name).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!(
+            "Failed to write bundle name file {}: {}",
+            name_file.display(),
+            e
+        ),
+    })
+}
+
 /// Ensure a bundle is cached by copying from temp directory to cache.
 ///
 /// Creates the cache entry structure, copies repository and content,
@@ -61,46 +109,19 @@ pub fn ensure_bundle_cached(
     _content_path: &Path,
     resolved_ref: Option<&str>,
 ) -> Result<PathBuf> {
-    use crate::cache::paths::{
-        BUNDLE_NAME_FILE, entry_repository_path, entry_resources_path, repo_cache_entry_path,
-    };
+    use crate::cache::paths::{entry_repository_path, entry_resources_path, repo_cache_entry_path};
 
-    // Create cache entry directory
     let entry_path = repo_cache_entry_path(url, sha)?;
-    fs::create_dir_all(&entry_path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!(
-            "Failed to create cache entry directory {}: {}",
-            entry_path.display(),
-            e
-        ),
-    })?;
+    create_cache_entry_dir(&entry_path)?;
 
-    // Copy repository
     let repo_dst = entry_repository_path(&entry_path);
-    copy_dir_recursive(temp_dir, &repo_dst, CopyOptions::default())?;
+    copy_repository_to_cache(temp_dir, &repo_dst)?;
 
-    // Copy content to resources
     let resources = entry_resources_path(&entry_path);
-    let content_dst = determine_content_dst(&resources, path_opt)?;
+    copy_content_to_resources(temp_dir, &resources, path_opt)?;
 
-    fs::create_dir_all(content_dst.parent().unwrap()).map_err(|e| {
-        AugentError::CacheOperationFailed {
-            message: format!("Failed to create content parent directory: {}", e),
-        }
-    })?;
-    copy_dir_recursive(temp_dir, &resources, CopyOptions::exclude_git())?;
+    write_bundle_name_file(&entry_path, bundle_name)?;
 
-    // Write bundle name file
-    let name_file = entry_path.join(BUNDLE_NAME_FILE);
-    fs::write(&name_file, bundle_name).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!(
-            "Failed to write bundle name file {}: {}",
-            name_file.display(),
-            e
-        ),
-    })?;
-
-    // Add to index
     create_and_add_index_entry(url, sha, path_opt, bundle_name, resolved_ref)?;
 
     Ok(resources)

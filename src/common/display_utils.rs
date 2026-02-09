@@ -76,6 +76,78 @@ pub fn display_bundle_info(
     }
 }
 
+fn display_dir_source(path: &str, indent: &str, version: Option<&str>, show_version: bool) {
+    println!(
+        "{}{} {}",
+        indent,
+        Style::new().bold().apply_to("Type:"),
+        Style::new().green().apply_to("Directory")
+    );
+    println!(
+        "{}{} {}",
+        indent,
+        Style::new().bold().apply_to("Path:"),
+        path
+    );
+    if show_version {
+        if let Some(v) = version {
+            println!(
+                "{}{} {}",
+                indent,
+                Style::new().bold().apply_to("version:"),
+                v
+            );
+        }
+    }
+}
+
+fn display_git_source(
+    url: &str,
+    git_ref: &Option<String>,
+    sha: &str,
+    path: &Option<String>,
+    indent: &str,
+    version: Option<&str>,
+    show_version: bool,
+) {
+    println!(
+        "{}{} {}",
+        indent,
+        Style::new().bold().apply_to("Type:"),
+        Style::new().green().apply_to("Git")
+    );
+    println!("{}{} {}", indent, Style::new().bold().apply_to("URL:"), url);
+    if let Some(ref_name) = git_ref {
+        println!(
+            "{}{} {}",
+            indent,
+            Style::new().bold().apply_to("Ref:"),
+            ref_name
+        );
+    }
+    println!("{}{} {}", indent, Style::new().bold().apply_to("SHA:"), sha);
+    if let Some(subdir) = path {
+        println!(
+            "{}{} {}",
+            indent,
+            Style::new().bold().apply_to("path:"),
+            subdir
+        );
+    }
+    if show_version {
+        if let Some(v) = version {
+            if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
+                println!(
+                    "{}{} {}",
+                    indent,
+                    Style::new().bold().apply_to("version:"),
+                    v
+                );
+            }
+        }
+    }
+}
+
 /// Display source information with custom indentation.
 ///
 /// Formats and prints source details (type, URL, ref, SHA, path, version)
@@ -94,28 +166,7 @@ pub fn display_source_detailed_with_indent(
 ) {
     match source {
         LockedSource::Dir { path, .. } => {
-            println!(
-                "{}{} {}",
-                indent,
-                Style::new().bold().apply_to("Type:"),
-                Style::new().green().apply_to("Directory")
-            );
-            println!(
-                "{}{} {}",
-                indent,
-                Style::new().bold().apply_to("Path:"),
-                path
-            );
-            if show_version {
-                if let Some(v) = version {
-                    println!(
-                        "{}{} {}",
-                        indent,
-                        Style::new().bold().apply_to("version:"),
-                        v
-                    );
-                }
-            }
+            display_dir_source(path, indent, version, show_version);
         }
         LockedSource::Git {
             url,
@@ -124,42 +175,7 @@ pub fn display_source_detailed_with_indent(
             path,
             ..
         } => {
-            println!(
-                "{}{} {}",
-                indent,
-                Style::new().bold().apply_to("Type:"),
-                Style::new().green().apply_to("Git")
-            );
-            println!("{}{} {}", indent, Style::new().bold().apply_to("URL:"), url);
-            if let Some(ref_name) = git_ref {
-                println!(
-                    "{}{} {}",
-                    indent,
-                    Style::new().bold().apply_to("Ref:"),
-                    ref_name
-                );
-            }
-            println!("{}{} {}", indent, Style::new().bold().apply_to("SHA:"), sha);
-            if let Some(subdir) = path {
-                println!(
-                    "{}{} {}",
-                    indent,
-                    Style::new().bold().apply_to("path:"),
-                    subdir
-                );
-            }
-            if show_version {
-                if let Some(v) = version {
-                    if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
-                        println!(
-                            "{}{} {}",
-                            indent,
-                            Style::new().bold().apply_to("version:"),
-                            v
-                        );
-                    }
-                }
-            }
+            display_git_source(url, git_ref, sha, path, indent, version, show_version);
         }
     }
 }

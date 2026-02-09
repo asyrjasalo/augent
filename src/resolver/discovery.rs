@@ -169,6 +169,39 @@ fn load_marketplace_config_if_exists(repo_path: &Path) -> Option<MarketplaceConf
     crate::resolver::config::load_marketplace_config_if_exists(repo_path)
 }
 
+fn extract_short_name(bundle_name: &str) -> String {
+    bundle_name
+        .rsplit('/')
+        .next()
+        .unwrap_or(bundle_name)
+        .trim_start_matches('@')
+        .to_string()
+}
+
+fn get_description_for_bundle(
+    path_opt: &Option<String>,
+    short_name: &str,
+    marketplace_config: &MarketplaceConfig,
+    repo_path: &Path,
+) -> Option<String> {
+    if let Some(p) = path_opt {
+        if p.starts_with("$claudeplugin") {
+            marketplace_config
+                .plugins
+                .iter()
+                .find(|b| b.name == short_name)
+                .map(|b| b.description.clone())
+        } else {
+            crate::resolver::config::load_bundle_config(&repo_path.join(p))
+                .ok()
+                .flatten()
+                .and_then(|c| c.description)
+        }
+    } else {
+        None
+    }
+}
+
 fn load_cached_bundles_from_marketplace(
     source: &GitSource,
     sha: &str,
@@ -182,28 +215,9 @@ fn load_cached_bundles_from_marketplace(
         for entry in &cache::list_cached_entries_for_url_sha(&source.url, sha)? {
             let (path_opt, bundle_name, resources_path, resolved_ref) = entry;
 
-            let short_name = bundle_name
-                .rsplit('/')
-                .next()
-                .unwrap_or(bundle_name)
-                .trim_start_matches('@')
-                .to_string();
+            let short_name = extract_short_name(bundle_name);
 
-            let description = if let Some(p) = path_opt {
-                if p.starts_with("$claudeplugin") {
-                    mc.plugins
-                        .iter()
-                        .find(|b| b.name == short_name)
-                        .map(|b| b.description.clone())
-                } else {
-                    crate::resolver::config::load_bundle_config(&repo_path.join(p))
-                        .ok()
-                        .flatten()
-                        .and_then(|c| c.description)
-                }
-            } else {
-                None
-            };
+            let description = get_description_for_bundle(path_opt, &short_name, mc, &repo_path);
 
             let resource_counts = ResourceCounts::from_path(resources_path);
             discovered.push(DiscoveredBundle {

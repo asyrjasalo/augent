@@ -41,9 +41,51 @@ pub fn hash_file(path: &Path) -> Result<String> {
     Ok(format!("{}{}", HASH_PREFIX, hasher.finalize().to_hex()))
 }
 
+fn collect_files_to_hash(path: &Path) -> Vec<walkdir::DirEntry> {
+    let mut files: Vec<_> = WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            let name = e.file_name().to_string_lossy();
+            name != "augent.lock" && name != "augent.index.yaml"
+        })
+        .collect();
+
+    files.sort_by_key(|e| e.path().to_path_buf());
+    files
+}
+
+fn hash_file_into(hasher: &mut Hasher, file_path: &Path) -> Result<()> {
+    let file = File::open(file_path).map_err(|e| AugentError::FileReadFailed {
+        path: file_path.display().to_string(),
+        reason: e.to_string(),
+    })?;
+
+    let mut reader = BufReader::new(file);
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = reader
+            .read(&mut buffer)
+            .map_err(|e| AugentError::FileReadFailed {
+                path: file_path.display().to_string(),
+                reason: e.to_string(),
+            })?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    Ok(())
+}
+
 /// Calculate BLAKE3 hash of a directory's contents
 ///
-/// This hashes all files in the directory recursively, sorted by path
+/// This hashes all files in directory recursively, sorted by path
 /// for deterministic results. Excludes augent.lock and augent.index.yaml.
 #[allow(dead_code)]
 pub fn hash_directory(path: &Path) -> Result<String> {
@@ -54,62 +96,27 @@ pub fn hash_directory(path: &Path) -> Result<String> {
     }
 
     let mut hasher = Hasher::new();
-    let mut files: Vec<_> = WalkDir::new(path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            let name = e.file_name().to_string_lossy();
-            // Exclude lockfile and workspace config from hash
-            name != "augent.lock" && name != "augent.index.yaml"
-        })
-        .collect();
-
-    // Sort for deterministic hashing
-    files.sort_by_key(|e| e.path().to_path_buf());
+    let files = collect_files_to_hash(path);
 
     for entry in files {
         let file_path = entry.path();
 
-        // Include relative path in hash for uniqueness
         let relative_path = file_path
             .strip_prefix(path)
             .unwrap_or(file_path)
             .to_string_lossy();
         hasher.update(relative_path.as_bytes());
-        hasher.update(b"\0"); // null separator
+        hasher.update(b"\0");
 
-        // Hash file contents
-        let file = File::open(file_path).map_err(|e| AugentError::FileReadFailed {
-            path: file_path.display().to_string(),
-            reason: e.to_string(),
-        })?;
+        hash_file_into(&mut hasher, file_path)?;
 
-        let mut reader = BufReader::new(file);
-        let mut buffer = [0u8; 8192];
-
-        loop {
-            let bytes_read = reader
-                .read(&mut buffer)
-                .map_err(|e| AugentError::FileReadFailed {
-                    path: file_path.display().to_string(),
-                    reason: e.to_string(),
-                })?;
-
-            if bytes_read == 0 {
-                break;
-            }
-
-            hasher.update(&buffer[..bytes_read]);
-        }
-
-        hasher.update(b"\0"); // null separator between files
+        hasher.update(b"\0");
     }
 
     Ok(format!("{}{}", HASH_PREFIX, hasher.finalize().to_hex()))
 }
 
-/// Verify a hash matches the expected value
+/// Verify a hash matches expected value
 pub fn verify_hash(expected: &str, actual: &str) -> bool {
     // Normalize both hashes (ensure prefix)
     let normalize = |h: &str| {

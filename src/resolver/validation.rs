@@ -6,7 +6,7 @@
 //! - Dependency validation helpers
 
 use normpath::PathExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::error::{AugentError, Result};
 
@@ -26,11 +26,65 @@ pub fn check_cycle(name: &str, resolution_stack: &[String]) -> Result<()> {
     Ok(())
 }
 
+fn check_absolute_path_in_dependency(user_path: &Path) -> Result<()> {
+    if user_path.is_absolute() {
+        Err(AugentError::BundleValidationFailed {
+            message: format!(
+                "Local bundle path '{}' is an absolute path. \
+                 Bundles in augent.yaml must use relative paths (e.g., './bundles/my-bundle', '../shared-bundle'). \
+                 Absolute paths break portability when repository is cloned or moved to a different machine.",
+                user_path.display()
+            ),
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn resolve_workspace_canonical(workspace_root: &Path) -> Result<PathBuf> {
+    workspace_root
+        .normalize()
+        .map_err(|_| AugentError::BundleValidationFailed {
+            message: "Workspace root cannot be resolved.".to_string(),
+        })
+        .map(|p| p.into_path_buf())
+}
+
+fn resolve_full_path_canonical(full_path: &Path, workspace_canonical: &Path) -> PathBuf {
+    if let Ok(normalized) = full_path.normalize() {
+        normalized.into_path_buf()
+    } else if full_path.is_absolute() {
+        full_path.to_path_buf()
+    } else {
+        workspace_canonical.join(full_path)
+    }
+}
+
+fn check_path_within_workspace(
+    full_canonical: &Path,
+    workspace_canonical: &Path,
+    user_path: &Path,
+) -> Result<()> {
+    if !full_canonical.starts_with(workspace_canonical) {
+        Err(AugentError::BundleValidationFailed {
+            message: format!(
+                "Local bundle path '{}' resolves to '{}' which is outside of repository at '{}'. \
+                 Local bundles (type: dir in lockfile) cannot reference paths outside of repository.",
+                user_path.display(),
+                full_canonical.display(),
+                workspace_canonical.display()
+            ),
+        })
+    } else {
+        Ok(())
+    }
+}
+
 /// Validate that a local bundle path is within repository
 ///
 /// # Arguments
 ///
-/// * `full_path` - The absolute path to the bundle
+/// * `full_path` - The absolute path to bundle
 /// * `user_path` - The user-provided path (for error messages)
 /// * `is_dependency` - Whether this is a dependency (vs. top-level source)
 /// * `workspace_root` - The root of the workspace/repository
@@ -39,62 +93,21 @@ pub fn check_cycle(name: &str, resolution_stack: &[String]) -> Result<()> {
 ///
 /// Returns `AugentError::BundleValidationFailed` if:
 /// - Absolute path is used in dependencies (not portable)
-/// - Path is outside the repository
+/// - Path is outside of repository
 pub fn validate_local_bundle_path(
     full_path: &Path,
     user_path: &Path,
     is_dependency: bool,
     workspace_root: &Path,
 ) -> Result<()> {
-    // Reject absolute paths in dependencies - only relative paths are allowed for bundles in augent.yaml
-    // Absolute paths break portability when repo is cloned or moved to a different machine
-    if is_dependency && user_path.is_absolute() {
-        return Err(AugentError::BundleValidationFailed {
-            message: format!(
-                "Local bundle path '{}' is an absolute path. \
-                 Bundles in augent.yaml must use relative paths (e.g., './bundles/my-bundle', '../shared-bundle'). \
-                 Absolute paths break portability when repository is cloned or moved to a different machine.",
-                user_path.display()
-            ),
-        });
+    if is_dependency {
+        check_absolute_path_in_dependency(user_path)?;
     }
 
-    // Resolve workspace root to absolute normalized path
-    let workspace_canonical = workspace_root
-        .normalize()
-        .map_err(|_| AugentError::BundleValidationFailed {
-            message: "Workspace root cannot be resolved.".to_string(),
-        })?
-        .into_path_buf();
+    let workspace_canonical = resolve_workspace_canonical(workspace_root)?;
+    let full_canonical = resolve_full_path_canonical(full_path, &workspace_canonical);
 
-    // Try to normalize the full path, but if it fails (e.g., path doesn't exist),
-    // fall back to manual path resolution
-    let full_canonical = if let Ok(normalized) = full_path.normalize() {
-        normalized.into_path_buf()
-    } else {
-        // Path doesn't exist or cannot be normalized - construct it manually
-        // This is needed to validate paths that don't exist yet
-        if full_path.is_absolute() {
-            full_path.to_path_buf()
-        } else {
-            workspace_canonical.join(full_path)
-        }
-    };
-
-    // Check if bundle path is within repository
-    if !full_canonical.starts_with(&workspace_canonical) {
-        return Err(AugentError::BundleValidationFailed {
-            message: format!(
-                "Local bundle path '{}' resolves to '{}' which is outside the repository at '{}'. \
-                 Local bundles (type: dir in lockfile) cannot reference paths outside of repository.",
-                user_path.display(),
-                full_canonical.display(),
-                workspace_canonical.display()
-            ),
-        });
-    }
-
-    Ok(())
+    check_path_within_workspace(&full_canonical, &workspace_canonical, user_path)
 }
 
 #[cfg(test)]

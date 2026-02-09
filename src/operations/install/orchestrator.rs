@@ -219,6 +219,43 @@ impl<'a> InstallOperation<'a> {
         Ok((workspace_bundles, installed_files_map))
     }
 
+    fn resolve_and_fix_bundles(
+        &self,
+        args: &InstallArgs,
+        selected_bundles: &[DiscoveredBundle],
+    ) -> Result<Vec<crate::domain::ResolvedBundle>> {
+        use super::names::NameFixer;
+        use super::resolution::BundleResolver;
+
+        let bundle_resolver = BundleResolver::new(self.workspace);
+        let resolved_bundles = bundle_resolver.resolve_selected_bundles(args, selected_bundles)?;
+
+        let name_fixer = NameFixer::new(self.workspace);
+        name_fixer.fix_dir_bundle_names(resolved_bundles)
+    }
+
+    fn prepare_bundles_with_workspace(
+        &mut self,
+        resolved_bundles: Vec<crate::domain::ResolvedBundle>,
+        args: &InstallArgs,
+    ) -> Result<Vec<crate::domain::ResolvedBundle>> {
+        use super::names::NameFixer;
+        use super::workspace::WorkspaceManager;
+
+        let has_modified_files = {
+            let mut workspace_manager = WorkspaceManager::new(self.workspace);
+            workspace_manager.detect_and_preserve_modified_files()?
+        };
+
+        let installing_by_bundle_name = self.is_installing_by_bundle_name(args);
+        let name_fixer = NameFixer::new(self.workspace);
+        name_fixer.ensure_workspace_bundle_in_list_for_execute(
+            resolved_bundles,
+            has_modified_files,
+            installing_by_bundle_name,
+        )
+    }
+
     /// Execute the install operation
     pub fn execute(
         &mut self,
@@ -228,46 +265,16 @@ impl<'a> InstallOperation<'a> {
         _force_interactive: bool,
     ) -> Result<()> {
         use super::display;
-        use super::names::NameFixer;
-        use super::resolution::BundleResolver;
-        use super::workspace::WorkspaceManager;
 
-        // Resolve bundles (immutable borrow)
-        let resolved_bundles = {
-            let bundle_resolver = BundleResolver::new(self.workspace);
-            bundle_resolver.resolve_selected_bundles(args, selected_bundles)?
-        };
+        let resolved_bundles = self.resolve_and_fix_bundles(args, selected_bundles)?;
 
-        // Fix bundle names (immutable borrow)
-        let resolved_bundles = {
-            let name_fixer = NameFixer::new(self.workspace);
-            name_fixer.fix_dir_bundle_names(resolved_bundles)?
-        };
+        let resolved_bundles = self.prepare_bundles_with_workspace(resolved_bundles, args)?;
 
-        // Detect and preserve modified files (mutable borrow - must happen after immutable operations complete)
-        let has_modified_files = {
-            let mut workspace_manager = WorkspaceManager::new(self.workspace);
-            workspace_manager.detect_and_preserve_modified_files()?
-        };
-
-        // Ensure workspace bundle is in list if we have modified files (immutable borrow)
-        let installing_by_bundle_name = self.is_installing_by_bundle_name(args);
-        let resolved_bundles = {
-            let name_fixer = NameFixer::new(self.workspace);
-            name_fixer.ensure_workspace_bundle_in_list_for_execute(
-                resolved_bundles,
-                has_modified_files,
-                installing_by_bundle_name,
-            )?
-        };
-
-        // Select/detect platforms (mutable borrow through select_or_detect_platforms)
         let platforms = self.select_and_validate_platforms(args)?;
         if platforms.is_empty() {
             return Err(AugentError::NoPlatformsDetected);
         }
 
-        // Print platform info
         display::print_platform_info(args, &platforms);
 
         let (_workspace_bundles, installed_files_map) = self.install_bundles_and_update_configs(
@@ -277,7 +284,6 @@ impl<'a> InstallOperation<'a> {
             transaction,
         )?;
 
-        // Print summary
         display::print_install_summary(&resolved_bundles, &installed_files_map, args.dry_run);
 
         Ok(())

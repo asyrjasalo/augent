@@ -19,51 +19,43 @@ pub const WORKSPACE_INDEX_FILE: &str = "augent.index.yaml";
 
 /// Load bundle configuration from a directory
 ///
-/// Returns an empty config if augent.yaml does not exist, as the config file is optional.
-/// When loading an empty config, the name field will be empty and needs to be set by the caller.
+/// Returns an empty config if augent.yaml does not exist, as config file is optional.
+/// When loading an empty config, name field will be empty and needs to be set by caller.
 pub fn load_bundle_config(config_dir: &Path) -> Result<BundleConfig> {
-    let path = config_dir.join(BUNDLE_CONFIG_FILE);
-
-    if !path.exists() {
-        // augent.yaml is optional - return empty config
-        // The name will need to be inferred by the caller
-        return Ok(BundleConfig::default());
-    }
-
-    let content =
-        fs::read_to_string(&path).map_err(|e| crate::error::AugentError::ConfigReadFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-    BundleConfig::from_yaml(&content)
+    load_config_file(
+        config_dir,
+        BUNDLE_CONFIG_FILE,
+        BundleConfig::default(),
+        BundleConfig::from_yaml,
+    )
 }
 
 /// Load lockfile from a directory
 pub fn load_lockfile(config_dir: &Path) -> Result<Lockfile> {
-    let path = config_dir.join(LOCKFILE_NAME);
-
-    if !path.exists() {
-        // Return empty lockfile if not present
-        return Ok(Lockfile::default());
-    }
-
-    let content =
-        fs::read_to_string(&path).map_err(|e| crate::error::AugentError::ConfigReadFailed {
-            path: path.display().to_string(),
-            reason: e.to_string(),
-        })?;
-
-    Lockfile::from_json(&content)
+    load_config_file(config_dir, LOCKFILE_NAME, Lockfile::default(), |content| {
+        Lockfile::from_json(content)
+    })
 }
 
 /// Load workspace configuration from a directory
 pub fn load_workspace_config(config_dir: &Path) -> Result<WorkspaceConfig> {
-    let path = config_dir.join(WORKSPACE_INDEX_FILE);
+    load_config_file(
+        config_dir,
+        WORKSPACE_INDEX_FILE,
+        WorkspaceConfig::default(),
+        WorkspaceConfig::from_yaml,
+    )
+}
+
+/// Generic helper to load a config file with default fallback
+fn load_config_file<F, T>(config_dir: &Path, filename: &str, default: T, parser: F) -> Result<T>
+where
+    F: FnOnce(&str) -> Result<T>,
+{
+    let path = config_dir.join(filename);
 
     if !path.exists() {
-        // Return empty workspace config if not present
-        return Ok(WorkspaceConfig::default());
+        return Ok(default);
     }
 
     let content =
@@ -72,7 +64,7 @@ pub fn load_workspace_config(config_dir: &Path) -> Result<WorkspaceConfig> {
             reason: e.to_string(),
         })?;
 
-    WorkspaceConfig::from_yaml(&content)
+    parser(&content)
 }
 
 /// Save bundle configuration to a directory

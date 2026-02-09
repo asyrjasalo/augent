@@ -136,29 +136,15 @@ pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
 
 /// Convert to OpenCode command format with proper frontmatter
 pub fn convert_command(content: &str, target: &Path) -> Result<()> {
-    let (description, prompt) = parser::extract_description_and_prompt(content);
-
-    let mut new_content = String::new();
-
-    if let Some(desc) = description {
-        new_content.push_str("---\\n");
-        new_content.push_str(&format!("description: {}\\n", desc));
-        new_content.push_str("---\\n\\n");
-    }
-
-    new_content.push_str(&prompt);
-
-    file_ops::ensure_parent_dir(target)?;
-    std::fs::write(target, new_content).map_err(|e| AugentError::FileWriteFailed {
-        path: target.display().to_string(),
-        reason: e.to_string(),
-    })?;
-
-    Ok(())
+    convert_with_description_only(content, target)
 }
 
 /// Convert to OpenCode agent format with proper frontmatter
 pub fn convert_agent(content: &str, target: &Path) -> Result<()> {
+    convert_with_description_only(content, target)
+}
+
+fn convert_with_description_only(content: &str, target: &Path) -> Result<()> {
     let (description, prompt) = parser::extract_description_and_prompt(content);
 
     let mut new_content = String::new();
