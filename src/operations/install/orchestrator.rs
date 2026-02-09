@@ -184,39 +184,31 @@ impl<'a> InstallOperation<'a> {
         Vec<crate::config::WorkspaceBundle>,
         std::collections::HashMap<String, crate::domain::InstalledFile>,
     )> {
-        use super::execution::ExecutionOrchestrator;
+        use super::execution::{ExecutionOrchestrator, UpdateAndSaveWorkspaceContext};
 
         let workspace_root = self.workspace.root.clone();
+        let mut exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
 
-        let bundle_result = {
-            let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            exec_orchestrator.install_bundles_with_progress(args, resolved_bundles, platforms)?
-        };
+        let bundle_result =
+            exec_orchestrator.install_bundles_with_progress(args, resolved_bundles, platforms)?;
         let workspace_bundles = bundle_result.0.clone();
         let installed_files_map = bundle_result.1;
 
-        {
-            let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            exec_orchestrator.track_installed_files_in_transaction(
-                &workspace_root,
-                &installed_files_map,
-                transaction,
-            );
-        }
+        exec_orchestrator.track_installed_files_in_transaction(
+            &workspace_root,
+            &installed_files_map,
+            transaction,
+        );
 
         let should_update_augent_yaml = args.source.is_some() && !args.frozen;
-        {
-            let mut exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            use super::execution::UpdateAndSaveWorkspaceContext;
-            let ctx = UpdateAndSaveWorkspaceContext {
-                args,
-                resolved_bundles,
-                workspace_bundles: workspace_bundles.clone(),
-                workspace_root: &workspace_root,
-                should_update_augent_yaml,
-            };
-            exec_orchestrator.update_and_save_workspace(ctx)?;
-        }
+        let ctx = UpdateAndSaveWorkspaceContext {
+            args,
+            resolved_bundles,
+            workspace_bundles: workspace_bundles.clone(),
+            workspace_root: &workspace_root,
+            should_update_augent_yaml,
+        };
+        exec_orchestrator.update_and_save_workspace(ctx)?;
 
         Ok((workspace_bundles, installed_files_map))
     }

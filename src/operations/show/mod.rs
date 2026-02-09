@@ -10,12 +10,13 @@ use crate::common::display_utils;
 use crate::common::{bundle_utils, string_utils};
 use crate::config::{BundleConfig, utils::BundleContainer};
 use crate::error::{AugentError, Result};
+use crate::ui::formatter::{DisplayContext, DisplayFormatter, JsonFormatter};
 use crate::workspace::Workspace;
 use std::path::PathBuf;
 
 /// High-level show operation
 ///
-/// This struct encapsulates the entire show workflow.
+/// This struct encapsulates entire show workflow.
 pub struct ShowOperation<'a> {
     workspace_root: PathBuf,
     workspace: &'a Workspace,
@@ -43,13 +44,13 @@ impl<'a> ShowOperation<'a> {
 
         // Check if this is a scope pattern and handle multiple bundles if needed
         if string_utils::is_scope_pattern(&bundle_name) {
-            return self.show_bundle_by_scope_pattern(&bundle_name, args.detailed);
+            return self.show_bundle_by_scope_pattern(&bundle_name, args.detailed, args.json);
         }
 
-        self.show_bundle(&bundle_name, args.detailed)
+        self.show_bundle(&bundle_name, args.detailed, args.json)
     }
 
-    fn show_bundle_by_scope_pattern(&self, scope: &str, detailed: bool) -> Result<()> {
+    fn show_bundle_by_scope_pattern(&self, scope: &str, detailed: bool, json: bool) -> Result<()> {
         let matching_bundles = bundle_utils::filter_bundles_by_scope(self.workspace, scope);
 
         if matching_bundles.is_empty() {
@@ -59,18 +60,18 @@ impl<'a> ShowOperation<'a> {
         }
 
         if matching_bundles.len() == 1 {
-            self.show_bundle(&matching_bundles[0], detailed)
+            self.show_bundle(&matching_bundles[0], detailed, json)
         } else {
             let selected = self.select_bundles_from_list(matching_bundles)?;
             if selected.is_empty() {
                 Ok(())
             } else {
-                self.show_bundle(&selected, detailed)
+                self.show_bundle(&selected, detailed, json)
             }
         }
     }
 
-    fn show_bundle(&self, bundle_name: &str, detailed: bool) -> Result<()> {
+    fn show_bundle(&self, bundle_name: &str, detailed: bool, json: bool) -> Result<()> {
         let locked_bundle = self
             .workspace
             .lockfile
@@ -81,20 +82,31 @@ impl<'a> ShowOperation<'a> {
 
         let workspace_bundle = self.workspace.workspace_config.find_bundle(bundle_name);
 
-        let bundle_config = if detailed {
-            self.load_bundle_config(&locked_bundle.source)?
+        if json {
+            let ctx = DisplayContext {
+                workspace_root: &self.workspace_root,
+                workspace_bundle,
+                workspace_config: &self.workspace.workspace_config,
+                detailed,
+            };
+            let formatter = JsonFormatter;
+            formatter.format_bundle(locked_bundle, &ctx);
         } else {
-            BundleConfig::new()
-        };
+            let bundle_config = if detailed {
+                self.load_bundle_config(&locked_bundle.source)?
+            } else {
+                BundleConfig::new()
+            };
 
-        println!();
-        display_utils::display_bundle_info(
-            bundle_name,
-            &bundle_config,
-            &locked_bundle.source,
-            workspace_bundle,
-            detailed,
-        );
+            println!();
+            display_utils::display_bundle_info(
+                bundle_name,
+                &bundle_config,
+                &locked_bundle.source,
+                workspace_bundle,
+                detailed,
+            );
+        }
 
         Ok(())
     }

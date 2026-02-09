@@ -5,9 +5,14 @@ use clap::Parser;
 #[command(after_help = "EXAMPLES:\n  \
                   List all installed bundles:\n    augent list\n\n\
                   Show detailed information:\n    augent list --detailed\n\n\
+                  Output as JSON:\n    augent list --json\n\n\
                   Use verbose output:\n    augent list -v")]
 pub struct ListArgs {
     /// Show detailed output
     #[arg(long)]
     pub detailed: bool,
+
+    /// Output in JSON format
+    #[arg(long)]
+    pub json: bool,
 }

@@ -167,6 +167,136 @@ impl DetailedFormatter {
     }
 }
 
+/// JSON formatter for programmatic output
+pub struct JsonFormatter;
+
+impl DisplayFormatter for JsonFormatter {
+    fn format_bundle(&self, bundle: &crate::config::LockedBundle, ctx: &DisplayContext) {
+        let mut output = serde_json::json!({
+            "name": bundle.name,
+            "source": bundle.source,
+        });
+
+        if let Some(ref desc) = bundle.description {
+            output["description"] = serde_json::json!(desc);
+        }
+        if let Some(ref author) = bundle.author {
+            output["author"] = serde_json::json!(author);
+        }
+        if let Some(ref license) = bundle.license {
+            output["license"] = serde_json::json!(license);
+        }
+        if let Some(ref homepage) = bundle.homepage {
+            output["homepage"] = serde_json::json!(homepage);
+        }
+        if let Some(ref version) = bundle.version {
+            output["version"] = serde_json::json!(version);
+        }
+
+        if !bundle.files.is_empty() {
+            output["files"] = serde_json::json!(bundle.files);
+        }
+
+        if ctx.detailed {
+            self.add_detailed_info(&mut output, bundle, ctx);
+        }
+
+        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+    }
+
+    fn format_bundle_name(&self, _bundle: &crate::config::LockedBundle) {}
+
+    fn format_metadata(&self, _bundle: &crate::config::LockedBundle) {}
+
+    fn format_source(&self, _bundle: &crate::config::LockedBundle, _detailed: bool) {}
+}
+
+impl JsonFormatter {
+    fn add_detailed_info(
+        &self,
+        output: &mut serde_json::Value,
+        bundle: &crate::config::LockedBundle,
+        ctx: &DisplayContext,
+    ) {
+        if !bundle.files.is_empty() {
+            let files_by_platform = self.group_files_by_platform(bundle, ctx);
+            if !files_by_platform
+                .as_object()
+                .unwrap_or(&serde_json::Map::new())
+                .is_empty()
+            {
+                output["enabled_resources"] = files_by_platform;
+            }
+        }
+
+        if let Ok(bundle_config) =
+            config_utils::load_bundle_config(ctx.workspace_root, &bundle.source)
+        {
+            if !bundle_config.bundles.is_empty() {
+                output["dependencies"] = serde_json::Value::Array(
+                    bundle_config
+                        .bundles
+                        .iter()
+                        .map(|dep| {
+                            serde_json::json!({
+                                "name": dep.name,
+                            })
+                        })
+                        .collect(),
+                );
+            }
+        }
+    }
+
+    fn group_files_by_platform(
+        &self,
+        bundle: &crate::config::LockedBundle,
+        ctx: &DisplayContext,
+    ) -> serde_json::Value {
+        let mut grouped = serde_json::Map::new();
+
+        match ctx.workspace_bundle {
+            Some(ws_bundle) => {
+                for file in &bundle.files {
+                    if let Some(locations) = ws_bundle.get_locations(file) {
+                        for location in locations {
+                            let platform =
+                                super::platform_extractor::extract_platform_from_location(location);
+                            if !grouped.contains_key(&platform) {
+                                grouped.insert(platform.clone(), serde_json::json!([]));
+                            }
+                            if let Some(arr) = grouped.get_mut(&platform) {
+                                if let Some(arr_mut) = arr.as_array_mut() {
+                                    arr_mut.push(serde_json::json!({
+                                        "file": file,
+                                        "location": location
+                                    }));
+                                }
+                            }
+                            if let Some(arr) = grouped.get_mut(&platform) {
+                                if let Some(arr_mut) = arr.as_array_mut() {
+                                    arr_mut.push(serde_json::json!({
+                                        "file": file,
+                                        "location": location
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            None => {
+                grouped.insert(
+                    "files".to_string(),
+                    serde_json::json!(bundle.files.to_vec()),
+                );
+            }
+        }
+
+        serde_json::Value::Object(grouped)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

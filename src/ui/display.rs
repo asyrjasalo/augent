@@ -23,6 +23,7 @@ macro_rules! display_opt_field {
 }
 
 /// Display bundle in simple format
+#[allow(dead_code)]
 pub fn display_bundle_simple(
     bundle: &crate::config::LockedBundle,
     _workspace_config: &crate::config::WorkspaceConfig,
@@ -49,6 +50,7 @@ pub fn display_bundle_simple(
 }
 
 /// Display bundle metadata fields
+#[allow(dead_code)]
 fn display_bundle_metadata(bundle: &crate::config::LockedBundle) {
     display_opt_field!("Description:", bundle.description);
     display_opt_field!("Author:", bundle.author);
@@ -74,6 +76,7 @@ pub fn display_marketplace_plugin(bundle: &crate::config::LockedBundle) {
 }
 
 /// Display bundle dependencies if available
+#[allow(dead_code)]
 fn display_dependencies(workspace_root: &std::path::Path, bundle: &crate::config::LockedBundle) {
     match config_utils::load_bundle_config(workspace_root, &bundle.source) {
         Ok(bundle_config) => {
@@ -97,6 +100,7 @@ fn display_dependencies(workspace_root: &std::path::Path, bundle: &crate::config
 }
 
 /// Display bundle in detailed format
+#[allow(dead_code)]
 pub fn display_bundle_detailed(
     workspace_root: &std::path::Path,
     bundle: &crate::config::LockedBundle,
@@ -124,6 +128,7 @@ pub fn display_bundle_detailed(
     }
 }
 
+#[allow(dead_code)]
 fn display_detailed_sections(
     workspace_root: &std::path::Path,
     bundle: &crate::config::LockedBundle,
