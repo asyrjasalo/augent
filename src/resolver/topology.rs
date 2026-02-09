@@ -27,10 +27,11 @@ fn validate_dependencies(
     deps: &std::collections::HashMap<String, Vec<String>>,
     resolved: &std::collections::HashMap<String, ResolvedBundle>,
 ) -> Result<()> {
+    let resolved_keys: Vec<&str> = resolved.keys().map(|k| k.as_str()).collect();
     for (name, bundle_deps) in deps {
         for dep_name in bundle_deps {
-            if !resolved.contains_key(dep_name) {
-                let resolved_names: Vec<&str> = resolved.keys().map(|k| k.as_str()).collect();
+            if !resolved_keys.contains(&dep_name.as_str()) {
+                let resolved_names: Vec<&str> = resolved_keys.to_vec();
 
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
@@ -47,17 +48,24 @@ fn validate_dependencies(
     Ok(())
 }
 
-fn process_bundles(
-    bundle_names: &[String],
-    deps: &std::collections::HashMap<String, Vec<String>>,
-    visited: &mut std::collections::HashSet<String>,
-    temp_visited: &mut std::collections::HashSet<String>,
-    result: &mut Vec<ResolvedBundle>,
-    resolved: &std::collections::HashMap<String, ResolvedBundle>,
-) -> Result<()> {
+/// Context for topological sort operations
+struct TopoSortContext<'a> {
+    /// Dependency map
+    deps: &'a std::collections::HashMap<String, Vec<String>>,
+    /// Visited bundles
+    visited: &'a mut std::collections::HashSet<String>,
+    /// Temporarily visited bundles (for cycle detection)
+    temp_visited: &'a mut std::collections::HashSet<String>,
+    /// Result bundle list in dependency order
+    result: &'a mut Vec<ResolvedBundle>,
+    /// All resolved bundles
+    resolved: &'a std::collections::HashMap<String, ResolvedBundle>,
+}
+
+fn process_bundles(ctx: &mut TopoSortContext, bundle_names: &[String]) -> Result<()> {
     for name in bundle_names {
-        if !visited.contains(name) {
-            topo_dfs(name, deps, visited, temp_visited, result, resolved)?;
+        if !ctx.visited.contains(name) {
+            topo_dfs(ctx, name)?;
         }
     }
     Ok(())
@@ -87,66 +95,53 @@ pub fn topological_sort(
     let deps = build_dependency_list(resolved);
     validate_dependencies(&deps, resolved)?;
 
-    process_bundles(
-        resolution_order,
-        &deps,
-        &mut visited,
-        &mut temp_visited,
-        &mut result,
+    let mut ctx = TopoSortContext {
+        deps: &deps,
+        visited: &mut visited,
+        temp_visited: &mut temp_visited,
+        result: &mut result,
         resolved,
-    )?;
+    };
+
+    process_bundles(&mut ctx, resolution_order)?;
 
     let mut remaining: Vec<String> = resolved
         .keys()
-        .filter(|name| !visited.contains(name.as_str()))
+        .filter(|name| !ctx.visited.contains(name.as_str()))
         .cloned()
         .collect();
     remaining.sort();
 
-    process_bundles(
-        &remaining,
-        &deps,
-        &mut visited,
-        &mut temp_visited,
-        &mut result,
-        resolved,
-    )?;
+    process_bundles(&mut ctx, &remaining)?;
 
     Ok(result)
 }
 
 /// DFS helper for topological sort
-fn topo_dfs(
-    name: &str,
-    deps: &std::collections::HashMap<String, Vec<String>>,
-    visited: &mut std::collections::HashSet<String>,
-    temp_visited: &mut std::collections::HashSet<String>,
-    result: &mut Vec<ResolvedBundle>,
-    resolved: &std::collections::HashMap<String, ResolvedBundle>,
-) -> Result<()> {
-    if temp_visited.contains(name) {
+fn topo_dfs(ctx: &mut TopoSortContext, name: &str) -> Result<()> {
+    if ctx.temp_visited.contains(name) {
         return Err(AugentError::CircularDependency {
             chain: format!("Cycle detected involving {}", name),
         });
     }
 
-    if visited.contains(name) {
+    if ctx.visited.contains(name) {
         return Ok(());
     }
 
-    temp_visited.insert(name.to_string());
+    ctx.temp_visited.insert(name.to_string());
 
-    if let Some(bundle_deps) = deps.get(name) {
+    if let Some(bundle_deps) = ctx.deps.get(name) {
         for dep_name in bundle_deps {
-            topo_dfs(dep_name, deps, visited, temp_visited, result, resolved)?;
+            topo_dfs(ctx, dep_name)?;
         }
     }
 
-    temp_visited.remove(name);
-    visited.insert(name.to_string());
+    ctx.temp_visited.remove(name);
+    ctx.visited.insert(name.to_string());
 
-    if let Some(bundle) = resolved.get(name) {
-        result.push(bundle.clone());
+    if let Some(bundle) = ctx.resolved.get(name) {
+        ctx.result.push(bundle.clone());
     }
 
     Ok(())
@@ -157,52 +152,41 @@ mod tests {
     use super::*;
     use crate::config::{BundleConfig, BundleDependency};
 
+    fn create_test_bundle(name: &str, deps: &[&str]) -> ResolvedBundle {
+        let bundles = deps
+            .iter()
+            .map(|dep| BundleDependency {
+                name: dep.to_string(),
+                git: None,
+                path: None,
+                git_ref: None,
+            })
+            .collect();
+
+        ResolvedBundle {
+            name: name.to_string(),
+            dependency: None,
+            source_path: std::path::PathBuf::from(format!("/{}", name)),
+            resolved_sha: None,
+            resolved_ref: None,
+            git_source: None,
+            config: Some(BundleConfig {
+                version: Some("1.0.0".to_string()),
+                description: Some("Test bundle".to_string()),
+                author: None,
+                license: None,
+                homepage: None,
+                bundles,
+            }),
+        }
+    }
+
     #[test]
     fn test_topological_sort_simple() {
         let mut resolved = std::collections::HashMap::new();
 
-        let config_a = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-b".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        let bundle_a = ResolvedBundle {
-            name: "bundle-a".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-a"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_a),
-        };
-
-        let config_b = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![],
-        };
-
-        let bundle_b = ResolvedBundle {
-            name: "bundle-b".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-b"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_b),
-        };
+        let bundle_b = create_test_bundle("bundle-b", &[]);
+        let bundle_a = create_test_bundle("bundle-a", &["bundle-b"]);
 
         resolved.insert("bundle-a".to_string(), bundle_a);
         resolved.insert("bundle-b".to_string(), bundle_b);
@@ -219,72 +203,9 @@ mod tests {
     fn test_topological_sort_transitive_deps() {
         let mut resolved = std::collections::HashMap::new();
 
-        let config_d = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-c".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        let config_c = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-b".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        let config_b = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![],
-        };
-
-        let bundle_b = ResolvedBundle {
-            name: "bundle-b".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-b"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_b),
-        };
-
-        let bundle_c = ResolvedBundle {
-            name: "bundle-c".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-c"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_c),
-        };
-
-        let bundle_d = ResolvedBundle {
-            name: "bundle-d".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-d"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_d),
-        };
+        let bundle_b = create_test_bundle("bundle-b", &[]);
+        let bundle_c = create_test_bundle("bundle-c", &["bundle-b"]);
+        let bundle_d = create_test_bundle("bundle-d", &["bundle-c"]);
 
         resolved.insert("bundle-b".to_string(), bundle_b);
         resolved.insert("bundle-c".to_string(), bundle_c);
@@ -303,53 +224,8 @@ mod tests {
     fn test_topological_sort_cycle_detection() {
         let mut resolved = std::collections::HashMap::new();
 
-        let config_a = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-b".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        let config_b = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-a".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        let bundle_a = ResolvedBundle {
-            name: "bundle-a".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-a"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_a),
-        };
-
-        let bundle_b = ResolvedBundle {
-            name: "bundle-b".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-b"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_b),
-        };
+        let bundle_b = create_test_bundle("bundle-b", &["bundle-a"]);
+        let bundle_a = create_test_bundle("bundle-a", &["bundle-b"]);
 
         resolved.insert("bundle-a".to_string(), bundle_a);
         resolved.insert("bundle-b".to_string(), bundle_b);

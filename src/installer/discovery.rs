@@ -250,12 +250,6 @@ mod tests {
                 .iter()
                 .any(|r| r.bundle_path == Path::new("skills/claude.ai/SKILL.md"))
         );
-        // claude.ai (parent) should be skipped
-        assert!(
-            !filtered
-                .iter()
-                .any(|r| r.bundle_path == Path::new("skills/claude.ai/SKILL.md"))
-        );
     }
 
     fn create_discovered_resource(

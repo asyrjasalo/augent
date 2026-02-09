@@ -68,14 +68,15 @@ impl ResolveOperation {
     ) -> Result<ResolvedBundle> {
         match source {
             BundleSource::Dir { path } => {
-                let resolved = crate::resolver::local::resolve_local(
+                let ctx = crate::resolver::local::ResolveLocalContext {
                     path,
-                    &self.workspace_root,
+                    workspace_root: &self.workspace_root,
                     dependency,
+                    resolution_stack: &self.resolution_stack,
                     skip_deps,
-                    &self.resolution_stack,
-                    &self.resolved,
-                )?;
+                    resolved: &self.resolved,
+                };
+                let resolved = crate::resolver::local::resolve_local(ctx)?;
 
                 self.track_resolution(&resolved, dependency.is_none());
                 Ok(resolved)

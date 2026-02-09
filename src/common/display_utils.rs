@@ -5,6 +5,14 @@ use crate::config::{BundleConfig, LockedSource, WorkspaceBundle};
 /// and other information in a consistent format across the CLI.
 use console::Style;
 
+/// Git source details for display
+struct GitSourceDisplay<'a> {
+    url: &'a str,
+    git_ref: &'a Option<String>,
+    sha: &'a str,
+    path: &'a Option<String>,
+}
+
 /// Convert LockedSource to display string
 pub fn locked_source_to_string(source: &LockedSource) -> String {
     match source {
@@ -29,19 +37,31 @@ pub fn locked_source_to_string(source: &LockedSource) -> String {
     }
 }
 
+fn extract_platforms_from_bundle(workspace_bundle: &WorkspaceBundle) -> Vec<String> {
+    let mut platforms = std::collections::HashSet::new();
+    for locations in workspace_bundle.enabled.values() {
+        for location in locations {
+            if let Some(platform) = location.strip_prefix('.').and_then(|p| p.split('/').next()) {
+                platforms.insert(platform.to_string());
+            }
+        }
+    }
+    let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
+    sorted_platforms.sort();
+    sorted_platforms
+}
+
 /// Display bundle information in a standardized format.
 ///
 /// Shows bundle name, source, platforms (if available), and dependencies (in detailed mode).
 ///
 /// # Arguments
-/// * `workspace_root` - Path to workspace root (for loading bundle config)
 /// * `bundle_name` - Name of bundle to display
 /// * `bundle_config` - Bundle configuration containing dependencies
 /// * `locked_bundle` - Locked bundle information with source
 /// * `workspace_bundle` - Optional workspace bundle information
 /// * `detailed` - Whether to show detailed information including dependencies
 pub fn display_bundle_info(
-    _workspace_root: &std::path::Path,
     bundle_name: &str,
     bundle_config: &BundleConfig,
     locked_bundle: &LockedSource,
@@ -52,19 +72,9 @@ pub fn display_bundle_info(
     println!("Source: {}", locked_source_to_string(locked_bundle));
 
     if let Some(workspace_bundle) = workspace_bundle {
-        let mut platforms = std::collections::HashSet::new();
-        for locations in workspace_bundle.enabled.values() {
-            for location in locations {
-                if let Some(platform) = location.strip_prefix('.').and_then(|p| p.split('/').next())
-                {
-                    platforms.insert(platform.to_string());
-                }
-            }
-        }
+        let platforms = extract_platforms_from_bundle(workspace_bundle);
         if !platforms.is_empty() {
-            let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
-            sorted_platforms.sort();
-            println!("Platforms: {}", sorted_platforms.join(", "));
+            println!("Platforms: {}", platforms.join(", "));
         }
     }
 
@@ -101,11 +111,21 @@ fn display_dir_source(path: &str, indent: &str, version: Option<&str>, show_vers
     }
 }
 
+fn display_version_if_needed(indent: &str, path: &Option<String>, version: Option<&str>) {
+    if let Some(v) = version {
+        if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
+            println!(
+                "{}{} {}",
+                indent,
+                Style::new().bold().apply_to("version:"),
+                v
+            );
+        }
+    }
+}
+
 fn display_git_source(
-    url: &str,
-    git_ref: &Option<String>,
-    sha: &str,
-    path: &Option<String>,
+    source: &GitSourceDisplay,
     indent: &str,
     version: Option<&str>,
     show_version: bool,
@@ -116,8 +136,13 @@ fn display_git_source(
         Style::new().bold().apply_to("Type:"),
         Style::new().green().apply_to("Git")
     );
-    println!("{}{} {}", indent, Style::new().bold().apply_to("URL:"), url);
-    if let Some(ref_name) = git_ref {
+    println!(
+        "{}{} {}",
+        indent,
+        Style::new().bold().apply_to("URL:"),
+        source.url
+    );
+    if let Some(ref_name) = source.git_ref {
         println!(
             "{}{} {}",
             indent,
@@ -125,8 +150,13 @@ fn display_git_source(
             ref_name
         );
     }
-    println!("{}{} {}", indent, Style::new().bold().apply_to("SHA:"), sha);
-    if let Some(subdir) = path {
+    println!(
+        "{}{} {}",
+        indent,
+        Style::new().bold().apply_to("SHA:"),
+        source.sha
+    );
+    if let Some(subdir) = source.path {
         println!(
             "{}{} {}",
             indent,
@@ -135,16 +165,7 @@ fn display_git_source(
         );
     }
     if show_version {
-        if let Some(v) = version {
-            if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
-                println!(
-                    "{}{} {}",
-                    indent,
-                    Style::new().bold().apply_to("version:"),
-                    v
-                );
-            }
-        }
+        display_version_if_needed(indent, source.path, version);
     }
 }
 
@@ -175,7 +196,13 @@ pub fn display_source_detailed_with_indent(
             path,
             ..
         } => {
-            display_git_source(url, git_ref, sha, path, indent, version, show_version);
+            let source = GitSourceDisplay {
+                url,
+                git_ref,
+                sha,
+                path,
+            };
+            display_git_source(&source, indent, version, show_version);
         }
     }
 }

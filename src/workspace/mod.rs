@@ -195,15 +195,17 @@ impl Workspace {
 
     /// Save all configuration files to the config directory
     pub fn save(&self) -> Result<()> {
-        operations::save_workspace_configs(
-            &self.config_dir,
-            &self.bundle_config,
-            &self.lockfile,
-            &self.workspace_config,
-            &self.get_workspace_name(),
-            self.should_create_augent_yaml,
-            self.bundle_config_dir.as_deref(),
-        )
+        use operations::SaveWorkspaceConfigsContext;
+        let ctx = SaveWorkspaceConfigsContext {
+            config_dir: &self.config_dir,
+            bundle_config: &self.bundle_config,
+            lockfile: &self.lockfile,
+            workspace_config: &self.workspace_config,
+            workspace_name: &self.get_workspace_name(),
+            should_create_augent_yaml: self.should_create_augent_yaml,
+            bundle_config_dir: self.bundle_config_dir.as_deref(),
+        };
+        operations::save_workspace_configs(&ctx)
     }
 }
 
@@ -311,6 +313,16 @@ mod tests {
 
         let mut workspace = Workspace::init(temp.path()).unwrap();
 
+        add_test_bundle(&mut workspace);
+        workspace.should_create_augent_yaml = true;
+
+        let augent_dir = temp.path().join(WORKSPACE_DIR);
+        workspace.save().unwrap();
+
+        assert_save_order(&augent_dir);
+    }
+
+    fn add_test_bundle(workspace: &mut Workspace) {
         workspace
             .bundle_config
             .bundles
@@ -338,11 +350,9 @@ mod tests {
             .add_bundle(crate::config::WorkspaceBundle::new(
                 "test-bundle".to_string(),
             ));
-        workspace.should_create_augent_yaml = true;
+    }
 
-        let augent_dir = temp.path().join(WORKSPACE_DIR);
-        workspace.save().unwrap();
-
+    fn assert_save_order(augent_dir: &Path) {
         let lockfile_path = augent_dir.join(LOCKFILE_NAME);
         let yaml_path = augent_dir.join(BUNDLE_CONFIG_FILE);
         let index_path = augent_dir.join(WORKSPACE_INDEX_FILE);

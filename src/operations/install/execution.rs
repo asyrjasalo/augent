@@ -11,6 +11,15 @@ use crate::transaction::Transaction;
 use crate::ui::ProgressReporter;
 use crate::workspace::Workspace;
 
+/// Context for updating and saving workspace
+pub struct UpdateAndSaveWorkspaceContext<'a> {
+    pub args: &'a InstallArgs,
+    pub resolved_bundles: &'a [ResolvedBundle],
+    pub workspace_bundles: Vec<WorkspaceBundle>,
+    pub workspace_root: &'a std::path::Path,
+    pub should_update_augent_yaml: bool,
+}
+
 /// Execution orchestrator for install operation
 pub struct ExecutionOrchestrator<'a> {
     workspace: &'a mut Workspace,
@@ -97,16 +106,9 @@ impl<'a> ExecutionOrchestrator<'a> {
         }
     }
 
-    pub fn update_and_save_workspace(
-        &mut self,
-        args: &InstallArgs,
-        resolved_bundles: &[ResolvedBundle],
-        workspace_bundles: Vec<WorkspaceBundle>,
-        workspace_root: &std::path::Path,
-        should_update_augent_yaml: bool,
-    ) -> Result<()> {
-        let source_str = args.source.as_deref().unwrap_or("");
-        if args.dry_run {
+    pub fn update_and_save_workspace(&mut self, ctx: UpdateAndSaveWorkspaceContext) -> Result<()> {
+        let source_str = ctx.args.source.as_deref().unwrap_or("");
+        if ctx.args.dry_run {
             println!("[DRY RUN] Would update configuration files...");
         } else {
             use super::config::ConfigUpdater;
@@ -114,18 +116,18 @@ impl<'a> ExecutionOrchestrator<'a> {
             let mut config_updater = ConfigUpdater::new(self.workspace);
             config_updater.update_configs(
                 source_str,
-                resolved_bundles,
-                workspace_bundles,
-                should_update_augent_yaml,
+                ctx.resolved_bundles,
+                ctx.workspace_bundles,
+                ctx.should_update_augent_yaml,
             )?;
-            self.workspace.should_create_augent_yaml = should_update_augent_yaml;
+            self.workspace.should_create_augent_yaml = ctx.should_update_augent_yaml;
         }
 
-        if args.dry_run {
+        if ctx.args.dry_run {
             println!("[DRY RUN] Would save workspace...");
         } else {
             self.workspace.save()?;
-            *self.workspace = Workspace::open(workspace_root)?;
+            *self.workspace = Workspace::open(ctx.workspace_root)?;
         }
         Ok(())
     }

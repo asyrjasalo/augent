@@ -207,13 +207,15 @@ impl<'a> InstallOperation<'a> {
         let should_update_augent_yaml = args.source.is_some() && !args.frozen;
         {
             let mut exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-            exec_orchestrator.update_and_save_workspace(
+            use super::execution::UpdateAndSaveWorkspaceContext;
+            let ctx = UpdateAndSaveWorkspaceContext {
                 args,
                 resolved_bundles,
-                workspace_bundles.clone(),
-                &workspace_root,
+                workspace_bundles: workspace_bundles.clone(),
+                workspace_root: &workspace_root,
                 should_update_augent_yaml,
-            )?;
+            };
+            exec_orchestrator.update_and_save_workspace(ctx)?;
         }
 
         Ok((workspace_bundles, installed_files_map))

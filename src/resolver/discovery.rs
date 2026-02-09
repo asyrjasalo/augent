@@ -113,41 +113,70 @@ fn discover_git_bundles(source: &GitSource) -> Result<Vec<DiscoveredBundle>> {
     let mut discovered = discover_local_bundles(&content_path, &content_path)?;
     let marketplace_config = load_marketplace_config_if_exists(repo_path);
 
+    let git_context = GitBundleContext {
+        repo_path,
+        content_path: &content_path,
+        marketplace_config: &marketplace_config,
+        source,
+        sha: &sha,
+        resolved_ref: &resolved_ref,
+    };
+
     for bundle in &mut discovered {
-        let (subdirectory, bundle_name_for_cache) = determine_bundle_subdirectory_and_cache_name(
-            repo_path,
-            &content_path,
-            bundle,
-            &marketplace_config.as_ref(),
-            source,
-        );
-
-        let (bundle_content_path, _synthetic_guard) = create_synthetic_bundle_if_marketplace(
-            repo_path,
-            bundle,
-            subdirectory.clone(),
-            source,
-        )?;
-
-        cache::ensure_bundle_cached(
-            &bundle_name_for_cache,
-            &sha,
-            &source.url,
-            subdirectory.clone().as_deref(),
-            repo_path,
-            &bundle_content_path,
-            resolved_ref.as_deref(),
-        )?;
-
-        bundle.git_source = Some(GitSource {
-            url: source.url.clone(),
-            path: subdirectory.clone().or_else(|| source.path.clone()),
-            git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
-            resolved_sha: Some(sha.clone()),
-        });
+        process_git_bundle(bundle, &git_context)?;
     }
 
     Ok(discovered)
+}
+
+struct GitBundleContext<'a> {
+    repo_path: &'a Path,
+    content_path: &'a Path,
+    marketplace_config: &'a Option<MarketplaceConfig>,
+    source: &'a GitSource,
+    sha: &'a str,
+    resolved_ref: &'a Option<String>,
+}
+
+fn process_git_bundle(bundle: &mut DiscoveredBundle, ctx: &GitBundleContext<'_>) -> Result<()> {
+    let (subdirectory, bundle_name_for_cache) = determine_bundle_subdirectory_and_cache_name(
+        ctx.repo_path,
+        ctx.content_path,
+        bundle,
+        &ctx.marketplace_config.as_ref(),
+        ctx.source,
+    );
+
+    let (bundle_content_path, _synthetic_guard) = create_synthetic_bundle_if_marketplace(
+        ctx.repo_path,
+        bundle,
+        subdirectory.clone(),
+        ctx.source,
+    )?;
+
+    let subdirectory_ref = subdirectory.as_deref();
+    let resolved_ref_opt = ctx.resolved_ref.as_deref();
+    let metadata = crate::cache::populate::BundleCacheMetadata {
+        bundle_name: &bundle_name_for_cache,
+        sha: ctx.sha,
+        url: &ctx.source.url,
+        path_opt: subdirectory_ref,
+        resolved_ref: resolved_ref_opt,
+    };
+
+    cache::ensure_bundle_cached(&metadata, ctx.repo_path, &bundle_content_path)?;
+
+    bundle.git_source = Some(GitSource {
+        url: ctx.source.url.clone(),
+        path: subdirectory.clone().or_else(|| ctx.source.path.clone()),
+        git_ref: ctx
+            .resolved_ref
+            .clone()
+            .or_else(|| ctx.source.git_ref.clone()),
+        resolved_sha: Some(ctx.sha.to_string()),
+    });
+
+    Ok(())
 }
 
 fn try_get_cached_bundles(source: &GitSource) -> Result<(Option<Vec<DiscoveredBundle>>, String)> {

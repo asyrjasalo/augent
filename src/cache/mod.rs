@@ -31,7 +31,7 @@ pub use cache_entry::cache_bundle;
 pub use clone::clone_and_checkout;
 pub use index::list_cached_entries_for_url_sha;
 pub use populate::ensure_bundle_cached;
-pub use stats::{cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
+pub use stats::{CacheStats, cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
 
 // Re-export path utilities and constants
 pub use paths::{

@@ -28,16 +28,20 @@ pub struct CachedBundle {
 impl CachedBundle {
     /// Format size as human-readable string
     pub fn formatted_size(&self) -> String {
-        let size = self.size as f64;
-        if size < 1024.0 {
-            format!("{} B", self.size)
-        } else if size < 1024.0 * 1024.0 {
-            format!("{:.1} KB", size / 1024.0)
-        } else if size < 1024.0 * 1024.0 * 1024.0 {
-            format!("{:.1} MB", size / (1024.0 * 1024.0))
-        } else {
-            format!("{:.1} GB", size / (1024.0 * 1024.0 * 1024.0))
-        }
+        format_size_human_readable(self.size)
+    }
+}
+
+fn format_size_human_readable(size_bytes: u64) -> String {
+    let size = size_bytes as f64;
+    if size < 1024.0 {
+        format!("{} B", size_bytes)
+    } else if size < 1024.0 * 1024.0 {
+        format!("{:.1} KB", size / 1024.0)
+    } else if size < 1024.0 * 1024.0 * 1024.0 {
+        format!("{:.1} MB", size / (1024.0 * 1024.0))
+    } else {
+        format!("{:.1} GB", size / (1024.0 * 1024.0 * 1024.0))
     }
 }
 
@@ -55,16 +59,7 @@ pub struct CacheStats {
 impl CacheStats {
     /// Format total size as human-readable string
     pub fn formatted_size(&self) -> String {
-        let size = self.total_size as f64;
-        if size < 1024.0 {
-            format!("{} B", self.total_size)
-        } else if size < 1024.0 * 1024.0 {
-            format!("{:.1} KB", size / 1024.0)
-        } else if size < 1024.0 * 1024.0 * 1024.0 {
-            format!("{:.1} MB", size / (1024.0 * 1024.0))
-        } else {
-            format!("{:.1} GB", size / (1024.0 * 1024.0 * 1024.0))
-        }
+        format_size_human_readable(self.total_size)
     }
 }
 

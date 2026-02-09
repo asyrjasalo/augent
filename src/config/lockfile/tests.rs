@@ -258,8 +258,20 @@ mod tests {
     fn test_bundle_ordering_dir_bundles_last() {
         let mut lockfile = Lockfile::new();
 
-        // Add bundles in mixed order - should reorder so dir bundles come last
-        // First add a git bundle
+        add_mixed_bundles(&mut lockfile);
+        verify_dir_bundles_last(&lockfile);
+    }
+
+    #[test]
+    fn test_lockfile_reorganize() {
+        let mut lockfile = Lockfile::new();
+
+        add_bundles_in_wrong_order(&mut lockfile);
+        lockfile.reorganize(Some("@test/bundle"));
+        verify_reorganized_order(&lockfile);
+    }
+
+    fn add_mixed_bundles(lockfile: &mut Lockfile) {
         lockfile.add_bundle(LockedBundle::git(
             "git-bundle-1",
             "https://github.com/test/repo1.git",
@@ -268,7 +280,6 @@ mod tests {
             vec!["file1.md".to_string()],
         ));
 
-        // Then add a dir bundle
         lockfile.add_bundle(LockedBundle::dir(
             "local-bundle-1",
             ".augent/local-bundle-1",
@@ -276,7 +287,6 @@ mod tests {
             vec!["file2.md".to_string()],
         ));
 
-        // Add another git bundle
         lockfile.add_bundle(LockedBundle::git(
             "git-bundle-2",
             "https://github.com/test/repo2.git",
@@ -285,18 +295,17 @@ mod tests {
             vec!["file3.md".to_string()],
         ));
 
-        // Add another dir bundle
         lockfile.add_bundle(LockedBundle::dir(
             "local-bundle-2",
             ".augent/local-bundle-2",
             "blake3:hash4",
             vec!["file4.md".to_string()],
         ));
+    }
 
-        // Verify order: git bundles should come before dir bundles
+    fn verify_dir_bundles_last(lockfile: &Lockfile) {
         assert_eq!(lockfile.bundles.len(), 4);
 
-        // Git bundles should be at positions 0-1
         assert_eq!(lockfile.bundles[0].name, "git-bundle-1");
         assert!(matches!(
             lockfile.bundles[0].source,
@@ -309,7 +318,6 @@ mod tests {
             LockedSource::Git { .. }
         ));
 
-        // Dir bundles should be at positions 2-3
         assert_eq!(lockfile.bundles[2].name, "local-bundle-1");
         assert!(matches!(
             lockfile.bundles[2].source,
@@ -323,17 +331,14 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_lockfile_reorganize() {
-        let mut lockfile = Lockfile::new();
-
-        // Add bundles in completely wrong order
+    fn add_bundles_in_wrong_order(lockfile: &mut Lockfile) {
         lockfile.bundles.push(LockedBundle::dir(
             "local-bundle-1",
             ".augent/local-bundle-1",
             "blake3:hash1",
             vec!["file1.md".to_string()],
         ));
+
         lockfile.bundles.push(LockedBundle::git(
             "git-bundle-1",
             "https://github.com/test/repo1.git",
@@ -341,12 +346,14 @@ mod tests {
             "blake3:hash2",
             vec!["file2.md".to_string()],
         ));
+
         lockfile.bundles.push(LockedBundle::dir(
             "local-bundle-2",
             ".augent/local-bundle-2",
             "blake3:hash3",
             vec!["file3.md".to_string()],
         ));
+
         lockfile.bundles.push(LockedBundle::git(
             "git-bundle-2",
             "https://github.com/test/repo2.git",
@@ -354,20 +361,18 @@ mod tests {
             "blake3:hash4",
             vec!["file4.md".to_string()],
         ));
+
         lockfile.bundles.push(LockedBundle::dir(
             "@test/bundle",
             ".augent",
             "blake3:hash5",
             vec!["agents/ai.md".to_string()],
         ));
+    }
 
-        // Reorganize with workspace bundle name
-        lockfile.reorganize(Some("@test/bundle"));
-
-        // Verify order: git bundles (in order) -> dir bundles (non-workspace) -> workspace bundle
+    fn verify_reorganized_order(lockfile: &Lockfile) {
         assert_eq!(lockfile.bundles.len(), 5);
 
-        // Git bundles should be at positions 0-1 (in their original order)
         assert_eq!(lockfile.bundles[0].name, "git-bundle-1");
         assert!(matches!(
             lockfile.bundles[0].source,
@@ -380,7 +385,6 @@ mod tests {
             LockedSource::Git { .. }
         ));
 
-        // Dir bundles (non-workspace) should be at positions 2-3
         assert_eq!(lockfile.bundles[2].name, "local-bundle-1");
         assert!(matches!(
             lockfile.bundles[2].source,
@@ -393,7 +397,6 @@ mod tests {
             LockedSource::Dir { .. }
         ));
 
-        // Workspace bundle should be last
         assert_eq!(lockfile.bundles[4].name, "@test/bundle");
         assert!(matches!(
             lockfile.bundles[4].source,

@@ -73,26 +73,7 @@ pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>
     // breaks inquire's list layout and causes filter to match descriptions.
     let items = create_selection_items(&workspace.lockfile.bundles, &workspace_bundle_map);
 
-    println!();
-
-    let selection = match MultiSelect::new("Select bundles to uninstall", items)
-        .with_page_size(10)
-        .with_help_message(
-            "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
-        )
-        .with_scorer(&bundle_utils::score_by_name)
-        .prompt_skippable()?
-    {
-        Some(sel) => sel,
-        None => return Ok(vec![]),
-    };
-
-    let selected_bundles: Vec<String> = selection
-        .iter()
-        .map(|s| extract_bundle_name_from_display(s.as_str()))
-        .collect();
-
-    Ok(selected_bundles)
+    run_bundle_selection_prompt(items)
 }
 
 /// Format bundle name for display, optionally including platform list
@@ -128,6 +109,10 @@ pub fn select_bundles_from_list(
         .map(|b| format_bundle_name(b, workspace_bundle_map.get(b)))
         .collect();
 
+    run_bundle_selection_prompt(items)
+}
+
+fn run_bundle_selection_prompt(items: Vec<String>) -> Result<Vec<String>> {
     println!();
 
     let selection = match MultiSelect::new("Select bundles to uninstall", items)

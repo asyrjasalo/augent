@@ -7,6 +7,17 @@ use std::path::Path;
 use crate::config::{BundleConfig, Lockfile, WorkspaceConfig};
 use crate::error::Result;
 
+/// Context for saving workspace configurations
+pub struct SaveWorkspaceConfigsContext<'a> {
+    pub config_dir: &'a Path,
+    pub bundle_config: &'a BundleConfig,
+    pub lockfile: &'a Lockfile,
+    pub workspace_config: &'a WorkspaceConfig,
+    pub workspace_name: &'a str,
+    pub should_create_augent_yaml: bool,
+    pub bundle_config_dir: Option<&'a Path>,
+}
+
 /// Rebuild workspace configuration by scanning filesystem for installed files
 ///
 /// This method reconstructs the index.yaml by:
@@ -82,27 +93,9 @@ fn detect_installed_platforms(root: &Path) -> Result<Vec<std::path::PathBuf>> {
     Ok(platforms)
 }
 
-/// Reorganize configuration files and save them in correct order
-///
-/// Saves all workspace configuration files (lockfile, bundle config, workspace config)
-/// with proper ordering and optimization.
-pub fn save_workspace_configs(
-    config_dir: &Path,
-    bundle_config: &BundleConfig,
-    lockfile: &Lockfile,
-    workspace_config: &WorkspaceConfig,
-    workspace_name: &str,
-    should_create_augent_yaml: bool,
-    bundle_config_dir: Option<&Path>,
-) -> Result<()> {
-    let mut ordered_bundle_config = bundle_config.clone();
-    ordered_bundle_config.reorganize();
-
-    let mut ordered_lockfile = lockfile.clone();
-    ordered_lockfile.reorganize(Some(workspace_name));
-
+fn clean_default_branch_refs(bundle_config: &mut BundleConfig) {
     let is_default_branch = |r: &str| r == "main" || r == "master";
-    for dep in ordered_bundle_config.bundles.iter_mut() {
+    for dep in bundle_config.bundles.iter_mut() {
         if dep.git.is_some() {
             if let Some(ref r) = dep.git_ref {
                 if is_default_branch(r) {
@@ -111,25 +104,39 @@ pub fn save_workspace_configs(
             }
         }
     }
+}
 
-    let mut ordered_workspace_config = workspace_config.clone();
+/// Reorganize configuration files and save them in correct order
+///
+/// Saves all workspace configuration files (lockfile, bundle config, workspace config)
+/// with proper ordering and optimization.
+pub fn save_workspace_configs(ctx: &SaveWorkspaceConfigsContext) -> Result<()> {
+    let mut ordered_bundle_config = ctx.bundle_config.clone();
+    ordered_bundle_config.reorganize();
+
+    let mut ordered_lockfile = ctx.lockfile.clone();
+    ordered_lockfile.reorganize(Some(ctx.workspace_name));
+
+    clean_default_branch_refs(&mut ordered_bundle_config);
+
+    let mut ordered_workspace_config = ctx.workspace_config.clone();
     ordered_workspace_config.reorganize(&ordered_lockfile);
 
-    crate::workspace::config::save_lockfile(config_dir, &ordered_lockfile, workspace_name)?;
+    crate::workspace::config::save_lockfile(ctx.config_dir, &ordered_lockfile, ctx.workspace_name)?;
 
-    if should_create_augent_yaml {
-        let augent_yaml_dir = bundle_config_dir.unwrap_or(config_dir);
+    if ctx.should_create_augent_yaml {
+        let augent_yaml_dir = ctx.bundle_config_dir.unwrap_or(ctx.config_dir);
         crate::workspace::config::save_bundle_config(
             augent_yaml_dir,
             &ordered_bundle_config,
-            workspace_name,
+            ctx.workspace_name,
         )?;
     }
 
     crate::workspace::config::save_workspace_config(
-        config_dir,
+        ctx.config_dir,
         &ordered_workspace_config,
-        workspace_name,
+        ctx.workspace_name,
     )?;
     Ok(())
 }

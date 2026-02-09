@@ -50,7 +50,16 @@ bundles:
     fn test_bundle_config_to_yaml_multiple_bundles() {
         let mut config = BundleConfig::new();
 
-        // Add multiple bundles
+        add_test_bundles(&mut config);
+        let yaml = config.to_yaml("@test/bundle").unwrap();
+        assert_yaml_structure(&yaml, &["@author/bundle1", "@author/bundle2"]);
+
+        // Verify round-trip works
+        let parsed = BundleConfig::from_yaml(&yaml).unwrap();
+        assert_eq!(parsed.bundles.len(), 2);
+    }
+
+    fn add_test_bundles(config: &mut BundleConfig) {
         let mut dep1 = BundleDependency::git(
             "@author/bundle1",
             "https://github.com/author/repo.git",
@@ -66,23 +75,20 @@ bundles:
         );
         dep2.path = Some("path/to/bundle2".to_string());
         config.add_dependency(dep2);
+    }
 
-        let yaml = config.to_yaml("@test/bundle").unwrap();
-
-        // Verify structure
+    fn assert_yaml_structure(yaml: &str, expected_bundles: &[&str]) {
         assert!(yaml.contains("name: '@test/bundle'"));
         assert!(yaml.contains("bundles:"));
 
-        // Verify bundle entries exist
-        assert!(yaml.contains("- name: '@author/bundle1'"));
-        assert!(yaml.contains("- name: '@author/bundle2'"));
+        for bundle_name in expected_bundles {
+            assert!(yaml.contains(&format!("- name: '{}'", bundle_name)));
+        }
 
-        // Verify empty line between bundles (not after "bundles:" header)
-        // The pattern should be: bundles:\n  - name: first\n    ... content ...\n\n  - name: second
+        // Verify empty line between bundles
         let bundles_section = yaml.split("bundles:").nth(1).unwrap();
         let lines: Vec<&str> = bundles_section.lines().collect();
 
-        // Find indices of bundle entries
         let mut bundle_start_indices = Vec::new();
         for (i, line) in lines.iter().enumerate() {
             if line.trim().starts_with("- name:") {
@@ -90,23 +96,15 @@ bundles:
             }
         }
 
-        // Should have exactly 2 bundles
-        assert_eq!(bundle_start_indices.len(), 2);
+        assert_eq!(bundle_start_indices.len(), expected_bundles.len());
 
-        // Verify there's an empty line between bundles
-        let first_bundle_end = bundle_start_indices[0];
-        let second_bundle_start = bundle_start_indices[1];
-
-        // Check that there's at least one empty line between them
-        let between: Vec<&str> = lines[first_bundle_end..second_bundle_start].to_vec();
-        assert!(
-            between.iter().any(|l| l.is_empty()),
-            "Expected empty line between bundles"
-        );
-
-        // Verify round-trip works
-        let parsed = BundleConfig::from_yaml(&yaml).unwrap();
-        assert_eq!(parsed.bundles.len(), 2);
+        for window in bundle_start_indices.windows(2) {
+            let between: Vec<&str> = lines[window[0]..window[1]].to_vec();
+            assert!(
+                between.iter().any(|l| l.is_empty()),
+                "Expected empty line between bundles"
+            );
+        }
     }
 
     #[test]

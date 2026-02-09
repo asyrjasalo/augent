@@ -119,16 +119,18 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
         return Ok((content, sha, resolved_ref));
     }
 
-    ensure_bundle_cached(
-        &bundle_name,
-        &sha,
-        &source.url,
-        source.path.as_deref(),
-        temp_dir.path(),
-        &content_path,
-        resolved_ref.as_deref(),
-    )
-    .map(|resources| (resources, sha, resolved_ref))
+    use super::populate::BundleCacheMetadata;
+
+    let metadata = BundleCacheMetadata {
+        bundle_name: &bundle_name,
+        sha: &sha,
+        url: &source.url,
+        path_opt: source.path.as_deref(),
+        resolved_ref: resolved_ref.as_deref(),
+    };
+
+    ensure_bundle_cached(&metadata, temp_dir.path(), &content_path)
+        .map(|resources| (resources, sha, resolved_ref))
 }
 
 #[cfg(test)]

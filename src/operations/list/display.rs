@@ -34,21 +34,7 @@ pub fn display_bundle_simple(
         false,
     );
 
-    // Plugin for Claude Marketplace ($claudeplugin) bundles
-    if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
-        if p.contains("$claudeplugin") {
-            println!("    {}", Style::new().bold().apply_to("Plugin:"));
-            println!(
-                "      {} {}",
-                Style::new().bold().apply_to("type:"),
-                Style::new().green().apply_to("Claude Marketplace")
-            );
-            if let Some(ref v) = bundle.version {
-                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
-            }
-        }
-    }
-
+    display_marketplace_plugin(bundle);
     display_resources_grouped(&bundle.files);
 }
 

@@ -63,11 +63,76 @@ bundles:
     fn test_workspace_config_to_yaml_multiple_bundles() {
         let mut config = WorkspaceConfig::new();
 
-        // Add first bundle
+        add_test_bundles(&mut config);
+        let yaml = config.to_yaml("@test/workspace").unwrap();
+
+        assert!(yaml.contains("name: '@test/workspace'"));
+        assert!(yaml.contains("bundles:"));
+        assert_yaml_has_bundles(
+            &yaml,
+            &["@author/bundle1", "@author/bundle2", "@author/bundle3"],
+        );
+
+        // Verify round-trip works
+        let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();
+        assert_eq!(parsed.bundles.len(), 3);
+    }
+
+    #[test]
+    fn test_workspace_config_reorder_to_match_lockfile() {
+        let mut workspace_config = WorkspaceConfig::new();
+
+        // Add bundles in one order in workspace config
+        let mut bundle1 = WorkspaceBundle::new("local-bundle");
+        bundle1.add_file("file1.md", vec![".augent/file1.md".to_string()]);
+        workspace_config.add_bundle(bundle1);
+
+        let mut bundle2 = WorkspaceBundle::new("git-bundle-1");
+        bundle2.add_file("file2.md", vec![".claude/file2.md".to_string()]);
+        workspace_config.add_bundle(bundle2);
+
+        let mut bundle3 = WorkspaceBundle::new("git-bundle-2");
+        bundle3.add_file("file3.md", vec![".claude/file3.md".to_string()]);
+        workspace_config.add_bundle(bundle3);
+
+        // Create a lockfile with different order (git bundles first, then local)
+        let mut lockfile = crate::config::Lockfile::new();
+        lockfile.add_bundle(crate::config::lockfile::bundle::LockedBundle::git(
+            "git-bundle-1",
+            "https://github.com/test/repo1.git",
+            "sha123",
+            "blake3:hash1",
+            vec!["file2.md".to_string()],
+        ));
+        lockfile.add_bundle(crate::config::lockfile::bundle::LockedBundle::git(
+            "git-bundle-2",
+            "https://github.com/test/repo2.git",
+            "sha456",
+            "blake3:hash2",
+            vec!["file3.md".to_string()],
+        ));
+        lockfile.add_bundle(crate::config::lockfile::bundle::LockedBundle::dir(
+            "local-bundle",
+            ".augent/local-bundle",
+            "blake3:hash3",
+            vec!["file1.md".to_string()],
+        ));
+
+        // Reorder workspace config to match lockfile
+        workspace_config.reorder_to_match_lockfile(&lockfile);
+
+        // Verify new order
+        assert_eq!(workspace_config.bundles.len(), 3);
+        assert_eq!(workspace_config.bundles[0].name, "git-bundle-1");
+        assert_eq!(workspace_config.bundles[1].name, "git-bundle-2");
+        assert_eq!(workspace_config.bundles[2].name, "local-bundle");
+    }
+
+    fn add_test_bundles(config: &mut WorkspaceConfig) {
         let mut bundle1 = WorkspaceBundle::new("@author/bundle1");
         bundle1.add_file(
             "commands/cmd1.md",
-            vec![".claude/commands/cmd1.md".to_string()],
+            vec![".opencode/commands/cmd1.md".to_string()],
         );
         bundle1.add_file(
             "agents/agent1.md",
@@ -75,7 +140,6 @@ bundles:
         );
         config.add_bundle(bundle1);
 
-        // Add second bundle
         let mut bundle2 = WorkspaceBundle::new("@author/bundle2");
         bundle2.add_file(
             "commands/cmd2.md",
@@ -91,31 +155,22 @@ bundles:
         );
         config.add_bundle(bundle2);
 
-        // Add third bundle
         let mut bundle3 = WorkspaceBundle::new("@author/bundle3");
         bundle3.add_file(
             "commands/cmd3.md",
             vec![".claude/commands/cmd3.md".to_string()],
         );
         config.add_bundle(bundle3);
+    }
 
-        let yaml = config.to_yaml("@test/workspace").unwrap();
+    fn assert_yaml_has_bundles(yaml: &str, expected_bundles: &[&str]) {
+        for bundle_name in expected_bundles {
+            assert!(yaml.contains(&format!("- name: '{}'", bundle_name)));
+        }
 
-        // Verify structure
-        assert!(yaml.contains("name: '@test/workspace'"));
-        assert!(yaml.contains("bundles:"));
-
-        // Verify bundle entries exist
-        assert!(yaml.contains("- name: '@author/bundle1'"));
-        assert!(yaml.contains("- name: '@author/bundle2'"));
-        assert!(yaml.contains("- name: '@author/bundle3'"));
-
-        // Verify empty line between bundles (not after "bundles:" header)
-        // The pattern should be: bundles:\n  - name: first\n    ... content ...\n\n  - name: second
         let bundles_section = yaml.split("bundles:").nth(1).unwrap();
         let lines: Vec<&str> = bundles_section.lines().collect();
 
-        // Find indices of bundle entries
         let mut bundle_start_indices = Vec::new();
         for (i, line) in lines.iter().enumerate() {
             if line.trim().starts_with("- name:") {
@@ -123,24 +178,15 @@ bundles:
             }
         }
 
-        // Should have exactly 3 bundles
-        assert_eq!(bundle_start_indices.len(), 3);
+        assert_eq!(bundle_start_indices.len(), expected_bundles.len());
 
-        // Verify there's an empty line between each pair of bundles
         for window in bundle_start_indices.windows(2) {
-            let first_end = window[0];
-            let second_start = window[1];
-
-            let between: Vec<&str> = lines[first_end..second_start].to_vec();
+            let between: Vec<&str> = lines[window[0]..window[1]].to_vec();
             assert!(
                 between.iter().any(|l| l.is_empty()),
                 "Expected empty line between bundles"
             );
         }
-
-        // Verify round-trip works
-        let parsed = WorkspaceConfig::from_yaml(&yaml).unwrap();
-        assert_eq!(parsed.bundles.len(), 3);
     }
 
     #[test]
@@ -198,9 +244,22 @@ bundles:
     fn test_workspace_bundle_enabled_alphabetical_order() {
         let mut config = WorkspaceConfig::new();
 
-        // Create a bundle with files added in non-alphabetical order
+        create_bundle_with_reverse_files(&mut config);
+        let yaml = config.to_yaml("@test/workspace").unwrap();
+        assert_alphabetical_order(&yaml);
+    }
+
+    #[test]
+    fn test_workspace_bundle_enabled_values_alphabetical_order() {
+        let mut config = WorkspaceConfig::new();
+
+        create_bundle_with_reverse_locations(&mut config);
+        let yaml = config.to_yaml("@test/workspace").unwrap();
+        assert_locations_sorted_by_platform(&yaml);
+    }
+
+    fn create_bundle_with_reverse_files(config: &mut WorkspaceConfig) {
         let mut bundle = WorkspaceBundle::new("test-bundle");
-        // Add files in reverse alphabetical order to test sorting
         bundle.add_file(
             "commands/zebra.md",
             vec![".cursor/commands/zebra.md".to_string()],
@@ -215,43 +274,10 @@ bundles:
             vec![".cursor/agents/alpha.md".to_string()],
         );
         config.add_bundle(bundle);
-
-        let workspace_name = "@test/workspace";
-        let yaml = config.to_yaml(workspace_name).unwrap();
-
-        // Verify all entries are present
-        assert!(yaml.contains("commands/zebra.md"));
-        assert!(yaml.contains("agents/beta.md"));
-        assert!(yaml.contains("commands/apple.md"));
-        assert!(yaml.contains("agents/alpha.md"));
-
-        // Verify they appear in alphabetical order in YAML
-        let agents_alpha_pos = yaml.find("agents/alpha.md").unwrap();
-        let agents_beta_pos = yaml.find("agents/beta.md").unwrap();
-        let commands_apple_pos = yaml.find("commands/apple.md").unwrap();
-        let commands_zebra_pos = yaml.find("commands/zebra.md").unwrap();
-
-        assert!(
-            agents_alpha_pos < agents_beta_pos,
-            "agents/alpha.md should come before agents/beta.md"
-        );
-        assert!(
-            agents_beta_pos < commands_apple_pos,
-            "agents/beta.md should come before commands/apple.md"
-        );
-        assert!(
-            commands_apple_pos < commands_zebra_pos,
-            "commands/apple.md should come before commands/zebra.md"
-        );
     }
 
-    #[test]
-    fn test_workspace_bundle_enabled_values_alphabetical_order() {
-        let mut config = WorkspaceConfig::new();
-
-        // Create a bundle with locations added in non-alphabetical order
+    fn create_bundle_with_reverse_locations(config: &mut WorkspaceConfig) {
         let mut bundle = WorkspaceBundle::new("test-bundle");
-        // Add locations in reverse alphabetical order to test sorting
         bundle.add_file(
             "agents/backend-architect.md",
             vec![
@@ -274,49 +300,42 @@ bundles:
             ],
         );
         config.add_bundle(bundle);
+    }
 
-        let workspace_name = "@test/workspace";
-        let yaml = config.to_yaml(workspace_name).unwrap();
+    fn assert_alphabetical_order(yaml: &str) {
+        assert!(yaml.contains("commands/zebra.md"));
+        assert!(yaml.contains("agents/beta.md"));
+        assert!(yaml.contains("commands/apple.md"));
+        assert!(yaml.contains("agents/alpha.md"));
 
-        // Verify that locations are sorted alphabetically within each file entry
-        // .claude should come before .opencode alphabetically
-        // Find positions of locations in YAML
+        let agents_alpha_pos = yaml.find("agents/alpha.md").unwrap();
+        let agents_beta_pos = yaml.find("agents/beta.md").unwrap();
+        let commands_apple_pos = yaml.find("commands/apple.md").unwrap();
+        let commands_zebra_pos = yaml.find("commands/zebra.md").unwrap();
+
+        assert!(agents_alpha_pos < agents_beta_pos);
+        assert!(agents_beta_pos < commands_apple_pos);
+        assert!(commands_apple_pos < commands_zebra_pos);
+    }
+
+    fn assert_locations_sorted_by_platform(yaml: &str) {
         let backend_claude = yaml.find(".claude/agents/backend-architect.md");
         let backend_opencode = yaml.find(".opencode/agents/backend-architect.md");
 
-        assert!(
-            backend_claude.is_some() && backend_opencode.is_some(),
-            "Both locations should be present for backend-architect"
-        );
-        assert!(
-            backend_claude.unwrap() < backend_opencode.unwrap(),
-            ".claude should come before .opencode alphabetically for backend-architect"
-        );
+        assert!(backend_claude.is_some() && backend_opencode.is_some());
+        assert!(backend_claude.unwrap() < backend_opencode.unwrap());
 
-        // Verify same for other files
         let django_claude = yaml.find(".claude/agents/django-pro.md");
         let django_opencode = yaml.find(".opencode/agents/django-pro.md");
 
-        assert!(
-            django_claude.is_some() && django_opencode.is_some(),
-            "Both locations should be present for django-pro"
-        );
-        assert!(
-            django_claude.unwrap() < django_opencode.unwrap(),
-            ".claude should come before .opencode alphabetically for django-pro"
-        );
+        assert!(django_claude.is_some() && django_opencode.is_some());
+        assert!(django_claude.unwrap() < django_opencode.unwrap());
 
         let fastapi_claude = yaml.find(".claude/agents/fastapi-pro.md");
         let fastapi_opencode = yaml.find(".opencode/agents/fastapi-pro.md");
 
-        assert!(
-            fastapi_claude.is_some() && fastapi_opencode.is_some(),
-            "Both locations should be present for fastapi-pro"
-        );
-        assert!(
-            fastapi_claude.unwrap() < fastapi_opencode.unwrap(),
-            ".claude should come before .opencode alphabetically for fastapi-pro"
-        );
+        assert!(fastapi_claude.is_some() && fastapi_opencode.is_some());
+        assert!(fastapi_claude.unwrap() < fastapi_opencode.unwrap());
     }
 
     #[test]

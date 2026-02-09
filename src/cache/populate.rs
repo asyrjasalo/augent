@@ -9,6 +9,15 @@ use std::path::{Path, PathBuf};
 use crate::common::fs::{CopyOptions, copy_dir_recursive};
 use crate::error::{AugentError, Result};
 
+/// Metadata for a bundle to be cached
+pub struct BundleCacheMetadata<'a> {
+    pub bundle_name: &'a str,
+    pub sha: &'a str,
+    pub url: &'a str,
+    pub path_opt: Option<&'a str>,
+    pub resolved_ref: Option<&'a str>,
+}
+
 /// Determine content destination path based on bundle type
 fn determine_content_dst(resources: &Path, path_opt: Option<&str>) -> Result<PathBuf> {
     if let Some(plugin_name) = path_opt.and_then(|p| p.strip_prefix("$claudeplugin/")) {
@@ -30,21 +39,15 @@ fn determine_content_dst(resources: &Path, path_opt: Option<&str>) -> Result<Pat
 }
 
 /// Create index entry and add to cache index
-fn create_and_add_index_entry(
-    url: &str,
-    sha: &str,
-    path_opt: Option<&str>,
-    bundle_name: &str,
-    resolved_ref: Option<&str>,
-) -> Result<()> {
+fn create_and_add_index_entry(metadata: &BundleCacheMetadata) -> Result<()> {
     use crate::cache::index::{IndexEntry, add_index_entry};
 
     add_index_entry(IndexEntry {
-        url: url.to_string(),
-        sha: sha.to_string(),
-        path: path_opt.map(|s| s.to_string()),
-        bundle_name: bundle_name.to_string(),
-        resolved_ref: resolved_ref.map(|s| s.to_string()),
+        url: metadata.url.to_string(),
+        sha: metadata.sha.to_string(),
+        path: metadata.path_opt.map(|s| s.to_string()),
+        bundle_name: metadata.bundle_name.to_string(),
+        resolved_ref: metadata.resolved_ref.map(|s| s.to_string()),
     })
 }
 
@@ -69,9 +72,9 @@ fn copy_repository_to_cache(temp_dir: &Path, repo_dst: &Path) -> Result<()> {
 fn copy_content_to_resources(
     temp_dir: &Path,
     resources: &Path,
-    path_opt: Option<&str>,
+    metadata: &BundleCacheMetadata,
 ) -> Result<()> {
-    let content_dst = determine_content_dst(resources, path_opt)?;
+    let content_dst = determine_content_dst(resources, metadata.path_opt)?;
 
     fs::create_dir_all(content_dst.parent().unwrap()).map_err(|e| {
         AugentError::CacheOperationFailed {
@@ -101,28 +104,24 @@ fn write_bundle_name_file(entry_path: &Path, bundle_name: &str) -> Result<()> {
 /// Creates the cache entry structure, copies repository and content,
 /// writes to the bundle name file, and adds to index.
 pub fn ensure_bundle_cached(
-    bundle_name: &str,
-    sha: &str,
-    url: &str,
-    path_opt: Option<&str>,
+    metadata: &BundleCacheMetadata,
     temp_dir: &Path,
     _content_path: &Path,
-    resolved_ref: Option<&str>,
 ) -> Result<PathBuf> {
     use crate::cache::paths::{entry_repository_path, entry_resources_path, repo_cache_entry_path};
 
-    let entry_path = repo_cache_entry_path(url, sha)?;
+    let entry_path = repo_cache_entry_path(metadata.url, metadata.sha)?;
     create_cache_entry_dir(&entry_path)?;
 
     let repo_dst = entry_repository_path(&entry_path);
     copy_repository_to_cache(temp_dir, &repo_dst)?;
 
     let resources = entry_resources_path(&entry_path);
-    copy_content_to_resources(temp_dir, &resources, path_opt)?;
+    copy_content_to_resources(temp_dir, &resources, metadata)?;
 
-    write_bundle_name_file(&entry_path, bundle_name)?;
+    write_bundle_name_file(&entry_path, metadata.bundle_name)?;
 
-    create_and_add_index_entry(url, sha, path_opt, bundle_name, resolved_ref)?;
+    create_and_add_index_entry(metadata)?;
 
     Ok(resources)
 }

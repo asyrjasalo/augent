@@ -16,23 +16,8 @@ use super::super::parser;
 /// Emit Gemini command TOML from merged universal frontmatter and body.
 pub fn convert_from_merged(merged: &YamlValue, body: &str, target: &Path) -> Result<()> {
     let description = crate::universal::get_str(merged, "description");
-    let mut toml_content = String::new();
-    if let Some(desc) = description {
-        toml_content.push_str(&format!("description = {}\n", escape_toml_string(&desc)));
-    }
-    let is_multiline = body.contains('\n');
-    if is_multiline {
-        toml_content.push_str(&format!("prompt = \"\"\"\n{}\"\"\"\n", body));
-    } else {
-        toml_content.push_str(&format!("prompt = {}\n", escape_toml_string(body)));
-    }
-    let toml_target = target.with_extension("toml");
-    file_ops::ensure_parent_dir(&toml_target)?;
-    std::fs::write(&toml_target, toml_content).map_err(|e| AugentError::FileWriteFailed {
-        path: toml_target.display().to_string(),
-        reason: e.to_string(),
-    })?;
-    Ok(())
+    let toml_content = build_toml_content(description, body);
+    write_toml_file(target, &toml_content)
 }
 
 /// Convert markdown file to TOML format for Gemini CLI commands
@@ -44,26 +29,34 @@ pub fn convert_from_markdown(source: &Path, target: &Path) -> Result<()> {
 
     let (description, prompt) = parser::extract_description_and_prompt(&content);
 
+    let toml_content = build_toml_content(description, &prompt);
+    write_toml_file(target, &toml_content)
+}
+
+fn build_toml_content(description: Option<String>, prompt: &str) -> String {
     let mut toml_content = String::new();
 
-    if let Some(desc) = description {
-        toml_content.push_str(&format!("description = {}\n", escape_toml_string(&desc)));
+    if let Some(desc) = description.as_ref() {
+        toml_content.push_str(&format!("description = {}\n", escape_toml_string(desc)));
     }
 
     let is_multiline = prompt.contains('\n');
     if is_multiline {
-        toml_content.push_str(&format!("prompt = \"\"\"\n{}\"\"\"\n", prompt));
+        toml_content.push_str(&format!("prompt = \"\"\"\n{}\"\"\"\n", &prompt));
     } else {
-        toml_content.push_str(&format!("prompt = {}\n", escape_toml_string(&prompt)));
+        toml_content.push_str(&format!("prompt = {}\n", escape_toml_string(prompt)));
     }
 
+    toml_content
+}
+
+fn write_toml_file(target: &Path, content: &str) -> Result<()> {
     let toml_target = target.with_extension("toml");
     file_ops::ensure_parent_dir(&toml_target)?;
-    std::fs::write(&toml_target, toml_content).map_err(|e| AugentError::FileWriteFailed {
+    std::fs::write(&toml_target, content).map_err(|e| AugentError::FileWriteFailed {
         path: toml_target.display().to_string(),
         reason: e.to_string(),
     })?;
-
     Ok(())
 }
 

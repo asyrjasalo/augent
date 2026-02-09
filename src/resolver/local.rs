@@ -66,44 +66,52 @@ fn get_bundle_name_from_dependency_or_path(
     }
 }
 
+/// Context for local bundle resolution
+pub struct ResolveLocalContext<'a> {
+    /// Path to bundle directory (may be relative)
+    pub path: &'a Path,
+    /// Workspace root path
+    pub workspace_root: &'a Path,
+    /// Optional dependency info
+    pub dependency: Option<&'a BundleDependency>,
+    /// Resolution stack for cycle detection
+    pub resolution_stack: &'a [String],
+    /// Whether to skip dependency resolution (unused in local resolution)
+    #[allow(dead_code)]
+    pub skip_deps: bool,
+    /// Already resolved bundles (unused in local resolution)
+    #[allow(dead_code)]
+    pub resolved: &'a std::collections::HashMap<String, ResolvedBundle>,
+}
+
 /// Resolve a local directory bundle
 ///
 /// # Arguments
 ///
-/// * `path` - Path to bundle directory (may be relative)
-/// * `workspace_root` - Workspace root path
-/// * `dependency` - Optional dependency info
-/// * `skip_deps` - Whether to skip dependency resolution
+/// * `ctx` - Resolution context containing path, workspace, and dependency info
 ///
 /// # Errors
 ///
 /// Returns error if bundle not found, validation fails, or circular dependency detected.
-pub fn resolve_local(
-    path: &Path,
-    workspace_root: &Path,
-    dependency: Option<&BundleDependency>,
-    _skip_deps: bool,
-    resolution_stack: &[String],
-    _resolved: &std::collections::HashMap<String, ResolvedBundle>,
-) -> Result<ResolvedBundle> {
-    let full_path = resolve_full_path(path, workspace_root)?;
+pub fn resolve_local(ctx: ResolveLocalContext) -> Result<ResolvedBundle> {
+    let full_path = resolve_full_path(ctx.path, ctx.workspace_root)?;
 
     crate::resolver::validation::validate_local_bundle_path(
         &full_path,
-        path,
-        dependency.is_some(),
-        workspace_root,
+        ctx.path,
+        ctx.dependency.is_some(),
+        ctx.workspace_root,
     )?;
 
     if !full_path.is_dir() {
         return Err(AugentError::BundleNotFound {
-            name: format!("Bundle not found at path '{}'", path.display()),
+            name: format!("Bundle not found at path '{}'", ctx.path.display()),
         });
     }
 
-    let name = get_bundle_name_from_dependency_or_path(dependency, path);
+    let name = get_bundle_name_from_dependency_or_path(ctx.dependency, ctx.path);
 
-    crate::resolver::validation::check_cycle(&name, resolution_stack)?;
+    crate::resolver::validation::check_cycle(&name, ctx.resolution_stack)?;
 
     let source_path = full_path.clone();
 
@@ -111,7 +119,7 @@ pub fn resolve_local(
 
     let resolved = ResolvedBundle {
         name: name.clone(),
-        dependency: dependency.cloned(),
+        dependency: ctx.dependency.cloned(),
         source_path,
         resolved_sha: None,
         resolved_ref: None,

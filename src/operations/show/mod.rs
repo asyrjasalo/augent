@@ -89,7 +89,6 @@ impl<'a> ShowOperation<'a> {
 
         println!();
         display_utils::display_bundle_info(
-            &self.workspace_root,
             bundle_name,
             &bundle_config,
             &locked_bundle.source,

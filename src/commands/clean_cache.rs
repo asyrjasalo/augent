@@ -31,11 +31,7 @@ fn show_cache_stats() -> Result<()> {
     let stats = cache::cache_stats()?;
     let cache_dir = cache::cache_dir()?;
 
-    println!("Cache Statistics:");
-    println!("  Location: {}", cache_dir.display());
-    println!("  Repositories: {}", stats.repositories);
-    println!("  Versions: {}", stats.versions);
-    println!("  Size: {}", stats.formatted_size());
+    print_cache_statistics_header(&stats, &cache_dir);
 
     if stats.repositories == 0 {
         println!("\nCache is empty.");
@@ -46,6 +42,14 @@ fn show_cache_stats() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_cache_statistics_header(stats: &cache::CacheStats, cache_dir: &std::path::Path) {
+    println!("Cache Statistics:");
+    println!("  Location: {}", cache_dir.display());
+    println!("  Repositories: {}", stats.repositories);
+    println!("  Versions: {}", stats.versions);
+    println!("  Size: {}", stats.formatted_size());
 }
 
 fn list_cached_bundles() -> Result<()> {
