@@ -34,11 +34,6 @@ repos:
     hooks:
       - id: check-github-workflows
 
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
-    hooks:
-      - id: fmt
-
   - repo: https://github.com/rvben/rumdl-pre-commit
     rev: v0.0.222
     hooks:

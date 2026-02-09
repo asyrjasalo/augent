@@ -31,7 +31,11 @@ ag = "augent"
 [tasks.check]
 description = "Run all checks"
 alias = "c"
-run = [{ task = "lint" }, { task = "test" }, { task = "hooks" }]
+run = [{ task = "format" }, { task = "lint" }, { task = "test" }]
+
+[tasks.format]
+description = "Run fmt"
+run = "cargo fmt"
 
 [tasks.lint]
 description = "Run clippy"
@@ -44,8 +48,8 @@ run = "cargo test"
 [tasks.hooks]
 description = "Run pre-commit hooks"
 run = [
-    "prek install --hook-type pre-commit --hook-type commit-msg",
-    "prek run --all-files"
+  "prek install --hook-type pre-commit --hook-type commit-msg",
+  "prek run --all-files",
 ]
 
 [tasks.cov]
