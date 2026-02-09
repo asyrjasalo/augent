@@ -47,7 +47,13 @@ pub fn invalidate_index_cache() {
 
 /// Read index from disk
 pub fn read_index() -> Result<Vec<IndexEntry>> {
-    if let Some(cached) = index_cache().lock().unwrap().as_ref() {
+    if let Some(cached) = index_cache()
+        .lock()
+        .map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to acquire index cache lock: {}", e),
+        })?
+        .as_ref()
+    {
         return Ok(cached.clone());
     }
 
@@ -67,7 +73,11 @@ pub fn read_index() -> Result<Vec<IndexEntry>> {
             message: format!("Failed to parse index file {}: {}", index_path.display(), e),
         })?;
 
-    *index_cache().lock().unwrap() = Some(entries.clone());
+    *index_cache()
+        .lock()
+        .map_err(|e| AugentError::CacheOperationFailed {
+            message: format!("Failed to acquire index cache lock: {}", e),
+        })? = Some(entries.clone());
     Ok(entries)
 }
 

@@ -109,6 +109,8 @@ mod tests {
         let cache_dir = temp.path().join("cache");
         std::fs::create_dir_all(&cache_dir).unwrap();
 
+        // SAFETY: std::env::set_var is safe in test context.
+        // Used for testing cache operations with a temporary directory.
         unsafe {
             std::env::set_var("AUGENT_CACHE_DIR", temp.path());
         }
@@ -124,6 +126,8 @@ mod tests {
         std::fs::create_dir_all(temp.path().join("bundles")).unwrap();
 
         let original = std::env::var("AUGENT_CACHE_DIR").ok();
+        // SAFETY: std::env::set_var/remove_var is safe in test context.
+        // Used for testing cache operations with a temporary directory.
         unsafe {
             std::env::set_var("AUGENT_CACHE_DIR", temp.path());
         }

@@ -112,7 +112,9 @@ fn determine_bundle_name(
         Some(dep) => dep.name.clone(),
         None => match &git_source.path {
             Some(path_val) if path_val.starts_with("$claudeplugin/") => {
-                let bundle_name = path_val.strip_prefix("$claudeplugin/").unwrap();
+                let bundle_name = path_val
+                    .strip_prefix("$claudeplugin/")
+                    .expect("path starts with $claudeplugin/ (checked above)");
                 format!("{}/{}", base_name, bundle_name)
             }
             Some(path_val) => {

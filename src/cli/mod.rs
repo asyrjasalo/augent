@@ -163,6 +163,9 @@ mod tests {
         } else {
             "/tmp/flag-workspace"
         };
+        // SAFETY: std::env::set_var and remove_var are safe in test context.
+        // These operations only affect the current process's environment.
+        // Used for testing that CLI flags override environment variables.
         unsafe {
             std::env::set_var("AUGENT_WORKSPACE", env_path);
         }

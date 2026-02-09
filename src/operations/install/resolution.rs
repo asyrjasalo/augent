@@ -96,7 +96,7 @@ impl<'a> BundleResolver<'a> {
         pb.set_style(
             ProgressStyle::default_spinner()
                 .template("{spinner} Resolving bundles and dependencies...")
-                .unwrap()
+                .expect("valid progress bar template")
                 .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
         );
         pb.enable_steady_tick(std::time::Duration::from_millis(80));

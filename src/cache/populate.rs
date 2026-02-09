@@ -76,10 +76,13 @@ fn copy_content_to_resources(
 ) -> Result<()> {
     let content_dst = determine_content_dst(resources, metadata.path_opt)?;
 
-    fs::create_dir_all(content_dst.parent().unwrap()).map_err(|e| {
-        AugentError::CacheOperationFailed {
-            message: format!("Failed to create content parent directory: {}", e),
-        }
+    let parent = content_dst
+        .parent()
+        .ok_or_else(|| AugentError::CacheOperationFailed {
+            message: "Content destination path has no parent directory".to_string(),
+        })?;
+    fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
+        message: format!("Failed to create content parent directory: {}", e),
     })?;
     copy_dir_recursive(temp_dir, resources, CopyOptions::exclude_git())?;
 
