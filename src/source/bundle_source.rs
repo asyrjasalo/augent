@@ -76,19 +76,33 @@ impl LocalPathParser {
 
     /// Check if input appears to be a local path
     fn appears_to_be_local(input: &str, path: &Path) -> bool {
+        if Self::has_explicit_path_indicator(input) {
+            return true;
+        }
+
         let path_is_absolute = path.is_absolute();
         let has_drive = Self::has_windows_drive_letter(input);
         let starts_with_slash = input.starts_with('/');
 
+        if path_is_absolute || starts_with_slash || has_drive {
+            return true;
+        }
+
+        Self::looks_like_local_filename(input)
+    }
+
+    fn has_explicit_path_indicator(input: &str) -> bool {
         input.starts_with("./")
             || input.starts_with("../")
             || input == "."
             || (input.starts_with(".") && !input.contains("://"))
-            || path_is_absolute
-            || starts_with_slash
-            || has_drive
-            || (!input.contains(':')
-                && (input.contains('-') || input.contains('/') || input.contains('_')))
+    }
+
+    fn looks_like_local_filename(input: &str) -> bool {
+        if input.contains(':') {
+            return false;
+        }
+        input.contains('-') || input.contains('/') || input.contains('_')
     }
 }
 

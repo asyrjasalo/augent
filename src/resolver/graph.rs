@@ -299,100 +299,10 @@ mod tests {
     fn test_topological_sort_with_transitive_deps() {
         let mut graph = DependencyGraph::new();
 
-        // Bundle-d depends on bundle-c
-        let config_d = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-c".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        // Bundle-c depends on bundle-b
-        let config_c = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-b".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        // Bundle-b has no dependencies
-        let config_b = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![],
-        };
-
-        // Bundle-a depends on bundle-b
-        let config_a = BundleConfig {
-            version: Some("1.0.0".to_string()),
-            description: Some("Test bundle".to_string()),
-            author: None,
-            license: None,
-            homepage: None,
-            bundles: vec![BundleDependency {
-                name: "bundle-b".to_string(),
-                git: None,
-                path: None,
-                git_ref: None,
-            }],
-        };
-
-        let bundle_d = ResolvedBundle {
-            name: "bundle-d".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-d"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_d),
-        };
-
-        let bundle_c = ResolvedBundle {
-            name: "bundle-c".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-c"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_c),
-        };
-
-        let bundle_b = ResolvedBundle {
-            name: "bundle-b".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-b"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_b),
-        };
-
-        let bundle_a = ResolvedBundle {
-            name: "bundle-a".to_string(),
-            dependency: None,
-            source_path: std::path::PathBuf::from("/bundle-a"),
-            resolved_sha: None,
-            resolved_ref: None,
-            git_source: None,
-            config: Some(config_a),
-        };
+        let bundle_a = create_test_bundle("bundle-a", &["bundle-b"]);
+        let bundle_b = create_test_bundle("bundle-b", &[]);
+        let bundle_c = create_test_bundle("bundle-c", &["bundle-b"]);
+        let bundle_d = create_test_bundle("bundle-d", &["bundle-c"]);
 
         graph.add_bundle(&bundle_a);
         graph.add_bundle(&bundle_b);
@@ -407,6 +317,35 @@ mod tests {
         let pos_d = result.iter().position(|x| x == "bundle-d").unwrap();
         assert!(pos_b < pos_c);
         assert!(pos_c < pos_d);
+    }
+
+    fn create_test_bundle(name: &str, deps: &[&str]) -> ResolvedBundle {
+        let bundles = deps
+            .iter()
+            .map(|dep| BundleDependency {
+                name: dep.to_string(),
+                git: None,
+                path: None,
+                git_ref: None,
+            })
+            .collect();
+
+        ResolvedBundle {
+            name: name.to_string(),
+            dependency: None,
+            source_path: std::path::PathBuf::from(format!("/{}", name)),
+            resolved_sha: None,
+            resolved_ref: None,
+            git_source: None,
+            config: Some(BundleConfig {
+                version: Some("1.0.0".to_string()),
+                description: Some("Test bundle".to_string()),
+                author: None,
+                license: None,
+                homepage: None,
+                bundles,
+            }),
+        }
     }
 
     #[test]

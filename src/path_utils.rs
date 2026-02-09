@@ -6,21 +6,32 @@
 use std::path::Path;
 
 /// Characters that are unsafe in filesystem paths
+/// Replaced with hyphens and collapsed: `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|`
 const PATH_UNSAFE_CHARS: &[char] = &['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
-/// Convert a path to use forward slashes.
+/// Make a bundle name safe for filesystem use.
 ///
-/// This is useful for display purposes or for platform-independent comparisons.
+/// Replaces unsafe characters (including `/`, `\`, and `:`) with hyphens.
+/// Collapses consecutive hyphens into a single hyphen and removes leading/trailing hyphens.
+/// Converts `@author/repo` -> `author-repo` and `@org/sub/repo` -> `org-sub-repo`.
+/// Returns "unknown" if the result is empty.
 ///
 /// # Arguments
 ///
-/// * `path` - The path to convert
+/// * `name` - The bundle name to sanitize
 ///
 /// # Returns
 ///
-/// String representation with forward slashes
+/// A filesystem-safe string
 ///
 /// # Examples
 ///
+/// ```
+/// use augent::path_utils::make_path_safe;
+///
+/// assert_eq!(make_path_safe("@author/repo"), "author-repo");
+/// assert_eq!(make_path_safe("author/repo"), "author-repo");
+/// assert_eq!(make_path_safe("@org/sub/repo"), "org-sub-repo");
+/// assert_eq!(make_path_safe(":::"), "unknown");
 /// ```
 /// use std::path::Path;
 /// use augent::path_utils::to_forward_slashes;

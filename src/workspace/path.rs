@@ -16,54 +16,95 @@ pub fn find_file_candidates(
 ) -> crate::error::Result<Vec<std::path::PathBuf>> {
     let mut candidates = Vec::new();
 
-    // Get platform ID from directory name (e.g., ".cursor" -> "cursor")
-    let platform_id = platform_dir
+    let platform_id = extract_platform_id(platform_dir);
+    let platform = load_platform(root, &platform_id)?;
+
+    add_transformed_candidates(&mut candidates, bundle_file, platform_dir, &platform);
+    add_direct_path_candidate(&mut candidates, bundle_file, platform_dir);
+    add_common_fallback_candidates(&mut candidates, bundle_file, platform_dir);
+
+    Ok(candidates)
+}
+
+fn extract_platform_id(platform_dir: &Path) -> String {
+    platform_dir
         .file_name()
         .and_then(|n| n.to_str())
-        .map(|s| s.trim_start_matches('.'))
-        .unwrap_or("");
+        .map(|s| s.trim_start_matches('.').to_string())
+        .unwrap_or_default()
+}
 
-    // Find the matching platform definition (including custom platforms.jsonc)
+fn load_platform(
+    root: &Path,
+    platform_id: &str,
+) -> crate::error::Result<Option<crate::platform::Platform>> {
+    if platform_id.is_empty() {
+        return Ok(None);
+    }
+
     let loader = crate::platform::loader::PlatformLoader::new(root);
-    let platform = loader.load()?.into_iter().find(|p| p.id == platform_id);
+    Ok(loader.load()?.into_iter().find(|p| p.id == platform_id))
+}
 
+fn add_transformed_candidates(
+    candidates: &mut Vec<std::path::PathBuf>,
+    bundle_file: &str,
+    platform_dir: &Path,
+    platform: &Option<crate::platform::Platform>,
+) {
     if let Some(platform) = platform {
-        // Use platform transformation rules to find candidate locations
         for transform_rule in &platform.transforms {
-            // Check if this transformation rule applies to this bundle file
             if matches_glob(&transform_rule.from, bundle_file) {
-                // Generate the transformed path
                 let transformed = apply_transform(&transform_rule.to, bundle_file);
                 let candidate = platform_dir.join(&transformed);
                 candidates.push(candidate);
             }
         }
     }
+}
 
-    // Also try direct path as fallback: .platform/resourcetype/filename
+fn add_direct_path_candidate(
+    candidates: &mut Vec<std::path::PathBuf>,
+    bundle_file: &str,
+    platform_dir: &Path,
+) {
     let parts: Vec<&str> = bundle_file.split('/').collect();
-    if !parts.is_empty() {
-        let resource_type = parts[0];
-        let filename = parts.last().unwrap_or(&"");
-        let direct_path = platform_dir.join(resource_type).join(filename);
-        if !candidates.contains(&direct_path) {
-            candidates.push(direct_path);
-        }
+    if parts.is_empty() {
+        return;
     }
 
-    // Add common transformation patterns as fallback
+    let resource_type = parts[0];
+    let filename = parts.last().unwrap_or(&"");
+    let direct_path = platform_dir.join(resource_type).join(filename);
+
+    if !candidates.contains(&direct_path) {
+        candidates.push(direct_path);
+    }
+}
+
+fn add_common_fallback_candidates(
+    candidates: &mut Vec<std::path::PathBuf>,
+    bundle_file: &str,
+    platform_dir: &Path,
+) {
     if let Some(filename) = bundle_file.split('/').next_back() {
-        // For rules: .md might become .mdc
         if bundle_file.starts_with("rules/") && filename.ends_with(".md") {
-            let mdc_name = filename.replace(".md", ".mdc");
-            let mdc_path = platform_dir.join("rules").join(&mdc_name);
-            if !candidates.contains(&mdc_path) {
-                candidates.push(mdc_path);
-            }
+            add_mdc_candidate(candidates, filename, platform_dir);
         }
     }
+}
 
-    Ok(candidates)
+fn add_mdc_candidate(
+    candidates: &mut Vec<std::path::PathBuf>,
+    filename: &str,
+    platform_dir: &Path,
+) {
+    let mdc_name = filename.replace(".md", ".mdc");
+    let mdc_path = platform_dir.join("rules").join(&mdc_name);
+
+    if !candidates.contains(&mdc_path) {
+        candidates.push(mdc_path);
+    }
 }
 
 /// Check if a glob pattern matches a file path

@@ -65,14 +65,17 @@ pub fn strip_ansi(s: &str) -> String {
 
 /// Parse git URL to extract repository components
 ///
-/// Extracts the author and repository name from a git URL,
+/// Extracts the repository path from a git URL,
 /// trimming common patterns like `.git` suffix and protocol prefixes.
 ///
 /// # Arguments
 /// * `url` - Git URL to parse
 ///
 /// # Returns
-/// * `(Option<String>, String)` - Tuple of (optional full URL, base path without repo name)
+/// * `(Option<String>, String)` - Tuple of (optional full URL, repo path)
+///   - For remote URLs: Some(url), path including host (e.g., "github.com/author/repo" or "github.com:author/repo")
+///   - For file:// URLs: Some(url), path without file:// prefix (e.g., "path/to/repo")
+///   - For local paths: None, original path as-is
 ///
 /// # Examples
 /// ```
@@ -81,12 +84,17 @@ pub fn strip_ansi(s: &str) -> String {
 /// // HTTPS with org/repo
 /// let (url, base) = parse_git_url("https://github.com/author/repo.git");
 /// assert_eq!(url, Some("https://github.com/author/repo.git"));
-/// assert_eq!(base, "author/repo");
+/// assert_eq!(base, "github.com/author/repo");
 ///
 /// // SSH with org/repo
 /// let (url, base) = parse_git_url("git@github.com:author/repo");
 /// assert_eq!(url, Some("git@github.com:author/repo"));
-/// assert_eq!(base, "author/repo");
+/// assert_eq!(base, "github.com:author/repo");
+///
+/// // file:// URL
+/// let (url, base) = parse_git_url("file:///path/to/repo");
+/// assert_eq!(url, Some("file:///path/to/repo"));
+/// assert_eq!(base, "path/to/repo");
 ///
 /// // Local path
 /// let (url, base) = parse_git_url("/path/to/repo");

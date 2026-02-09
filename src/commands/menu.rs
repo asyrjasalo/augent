@@ -25,24 +25,47 @@ pub fn select_bundles_interactively(
         });
     }
 
-    // Sort bundles alphabetically by name for display only
-    let mut sorted_bundles = discovered.to_vec();
-    sorted_bundles.sort_by(|a, b| a.name.cmp(&b.name));
-
-    // Create a map from bundle name to bundle for quick lookup while preserving original order
-    let bundle_map: std::collections::HashMap<String, DiscoveredBundle> = discovered
-        .iter()
-        .map(|b| (b.name.clone(), b.clone()))
-        .collect();
-
-    // Track which bundles are installed
-    let installed = installed_bundle_names.as_ref();
-
-    // Style for installed bundles (dimmed/gray)
+    let sorted_bundles = sort_bundles_by_name(discovered);
+    let bundle_map = build_bundle_map(discovered);
+    let installed = installed_bundle_names;
     let installed_style = Style::new().dim();
 
-    // Build list of default selections (indices of installed bundles) first
-    let default_selections: Vec<usize> = sorted_bundles
+    let default_selections = build_default_selections(&sorted_bundles, installed);
+    let items = build_display_items(&sorted_bundles, installed, &installed_style);
+
+    println!();
+
+    let selection = prompt_for_selection(items, &default_selections)?;
+
+    let selected_bundles = map_selection_to_bundles(&selection, &bundle_map);
+    let deselected = find_deselected_bundles(&selected_bundles, installed_bundle_names);
+
+    Ok(BundleSelection {
+        selected: selected_bundles,
+        deselected,
+    })
+}
+
+fn sort_bundles_by_name(discovered: &[DiscoveredBundle]) -> Vec<DiscoveredBundle> {
+    let mut sorted = discovered.to_vec();
+    sorted.sort_by(|a, b| a.name.cmp(&b.name));
+    sorted
+}
+
+fn build_bundle_map(
+    discovered: &[DiscoveredBundle],
+) -> std::collections::HashMap<String, DiscoveredBundle> {
+    discovered
+        .iter()
+        .map(|b| (b.name.clone(), b.clone()))
+        .collect()
+}
+
+fn build_default_selections(
+    bundles: &[DiscoveredBundle],
+    installed: Option<&HashSet<String>>,
+) -> Vec<usize> {
+    bundles
         .iter()
         .enumerate()
         .filter_map(|(idx, b)| {
@@ -52,38 +75,59 @@ pub fn select_bundles_interactively(
                 None
             }
         })
-        .collect();
+        .collect()
+}
 
-    // Single-line items: "name (1 command)" or "name · desc..." or "name (installed)".
-    // Multi-line content breaks inquire's list layout and causes the filter to match descriptions.
-    let items: Vec<String> = sorted_bundles
+fn build_display_items(
+    bundles: &[DiscoveredBundle],
+    installed: Option<&HashSet<String>>,
+    installed_style: &Style,
+) -> Vec<String> {
+    bundles
         .iter()
-        .map(|b| {
-            let mut s = b.name.clone();
-            // Mark installed bundles with styled text
-            if installed.map(|set| set.contains(&b.name)).unwrap_or(false) {
-                s.push(' ');
-                s.push_str(&installed_style.apply_to("(installed)").to_string());
-            } else if let Some(formatted) = b.resource_counts.format() {
-                s.push_str(" (");
-                s.push_str(&formatted);
-                s.push(')');
-            }
-            if let Some(desc) = &b.description {
-                let trunc: String = if desc.chars().count() > 40 {
-                    desc.chars().take(37).chain("...".chars()).collect()
-                } else {
-                    desc.clone()
-                };
-                s.push_str(" · ");
-                s.push_str(&trunc);
-            }
-            s
-        })
-        .collect();
+        .map(|b| format_bundle_display(b, installed, installed_style))
+        .collect()
+}
 
-    println!();
+fn format_bundle_display(
+    bundle: &DiscoveredBundle,
+    installed: Option<&HashSet<String>>,
+    installed_style: &Style,
+) -> String {
+    let mut s = bundle.name.clone();
 
+    if installed
+        .map(|set| set.contains(&bundle.name))
+        .unwrap_or(false)
+    {
+        s.push(' ');
+        s.push_str(&installed_style.apply_to("(installed)").to_string());
+    } else if let Some(formatted) = bundle.resource_counts.format() {
+        s.push_str(" (");
+        s.push_str(&formatted);
+        s.push(')');
+    }
+
+    if let Some(desc) = &bundle.description {
+        s.push_str(" · ");
+        s.push_str(&truncate_description(desc, 40));
+    }
+
+    s
+}
+
+fn truncate_description(desc: &str, max_len: usize) -> String {
+    if desc.chars().count() > max_len {
+        desc.chars()
+            .take(max_len - 3)
+            .chain("...".chars())
+            .collect()
+    } else {
+        desc.to_string()
+    }
+}
+
+fn prompt_for_selection(items: Vec<String>, default_selections: &[usize]) -> Result<Vec<String>> {
     let mut multiselect = MultiSelect::new("Select bundles to install", items)
         .with_page_size(10)
         .with_help_message(
@@ -91,66 +135,54 @@ pub fn select_bundles_interactively(
         )
         .with_scorer(&bundle_utils::score_by_name);
 
-    // Preselect installed bundles if any exist
     if !default_selections.is_empty() {
-        multiselect = multiselect.with_default(&default_selections);
+        multiselect = multiselect.with_default(default_selections);
     }
 
-    let selection = match multiselect.prompt_skippable()? {
-        Some(sel) => sel,
-        None => {
-            return Ok(BundleSelection {
-                selected: vec![],
-                deselected: vec![],
-            });
-        }
-    };
+    match multiselect.prompt_skippable()? {
+        Some(sel) => Ok(sel),
+        None => Ok(vec![]),
+    }
+}
 
-    // Map display strings back to DiscoveredBundle preserving selection order
-    // Note: We allow reinstalling already-installed bundles, they're just shown in different color
-    // IMPORTANT: Use bundle_map to preserve original discovery order, not sorted_bundles which is alphabetical
-    let selected_bundles: Vec<DiscoveredBundle> = selection
+fn map_selection_to_bundles(
+    selection: &[String],
+    bundle_map: &std::collections::HashMap<String, DiscoveredBundle>,
+) -> Vec<DiscoveredBundle> {
+    selection
         .iter()
         .filter_map(|s| {
-            // Extract bundle name from display string
-            // The string might contain ANSI codes and "(installed)" marker
-            // Remove ANSI escape sequences first
-            let clean = string_utils::strip_ansi(s);
-
-            // Extract name part (before first " (" or " · ")
-            let name = clean
-                .split(" (")
-                .next()
-                .unwrap_or(&clean)
-                .split(" · ")
-                .next()
-                .unwrap_or(&clean)
-                .trim();
-
-            // Find matching bundle by name from the map (preserves original order)
-            bundle_map.get(name).cloned()
+            let name = extract_bundle_name_from_display(s);
+            bundle_map.get(&name).cloned()
         })
-        .collect();
+        .collect()
+}
 
-    // Find bundles that were preselected but deselected
-    // Note: installed_bundle_names contains discovered bundle names that are installed,
-    // not the full installed bundle names from lockfile
-    let selected_names: HashSet<String> = selected_bundles.iter().map(|b| b.name.clone()).collect();
-    let deselected: Vec<String> = if let Some(installed) = installed_bundle_names {
-        installed
+fn extract_bundle_name_from_display(display: &str) -> String {
+    let clean = string_utils::strip_ansi(display);
+    clean
+        .split(" (")
+        .next()
+        .unwrap_or(&clean)
+        .split(" · ")
+        .next()
+        .unwrap_or(&clean)
+        .trim()
+        .to_string()
+}
+
+fn find_deselected_bundles(
+    selected: &[DiscoveredBundle],
+    installed_bundle_names: Option<&HashSet<String>>,
+) -> Vec<String> {
+    let selected_names: HashSet<String> = selected.iter().map(|b| b.name.clone()).collect();
+
+    match installed_bundle_names {
+        Some(installed) => installed
             .iter()
-            .filter(|name| {
-                // Check if this installed bundle was in the discovered list and is now deselected
-                !selected_names.contains(*name)
-            })
+            .filter(|name| !selected_names.contains(*name))
             .cloned()
-            .collect()
-    } else {
-        Vec::new()
-    };
-
-    Ok(BundleSelection {
-        selected: selected_bundles,
-        deselected,
-    })
+            .collect(),
+        None => Vec::new(),
+    }
 }
