@@ -8,6 +8,7 @@ use crate::error::Result;
 #[allow(clippy::empty_line_after_outer_attr)]
 
 /// Initialize a workspace if it doesn't exist, or open it if it does
+#[allow(dead_code)]
 pub fn init_or_open_workspace(path: &Path) -> Result<crate::workspace::Workspace> {
     if crate::workspace::Workspace::exists(path) {
         crate::workspace::Workspace::open(path)
