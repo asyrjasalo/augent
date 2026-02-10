@@ -1,15 +1,8 @@
 //! Dependency errors
 
-use super::AugentError;
+use super::{AugentError, impl_error_constructors};
 
-/// Creates a circular dependency error
-pub fn circular(chain: impl Into<String>) -> AugentError {
-    AugentError::CircularDependency {
-        chain: chain.into(),
-    }
-}
-
-/// Creates a dependency not found error
-pub fn not_found(name: impl Into<String>) -> AugentError {
-    AugentError::DependencyNotFound { name: name.into() }
-}
+impl_error_constructors!(DepsModule, {
+    CircularDependency as circular(chain),
+    DependencyNotFound as not_found(name),
+});

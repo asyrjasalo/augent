@@ -1,17 +1,8 @@
 //! Platform errors
 
-use super::AugentError;
+use super::{AugentError, impl_error_constructors};
 
-/// Creates a platform not supported error
-pub fn not_supported(platform: impl Into<String>) -> AugentError {
-    AugentError::PlatformNotSupported {
-        platform: platform.into(),
-    }
-}
-
-/// Creates a platform config failed error
-pub fn config_failed(message: impl Into<String>) -> AugentError {
-    AugentError::PlatformConfigFailed {
-        message: message.into(),
-    }
-}
+impl_error_constructors!(PlatformModule, {
+    PlatformNotSupported as not_supported(platform),
+    PlatformConfigFailed as config_failed(message),
+});

@@ -1,21 +1,11 @@
 use crate::cli::InstallArgs;
-use crate::commands::menu;
+use crate::commands::{helpers, menu};
 use crate::domain::DiscoveredBundle;
 use crate::error::Result;
 use crate::operations::install::{InstallOperation, InstallOptions};
 use crate::source::BundleSource;
 use crate::transaction::Transaction;
 use crate::workspace::Workspace;
-
-fn resolve_workspace_root(workspace: Option<std::path::PathBuf>) -> Result<std::path::PathBuf> {
-    match workspace {
-        Some(path) => Ok(path),
-        None => std::env::current_dir().map_err(|e| crate::error::AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
-            source: Some(Box::new(e)),
-        }),
-    }
-}
 
 fn select_bundles(
     args: &InstallArgs,
@@ -151,7 +141,7 @@ fn install_from_config(workspace_root: &std::path::Path, args: &mut InstallArgs)
 
 /// Run install command
 pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Result<()> {
-    let workspace_root = resolve_workspace_root(workspace)?;
+    let workspace_root = helpers::resolve_workspace_path(workspace)?;
 
     let mut workspace = Workspace::open(&workspace_root)?;
     let _install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&args));
