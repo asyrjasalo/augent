@@ -231,6 +231,36 @@ pub enum AugentError {
     #[diagnostic(code(augent::platform::config_failed))]
     PlatformConfigFailed { message: String },
 
+    // Format converter errors
+    #[error("Duplicate format converter for platform: {platform_id}")]
+    #[diagnostic(
+        code(augent::installer::duplicate_converter),
+        help(
+            "A converter for this platform is already registered. Use unregister() first if replacing."
+        )
+    )]
+    DuplicateConverter { platform_id: String },
+
+    #[error(
+        "Conversion failed for platform '{platform}': {source_path} -> {target_path}: {reason}"
+    )]
+    #[diagnostic(code(augent::installer::conversion_failed))]
+    ConversionFailed {
+        platform: String,
+        source_path: String,
+        target_path: String,
+        reason: String,
+    },
+
+    #[error("Unsupported conversion for platform '{platform}': {reason}")]
+    #[diagnostic(
+        code(augent::installer::unsupported_conversion),
+        help(
+            "Check if this converter supports the required conversion type (markdown or merged frontmatter)"
+        )
+    )]
+    UnsupportedConversion { platform: String, reason: String },
+
     // File system errors
     #[error("File not found: {path}")]
     #[diagnostic(code(augent::fs::not_found))]

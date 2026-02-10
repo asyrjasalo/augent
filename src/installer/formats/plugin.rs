@@ -33,11 +33,11 @@
 //!         target.to_string_lossy().contains(".myplatform/")
 //!     }
 //!
-//!     fn convert_from_markdown(&self, source: &Path, target: &Path) -> Result<()> {
+//!     fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()> {
 //!         // Convert markdown file to platform-specific format
-//!         let content = std::fs::read_to_string(source)?;
+//!         let content = std::fs::read_to_string(ctx.source)?;
 //!         let converted = self.transform_content(&content);
-//!         std::fs::write(target, converted)?;
+//!         std::fs::write(ctx.target, converted)?;
 //!         Ok(())
 //!     }
 //!
@@ -45,7 +45,7 @@
 //!         &self,
 //!         _merged: &YamlValue,
 //!         _body: &str,
-//!         _target: &Path,
+//!         _ctx: FormatConverterContext,
 //!     ) -> Result<()> {
 //!         // Convert merged frontmatter and body to platform format
 //!         Ok(())
@@ -55,7 +55,7 @@
 //!         MergeStrategy::Replace
 //!     }
 //!
-//!     fn file_extension(&self, &self) -> Option<&str> {
+//!     fn file_extension(&self) -> Option<&str> {
 //!         Some("myplatform_ext") // e.g., Some("toml") for .toml files
 //!     }
 //! }
@@ -84,18 +84,71 @@ pub struct FormatConverterContext<'a> {
 }
 
 pub trait FormatConverter: Send + Sync + std::fmt::Debug {
+    /// Unique identifier for this platform (e.g., "claude", "gemini", "opencode")
     fn platform_id(&self) -> &str;
+
+    /// Determine if this converter can handle the given file conversion
     fn supports_conversion(&self, source: &Path, target: &Path) -> bool;
-    fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()>;
-    fn convert_from_merged(
-        &self,
-        merged: &YamlValue,
-        body: &str,
-        ctx: FormatConverterContext,
-    ) -> Result<()>;
+
+    /// Get the merge strategy for this platform
     #[allow(dead_code)]
     fn merge_strategy(&self) -> MergeStrategy;
+
+    /// Get the target file extension (e.g., Some("toml") for .toml files)
     fn file_extension(&self) -> Option<&str>;
+
+    /// Convert from markdown source file to platform-specific format
+    ///
+    /// Default implementation returns an unsupported conversion error.
+    /// Implement this method if your converter handles markdown files.
+    fn convert_from_markdown(&self, _ctx: FormatConverterContext) -> Result<()> {
+        Err(crate::error::AugentError::UnsupportedConversion {
+            platform: self.platform_id().to_string(),
+            reason: "markdown conversion not supported".into(),
+        })
+    }
+
+    /// Convert from merged frontmatter and body to platform-specific format
+    ///
+    /// Default implementation returns an unsupported conversion error.
+    /// Implement this method if your converter handles merged frontmatter.
+    fn convert_from_merged(
+        &self,
+        _merged: &YamlValue,
+        _body: &str,
+        _ctx: FormatConverterContext,
+    ) -> Result<()> {
+        Err(crate::error::AugentError::UnsupportedConversion {
+            platform: self.platform_id().to_string(),
+            reason: "merged frontmatter conversion not supported".into(),
+        })
+    }
+
+    /// Validate converter configuration (optional)
+    ///
+    /// Default implementation returns Ok(()). Override to perform
+    /// converter-specific validation (e.g., check for required files,
+    /// validate configuration, etc.).
+    #[allow(dead_code)]
+    fn validate(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Convert from markdown with error context
+    ///
+    /// Wrapper that adds platform-specific error context to conversion failures.
+    /// Prefer this over direct `convert_from_markdown()` calls for better debugging.
+    #[allow(dead_code)]
+    fn convert_from_markdown_with_context(&self, ctx: FormatConverterContext) -> Result<()> {
+        self.convert_from_markdown(ctx.clone()).map_err(|e| {
+            crate::error::AugentError::ConversionFailed {
+                platform: self.platform_id().to_string(),
+                source_path: ctx.source.display().to_string(),
+                target_path: ctx.target.display().to_string(),
+                reason: e.to_string(),
+            }
+        })
+    }
 }
 
 /// Registry for managing format converter plugins
@@ -143,11 +196,17 @@ impl FormatRegistry {
     /// Register a format converter plugin
     ///
     /// The converter will be indexed by its `platform_id()` and
-    /// can be found later via `find_converter()`.
+    /// can be found later via `find_converter()`. Returns an error
+    /// if a converter for this platform_id is already registered.
     ///
     /// # Arguments
     ///
     /// * `converter` - Boxed converter implementing `FormatConverter`
+    ///
+    /// # Errors
+    ///
+    /// Returns `AugentError::DuplicateConverter` if a converter with
+    /// the same platform_id is already registered.
     ///
     /// # Example
     ///
@@ -156,11 +215,16 @@ impl FormatRegistry {
     /// # use crate::installer::formats::gemini::GeminiConverter;
     ///
     /// let mut registry = FormatRegistry::new();
-    /// registry.register(Box::new(GeminiConverter));
+    /// registry.register(Box::new(GeminiConverter))?;
+    /// # Ok::<(), crate::error::AugentError>(())
     /// ```
-    pub fn register(&mut self, converter: Box<dyn FormatConverter>) {
+    pub fn register(&mut self, converter: Box<dyn FormatConverter>) -> Result<()> {
         let platform_id = converter.platform_id().to_string();
+        if self.converters.contains_key(&platform_id) {
+            return Err(crate::error::AugentError::DuplicateConverter { platform_id });
+        }
         self.converters.insert(platform_id, Arc::from(converter));
+        Ok(())
     }
 
     /// Register all built-in format converters
@@ -183,10 +247,15 @@ impl FormatRegistry {
     /// - roo
     /// - warp
     /// - windsurf
-    pub fn register_builtins(&mut self) {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any built-in converter fails to register
+    /// (e.g., duplicate platform_id).
+    pub fn register_builtins(&mut self) -> Result<()> {
         macro_rules! register_converters {
             ($($converter:expr),* $(,)?) => {
-                $(self.register(Box::new($converter));)*
+                $(self.register(Box::new($converter))?;)*
             };
         }
 
@@ -209,6 +278,7 @@ impl FormatRegistry {
             crate::installer::formats::warp::WarpConverter {},
             crate::installer::formats::windsurf::WindsurfConverter {},
         ];
+        Ok(())
     }
 
     /// Find a converter that can handle the given file conversion
@@ -247,6 +317,22 @@ impl FormatRegistry {
         self.converters.get(platform_id).cloned()
     }
 
+    /// Unregister a converter by platform ID
+    ///
+    /// Useful for testing to remove built-in converters and replace with mocks.
+    ///
+    /// # Arguments
+    ///
+    /// * `platform_id` - Platform identifier to remove
+    ///
+    /// # Returns
+    ///
+    /// `true` if converter was found and removed, `false` if not found
+    #[allow(dead_code)]
+    pub fn unregister(&mut self, platform_id: &str) -> bool {
+        self.converters.remove(platform_id).is_some()
+    }
+
     /// Get all registered platform IDs
     ///
     /// # Returns
@@ -273,6 +359,8 @@ mod tests {
     struct MockConverter {
         id: String,
         extension: Option<&'static str>,
+        supports_markdown: bool,
+        supports_merged: bool,
     }
 
     impl FormatConverter for MockConverter {
@@ -285,7 +373,14 @@ mod tests {
         }
 
         fn convert_from_markdown(&self, _ctx: FormatConverterContext) -> Result<()> {
-            Ok(())
+            if self.supports_markdown {
+                Ok(())
+            } else {
+                Err(crate::error::AugentError::UnsupportedConversion {
+                    platform: self.id.clone(),
+                    reason: "markdown not supported".into(),
+                })
+            }
         }
 
         fn convert_from_merged(
@@ -294,7 +389,14 @@ mod tests {
             _body: &str,
             _ctx: FormatConverterContext,
         ) -> Result<()> {
-            Ok(())
+            if self.supports_merged {
+                Ok(())
+            } else {
+                Err(crate::error::AugentError::UnsupportedConversion {
+                    platform: self.id.clone(),
+                    reason: "merged not supported".into(),
+                })
+            }
         }
 
         fn merge_strategy(&self) -> MergeStrategy {
@@ -309,10 +411,14 @@ mod tests {
     #[test]
     fn test_registry_register_and_find() {
         let mut registry = FormatRegistry::new();
-        registry.register(Box::new(MockConverter {
-            id: "test".to_string(),
-            extension: None,
-        }));
+        registry
+            .register(Box::new(MockConverter {
+                id: "test".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
 
         let source = Path::new("/src/test.md");
         let target = Path::new("/dst/.test/test.md");
@@ -323,16 +429,75 @@ mod tests {
     }
 
     #[test]
+    fn test_registry_duplicate_registration() {
+        let mut registry = FormatRegistry::new();
+        registry
+            .register(Box::new(MockConverter {
+                id: "test".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
+
+        let result = registry.register(Box::new(MockConverter {
+            id: "test".to_string(),
+            extension: None,
+            supports_markdown: false,
+            supports_merged: false,
+        }));
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            crate::error::AugentError::DuplicateConverter { platform_id } => {
+                assert_eq!(platform_id, "test");
+            }
+            _ => panic!("Expected DuplicateConverter error"),
+        }
+    }
+
+    #[test]
+    fn test_registry_unregister() {
+        let mut registry = FormatRegistry::new();
+        registry
+            .register(Box::new(MockConverter {
+                id: "test".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
+
+        assert_eq!(registry.registered_platforms().len(), 1);
+
+        let removed = registry.unregister("test");
+        assert!(removed);
+
+        assert_eq!(registry.registered_platforms().len(), 0);
+
+        let missing = registry.unregister("test");
+        assert!(!missing);
+    }
+
+    #[test]
     fn test_registry_multiple_converters() {
         let mut registry = FormatRegistry::new();
-        registry.register(Box::new(MockConverter {
-            id: "gemini".to_string(),
-            extension: None,
-        }));
-        registry.register(Box::new(MockConverter {
-            id: "opencode".to_string(),
-            extension: None,
-        }));
+        registry
+            .register(Box::new(MockConverter {
+                id: "gemini".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
+        registry
+            .register(Box::new(MockConverter {
+                id: "opencode".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
 
         let gemini_target = Path::new("/dst/.gemini/test.md");
         let opencode_target = Path::new("/dst/.opencode/test.md");
@@ -354,10 +519,14 @@ mod tests {
     #[test]
     fn test_registry_get_by_platform_id() {
         let mut registry = FormatRegistry::new();
-        registry.register(Box::new(MockConverter {
-            id: "test".to_string(),
-            extension: None,
-        }));
+        registry
+            .register(Box::new(MockConverter {
+                id: "test".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
 
         let converter = registry.get_by_platform_id("test");
         assert!(converter.is_some());
@@ -370,18 +539,56 @@ mod tests {
     #[test]
     fn test_registry_registered_platforms() {
         let mut registry = FormatRegistry::new();
-        registry.register(Box::new(MockConverter {
-            id: "gemini".to_string(),
-            extension: None,
-        }));
-        registry.register(Box::new(MockConverter {
-            id: "opencode".to_string(),
-            extension: None,
-        }));
+        registry
+            .register(Box::new(MockConverter {
+                id: "gemini".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
+        registry
+            .register(Box::new(MockConverter {
+                id: "opencode".to_string(),
+                extension: None,
+                supports_markdown: true,
+                supports_merged: false,
+            }))
+            .unwrap();
 
         let platforms = registry.registered_platforms();
         assert_eq!(platforms.len(), 2);
         assert!(platforms.contains(&"gemini".to_string()));
         assert!(platforms.contains(&"opencode".to_string()));
+    }
+
+    #[test]
+    fn test_converter_optional_methods() {
+        let converter = MockConverter {
+            id: "test".to_string(),
+            extension: None,
+            supports_markdown: false,
+            supports_merged: false,
+        };
+
+        let source = Path::new("/src/test.md");
+        let target = Path::new("/dst/.test/test.md");
+        let ctx = FormatConverterContext {
+            source,
+            target,
+            workspace_root: None,
+        };
+
+        // markdown conversion should fail with UnsupportedConversion
+        let result = converter.convert_from_markdown(ctx.clone());
+        assert!(result.is_err());
+
+        // merged conversion should fail with UnsupportedConversion
+        let result = converter.convert_from_merged(&YamlValue::Null, "body", ctx);
+        assert!(result.is_err());
+
+        // validate should succeed (default implementation)
+        let result = converter.validate();
+        assert!(result.is_ok());
     }
 }

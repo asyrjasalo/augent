@@ -211,7 +211,7 @@ impl<'a> Installer<'a> {
         dry_run: bool,
     ) -> Self {
         let mut registry = FormatRegistry::new();
-        registry.register_builtins();
+        let _ = registry.register_builtins();
 
         Self {
             workspace_root,
@@ -230,7 +230,7 @@ impl<'a> Installer<'a> {
         progress: Option<&'a mut dyn ProgressReporter>,
     ) -> Self {
         let mut registry = FormatRegistry::new();
-        registry.register_builtins();
+        let _ = registry.register_builtins();
 
         Self {
             workspace_root,
