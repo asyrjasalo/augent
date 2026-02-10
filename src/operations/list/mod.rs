@@ -4,8 +4,6 @@
 //! listing business logic, including bundle information display and
 //! resource grouping.
 
-pub mod display;
-
 use crate::cli::ListArgs;
 use crate::config::utils::BundleContainer;
 use crate::error::Result;

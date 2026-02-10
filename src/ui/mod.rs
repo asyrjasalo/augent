@@ -11,7 +11,6 @@
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-pub mod display;
 pub mod formatter;
 pub mod platform_extractor;
 

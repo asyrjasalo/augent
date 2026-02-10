@@ -160,7 +160,8 @@ impl ResolveOperation {
     }
 
     fn topological_sort(&self) -> Result<Vec<ResolvedBundle>> {
-        crate::resolver::topology::topological_sort(&self.resolved, &self.resolution_order)
+        let deps = crate::resolver::graph::build_dependency_list(&self.resolved);
+        crate::resolver::topology::topological_sort(&deps, &self.resolved, &self.resolution_order)
     }
 }
 
