@@ -44,7 +44,7 @@ fn count_optional_fields(
 
 /// Serialize BundleConfig (empty name field, name injected externally)
 pub fn serialize_bundle_config<S>(
-    config: &BundleConfigData,
+    _config: &BundleConfigData,
     serializer: S,
 ) -> std::result::Result<S::Ok, S::Error>
 where
@@ -57,7 +57,7 @@ where
         license,
         homepage,
         bundles,
-    } = config;
+    } = _config;
 
     let optional_count = count_optional_fields(description, version, author, license, homepage);
     let field_count = 2 + optional_count;

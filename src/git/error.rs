@@ -18,28 +18,6 @@ enum ErrorClassOrMessage {
     Other(ErrorClass),
 }
 
-fn is_repo_not_found(msg: &str) -> bool {
-    msg.contains("not found")
-        || msg.contains("404")
-        || msg.contains("too many redirects")
-        || msg.contains("authentication replays")
-}
-
-fn is_auth_failed(msg: &str) -> bool {
-    msg.contains("authentication") || msg.contains("credentials")
-}
-
-fn is_permission_denied(msg: &str) -> bool {
-    msg.contains("permission denied") || msg.contains("access denied")
-}
-
-fn is_network_error(msg: &str) -> bool {
-    msg.contains("connection")
-        || msg.contains("network")
-        || msg.contains("timeout")
-        || msg.contains("timed out")
-}
-
 fn classify_error_type(msg: &str, class: ErrorClass) -> ErrorClassOrMessage {
     for (check, result) in ERROR_CLASSIFICATIONS {
         if check(msg, class) {
@@ -53,19 +31,29 @@ type ErrorCheck = fn(&str, ErrorClass) -> bool;
 
 const ERROR_CLASSIFICATIONS: &[(ErrorCheck, ErrorClassOrMessage)] = &[
     (
-        |msg, _| is_repo_not_found(msg),
+        |msg, _| {
+            msg.contains("not found")
+                || msg.contains("404")
+                || msg.contains("too many redirects")
+                || msg.contains("authentication replays")
+        },
         ErrorClassOrMessage::RepositoryNotFound,
     ),
     (
-        |msg, _| is_auth_failed(msg),
+        |msg, _| msg.contains("authentication") || msg.contains("credentials"),
         ErrorClassOrMessage::AuthenticationFailed,
     ),
     (
-        |msg, _| is_permission_denied(msg),
+        |msg, _| msg.contains("permission denied") || msg.contains("access denied"),
         ErrorClassOrMessage::PermissionDenied,
     ),
     (
-        |msg, _| is_network_error(msg),
+        |msg, _| {
+            msg.contains("connection")
+                || msg.contains("network")
+                || msg.contains("timeout")
+                || msg.contains("timed out")
+        },
         ErrorClassOrMessage::NetworkError,
     ),
     (

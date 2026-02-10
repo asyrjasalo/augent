@@ -133,22 +133,6 @@ pub trait FormatConverter: Send + Sync + std::fmt::Debug {
     fn validate(&self) -> Result<()> {
         Ok(())
     }
-
-    /// Convert from markdown with error context
-    ///
-    /// Wrapper that adds platform-specific error context to conversion failures.
-    /// Prefer this over direct `convert_from_markdown()` calls for better debugging.
-    #[allow(dead_code)]
-    fn convert_from_markdown_with_context(&self, ctx: FormatConverterContext) -> Result<()> {
-        self.convert_from_markdown(ctx.clone()).map_err(|e| {
-            crate::error::AugentError::ConversionFailed {
-                platform: self.platform_id().to_string(),
-                source_path: ctx.source.display().to_string(),
-                target_path: ctx.target.display().to_string(),
-                reason: e.to_string(),
-            }
-        })
-    }
 }
 
 /// Registry for managing format converter plugins

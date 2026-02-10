@@ -3,7 +3,6 @@
 //! This module handles retrieving cached bundles and looking up
 //! cache entries via index.
 
-use crate::config::marketplace::operations;
 use crate::error::{AugentError, Result};
 use crate::source::GitSource;
 
@@ -70,49 +69,6 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
     }
 
     Ok(None)
-}
-
-fn extract_sha_from_entry_path(entry_path: &Path) -> Result<String> {
-    entry_path
-        .file_name()
-        .ok_or_else(|| AugentError::CacheOperationFailed {
-            message: "Failed to get SHA from cache entry path".to_string(),
-        })?
-        .to_str()
-        .ok_or_else(|| AugentError::CacheOperationFailed {
-            message: "Failed to get SHA from cache entry path".to_string(),
-        })
-        .map(|s| s.to_string())
-}
-
-/// Try to create a synthetic bundle for marketplace plugins
-#[allow(dead_code)]
-fn try_create_marketplace_synthetic_bundle(
-    resources: &Path,
-    path_opt: Option<&str>,
-    entry_path: &Path,
-    content_path: &Path,
-    source_url: &str,
-) -> Result<(PathBuf, String, Option<String>)> {
-    let plugin_name = match marketplace_plugin_name(path_opt) {
-        Some(name) if resources.is_dir() => name,
-        _ => {
-            return Err(AugentError::CacheOperationFailed {
-                message: "Bundle not found in cache".to_string(),
-            });
-        }
-    };
-
-    std::fs::create_dir_all(content_path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to create synthetic directory: {}", e),
-    })?;
-
-    let repo_dst = super::paths::entry_repository_path(entry_path);
-    operations::create_synthetic_bundle_to(&repo_dst, plugin_name, content_path, Some(source_url))?;
-
-    let sha = extract_sha_from_entry_path(entry_path)?;
-
-    Ok((content_path.to_path_buf(), sha, None))
 }
 
 #[cfg(test)]

@@ -118,21 +118,6 @@ fn display_resource_type(name: &str, files: &[String]) {
 }
 
 fn display_with_workspace_bundle(files: &[String], ws_bundle: &WorkspaceBundle) {
-    let (files_by_platform, uninstalled_files) = group_files_by_platform(files, ws_bundle);
-    display_sorted_platforms(&files_by_platform);
-    display_uninstalled_files(&uninstalled_files);
-}
-
-fn display_without_workspace_bundle(files: &[String]) {
-    for file in files {
-        println!("      {}", Style::new().dim().apply_to(file));
-    }
-}
-
-fn group_files_by_platform(
-    files: &[String],
-    ws_bundle: &WorkspaceBundle,
-) -> (FilesByPlatform, Vec<String>) {
     let mut files_by_platform = FilesByPlatform::new();
     let mut uninstalled_files = Vec::new();
 
@@ -148,7 +133,14 @@ fn group_files_by_platform(
         }
     }
 
-    (files_by_platform, uninstalled_files)
+    display_sorted_platforms(&files_by_platform);
+    display_uninstalled_files(&uninstalled_files);
+}
+
+fn display_without_workspace_bundle(files: &[String]) {
+    for file in files {
+        println!("      {}", Style::new().dim().apply_to(file));
+    }
 }
 
 fn process_file_locations(

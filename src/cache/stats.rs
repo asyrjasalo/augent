@@ -158,13 +158,6 @@ struct ShaBundleStats {
     size: u64,
 }
 
-impl ShaBundleStats {
-    #[allow(dead_code)]
-    fn into_bundle_stats(self) -> (usize, u64) {
-        (1, self.size)
-    }
-}
-
 /// Remove a specific bundle (or repo) from cache by name
 pub fn remove_cached_bundle(bundle_name: &str) -> Result<()> {
     let key = bundle_name_to_cache_key(bundle_name);

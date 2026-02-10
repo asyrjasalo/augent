@@ -42,12 +42,6 @@ impl<'a> NameFixer<'a> {
         Ok(())
     }
 
-    /// Get direct dependencies for a bundle
-    #[allow(dead_code)]
-    fn get_bundle_dependencies(_workspace: &Workspace, _bundle_name: &str) -> Vec<String> {
-        Vec::new()
-    }
-
     /// Confirm uninstall with user
     #[allow(dead_code)]
     fn confirm_uninstall(_workspace: &mut Workspace, _bundle_names: &[String]) -> Result<()> {

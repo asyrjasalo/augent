@@ -8,11 +8,6 @@ use std::path::{Path, PathBuf};
 use super::git_source::GitSource;
 use crate::error::Result;
 
-/// Source parser strategy trait
-trait SourceParser {
-    fn try_parse(&self, input: &str) -> Option<BundleSource>;
-}
-
 /// File URL parser - handles file:// URLs with fragments
 struct FileUrlParser;
 
@@ -26,10 +21,8 @@ impl FileUrlParser {
 
         has_ref || has_path_separator
     }
-}
 
-impl SourceParser for FileUrlParser {
-    fn try_parse(&self, input: &str) -> Option<BundleSource> {
+    fn try_parse(input: &str) -> Option<BundleSource> {
         input.strip_prefix("file://").and_then(|after_protocol| {
             if Self::indicates_git_source(after_protocol) {
                 GitSource::parse(input).ok().map(BundleSource::Git)
@@ -104,10 +97,8 @@ impl LocalPathParser {
         }
         input.contains('-') || input.contains('/') || input.contains('_')
     }
-}
 
-impl SourceParser for LocalPathParser {
-    fn try_parse(&self, input: &str) -> Option<BundleSource> {
+    fn try_parse(input: &str) -> Option<BundleSource> {
         if Self::looks_like_github_shorthand(input) {
             return None;
         }
@@ -180,12 +171,12 @@ impl BundleSource {
             });
         }
 
-        let parsers: [&dyn SourceParser; 2] = [&FileUrlParser, &LocalPathParser];
+        if let Some(source) = FileUrlParser::try_parse(input) {
+            return Ok(source);
+        }
 
-        for parser in parsers {
-            if let Some(source) = parser.try_parse(input) {
-                return Ok(source);
-            }
+        if let Some(source) = LocalPathParser::try_parse(input) {
+            return Ok(source);
         }
 
         let git_source = GitSource::parse(input)?;
