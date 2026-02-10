@@ -40,7 +40,7 @@
 //! - **detection**: Platform directory and binary file detection
 //! - **parser**: Frontmatter parsing for platform-specific metadata
 //! - **writer**: Output writing for processed content
-//! - **formats**: Platform-specific format conversions (17 platforms supported)
+//! - **formats**: Platform-specific format conversions (plugin-based architecture)
 //!
 //! ## Resource Types
 //!
@@ -81,6 +81,17 @@
 //! - Specific file naming conventions
 //! - Format converters for universal resources
 //! - Merge strategies for conflict resolution
+//!
+//! ## Format Converter Plugin System
+//!
+//! The installer uses a plugin-based architecture for format conversions:
+//!
+//! - **Independent development**: Each platform converter can be developed in isolation
+//! - **Dynamic registration**: Converters are registered at runtime via `FormatRegistry`
+//! - **Type-safe interface**: All converters implement the same `FormatConverter` trait
+//! - **Extensible**: New platforms can be added without modifying core installer logic
+//!
+//! See [`crate::installer::formats::plugin`] for the plugin trait and registry.
 //!
 //! ## Merge Strategies
 //!
@@ -164,10 +175,12 @@ pub mod writer;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::config::WorkspaceBundle;
 use crate::domain::{DiscoveredResource, InstalledFile, ResolvedBundle};
 use crate::error::Result;
+use crate::installer::formats::plugin::FormatRegistry;
 use crate::platform::Platform;
 use crate::ui::ProgressReporter;
 
@@ -175,6 +188,7 @@ use crate::ui::ProgressReporter;
 pub struct Installer<'a> {
     workspace_root: &'a Path,
     platforms: Vec<Platform>,
+    format_registry: Arc<FormatRegistry>,
     installed_files: HashMap<String, crate::installer::InstalledFile>,
     dry_run: bool,
     #[allow(dead_code)]
@@ -196,9 +210,13 @@ impl<'a> Installer<'a> {
         platforms: Vec<Platform>,
         dry_run: bool,
     ) -> Self {
+        let mut registry = FormatRegistry::new();
+        registry.register_builtins();
+
         Self {
             workspace_root,
             platforms,
+            format_registry: Arc::new(registry),
             installed_files: HashMap::new(),
             dry_run,
             progress: None,
@@ -211,9 +229,13 @@ impl<'a> Installer<'a> {
         dry_run: bool,
         progress: Option<&'a mut dyn ProgressReporter>,
     ) -> Self {
+        let mut registry = FormatRegistry::new();
+        registry.register_builtins();
+
         Self {
             workspace_root,
             platforms,
+            format_registry: Arc::new(registry),
             installed_files: HashMap::new(),
             dry_run,
             progress,
@@ -243,12 +265,14 @@ impl<'a> Installer<'a> {
         ctx: ResourceInstallContext<'_, '_>,
         resource: &DiscoveredResource,
         installed_files: &mut HashMap<String, InstalledFile>,
+        format_registry: Arc<FormatRegistry>,
     ) -> Result<()> {
         crate::installer::file_ops::copy_file(
             &resource.absolute_path,
             &ctx.target_path,
             std::slice::from_ref(ctx.platform),
             ctx.installer.workspace_root,
+            format_registry,
         )?;
 
         let key = resource.bundle_path.display().to_string();
@@ -284,7 +308,12 @@ impl<'a> Installer<'a> {
                         bundle_name: &bundle.name,
                         resource_type: &resource.resource_type,
                     };
-                    Self::install_resource_for_platform(ctx, resource, &mut installed_files)?;
+                    Self::install_resource_for_platform(
+                        ctx,
+                        resource,
+                        &mut installed_files,
+                        self.format_registry.clone(),
+                    )?;
                 }
             }
         }

@@ -1,36 +1,68 @@
-//! Gemini-specific format conversions
+//! Gemini-specific format converter plugin
 //!
-//! This module handles conversions for Gemini CLI:
+//! This converter handles conversions for Gemini CLI:
 //! - Markdown with frontmatter → TOML format
 //! - Universal merged frontmatter → TOML format
 //! - TOML string escaping
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::error::{AugentError, Result};
+use crate::installer::formats::plugin::{FormatConverter, FormatConverterContext};
+use crate::platform::MergeStrategy;
 use serde_yaml::Value as YamlValue;
 
 use super::super::file_ops;
 use super::super::parser;
 
-/// Emit Gemini command TOML from merged universal frontmatter and body.
-pub fn convert_from_merged(merged: &YamlValue, body: &str, target: &Path) -> Result<()> {
-    let description = crate::universal::get_str(merged, "description");
-    let toml_content = build_toml_content(description, body);
-    write_toml_file(target, &toml_content)
-}
+/// Gemini format converter plugin
+#[derive(Debug)]
+pub struct GeminiConverter;
 
-/// Convert markdown file to TOML format for Gemini CLI commands
-pub fn convert_from_markdown(source: &Path, target: &Path) -> Result<()> {
-    let content = std::fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
-        path: source.display().to_string(),
-        reason: e.to_string(),
-    })?;
+impl FormatConverter for GeminiConverter {
+    fn platform_id(&self) -> &str {
+        "gemini"
+    }
 
-    let (description, prompt) = parser::extract_description_and_prompt(&content);
+    fn supports_conversion(&self, _source: &Path, target: &Path) -> bool {
+        let path_str = target.to_string_lossy();
+        path_str.contains(".gemini/commands/") && path_str.ends_with(".md")
+    }
 
-    let toml_content = build_toml_content(description, &prompt);
-    write_toml_file(target, &toml_content)
+    fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()> {
+        let content =
+            std::fs::read_to_string(ctx.source).map_err(|e| AugentError::FileReadFailed {
+                path: ctx.source.display().to_string(),
+                reason: e.to_string(),
+            })?;
+
+        let (description, prompt) = parser::extract_description_and_prompt(&content);
+        let toml_content = build_toml_content(description, &prompt);
+
+        let toml_target = apply_extension(ctx.target, self.file_extension());
+        write_toml_file(&toml_target, &toml_content)
+    }
+
+    fn convert_from_merged(
+        &self,
+        merged: &YamlValue,
+        body: &str,
+        ctx: FormatConverterContext,
+    ) -> Result<()> {
+        let description = crate::universal::get_str(merged, "description");
+        let toml_content = build_toml_content(description, body);
+
+        let toml_target = apply_extension(ctx.target, self.file_extension());
+        write_toml_file(&toml_target, &toml_content)
+    }
+
+    fn merge_strategy(&self) -> MergeStrategy {
+        MergeStrategy::Replace
+    }
+
+    fn file_extension(&self) -> Option<&str> {
+        Some("toml")
+    }
 }
 
 fn build_toml_content(description: Option<String>, prompt: &str) -> String {
@@ -51,13 +83,18 @@ fn build_toml_content(description: Option<String>, prompt: &str) -> String {
 }
 
 fn write_toml_file(target: &Path, content: &str) -> Result<()> {
-    let toml_target = target.with_extension("toml");
-    file_ops::ensure_parent_dir(&toml_target)?;
-    std::fs::write(&toml_target, content).map_err(|e| AugentError::FileWriteFailed {
-        path: toml_target.display().to_string(),
+    file_ops::ensure_parent_dir(target)?;
+    std::fs::write(target, content).map_err(|e| AugentError::FileWriteFailed {
+        path: target.display().to_string(),
         reason: e.to_string(),
-    })?;
-    Ok(())
+    })
+}
+
+fn apply_extension(target: &Path, ext: Option<&str>) -> PathBuf {
+    match ext {
+        Some(e) => target.with_extension(e),
+        None => target.to_path_buf(),
+    }
 }
 
 /// Escape a string for use in TOML basic strings
@@ -88,11 +125,87 @@ mod tests {
     #[test]
     fn test_escape_toml_string() {
         assert_eq!(escape_toml_string("simple"), "\"simple\"");
-        assert_eq!(escape_toml_string("with\"quote"), r#""with\"quote""#);
+    }
+
+    #[test]
+    fn test_escape_toml_string_with_quote() {
+        let expected = "\"with\\\"quote\"";
+        assert_eq!(escape_toml_string("with\"quote"), expected);
+    }
+
+    #[test]
+    fn test_escape_toml_string_with_backslash() {
         assert_eq!(
             escape_toml_string("with\\backslash"),
             r#""with\\backslash""#
         );
+    }
+
+    #[test]
+    fn test_escape_toml_string_with_newline() {
         assert_eq!(escape_toml_string("with\nnewline"), r#""with\nnewline""#);
+    }
+
+    #[test]
+    fn test_apply_extension() {
+        let target = Path::new("/test.md");
+        assert_eq!(
+            apply_extension(target, Some("toml")),
+            Path::new("/test.toml")
+        );
+        assert_eq!(apply_extension(target, None), Path::new("/test.md"));
+    }
+
+    #[test]
+    fn test_gemini_converter_supports_conversion() {
+        let converter = GeminiConverter;
+        assert!(converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.gemini/commands/test.md")
+        ));
+        assert!(!converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.opencode/commands/test.md")
+        ));
+        assert!(!converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.gemini/commands/test.txt")
+        ));
+    }
+
+    #[test]
+    fn test_gemini_converter_platform_id() {
+        let converter = GeminiConverter;
+        assert_eq!(converter.platform_id(), "gemini");
+    }
+
+    #[test]
+    fn test_gemini_converter_file_extension() {
+        let converter = GeminiConverter;
+        assert_eq!(converter.file_extension(), Some("toml"));
+    }
+
+    #[test]
+    fn test_gemini_converter_merge_strategy() {
+        let converter = GeminiConverter;
+        assert_eq!(converter.merge_strategy(), MergeStrategy::Replace);
+    }
+
+    #[test]
+    fn test_build_toml_content() {
+        let result = build_toml_content(Some("Test description".to_string()), "Single line");
+        assert!(result.contains("description ="));
+        assert!(result.contains("Test description"));
+        assert!(result.contains("prompt ="));
+
+        let result = build_toml_content(None, "Single line");
+        assert!(!result.contains("description ="));
+        assert!(result.contains("prompt ="));
+
+        let result = build_toml_content(None, "Line 1\nLine 2\nLine 3");
+        assert!(result.contains("prompt = \"\"\""));
+        assert!(result.contains("Line 1"));
+        assert!(result.contains("Line 2"));
+        assert!(result.contains("Line 3"));
     }
 }

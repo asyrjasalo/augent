@@ -42,12 +42,14 @@ pub fn is_likely_binary_file(path: &Path) -> bool {
 }
 
 /// Check if target path is a gemini command file
+#[allow(dead_code)]
 pub fn is_gemini_command_file(target: &Path) -> bool {
     let path_str = target.to_string_lossy();
     path_str.contains(".gemini/commands/") && path_str.ends_with(".md")
 }
 
 /// Check if target path is an OpenCode commands/agents/skills file
+#[allow(dead_code)]
 pub fn is_opencode_metadata_file(target: &Path) -> bool {
     let path_str = target.to_string_lossy();
     (path_str.contains(".opencode/commands/") && path_str.ends_with(".md"))

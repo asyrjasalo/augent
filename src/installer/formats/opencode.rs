@@ -1,6 +1,6 @@
-//! OpenCode-specific format conversions
+//! OpenCode-specific format converter plugin
 //!
-//! This module handles conversions for OpenCode platform:
+//! This converter handles conversions for OpenCode platform:
 //! - Skills: Frontmatter adjustments for SKILL.md format
 //! - Commands: Frontmatter with description only
 //! - Agents: Frontmatter with description only
@@ -8,9 +8,71 @@
 use std::path::Path;
 
 use crate::error::{AugentError, Result};
+use crate::installer::formats::plugin::{FormatConverter, FormatConverterContext};
+use crate::platform::MergeStrategy;
 
 use super::super::file_ops;
 use super::super::parser;
+
+/// OpenCode format converter plugin
+#[derive(Debug)]
+pub struct OpencodeConverter;
+
+impl FormatConverter for OpencodeConverter {
+    fn platform_id(&self) -> &str {
+        "opencode"
+    }
+
+    fn supports_conversion(&self, _source: &Path, target: &Path) -> bool {
+        let path_str = target.to_string_lossy();
+        (path_str.contains(".opencode/commands/") && path_str.ends_with(".md"))
+            || (path_str.contains(".opencode/agents/") && path_str.ends_with(".md"))
+            || (path_str.contains(".opencode/skills/") && path_str.ends_with(".md"))
+    }
+
+    fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()> {
+        let content =
+            std::fs::read_to_string(ctx.source).map_err(|e| AugentError::FileReadFailed {
+                path: ctx.source.display().to_string(),
+                reason: e.to_string(),
+            })?;
+
+        let path_str = ctx.target.to_string_lossy();
+
+        if path_str.contains(".opencode/skills/") {
+            convert_skill(&content, ctx.target)?;
+        } else if path_str.contains(".opencode/commands/") {
+            convert_command(&content, ctx.target)?;
+        } else if path_str.contains(".opencode/agents/") {
+            convert_agent(&content, ctx.target)?;
+        } else {
+            file_ops::ensure_parent_dir(ctx.target)?;
+            std::fs::copy(ctx.source, ctx.target).map_err(|e| AugentError::FileWriteFailed {
+                path: ctx.target.display().to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+
+        Ok(())
+    }
+
+    fn convert_from_merged(
+        &self,
+        _merged: &serde_yaml::Value,
+        _body: &str,
+        _ctx: FormatConverterContext,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn merge_strategy(&self) -> MergeStrategy {
+        MergeStrategy::Replace
+    }
+
+    fn file_extension(&self) -> Option<&str> {
+        None
+    }
+}
 
 /// Convert markdown frontmatter to OpenCode format
 ///
@@ -18,31 +80,7 @@ use super::super::parser;
 /// - skills/ → convert_opencode_skill
 /// - commands/ → convert_opencode_command
 /// - agents/ → convert_opencode_agent
-pub fn convert(source: &Path, target: &Path) -> Result<()> {
-    let content = std::fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
-        path: source.display().to_string(),
-        reason: e.to_string(),
-    })?;
-
-    let path_str = target.to_string_lossy();
-
-    if path_str.contains(".opencode/skills/") {
-        convert_skill(&content, target)?;
-    } else if path_str.contains(".opencode/commands/") {
-        convert_command(&content, target)?;
-    } else if path_str.contains(".opencode/agents/") {
-        convert_agent(&content, target)?;
-    } else {
-        file_ops::ensure_parent_dir(target)?;
-        std::fs::copy(source, target).map_err(|e| AugentError::FileWriteFailed {
-            path: target.display().to_string(),
-            reason: e.to_string(),
-        })?;
-    }
-
-    Ok(())
-}
-
+///
 /// Parse frontmatter from markdown content, returning (frontmatter, body).
 fn parse_frontmatter(content: &str) -> (Option<String>, String) {
     let lines: Vec<&str> = content.lines().collect();
@@ -107,8 +145,7 @@ fn build_opencode_frontmatter(
     fm
 }
 
-/// Convert to OpenCode skill format with proper frontmatter
-pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
+fn convert_skill(content: &str, target: &Path) -> Result<()> {
     let (frontmatter, body) = parse_frontmatter(content);
 
     let new_frontmatter = if let Some(fm) = frontmatter {
@@ -134,13 +171,11 @@ pub fn convert_skill(content: &str, target: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Convert to OpenCode command format with proper frontmatter
-pub fn convert_command(content: &str, target: &Path) -> Result<()> {
+fn convert_command(content: &str, target: &Path) -> Result<()> {
     convert_with_description_only(content, target)
 }
 
-/// Convert to OpenCode agent format with proper frontmatter
-pub fn convert_agent(content: &str, target: &Path) -> Result<()> {
+fn convert_agent(content: &str, target: &Path) -> Result<()> {
     convert_with_description_only(content, target)
 }
 
@@ -164,4 +199,52 @@ fn convert_with_description_only(content: &str, target: &Path) -> Result<()> {
     })?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_opencode_converter_supports_conversion() {
+        let converter = OpencodeConverter;
+        assert!(converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.opencode/commands/test.md")
+        ));
+        assert!(converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.opencode/agents/test.md")
+        ));
+        assert!(converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.opencode/skills/test.md")
+        ));
+        assert!(!converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.gemini/commands/test.md")
+        ));
+        assert!(!converter.supports_conversion(
+            Path::new("/src/test.md"),
+            Path::new("/dst/.opencode/commands/test.txt")
+        ));
+    }
+
+    #[test]
+    fn test_opencode_converter_platform_id() {
+        let converter = OpencodeConverter;
+        assert_eq!(converter.platform_id(), "opencode");
+    }
+
+    #[test]
+    fn test_opencode_converter_file_extension() {
+        let converter = OpencodeConverter;
+        assert_eq!(converter.file_extension(), None);
+    }
+
+    #[test]
+    fn test_opencode_converter_merge_strategy() {
+        let converter = OpencodeConverter;
+        assert_eq!(converter.merge_strategy(), MergeStrategy::Replace);
+    }
 }

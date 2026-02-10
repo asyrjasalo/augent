@@ -5,12 +5,12 @@
 //! - File copying orchestration (copy_file)
 
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::error::{AugentError, Result};
 use crate::platform::Platform;
 
 use super::detection;
-use super::formats;
 use super::writer;
 
 /// Ensure parent directory exists for a path
@@ -30,6 +30,7 @@ pub fn copy_file(
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
+    format_registry: Arc<crate::installer::formats::FormatRegistry>,
 ) -> Result<()> {
     let is_resource = detection::is_platform_resource_file(target, platforms, workspace_root);
     let is_binary = detection::is_likely_binary_file(source);
@@ -42,7 +43,7 @@ pub fn copy_file(
         return perform_simple_copy(source, target);
     }
 
-    handle_text_file(source, target, platforms, workspace_root)
+    handle_text_file(source, target, platforms, workspace_root, format_registry)
 }
 
 fn perform_simple_copy(source: &Path, target: &Path) -> Result<()> {
@@ -60,6 +61,7 @@ fn handle_frontmatter_file(
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
+    format_registry: Arc<crate::installer::formats::FormatRegistry>,
 ) -> Option<Result<()>> {
     let (fm, body) = crate::universal::parse_frontmatter_and_body(content)?;
 
@@ -67,7 +69,18 @@ fn handle_frontmatter_file(
 
     if let Some(pid) = detection::platform_id_from_target(target, platforms, workspace_root) {
         let merged = crate::universal::merge_frontmatter_for_platform(&fm, pid, &known);
-        return Some(formats::gemini::convert_from_merged(&merged, &body, target));
+
+        if let Some(converter) = format_registry.find_converter(target, target) {
+            return Some(converter.convert_from_merged(
+                &merged,
+                &body,
+                crate::installer::formats::plugin::FormatConverterContext {
+                    source: target,
+                    target,
+                    workspace_root: Some(workspace_root),
+                },
+            ));
+        }
     }
 
     let _ = writer::write_merged_frontmatter_markdown(&fm, &body, target);
@@ -79,6 +92,7 @@ fn handle_text_file(
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
+    format_registry: Arc<crate::installer::formats::FormatRegistry>,
 ) -> Result<()> {
     ensure_parent_dir(target)?;
 
@@ -87,16 +101,24 @@ fn handle_text_file(
         reason: e.to_string(),
     })?;
 
-    if let Some(result) = handle_frontmatter_file(&content, target, platforms, workspace_root) {
+    if let Some(result) = handle_frontmatter_file(
+        &content,
+        target,
+        platforms,
+        workspace_root,
+        format_registry.clone(),
+    ) {
         return result;
     }
 
-    if detection::is_gemini_command_file(target) {
-        return formats::gemini::convert_from_markdown(source, target);
-    }
-
-    if detection::is_opencode_metadata_file(target) {
-        return formats::opencode::convert(source, target);
+    if let Some(converter) = format_registry.find_converter(source, target) {
+        return converter.convert_from_markdown(
+            crate::installer::formats::plugin::FormatConverterContext {
+                source,
+                target,
+                workspace_root: Some(workspace_root),
+            },
+        );
     }
 
     std::fs::write(target, content).map_err(|e| AugentError::FileWriteFailed {
