@@ -27,6 +27,10 @@ ag = "augent"
 
 # Usage: mise <task-name> [task-args]
 
+[tasks.build]
+description = "Build binary"
+run = "cargo build"
+
 [tasks.check]
 description = "Run all checks"
 alias = "c"
@@ -40,10 +44,6 @@ run = [
 [tasks.format]
 description = "Format codebase"
 run = "cargo fmt"
-
-[tasks.build]
-description = "Build binary"
-run = "cargo build"
 
 [tasks.test]
 description = "Run tests"
