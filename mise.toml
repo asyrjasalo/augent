@@ -28,6 +28,10 @@ ag = "augent"
 
 # Usage: mise <task-name> [task-args]
 
+[tasks.build]
+description = "Build"
+run = "cargo build"
+
 [tasks.check]
 description = "Run all checks"
 alias = "c"
