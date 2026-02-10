@@ -82,6 +82,19 @@ pub fn write_body_to_target(body: &str, ctx: FormatConverterContext) -> Result<(
     Ok(())
 }
 
+/// Helper function to write content to a target path with error handling
+///
+/// This is a generic write function that can be used when the target
+/// might be different from ctx.target (e.g., different file extension).
+pub fn write_content_to_file(target: &std::path::Path, content: &str) -> Result<()> {
+    crate::installer::file_ops::ensure_parent_dir(target)?;
+    std::fs::write(target, content).map_err(|e| crate::error::AugentError::FileWriteFailed {
+        path: target.display().to_string(),
+        reason: e.to_string(),
+    })?;
+    Ok(())
+}
+
 /// Macro to implement a simple copy converter that just passes through markdown content
 ///
 /// This macro generates a FormatConverter implementation for platforms that:

@@ -39,19 +39,7 @@ impl FormatConverter for OpencodeConverter {
 
         let path_str = ctx.target.to_string_lossy();
 
-        if path_str.contains(".opencode/skills/") {
-            convert_skill(&content, ctx.target)?;
-        } else if path_str.contains(".opencode/commands/") {
-            convert_command(&content, ctx.target)?;
-        } else if path_str.contains(".opencode/agents/") {
-            convert_agent(&content, ctx.target)?;
-        } else {
-            file_ops::ensure_parent_dir(ctx.target)?;
-            std::fs::copy(ctx.source, ctx.target).map_err(|e| AugentError::FileWriteFailed {
-                path: ctx.target.display().to_string(),
-                reason: e.to_string(),
-            })?;
-        }
+        dispatch_conversion(&path_str, &content, ctx.source, ctx.target)?;
 
         Ok(())
     }
@@ -72,6 +60,30 @@ impl FormatConverter for OpencodeConverter {
     fn file_extension(&self) -> Option<&str> {
         None
     }
+}
+
+fn dispatch_conversion(path_str: &str, content: &str, source: &Path, target: &Path) -> Result<()> {
+    if path_str.contains(".opencode/skills/") {
+        convert_skill(content, target)?;
+    } else if path_str.contains(".opencode/commands/") {
+        convert_command(content, target)?;
+    } else if path_str.contains(".opencode/agents/") {
+        convert_agent(content, target)?;
+    } else {
+        copy_generic_file(source, target)?;
+    }
+
+    Ok(())
+}
+
+fn copy_generic_file(source: &Path, target: &Path) -> Result<()> {
+    file_ops::ensure_parent_dir(target)?;
+    let content = std::fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
+        path: source.display().to_string(),
+        reason: e.to_string(),
+    })?;
+    crate::installer::formats::write_content_to_file(target, &content)?;
+    Ok(())
 }
 
 /// Convert markdown frontmatter to OpenCode format
@@ -152,23 +164,13 @@ fn convert_skill(content: &str, target: &Path) -> Result<()> {
         let frontmatter_map = build_frontmatter_map(&fm);
         build_opencode_frontmatter(&frontmatter_map, target)
     } else {
-        file_ops::ensure_parent_dir(target)?;
-        std::fs::write(target, body).map_err(|e| AugentError::FileWriteFailed {
-            path: target.display().to_string(),
-            reason: e.to_string(),
-        })?;
-        return Ok(());
+        return crate::installer::formats::write_content_to_file(target, body.as_str());
     };
 
-    file_ops::ensure_parent_dir(target)?;
-    std::fs::write(target, format!("{}{}", new_frontmatter, body)).map_err(|e| {
-        AugentError::FileWriteFailed {
-            path: target.display().to_string(),
-            reason: e.to_string(),
-        }
-    })?;
-
-    Ok(())
+    crate::installer::formats::write_content_to_file(
+        target,
+        &format!("{}{}", new_frontmatter, body),
+    )
 }
 
 fn convert_command(content: &str, target: &Path) -> Result<()> {
@@ -185,20 +187,14 @@ fn convert_with_description_only(content: &str, target: &Path) -> Result<()> {
     let mut new_content = String::new();
 
     if let Some(desc) = description {
-        new_content.push_str("---\\n");
-        new_content.push_str(&format!("description: {}\\n", desc));
-        new_content.push_str("---\\n\\n");
+        new_content.push_str("---\n");
+        new_content.push_str(&format!("description: {}\n", desc));
+        new_content.push_str("---\n\n");
     }
 
     new_content.push_str(&prompt);
 
-    file_ops::ensure_parent_dir(target)?;
-    std::fs::write(target, new_content).map_err(|e| AugentError::FileWriteFailed {
-        path: target.display().to_string(),
-        reason: e.to_string(),
-    })?;
-
-    Ok(())
+    crate::installer::formats::write_content_to_file(target, &new_content)
 }
 
 #[cfg(test)]

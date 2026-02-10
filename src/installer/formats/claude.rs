@@ -26,22 +26,7 @@ impl FormatConverter for ClaudeConverter {
 
     fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()> {
         // AGENTS.md → CLAUDE.md - direct copy, composite merge handled at higher level
-        let content = std::fs::read_to_string(ctx.source).map_err(|e| {
-            crate::error::AugentError::FileReadFailed {
-                path: ctx.source.display().to_string(),
-                reason: e.to_string(),
-            }
-        })?;
-
-        super::super::file_ops::ensure_parent_dir(ctx.target)?;
-        std::fs::write(ctx.target, content).map_err(|e| {
-            crate::error::AugentError::FileWriteFailed {
-                path: ctx.target.display().to_string(),
-                reason: e.to_string(),
-            }
-        })?;
-
-        Ok(())
+        crate::installer::formats::copy_markdown_file(ctx)
     }
 
     fn convert_from_merged(
@@ -50,15 +35,7 @@ impl FormatConverter for ClaudeConverter {
         body: &str,
         ctx: FormatConverterContext,
     ) -> Result<()> {
-        super::super::file_ops::ensure_parent_dir(ctx.target)?;
-        std::fs::write(ctx.target, body).map_err(|e| {
-            crate::error::AugentError::FileWriteFailed {
-                path: ctx.target.display().to_string(),
-                reason: e.to_string(),
-            }
-        })?;
-
-        Ok(())
+        crate::installer::formats::write_body_to_target(body, ctx)
     }
 
     fn merge_strategy(&self) -> MergeStrategy {

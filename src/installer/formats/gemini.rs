@@ -12,7 +12,6 @@ use crate::installer::formats::plugin::{FormatConverter, FormatConverterContext}
 use crate::platform::MergeStrategy;
 use serde_yaml::Value as YamlValue;
 
-use super::super::file_ops;
 use super::super::parser;
 
 /// Gemini format converter plugin
@@ -40,7 +39,7 @@ impl FormatConverter for GeminiConverter {
         let toml_content = build_toml_content(description, &prompt);
 
         let toml_target = apply_extension(ctx.target, self.file_extension());
-        write_toml_file(&toml_target, &toml_content)
+        crate::installer::formats::write_content_to_file(&toml_target, &toml_content)
     }
 
     fn convert_from_merged(
@@ -53,7 +52,7 @@ impl FormatConverter for GeminiConverter {
         let toml_content = build_toml_content(description, body);
 
         let toml_target = apply_extension(ctx.target, self.file_extension());
-        write_toml_file(&toml_target, &toml_content)
+        crate::installer::formats::write_content_to_file(&toml_target, &toml_content)
     }
 
     fn merge_strategy(&self) -> MergeStrategy {
@@ -80,14 +79,6 @@ fn build_toml_content(description: Option<String>, prompt: &str) -> String {
     }
 
     toml_content
-}
-
-fn write_toml_file(target: &Path, content: &str) -> Result<()> {
-    file_ops::ensure_parent_dir(target)?;
-    std::fs::write(target, content).map_err(|e| AugentError::FileWriteFailed {
-        path: target.display().to_string(),
-        reason: e.to_string(),
-    })
 }
 
 fn apply_extension(target: &Path, ext: Option<&str>) -> PathBuf {
