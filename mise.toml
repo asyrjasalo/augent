@@ -60,8 +60,3 @@ run = [
 description = "Run lizard complexity analysis"
 alias = "z"
 run = "echo 'Rules:\n- Cyclomatic complexity threshold (warn if CCN > 10)\n- Length of function threshold (warn if function has > 50 lines)\n- Number of parameters threshold (warn if function has > 5 parameters)\n- Token count threshold (warn if > 300 tokens)\n' && uvx lizard -C 10 -L 50 -a 5 -T token_count=300 --warnings_only src/"
-
-[tasks.lizard-dup]
-description = "Run lizard duplicate code detection"
-alias = "dup"
-run = "echo 'Detecting duplicated code blocks (similar token sequences)\n' && uvx lizard -Eduplicate --warnings_only src/"
