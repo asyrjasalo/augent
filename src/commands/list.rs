@@ -32,6 +32,7 @@ fn get_workspace_path(workspace: Option<PathBuf>) -> Result<PathBuf> {
         Some(path) => Ok(path),
         None => std::env::current_dir().map_err(|e| AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
+            source: Some(Box::new(e)),
         }),
     }
 }

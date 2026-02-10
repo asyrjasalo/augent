@@ -12,6 +12,7 @@ fn resolve_workspace_root(workspace: Option<std::path::PathBuf>) -> Result<std::
         Some(path) => Ok(path),
         None => std::env::current_dir().map_err(|e| crate::error::AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
+            source: Some(Box::new(e)),
         }),
     }
 }
@@ -51,6 +52,7 @@ fn select_bundles(
 fn setup_workspace(workspace_root: &std::path::Path) -> Result<Workspace> {
     std::fs::create_dir_all(workspace_root).map_err(|e| crate::error::AugentError::IoError {
         message: format!("Failed to create workspace directory: {}", e),
+        source: Some(Box::new(e)),
     })?;
 
     let mut workspace = Workspace::init_or_open(workspace_root)?;
@@ -97,6 +99,7 @@ fn discover_and_select_bundles(
         .as_deref()
         .ok_or_else(|| crate::error::AugentError::IoError {
             message: "No source provided".to_string(),
+            source: None,
         })?;
     let _source = BundleSource::parse(source_str)?;
     let mut resolver = crate::resolver::Resolver::new(workspace_root);

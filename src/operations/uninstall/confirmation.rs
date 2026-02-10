@@ -60,5 +60,6 @@ pub fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String])
         .prompt()
         .map_err(|e| AugentError::IoError {
             message: format!("Failed to read confirmation: {}", e),
+            source: Some(Box::new(e)),
         })
 }

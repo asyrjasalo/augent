@@ -73,11 +73,13 @@ fn copy_single_resource(source: &Path, target: &Path) -> Result<()> {
         copy_dir_recursive(source, target, CopyOptions::default()).map_err(|e| {
             AugentError::IoError {
                 message: format!("Failed to copy directory: {}", e),
+                source: Some(Box::new(e)),
             }
         })?;
     } else {
         fs::copy(source, target).map_err(|e| AugentError::IoError {
             message: format!("Failed to copy file: {}", e),
+            source: Some(Box::new(e)),
         })?;
     }
     Ok(())
@@ -89,6 +91,7 @@ fn copy_list(resource_list: &[String], target_subdir: &str) -> Result<()> {
     if !resource_list.is_empty() {
         fs::create_dir_all(target_path).map_err(|e| AugentError::IoError {
             message: format!("Failed to create dir: {}", e),
+            source: Some(Box::new(e)),
         })?;
     }
     for resource_path in resource_list {
@@ -177,6 +180,7 @@ pub fn create_synthetic_bundle_to(
 
     fs::create_dir_all(target_dir).map_err(|e| AugentError::IoError {
         message: format!("Failed to create target dir: {}", e),
+        source: Some(Box::new(e)),
     })?;
 
     copy_all_bundle_resources(bundle_def)?;

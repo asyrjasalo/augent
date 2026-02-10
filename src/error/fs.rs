@@ -27,5 +27,6 @@ pub fn write_failed(path: impl Into<String>, reason: impl Into<String>) -> Augen
 pub fn io_error(message: impl Into<String>) -> AugentError {
     AugentError::IoError {
         message: message.into(),
+        source: None,
     }
 }

@@ -13,6 +13,7 @@ fn resolve_workspace_path(workspace: Option<std::path::PathBuf>) -> Result<std::
         Some(path) => Ok(path),
         None => std::env::current_dir().map_err(|e| crate::error::AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
+            source: Some(Box::new(e)),
         }),
     }
 }

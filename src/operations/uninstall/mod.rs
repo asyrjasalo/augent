@@ -47,6 +47,7 @@ impl UninstallOperation {
             Some(path) => path,
             None => std::env::current_dir().map_err(|e| AugentError::IoError {
                 message: format!("Failed to get current directory: {}", e),
+                source: Some(Box::new(e)),
             })?,
         };
 
@@ -55,6 +56,7 @@ impl UninstallOperation {
             None => {
                 let current = std::env::current_dir().map_err(|e| AugentError::IoError {
                     message: format!("Failed to get current directory: {}", e),
+                    source: Some(Box::new(e)),
                 })?;
                 return Err(AugentError::WorkspaceNotFound {
                     path: current.display().to_string(),
@@ -157,6 +159,7 @@ fn canonicalize_with_fallback(path: &std::path::Path) -> std::path::PathBuf {
 fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
     let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
         message: format!("Failed to get current directory: {}", e),
+        source: Some(Box::new(e)),
     })?;
 
     let current_dir_canonical = canonicalize_with_fallback(&current_dir);

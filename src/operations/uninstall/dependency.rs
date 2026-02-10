@@ -36,6 +36,7 @@ fn get_bundle_config_path(
 fn parse_bundle_dependencies(config_path: &std::path::Path) -> Result<Option<Vec<String>>> {
     let config_content = fs::read_to_string(config_path).map_err(|e| AugentError::IoError {
         message: format!("Failed to read bundle config: {}", e),
+        source: Some(Box::new(e)),
     })?;
 
     let bundle_config: crate::config::BundleConfig = serde_yaml::from_str(&config_content)

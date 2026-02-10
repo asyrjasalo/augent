@@ -50,6 +50,7 @@ fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
     } else if path == Path::new(".") {
         std::env::current_dir().map_err(|e| AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
+            source: Some(Box::new(e)),
         })?
     } else {
         workspace_root.join(path)
@@ -65,8 +66,9 @@ fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
             joined
                 .normalize()
                 .map(|p| p.into_path_buf())
-                .map_err(|_| AugentError::IoError {
+                .map_err(|e| AugentError::IoError {
                     message: format!("Failed to normalize path: {}", joined.display()),
+                    source: Some(Box::new(e)),
                 })
         })?;
 

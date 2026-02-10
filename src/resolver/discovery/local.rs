@@ -93,6 +93,7 @@ pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<
     } else if path == Path::new(".") {
         std::env::current_dir().map_err(|e| AugentError::IoError {
             message: format!("Failed to get current directory: {}", e),
+            source: Some(Box::new(e)),
         })?
     } else {
         workspace_root.join(path)

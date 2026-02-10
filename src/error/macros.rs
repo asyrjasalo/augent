@@ -17,6 +17,7 @@ macro_rules! error_context {
     ($operation:expr, $err:expr) => {
         $crate::error::AugentError::IoError {
             message: format!("{}: {}", $operation, $err),
+            source: None,
         }
     };
 }
@@ -50,6 +51,7 @@ mod tests {
         // This test ensures the macro compiles correctly
         let error = AugentError::IoError {
             message: "test error".to_string(),
+            source: None,
         };
         let _ = error_context!("Test operation", error);
     }

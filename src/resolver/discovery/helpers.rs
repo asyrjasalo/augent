@@ -221,6 +221,7 @@ pub fn create_synthetic_bundle_if_marketplace(
         let synthetic_temp =
             TempDir::new_in(crate::temp::temp_dir_base()).map_err(|e| AugentError::IoError {
                 message: format!("Failed to create temp dir: {}", e),
+                source: Some(Box::new(e)),
             })?;
         crate::config::marketplace::operations::create_synthetic_bundle_to(
             repo_path,

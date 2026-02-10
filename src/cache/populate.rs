@@ -65,6 +65,7 @@ fn copy_repository_to_cache(temp_dir: &Path, repo_dst: &Path) -> Result<()> {
     copy_dir_recursive(temp_dir, repo_dst, CopyOptions::default()).map_err(|e| {
         AugentError::IoError {
             message: format!("Failed to copy repository to cache: {}", e),
+            source: Some(Box::new(e)),
         }
     })
 }

@@ -31,6 +31,7 @@ use crate::error::source::{
 };
 use crate::error::workspace_not_found;
 use miette::Diagnostic;
+use std::error::Error;
 
 macro_rules! test_error_contains {
     ($test_name:ident, $err:expr, $($contains:expr),+ $(,)?) => {
@@ -304,4 +305,29 @@ fn test_cache_operation_failed() {
     let err = cache_operation_failed("cache directory missing");
     assert!(matches!(err, AugentError::CacheOperationFailed { .. }));
     assert!(err.to_string().contains("Cache operation failed"));
+}
+
+#[test]
+fn test_io_error_preserves_source() {
+    let original_io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file.txt not found");
+    let augent_err: AugentError = original_io_error.into();
+
+    assert!(matches!(augent_err, AugentError::IoError { .. }));
+    assert!(augent_err.to_string().contains("IO error"));
+
+    let source_err = augent_err.source();
+    assert!(source_err.is_some(), "Source error should be preserved");
+    assert_eq!(source_err.unwrap().to_string(), "file.txt not found");
+}
+
+#[test]
+fn test_manual_io_error_without_source() {
+    let err = io_error("manual error message");
+
+    assert!(matches!(err, AugentError::IoError { .. }));
+    assert!(err.to_string().contains("IO error"));
+    assert!(err.to_string().contains("manual error message"));
+
+    let source_err = err.source();
+    assert!(source_err.is_none(), "Manual IoError should have no source");
 }

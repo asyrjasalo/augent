@@ -132,6 +132,7 @@ fn copy_single_resource(source_dir: &Path, resource_path: &str, target_path: &Pa
                 dest.display(),
                 e
             ),
+            source: Some(Box::new(e)),
         })?;
     }
 

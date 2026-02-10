@@ -246,7 +246,11 @@ pub enum AugentError {
 
     #[error("IO error: {message}")]
     #[diagnostic(code(augent::fs::io_error))]
-    IoError { message: String },
+    IoError {
+        message: String,
+        #[source]
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    },
 
     // Cache errors
     #[error("Cache operation failed: {message}")]
@@ -258,6 +262,7 @@ impl From<std::io::Error> for AugentError {
     fn from(err: std::io::Error) -> Self {
         AugentError::IoError {
             message: err.to_string(),
+            source: Some(Box::new(err)),
         }
     }
 }
@@ -292,6 +297,7 @@ impl From<inquire::InquireError> for AugentError {
     fn from(err: inquire::InquireError) -> Self {
         AugentError::IoError {
             message: err.to_string(),
+            source: Some(Box::new(err)),
         }
     }
 }
