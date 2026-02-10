@@ -111,17 +111,24 @@ impl ProgressReporter for InteractiveProgressReporter {
     }
 
     fn finish_files(&mut self) {
-        if let Some(ref file_pb) = self.file_pb {
-            file_pb.finish();
-        }
-        self.bundle_pb.finish();
+        Self::handle_progress_bars(&self.file_pb, &self.bundle_pb, |pb| pb.finish());
     }
 
     fn abandon(&mut self) {
-        if let Some(ref file_pb) = self.file_pb {
-            file_pb.abandon();
+        Self::handle_progress_bars(&self.file_pb, &self.bundle_pb, |pb| pb.abandon());
+    }
+}
+
+impl InteractiveProgressReporter {
+    fn handle_progress_bars(
+        file_pb: &Option<ProgressBar>,
+        bundle_pb: &ProgressBar,
+        action: fn(&ProgressBar),
+    ) {
+        if let Some(pb) = file_pb {
+            action(pb);
         }
-        self.bundle_pb.abandon();
+        action(bundle_pb);
     }
 }
 

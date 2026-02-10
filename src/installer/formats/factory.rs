@@ -1,6 +1,6 @@
 //! Factory format converter plugin
 
-use crate::installer::formats::impl_simple_copy_converter;
+use crate::installer::formats::{impl_simple_copy_converter, tests_for_simple_converter};
 
 #[derive(Debug)]
 pub struct FactoryConverter;
@@ -9,13 +9,8 @@ impl_simple_copy_converter!(FactoryConverter, "factory", |target: &std::path::Pa
     target.to_string_lossy().contains(".factory/")
 });
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::installer::formats::plugin::FormatConverter;
-
-    #[test]
-    fn test_factory_converter_platform_id() {
-        assert_eq!(FactoryConverter.platform_id(), "factory");
-    }
-}
+tests_for_simple_converter!(
+    test_factory_converter_platform_id,
+    FactoryConverter,
+    "factory"
+);

@@ -205,6 +205,16 @@ macro_rules! display_opt_field {
     };
 }
 
+fn display_source_common(bundle: &crate::config::LockedBundle, detailed: bool) {
+    println!("    {}", Style::new().bold().apply_to("Source:"));
+    display_utils::display_source_detailed_with_indent(
+        &bundle.source,
+        "      ",
+        bundle.version.as_deref(),
+        detailed,
+    );
+}
+
 #[allow(dead_code)]
 pub struct DisplayContext<'a> {
     pub workspace_root: &'a std::path::Path,
@@ -250,13 +260,7 @@ impl DisplayFormatter for SimpleFormatter {
     }
 
     fn format_source(&self, bundle: &crate::config::LockedBundle, _detailed: bool) {
-        println!("    {}", Style::new().bold().apply_to("Source:"));
-        display_utils::display_source_detailed_with_indent(
-            &bundle.source,
-            "      ",
-            bundle.version.as_deref(),
-            false,
-        );
+        display_source_common(bundle, false);
     }
 }
 
@@ -299,13 +303,7 @@ impl DisplayFormatter for DetailedFormatter {
     }
 
     fn format_source(&self, bundle: &crate::config::LockedBundle, detailed: bool) {
-        println!("    {}", Style::new().bold().apply_to("Source:"));
-        display_utils::display_source_detailed_with_indent(
-            &bundle.source,
-            "      ",
-            bundle.version.as_deref(),
-            detailed,
-        );
+        display_source_common(bundle, detailed);
     }
 }
 

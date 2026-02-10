@@ -138,5 +138,35 @@ macro_rules! impl_simple_copy_converter {
     };
 }
 
+/// Macro to generate test module for simple copy converters
+///
+/// This macro generates a test module that verifies the platform_id of a converter.
+/// Use this after implementing a converter with `impl_simple_copy_converter!`.
+///
+/// # Usage
+///
+/// ```rust
+/// impl_simple_copy_converter!(MyPlatformConverter, "myplatform", |target| {
+///     target.to_string_lossy().contains(".myplatform/")
+/// });
+///
+/// tests_for_simple_converter!(myplatform, MyPlatformConverter, "myplatform");
+/// ```
+macro_rules! tests_for_simple_converter {
+    ($test_name:ident, $converter:ident, $expected_platform_id:expr) => {
+        #[cfg(test)]
+        mod tests {
+            use super::*;
+            use crate::installer::formats::plugin::FormatConverter;
+
+            #[test]
+            fn $test_name() {
+                assert_eq!($converter.platform_id(), $expected_platform_id);
+            }
+        }
+    };
+}
+
 pub(crate) use impl_simple_copy_converter;
 pub use plugin::FormatRegistry;
+pub(crate) use tests_for_simple_converter;

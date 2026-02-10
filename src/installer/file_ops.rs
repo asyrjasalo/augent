@@ -13,13 +13,24 @@ use crate::platform::Platform;
 use super::detection;
 use super::writer;
 
+fn file_read_error(path: &Path, e: std::io::Error) -> AugentError {
+    AugentError::FileReadFailed {
+        path: path.display().to_string(),
+        reason: e.to_string(),
+    }
+}
+
+fn file_write_error(path: &Path, e: std::io::Error) -> AugentError {
+    AugentError::FileWriteFailed {
+        path: path.display().to_string(),
+        reason: e.to_string(),
+    }
+}
+
 /// Ensure parent directory exists for a path
 pub fn ensure_parent_dir(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| AugentError::FileWriteFailed {
-            path: parent.display().to_string(),
-            reason: e.to_string(),
-        })?;
+        std::fs::create_dir_all(parent).map_err(|e| file_write_error(parent, e))?;
     }
     Ok(())
 }
@@ -49,10 +60,7 @@ pub fn copy_file(
 fn perform_simple_copy(source: &Path, target: &Path) -> Result<()> {
     ensure_parent_dir(target)?;
     std::fs::copy(source, target)
-        .map_err(|e| AugentError::FileWriteFailed {
-            path: target.display().to_string(),
-            reason: e.to_string(),
-        })
+        .map_err(|e| file_write_error(target, e))
         .map(|_| ())
 }
 
@@ -96,10 +104,7 @@ fn handle_text_file(
 ) -> Result<()> {
     ensure_parent_dir(target)?;
 
-    let content = std::fs::read_to_string(source).map_err(|e| AugentError::FileReadFailed {
-        path: source.display().to_string(),
-        reason: e.to_string(),
-    })?;
+    let content = std::fs::read_to_string(source).map_err(|e| file_read_error(source, e))?;
 
     if let Some(result) = handle_frontmatter_file(
         &content,
@@ -121,10 +126,7 @@ fn handle_text_file(
         );
     }
 
-    std::fs::write(target, content).map_err(|e| AugentError::FileWriteFailed {
-        path: target.display().to_string(),
-        reason: e.to_string(),
-    })?;
+    std::fs::write(target, content).map_err(|e| file_write_error(target, e))?;
 
     Ok(())
 }
