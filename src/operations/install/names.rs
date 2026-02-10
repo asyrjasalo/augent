@@ -32,31 +32,6 @@ impl<'a> NameFixer<'a> {
         Self { workspace }
     }
 
-    /// Check if a bundle has any dependents
-    #[allow(dead_code)]
-    fn check_bundle_dependents(
-        _workspace: &Workspace,
-        _bundle_name: &str,
-        _dependency_map: &mut std::collections::HashMap<String, Vec<String>>,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    /// Confirm uninstall with user
-    #[allow(dead_code)]
-    fn confirm_uninstall(_workspace: &mut Workspace, _bundle_names: &[String]) -> Result<()> {
-        Ok(())
-    }
-
-    /// Build dependency map for all bundles
-    #[allow(dead_code)]
-    fn build_dependency_map(
-        _workspace: &mut Workspace,
-        _bundle_names: &[String],
-    ) -> std::collections::HashMap<String, Vec<String>> {
-        std::collections::HashMap::new()
-    }
-
     fn find_existing_dependency_with_path(
         &self,
         normalized_path: &str,
