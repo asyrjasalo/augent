@@ -6,7 +6,6 @@
 
 rust = { version = "1.93", components = "rust-analyzer" }
 prek = "latest"
-ast-grep = "latest"
 'cargo:fossil-mcp' = "latest"
 
 [settings]
@@ -28,26 +27,36 @@ ag = "augent"
 
 # Usage: mise <task-name> [task-args]
 
-[tasks.build]
-description = "Build"
-run = "cargo build"
-
 [tasks.check]
 description = "Run all checks"
 alias = "c"
-run = [{ task = "format" }, { task = "lint" }, { task = "test" }]
+run = [
+  { task = "format" },
+  { task = "build" },
+  { task = "test" },
+  { task = "lint" },
+  { task = "ccn" },
+]
 
 [tasks.format]
-description = "Run fmt"
+description = "Format codebase"
 run = "cargo fmt"
 
-[tasks.lint]
-description = "Run clippy"
-run = "cargo clippy --all-targets --all-features -- -D warnings"
+[tasks.build]
+description = "Build binary"
+run = "cargo build"
 
 [tasks.test]
 description = "Run tests"
 run = "cargo test"
+
+[tasks.lint]
+description = "Lint codebase"
+run = "cargo clippy --all-targets --all-features -- -D warnings"
+
+[tasks.ccn]
+description = "Check CCN"
+run = "uvx lizard -C 10 --warnings_only src/"
 
 [tasks.hooks]
 description = "Run pre-commit hooks"
@@ -55,8 +64,3 @@ run = [
   "prek install --hook-type pre-commit --hook-type commit-msg",
   "prek run --all-files",
 ]
-
-[tasks.lizard]
-description = "Run lizard complexity analysis"
-alias = "z"
-run = "echo 'Rules:\n- Cyclomatic complexity threshold (warn if CCN > 10)\n- Length of function threshold (warn if function has > 50 lines)\n- Number of parameters threshold (warn if function has > 5 parameters)\n- Token count threshold (warn if > 300 tokens)\n' && uvx lizard -C 10 -L 50 -a 5 -T token_count=300 --warnings_only src/"
