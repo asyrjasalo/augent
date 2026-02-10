@@ -1,8 +1,6 @@
-# built binaries
-target/
-
-# npm distribution
-bin/
+# ai-agents
+*.bak
+*.backup
 
 # fossil-mcp
 .fossil/
@@ -10,10 +8,14 @@ bin/
 # pre-commit hooks: rumdl
 .rumdl_cache/
 
-# coding agents
+# oh-my-opencode
 .sisyphus/
-*.bak
-*.backup
+
+# npm distribution
+bin/
+
+# built binaries
+target/
 
 # development workspace
 tmp/
