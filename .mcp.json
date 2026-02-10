@@ -2,8 +2,9 @@
     "mcpServers": {
         "dynamic-mcp": {
             "type": "stdio",
-            "command": "dmcp",
+            "command": "uvx",
             "args": [
+                "dmcp",
                 "dynamic-mcp.json"
             ]
         }

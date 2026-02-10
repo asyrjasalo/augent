@@ -13,6 +13,7 @@
   "mcp": {
     "dynamic-mcp": {
       "command": [
+        "uvx",
         "dmcp",
         "dynamic-mcp.json"
       ],
