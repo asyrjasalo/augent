@@ -219,9 +219,9 @@ impl<'a> InstallOperation<'a> {
         selected_bundles: &[DiscoveredBundle],
     ) -> Result<Vec<crate::domain::ResolvedBundle>> {
         use super::names::NameFixer;
-        use super::resolution::BundleResolver;
+        use super::resolution::InstallResolver;
 
-        let bundle_resolver = BundleResolver::new(self.workspace);
+        let bundle_resolver = InstallResolver::new(self.workspace);
         let resolved_bundles = bundle_resolver.resolve_selected_bundles(args, selected_bundles)?;
 
         let name_fixer = NameFixer::new(self.workspace);

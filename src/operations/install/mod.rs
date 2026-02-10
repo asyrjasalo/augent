@@ -8,7 +8,7 @@
 //! The install operation follows a modular coordinator pattern with specialized submodules:
 //!
 //! - **orchestrator**: Main workflow coordinator that coordinates all other submodules
-//! - **resolution**: Bundle resolver that handles dependency graph construction
+//! - **resolution**: Install-specific bundle resolution coordinator
 //! - **execution**: Execution orchestrator that performs actual file installation
 //! - **workspace**: Workspace manager for workspace detection and modified file handling
 //! - **config**: Config updater that writes augent.yaml, augent.lock, and augent.index.yaml
@@ -56,7 +56,13 @@
 //!
 //! - **InstallOperation**: Main workflow coordinator
 //! - **InstallContext**: Shared context for all coordinators
-//! - **BundleResolver**: Dependency resolution coordinator
+//! - **InstallResolver**: Install-specific resolution coordinator
+//!
+//! Each major concern has a dedicated coordinator struct:
+//!
+//! - **InstallOperation**: Main workflow coordinator
+//! - **InstallContext**: Shared context for all coordinators
+//! - **InstallResolver**: Install-specific resolution coordinator
 //! - **ExecutionOrchestrator**: Installation execution coordinator
 //! - **WorkspaceManager**: Workspace operations coordinator
 //! - **NameFixer**: Bundle name handling coordinator
@@ -76,7 +82,7 @@
 //!     pub fn execute(&mut self) -> Result<()> {
 //!         // Immutable borrow phase
 //!         let resolved_bundles = {
-//!             let resolver = BundleResolver::new(self.workspace);
+//!             let resolver = InstallResolver::new(self.workspace);
 //!             resolver.resolve_selected_bundles()?
 //!         };
 //!

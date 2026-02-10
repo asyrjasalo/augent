@@ -7,12 +7,17 @@ use crate::resolver::Resolver;
 use crate::source::GitSource;
 use indicatif::{ProgressBar, ProgressStyle};
 
-/// Bundle resolver for install operation
-pub struct BundleResolver<'a> {
+/// Install-specific bundle resolver coordinator
+///
+/// Wraps the core Resolver (ResolveOperation) with install-specific concerns:
+/// - Workspace context and bundle configuration
+/// - Progress bar display
+/// - Resolution scenario orchestration (workspace config vs source args)
+pub struct InstallResolver<'a> {
     workspace: &'a crate::workspace::Workspace,
 }
 
-impl<'a> BundleResolver<'a> {
+impl<'a> InstallResolver<'a> {
     pub fn new(workspace: &'a crate::workspace::Workspace) -> Self {
         Self { workspace }
     }
