@@ -97,7 +97,7 @@ impl InteractiveTest {
         thread::sleep(Duration::from_millis(25));
 
         loop {
-            if start.elapsed() > timeout {
+            if self.check_timeout_for_output(&start, timeout)? {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
                     "Timeout waiting for output",
@@ -114,40 +114,27 @@ impl InteractiveTest {
                 }
                 Ok(_) => {
                     // No data available (n == 0)
-                    no_data_count += 1;
-                    if no_data_count > MAX_NO_DATA {
-                        self.drain_remaining_output(&mut output, &mut buffer);
+                    if self.handle_no_data_for_output(
+                        &mut no_data_count,
+                        MAX_NO_DATA,
+                        &mut output,
+                        &mut buffer,
+                    ) {
                         break;
                     }
-                    if self.session.check(Eof).is_ok() {
-                        self.drain_remaining_output(&mut output, &mut buffer);
-                        break;
-                    }
-                    thread::sleep(Duration::from_millis(25));
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    no_data_count += 1;
-                    if no_data_count > MAX_NO_DATA {
-                        self.drain_remaining_output(&mut output, &mut buffer);
+                    if self.handle_no_data_for_output(
+                        &mut no_data_count,
+                        MAX_NO_DATA,
+                        &mut output,
+                        &mut buffer,
+                    ) {
                         break;
                     }
-                    if self.session.check(Eof).is_ok() {
-                        self.drain_remaining_output(&mut output, &mut buffer);
-                        break;
-                    }
-                    thread::sleep(Duration::from_millis(25));
                 }
                 Err(e) => {
-                    // EIO (code 5 on Linux) can occur when process closes PTY slave;
-                    // drain before breaking to capture any buffered output
-                    #[cfg(unix)]
-                    if e.raw_os_error() == Some(5) {
-                        self.drain_remaining_output(&mut output, &mut buffer);
-                        break;
-                    }
-                    // For Windows or other errors, check if process exited
-                    if self.session.check(Eof).is_ok() {
-                        self.drain_remaining_output(&mut output, &mut buffer);
+                    if self.handle_read_error_for_output(&e, &mut output, &mut buffer)? {
                         break;
                     }
                     return Err(e);
@@ -156,6 +143,57 @@ impl InteractiveTest {
         }
 
         Ok(output)
+    }
+
+    /// Returns true if should break from loop
+    fn handle_no_data_for_output(
+        &mut self,
+        no_data_count: &mut usize,
+        max_no_data: usize,
+        output: &mut String,
+        buffer: &mut [u8],
+    ) -> bool {
+        *no_data_count += 1;
+        if *no_data_count > max_no_data {
+            self.drain_remaining_output(output, buffer);
+            return true;
+        }
+        if self.session.check(Eof).is_ok() {
+            self.drain_remaining_output(output, buffer);
+            return true;
+        }
+        thread::sleep(Duration::from_millis(25));
+        false
+    }
+
+    /// Returns Ok(true) if should break from loop, Ok(false) if error should be returned
+    fn handle_read_error_for_output(
+        &mut self,
+        e: &std::io::Error,
+        output: &mut String,
+        buffer: &mut [u8],
+    ) -> std::io::Result<bool> {
+        // EIO (code 5 on Linux) can occur when process closes PTY slave;
+        // drain before breaking to capture any buffered output
+        #[cfg(unix)]
+        if e.raw_os_error() == Some(5) {
+            self.drain_remaining_output(output, buffer);
+            return Ok(true);
+        }
+        // For Windows or other errors, check if process exited
+        if self.session.check(Eof).is_ok() {
+            self.drain_remaining_output(output, buffer);
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn check_timeout_for_output(
+        &self,
+        start: &std::time::Instant,
+        timeout: Duration,
+    ) -> std::io::Result<bool> {
+        Ok(start.elapsed() > timeout)
     }
 
     /// Drain any remaining output from the PTY (e.g. after Eof or EIO on Linux).
