@@ -1,17 +1,17 @@
-# ai-agents
+# ai cpoding agents
 *.bak
 *.backup
 
 # fossil-mcp
 .fossil/
 
-# pre-commit hooks: rumdl
+# pre-commit hook: rumdl
 .rumdl_cache/
 
 # oh-my-opencode
 .sisyphus/
 
-# npm distribution
+# built npm distribution
 bin/
 
 # built binaries
