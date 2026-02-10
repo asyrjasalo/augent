@@ -6,7 +6,6 @@
 
 rust = { version = "1.93", components = "rust-analyzer" }
 prek = "latest"
-'cargo:cargo-tarpaulin' = "latest"
 ast-grep = "latest"
 
 [settings]

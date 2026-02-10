@@ -299,9 +299,6 @@ Run tests before committing:
 ```bash
 # Run all tests
 cargo test --all
-
-# Run with coverage
-cargo tarpaulin --out Html --output-dir ./coverage
 ```
 
 ### Continuous Integration

@@ -502,7 +502,7 @@ See: [CLAUDE.md](../../CLAUDE.md)
 
 ##### Tasks
 
-- [x] Install and configure `tarpaulin`
+(No tasks - coverage using `cargo test` is sufficient)
 
 #### Feature 11.4: Documentation-Based Feature Testing
 
