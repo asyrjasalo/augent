@@ -18,12 +18,9 @@ pub fn init_or_open_workspace(path: &Path) -> Result<crate::workspace::Workspace
 }
 
 /// Infer workspace name from a path
-pub fn infer_workspace_name(path: &Path) -> String {
-    path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("workspace")
-        .to_string()
-}
+///
+/// Re-exports the function from crate::workspace::initialization module.
+pub use crate::workspace::initialization::infer_workspace_name;
 
 /// Check if a workspace bundle should be included in installation
 #[allow(dead_code)]

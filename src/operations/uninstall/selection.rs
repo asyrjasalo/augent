@@ -3,6 +3,7 @@
 //! This module handles interactive and list-based bundle selection.
 
 use crate::common::bundle_utils;
+use crate::common::display_utils;
 use crate::error::Result;
 use crate::workspace::Workspace;
 use inquire::MultiSelect;
@@ -14,24 +15,10 @@ fn build_workspace_bundle_map(workspace: &Workspace) -> HashMap<String, Vec<Stri
         .bundles
         .iter()
         .map(|wb| {
-            let platforms = extract_platforms_from_bundle(wb);
+            let platforms = display_utils::extract_platforms_from_bundle(wb);
             (wb.name.clone(), platforms)
         })
         .collect()
-}
-
-fn extract_platforms_from_bundle(wb: &crate::config::WorkspaceBundle) -> Vec<String> {
-    let mut platforms = std::collections::HashSet::new();
-    for installed_paths in wb.enabled.values() {
-        for path in installed_paths {
-            if let Some(platform) = path.strip_prefix('.').and_then(|p| p.split('/').next()) {
-                platforms.insert(platform.to_string());
-            }
-        }
-    }
-    let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
-    sorted_platforms.sort();
-    sorted_platforms
 }
 
 fn create_selection_items(

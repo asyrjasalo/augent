@@ -47,3 +47,20 @@ pub fn format_yaml_with_workspace_name(yaml: &str, workspace_name: &str) -> Stri
 
     format!("{}\n", formatted.join("\n"))
 }
+
+/// Count the number of optional fields that are set
+///
+/// This is used during serialization to determine the number of fields
+/// in a struct when optional fields may or may not be present.
+pub fn count_optional_fields(
+    description: &Option<String>,
+    version: &Option<String>,
+    author: &Option<String>,
+    license: &Option<String>,
+    homepage: &Option<String>,
+) -> usize {
+    [description, version, author, license, homepage]
+        .iter()
+        .filter(|f| f.is_some())
+        .count()
+}

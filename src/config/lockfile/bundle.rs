@@ -1,7 +1,8 @@
 //! LockedBundle struct for lockfile
 //!
-//! A resolved bundle in the lockfile.
+//! A resolved bundle in lockfile.
 
+use crate::config::utils::count_optional_fields;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
@@ -39,19 +40,6 @@ pub struct LockedBundle {
 
     /// Files provided by this bundle (relative paths)
     pub files: Vec<String>,
-}
-
-fn count_optional_fields(
-    description: &Option<String>,
-    version: &Option<String>,
-    author: &Option<String>,
-    license: &Option<String>,
-    homepage: &Option<String>,
-) -> usize {
-    [description, version, author, license, homepage]
-        .iter()
-        .filter(|f| f.is_some())
-        .count()
 }
 
 fn serialize_optional_fields<S>(

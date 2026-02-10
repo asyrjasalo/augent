@@ -1,5 +1,6 @@
 //! Serialization implementations for BundleConfig
 
+use crate::config::utils::count_optional_fields;
 use serde::de::MapAccess;
 use serde::de::Visitor;
 use serde::ser::SerializeStruct;
@@ -27,19 +28,6 @@ macro_rules! extract_map_field {
             }
         }
     };
-}
-
-fn count_optional_fields(
-    description: &Option<String>,
-    version: &Option<String>,
-    author: &Option<String>,
-    license: &Option<String>,
-    homepage: &Option<String>,
-) -> usize {
-    [description, version, author, license, homepage]
-        .iter()
-        .filter(|f| f.is_some())
-        .count()
 }
 
 /// Serialize BundleConfig (empty name field, name injected externally)

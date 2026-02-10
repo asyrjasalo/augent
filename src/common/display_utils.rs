@@ -37,7 +37,11 @@ pub fn locked_source_to_string(source: &LockedSource) -> String {
     }
 }
 
-fn extract_platforms_from_bundle(workspace_bundle: &WorkspaceBundle) -> Vec<String> {
+/// Extract platform names from a workspace bundle
+///
+/// Returns a sorted list of platform identifiers extracted from the
+/// enabled file locations in the bundle.
+pub fn extract_platforms_from_bundle(workspace_bundle: &WorkspaceBundle) -> Vec<String> {
     let mut platforms = std::collections::HashSet::new();
     for locations in workspace_bundle.enabled.values() {
         for location in locations {
