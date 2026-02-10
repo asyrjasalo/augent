@@ -3,7 +3,8 @@
   "mcp": {
     "dynamic-mcp": {
       "command": [
-        "dmcp"
+        "dmcp",
+        "dynamic-mcp.json"
       ],
       "type": "local"
     }

@@ -15,6 +15,10 @@ backend = "cargo:cargo-machete"
 version = "0.35.1"
 backend = "cargo:cargo-tarpaulin"
 
+[[tools."cargo:fossil-mcp"]]
+version = "0.1.2"
+backend = "cargo:fossil-mcp"
+
 [[tools.prek]]
 version = "0.3.2"
 backend = "aqua:j178/prek"

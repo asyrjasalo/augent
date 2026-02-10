@@ -2,7 +2,10 @@
     "mcpServers": {
         "dynamic-mcp": {
             "type": "stdio",
-            "command": "dmcp"
+            "command": "dmcp",
+            "args": [
+                "dynamic-mcp.json"
+            ]
         }
     }
 }
