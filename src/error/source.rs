@@ -1,16 +1,10 @@
 //! Source parsing errors
 
-use super::AugentError;
+use super::{AugentError, impl_error_constructors};
 
-/// Creates an invalid source URL error
-pub fn invalid_url(url: impl Into<String>) -> AugentError {
-    AugentError::InvalidSourceUrl { url: url.into() }
-}
+impl_error_constructors!(SourceModule, {
+    InvalidSourceUrl(url),
+    SourceParseFailed(input, reason),
+});
 
-/// Creates a source parse failed error
-pub fn parse_failed(input: impl Into<String>, reason: impl Into<String>) -> AugentError {
-    AugentError::SourceParseFailed {
-        input: input.into(),
-        reason: reason.into(),
-    }
-}
+pub use self::{InvalidSourceUrl as invalid_url, SourceParseFailed as parse_failed};

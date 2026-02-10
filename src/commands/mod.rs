@@ -1,5 +1,6 @@
 pub mod clean_cache;
 pub mod completions;
+pub mod helpers;
 pub mod install;
 pub mod list;
 pub mod menu;

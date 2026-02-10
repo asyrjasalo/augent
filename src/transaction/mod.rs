@@ -140,15 +140,7 @@ impl Transaction {
     }
 
     fn restore_file_backups(backups: &[ConfigBackup]) {
-        for backup in backups {
-            if let Err(e) = fs::write(&backup.path, &backup.content) {
-                eprintln!(
-                    "Warning: Failed to restore {}: {}",
-                    backup.path.display(),
-                    e
-                );
-            }
-        }
+        Self::restore_backups(backups, "");
     }
 
     fn remove_empty_created_dirs(dirs: &HashSet<PathBuf>) {
@@ -171,10 +163,15 @@ impl Transaction {
     }
 
     fn restore_config_backups(backups: &[ConfigBackup]) {
+        Self::restore_backups(backups, "config ");
+    }
+
+    fn restore_backups(backups: &[ConfigBackup], msg_type: &str) {
         for backup in backups {
             if let Err(e) = fs::write(&backup.path, &backup.content) {
                 eprintln!(
-                    "Warning: Failed to restore config {}: {}",
+                    "Warning: Failed to restore {}{}: {}",
+                    msg_type,
                     backup.path.display(),
                     e
                 );

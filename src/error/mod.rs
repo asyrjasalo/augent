@@ -334,3 +334,31 @@ impl From<inquire::InquireError> for AugentError {
 
 /// Result type alias using miette for error handling
 pub type Result<T> = miette::Result<T, AugentError>;
+
+/// Macro to generate error constructor functions for error submodules
+///
+/// This reduces boilerplate by generating simple wrapper functions
+/// that construct error variants with the appropriate fields.
+///
+/// # Usage
+///
+/// ```rust
+/// impl_error_constructors!(MyModule, {
+///     MyErrorVariant as function_name(field_name),
+///     OtherVariant as other_func(field1, field2),
+/// });
+/// ```
+macro_rules! impl_error_constructors {
+    ($mod_name:ident, { $($variant:ident as $fn_name:ident($($field:ident),*)),* $(,)? }) => {
+        $(pub fn $fn_name($($field: impl Into<String>),*) -> AugentError {
+            AugentError::$variant { $($field: $field.into(),)* }
+        })*
+    };
+    ($mod_name:ident, { $($variant:ident($($field:ident),*)),* $(,)? }) => {
+        $(#[allow(non_snake_case)] pub fn $variant($($field: impl Into<String>),*) -> AugentError {
+            AugentError::$variant { $($field: $field.into(),)* }
+        })*
+    };
+}
+
+pub(crate) use impl_error_constructors;
