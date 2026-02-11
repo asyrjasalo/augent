@@ -79,6 +79,14 @@ serial_test = "3"
 [features]
 default = []
 
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+panic_in_result_fn = "warn"
+
 [profile.release]
 lto = true
 strip = true
