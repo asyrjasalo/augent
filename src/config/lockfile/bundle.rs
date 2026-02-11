@@ -63,18 +63,22 @@ where
     Ok(())
 }
 
-fn validate_dir_source(name: &str, path: &str, hash: &str) -> Result<()> {
-    if path.is_empty() {
-        return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{name}' has empty path"),
-        });
-    }
+fn validate_hash_format(name: &str, hash: &str) -> Result<()> {
     if !hash.starts_with("blake3:") {
         return Err(AugentError::ConfigInvalid {
             message: format!("Bundle '{name}' has invalid hash format"),
         });
     }
     Ok(())
+}
+
+fn validate_dir_source(name: &str, path: &str, hash: &str) -> Result<()> {
+    if path.is_empty() {
+        return Err(AugentError::ConfigInvalid {
+            message: format!("Bundle '{name}' has empty path"),
+        });
+    }
+    validate_hash_format(name, hash)
 }
 
 fn validate_git_source(name: &str, url: &str, sha: &str, hash: &str) -> Result<()> {
@@ -88,12 +92,7 @@ fn validate_git_source(name: &str, url: &str, sha: &str, hash: &str) -> Result<(
             message: format!("Bundle '{name}' has empty SHA"),
         });
     }
-    if !hash.starts_with("blake3:") {
-        return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{name}' has invalid hash format"),
-        });
-    }
-    Ok(())
+    validate_hash_format(name, hash)
 }
 
 impl Serialize for LockedBundle {

@@ -122,7 +122,7 @@ impl ProgressReporter for InteractiveProgressReporter {
         Self::handle_progress_bars(
             self.file_pb.as_ref(),
             &self.bundle_pb,
-            indicatif::ProgressBar::finish,
+            indicatif::ProgressBar::abandon,
         );
     }
 }
