@@ -134,6 +134,7 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::cache::bundle_name;

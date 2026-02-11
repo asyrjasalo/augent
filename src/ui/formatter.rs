@@ -382,10 +382,14 @@ impl DisplayFormatter for JsonFormatter {
             self.add_detailed_info(&mut output, bundle, ctx);
         }
 
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&output).expect("Failed to serialize JSON output")
-        );
+        match serde_json::to_string_pretty(&output) {
+            Ok(json_str) => println!("{}", json_str),
+            Err(e) => {
+                eprintln!("Warning: Failed to serialize JSON output: {}", e);
+                // Print empty JSON as fallback
+                println!("{{}}");
+            }
+        }
     }
 
     fn format_bundle_name(&self, _bundle: &crate::config::LockedBundle) {}
@@ -473,6 +477,7 @@ impl JsonFormatter {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

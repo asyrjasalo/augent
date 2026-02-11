@@ -181,6 +181,7 @@ impl Transaction {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests;
 
 impl Drop for Transaction {

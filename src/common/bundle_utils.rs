@@ -82,6 +82,7 @@ pub fn score_by_name(input: &str, _opt: &String, string_value: &str, _idx: usize
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

@@ -8,12 +8,11 @@
 //! The core discovery logic is in the `discover_resources_internal` function
 //! which is re-exported from the main `installer` module.
 
+#![allow(clippy::expect_used)]
+
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
-
-#[cfg(test)]
-use std::fs;
 
 use crate::domain::DiscoveredResource;
 use crate::error::Result;
@@ -142,8 +141,10 @@ pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<Discov
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use std::fs;
     use tempfile::TempDir;
 
     #[test]

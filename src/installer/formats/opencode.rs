@@ -198,6 +198,7 @@ fn convert_with_description_only(content: &str, target: &Path) -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

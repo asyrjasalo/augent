@@ -52,6 +52,7 @@ pub fn find_from(start: &Path) -> Option<PathBuf> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use normpath::PathExt;

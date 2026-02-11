@@ -4,12 +4,15 @@
 //! through [`augent_cmd_for_workspace`] or [`configure_augent_cmd`] with that workspace path.
 //! Do not share workspace directories between tests.
 
-mod interactive;
+#[allow(clippy::expect_used)] // Idiomatic Rust: tests use expect() for test assertions
+#[allow(unused_imports)]
+pub mod interactive;
 
 #[allow(unused_imports)]
 pub use interactive::{InteractiveTest, MenuAction, run_with_timeout, send_menu_actions};
 
-use std::hash::{Hash, Hasher};
+#[allow(unused_imports)]
+pub use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 use tempfile::TempDir;
@@ -57,6 +60,7 @@ pub fn configure_augent_cmd(cmd: &mut assert_cmd::Command, workspace_path: &Path
 /// are isolated and never inherit from the environment (e.g. AUGENT_WORKSPACE from mise).
 #[allow(dead_code)]
 #[allow(deprecated)]
+#[allow(clippy::expect_used)] // Idiomatic for test setup to panic on failure
 pub fn augent_cmd_for_workspace(workspace_path: &Path) -> assert_cmd::Command {
     let mut cmd = assert_cmd::Command::cargo_bin("augent").expect("Failed to get augent binary");
     configure_augent_cmd(&mut cmd, workspace_path);
@@ -130,6 +134,7 @@ fn test_temp_base() -> PathBuf {
 
 /// Base for workspace dirs; created once per process to avoid repeated create_dir_all.
 /// Uses test_temp_base() so CI can set AUGENT_TEST_CACHE_DIR and put workspaces and caches under one base.
+#[allow(clippy::expect_used)] // Idiomatic for test setup to panic on failure
 fn ensure_workspace_base() -> PathBuf {
     static INIT: Once = Once::new();
     let base = test_temp_base().join("augent-test-workspaces");
@@ -140,6 +145,7 @@ fn ensure_workspace_base() -> PathBuf {
 }
 
 /// Base for cache dirs; created once per process so each workspace only creates its hash subdir.
+#[allow(clippy::expect_used)]
 fn ensure_cache_base() -> PathBuf {
     static INIT: Once = Once::new();
     let base = test_temp_base().join("augent-test-cache");
@@ -151,6 +157,7 @@ fn ensure_cache_base() -> PathBuf {
 
 /// Cache directory for a given workspace path. Same workspace path always gets the same cache
 /// so multiple spawns in one test share cache; different workspaces never share cache or touch dev.
+#[allow(clippy::expect_used)]
 pub(crate) fn test_cache_dir_for_workspace(workspace_path: &Path) -> PathBuf {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     workspace_path.hash(&mut hasher);
@@ -162,6 +169,7 @@ pub(crate) fn test_cache_dir_for_workspace(workspace_path: &Path) -> PathBuf {
 /// Get a temporary cache directory path for tests (unique per call).
 /// Prefer configure_augent_cmd(workspace_path) so each workspace gets its own stable cache.
 #[allow(dead_code)] // Used by test files via common::test_cache_dir()
+#[allow(clippy::expect_used)]
 pub fn test_cache_dir() -> PathBuf {
     let base_temp = test_temp_base();
     let unique_name = format!(
@@ -189,6 +197,7 @@ pub struct TestWorkspace {
 impl TestWorkspace {
     /// Create a new test workspace. Each call creates a unique directory; use exactly one
     /// per test so workspaces are never shared. Initializes a git repository at the root.
+    #[allow(clippy::expect_used)]
     pub fn new() -> Self {
         let base = ensure_workspace_base();
         let temp = TempDir::new_in(&base).expect("Failed to create temp directory");
@@ -202,6 +211,7 @@ impl TestWorkspace {
 
     /// Create a bundle directory in workspace
     #[allow(dead_code)] // Used by test files
+    #[allow(clippy::expect_used)]
     pub fn create_bundle(&self, name: &str) -> PathBuf {
         let bundle_path = self.path.join("bundles").join(name);
         std::fs::create_dir_all(&bundle_path).expect("Failed to create bundle directory");
@@ -210,6 +220,7 @@ impl TestWorkspace {
 
     /// Create .augent directory
     #[allow(dead_code)] // Used by test files
+    #[allow(clippy::expect_used)]
     pub fn create_augent_dir(&self) -> PathBuf {
         let augent_path = self.path.join(".augent");
         std::fs::create_dir_all(&augent_path).expect("Failed to create .augent directory");
@@ -217,6 +228,7 @@ impl TestWorkspace {
     }
 
     /// Write a file in workspace
+    #[allow(clippy::expect_used)]
     pub fn write_file(&self, path: &str, content: &str) {
         let file_path = self.path.join(path);
         if let Some(parent) = file_path.parent() {
@@ -226,6 +238,7 @@ impl TestWorkspace {
     }
 
     /// Read a file from workspace
+    #[allow(clippy::expect_used)]
     pub fn read_file(&self, path: &str) -> String {
         let file_path = self.path.join(path);
         std::fs::read_to_string(&file_path).expect("Failed to read file")
@@ -238,6 +251,7 @@ impl TestWorkspace {
     }
 
     /// Copy fixture bundle to workspace
+    #[allow(clippy::expect_used)]
     pub fn copy_fixture_bundle(&self, fixture_name: &str, target_name: &str) -> PathBuf {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
@@ -254,6 +268,7 @@ impl TestWorkspace {
     }
 
     /// Initialize workspace from fixture
+    #[allow(clippy::expect_used)]
     pub fn init_from_fixture(&self, fixture_name: &str) {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
@@ -301,6 +316,7 @@ impl TestWorkspace {
     }
 
     /// Create agent directories
+    #[allow(clippy::expect_used)]
     pub fn create_agent_dir(&self, agent: &str) -> PathBuf {
         let agent_path = self.path.join(format!(".{}", agent));
         std::fs::create_dir_all(&agent_path).expect("Failed to create agent directory");
@@ -316,6 +332,7 @@ impl TestWorkspace {
 
     /// Initialize git repository for workspace
     #[allow(dead_code)] // Used by test files
+    #[allow(clippy::expect_used)]
     pub fn init_git(&self) {
         let git_dir = self.path.join(".git");
         if git_dir.exists() {
@@ -349,6 +366,7 @@ impl TestWorkspace {
 
     /// Create a mock git repository for testing
     #[allow(dead_code)] // Used by test files
+    #[allow(clippy::expect_used)]
     pub fn create_mock_git_repo(&self, name: &str) -> PathBuf {
         let repo_path = self.path.join(name);
         std::fs::create_dir_all(&repo_path).expect("Failed to create repo directory");
@@ -400,7 +418,7 @@ impl TestWorkspace {
             .status()
             .expect("Failed to commit");
 
-        // Ensure the branch is named "main" (git init might use "master" as default)
+        // Ensure that branch is named "main" (git init might use "master" as default)
         std::process::Command::new("git")
             .args(["branch", "-M", "main"])
             .current_dir(&repo_path)

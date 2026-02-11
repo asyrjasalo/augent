@@ -117,6 +117,7 @@ fn is_any_resource_directory(path_str: &str) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

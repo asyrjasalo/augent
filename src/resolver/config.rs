@@ -59,6 +59,7 @@ pub fn load_marketplace_config_if_exists(repo_path: &Path) -> Option<Marketplace
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

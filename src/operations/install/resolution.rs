@@ -98,12 +98,12 @@ impl<'a> InstallResolver<'a> {
             return None;
         }
         let pb = ProgressBar::new_spinner();
-        pb.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner} Resolving bundles and dependencies...")
-                .expect("valid progress bar template")
-                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-        );
+        let template = "{spinner} Resolving bundles and dependencies...";
+        let style = ProgressStyle::default_spinner()
+            .template(template)
+            .unwrap_or_else(|_| ProgressStyle::default_spinner())
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]);
+        pb.set_style(style);
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
         Some(pb)
     }

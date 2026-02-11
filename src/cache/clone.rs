@@ -57,20 +57,27 @@ pub fn write_ref_to_cache(repo_path: &Path, ref_name: &str) -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_read_ref_from_cache_none() {
-        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
+        let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
+            panic!("Failed to create temp directory: {}", e);
+        });
         assert!(read_ref_from_cache(temp.path()).is_none());
     }
 
     #[test]
     fn test_write_read_ref() {
-        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
+        let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
+            panic!("Failed to create temp directory: {}", e);
+        });
         let ref_path = temp.path().join(REF_FILE);
-        write_ref_to_cache(temp.path(), "main").expect("Failed to write ref to cache");
+        write_ref_to_cache(temp.path(), "main").unwrap_or_else(|e| {
+            panic!("Failed to write ref to cache: {}", e);
+        });
         assert_eq!(read_ref_from_cache(temp.path()), Some("main".to_string()));
         assert!(ref_path.exists());
     }

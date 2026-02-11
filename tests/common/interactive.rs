@@ -502,11 +502,12 @@ where
     let timeout_thread = thread::spawn(move || {
         thread::sleep(timeout);
         if rx.try_recv().is_err() {
-            // Test hasn't completed, panic to fail the test
-            panic!(
+            // Test hasn't completed, exit to fail of test
+            eprintln!(
                 "TEST TIMEOUT: Test exceeded {} seconds. This usually indicates a hang in interactive PTY operations, especially on Windows.",
                 timeout.as_secs()
             );
+            std::process::exit(1);
         }
     });
 

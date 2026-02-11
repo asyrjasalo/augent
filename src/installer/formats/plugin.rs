@@ -335,6 +335,7 @@ impl Default for FormatRegistry {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

@@ -3,6 +3,7 @@
 //! Tests for AugentError enum and its conversions.
 
 #![allow(unused_imports)]
+#![allow(clippy::expect_used)]
 
 use crate::error::AugentError;
 use crate::error::bundle::{

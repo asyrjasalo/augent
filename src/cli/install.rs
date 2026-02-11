@@ -39,13 +39,16 @@ pub struct InstallArgs {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_cli_parsing_install() {
         let cli = super::super::Cli::try_parse_from(["augent", "install", "github:author/bundle"])
-            .expect("Failed to parse CLI arguments");
+            .unwrap_or_else(|e| {
+                panic!("Failed to parse CLI arguments: {}", e);
+            });
         match cli.command {
             super::super::Commands::Install(args) => {
                 assert_eq!(args.source, Some("github:author/bundle".to_string()));
@@ -58,8 +61,9 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_install_no_source() {
-        let cli = super::super::Cli::try_parse_from(["augent", "install"])
-            .expect("Failed to parse CLI arguments");
+        let cli = super::super::Cli::try_parse_from(["augent", "install"]).unwrap_or_else(|e| {
+            panic!("Failed to parse CLI arguments: {}", e);
+        });
         match cli.command {
             super::super::Commands::Install(args) => {
                 assert_eq!(args.source, None);
@@ -82,7 +86,9 @@ mod tests {
             "opencode",
             "--frozen",
         ])
-        .expect("Failed to parse CLI arguments");
+        .unwrap_or_else(|e| {
+            panic!("Failed to parse CLI arguments: {}", e);
+        });
         match cli.command {
             super::super::Commands::Install(args) => {
                 assert_eq!(args.source, Some("./local-bundle".to_string()));
@@ -98,7 +104,9 @@ mod tests {
     fn test_cli_parsing_install_with_dry_run() {
         let cli =
             super::super::Cli::try_parse_from(["augent", "install", "./local-bundle", "--dry-run"])
-                .expect("Failed to parse CLI arguments");
+                .unwrap_or_else(|e| {
+                    panic!("Failed to parse CLI arguments: {}", e);
+                });
         match cli.command {
             super::super::Commands::Install(args) => {
                 assert_eq!(args.source, Some("./local-bundle".to_string()));

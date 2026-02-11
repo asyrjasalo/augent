@@ -72,6 +72,7 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -89,6 +90,7 @@ mod tests {
     fn test_index_lookup_not_found() {
         let result = index_lookup("https://github.com/test/repo", "abc123", None);
         assert!(result.is_ok());
-        assert!(result.expect("Result should be Ok").is_none());
+        let inner = result.unwrap();
+        assert!(inner.is_none());
     }
 }

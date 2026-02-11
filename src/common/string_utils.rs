@@ -28,11 +28,13 @@ pub fn capitalize_word(word: &str) -> String {
     if word.is_empty() {
         return String::new();
     }
-    let first_char = word
-        .chars()
-        .next()
-        .expect("non-empty string should have first character");
-    format!("{}{}", first_char.to_uppercase(), &word[1..])
+    let mut chars = word.chars();
+    let first_char = match chars.next() {
+        Some(c) => c,
+        None => return String::new(),
+    };
+    let rest: String = chars.collect();
+    format!("{}{}", first_char.to_uppercase(), rest)
 }
 
 /// Strip ANSI escape codes from a string to get plain text
@@ -219,6 +221,7 @@ pub fn parse_git_url_to_repo_base(url: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

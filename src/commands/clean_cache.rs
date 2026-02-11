@@ -22,48 +22,21 @@ pub fn run(args: CacheArgs) -> Result<()> {
     }
 
     // Default: show only cache statistics
-    show_cache_stats()?;
-
-    Ok(())
+    show_cache_stats()
 }
 
 fn show_cache_stats() -> Result<()> {
     let stats = cache::cache_stats()?;
-    let cache_dir = cache::cache_dir()?;
-
-    print_cache_statistics_header(&stats, &cache_dir);
-
-    if stats.repositories == 0 {
-        println!("\nCache is empty.");
-    } else {
-        println!("\nRun 'augent cache list' to list cached bundles.");
-        println!("Run 'augent cache clear' to remove everything from cache.");
-        println!("Run 'augent cache clear --only <bundle_name>' to remove a specific bundle.");
-    }
-
+    println!(
+        "Cache statistics:\n  Repositories: {}\n  Versions: {}\n  Total size: {}",
+        stats.repositories,
+        stats.versions,
+        stats.formatted_size()
+    );
     Ok(())
 }
 
-fn print_cache_statistics_header(stats: &cache::CacheStats, cache_dir: &std::path::Path) {
-    println!("Cache Statistics:");
-    println!("  Location: {}", cache_dir.display());
-    println!("  Repositories: {}", stats.repositories);
-    println!("  Versions: {}", stats.versions);
-    println!("  Size: {}", stats.formatted_size());
-}
-
 fn list_cached_bundles() -> Result<()> {
-    // Show the same statistics header as `augent cache` before listing
-    let stats = cache::cache_stats()?;
-    let cache_dir = cache::cache_dir()?;
-
-    println!("Cache Statistics:");
-    println!("  Location: {}", cache_dir.display());
-    println!("  Repositories: {}", stats.repositories);
-    println!("  Versions: {}", stats.versions);
-    println!("  Size: {}", stats.formatted_size());
-    println!();
-
     let bundles = cache::list_cached_bundles()?;
 
     if bundles.is_empty() {
@@ -98,6 +71,7 @@ fn clean_specific_bundle(bundle_name: &str) -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use serial_test::serial;
@@ -129,6 +103,7 @@ mod tests {
             .expect("Failed to create bundles directory");
 
         let original = std::env::var("AUGENT_CACHE_DIR").ok();
+
         // SAFETY: std::env::set_var/remove_var is safe in test context.
         // Used for testing cache operations with a temporary directory.
         unsafe {

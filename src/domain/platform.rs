@@ -28,6 +28,7 @@ impl fmt::Display for MergeStrategy {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

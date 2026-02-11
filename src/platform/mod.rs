@@ -136,6 +136,7 @@ pub fn default_platforms() -> Vec<Platform> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod unit_tests {
     use super::*;
     use tempfile::TempDir;

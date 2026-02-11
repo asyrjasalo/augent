@@ -131,6 +131,7 @@ pub fn verify_hash(expected: &str, actual: &str) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

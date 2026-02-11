@@ -58,6 +58,7 @@ pub fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

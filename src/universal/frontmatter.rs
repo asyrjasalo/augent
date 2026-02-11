@@ -122,6 +122,7 @@ pub fn get_str(value: &Value, key: &str) -> Option<String> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

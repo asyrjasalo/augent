@@ -43,6 +43,7 @@ macro_rules! file_error_context {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use crate::error::AugentError;
 

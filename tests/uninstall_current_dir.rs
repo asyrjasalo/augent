@@ -1,4 +1,5 @@
 //! Tests for uninstalling current directory bundle
+#![allow(clippy::expect_used)] // Idiomatic for test assertions
 
 mod common;
 

@@ -48,6 +48,7 @@ impl FormatConverter for JunieConverter {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

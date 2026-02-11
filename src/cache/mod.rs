@@ -133,6 +133,7 @@ pub mod populate;
 pub mod stats;
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod stats_tests;
 
 // Re-export public API from submodules
@@ -141,7 +142,7 @@ pub use cache_entry::cache_bundle;
 pub use clone::clone_and_checkout;
 pub use index::list_cached_entries_for_url_sha;
 pub use populate::ensure_bundle_cached;
-pub use stats::{CacheStats, cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
+pub use stats::{cache_stats, clear_cache, list_cached_bundles, remove_cached_bundle};
 
 // Re-export path utilities and constants
 pub use paths::{
@@ -150,6 +151,7 @@ pub use paths::{
 };
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::cache::paths::bundle_cache_entry_path;
@@ -175,14 +177,13 @@ mod tests {
     fn test_bundles_cache_dir() {
         let dir = bundles_cache_dir();
         assert!(dir.is_ok());
-        let path = dir.expect("bundles_cache_dir should be Ok");
+        let path = dir.unwrap();
         assert!(path.ends_with("bundles"));
     }
 
     #[test]
     fn test_bundle_cache_entry_path() {
-        let path = bundle_cache_entry_path("@author/repo", "abc123")
-            .expect("bundle_cache_entry_path should be Ok");
+        let path = bundle_cache_entry_path("@author/repo", "abc123").unwrap();
         assert!(path.to_string_lossy().contains("author-repo"));
         assert!(path.to_string_lossy().contains("abc123"));
     }
@@ -205,7 +206,7 @@ mod tests {
             "https://github.com/davila7/claude-code-templates.git",
             "abc123",
         )
-        .expect("repo_cache_entry_path should be Ok");
+        .unwrap();
         assert!(
             path.to_string_lossy()
                 .contains("davila7-claude-code-templates")
@@ -220,11 +221,8 @@ mod tests {
             "file://C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpKA5X3S\\single-bundle-repo",
             "abc123",
         )
-        .expect("repo_cache_entry_path should be Ok");
-        let key_segment = path
-            .parent()
-            .and_then(|p| p.file_name())
-            .expect("path should have a parent with a file name");
+        .unwrap();
+        let key_segment = path.parent().and_then(|p| p.file_name()).unwrap();
         let key = key_segment.to_string_lossy();
         assert!(!key.contains('\\'), "cache key must not contain backslash");
         assert!(!key.contains(':'), "cache key must not contain colon");

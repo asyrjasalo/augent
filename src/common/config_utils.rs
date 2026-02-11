@@ -60,6 +60,7 @@ pub fn load_bundle_config(workspace_root: &Path, source: &LockedSource) -> Resul
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

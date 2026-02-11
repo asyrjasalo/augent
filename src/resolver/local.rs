@@ -188,6 +188,7 @@ fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<Disc
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

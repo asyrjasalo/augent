@@ -56,6 +56,7 @@ pub fn get_workspace_bundle_source(workspace_root: &Path) -> PathBuf {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

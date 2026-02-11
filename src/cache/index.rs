@@ -181,6 +181,7 @@ fn should_include_entry(content_path: &Path, entry_path: &Option<String>) -> boo
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

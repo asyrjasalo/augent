@@ -48,6 +48,7 @@ pub fn content_path_in_repo(repo_path: &Path, source: &GitSource) -> PathBuf {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -61,9 +62,13 @@ mod tests {
 
     #[test]
     fn test_bundle_name_from_directory_path() {
-        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
+        let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
+            panic!("Failed to create temp directory: {}", e);
+        });
         let bundle_dir = temp.path().join("my-bundle");
-        std::fs::create_dir(&bundle_dir).expect("Failed to create bundle directory");
+        std::fs::create_dir(&bundle_dir).unwrap_or_else(|e| {
+            panic!("Failed to create bundle directory: {}", e);
+        });
         assert_eq!(
             bundle_name_from_directory_path(&bundle_dir),
             Some("my-bundle".to_string())

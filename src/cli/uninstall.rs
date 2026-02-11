@@ -28,13 +28,16 @@ pub struct UninstallArgs {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_cli_parsing_uninstall() {
         let cli = super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle"])
-            .expect("Failed to parse CLI arguments");
+            .unwrap_or_else(|e| {
+                panic!("Failed to parse CLI arguments: {}", e);
+            });
         match cli.command {
             super::super::Commands::Uninstall(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
@@ -50,7 +53,9 @@ mod tests {
     fn test_cli_parsing_uninstall_with_dry_run() {
         let cli =
             super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle", "--dry-run"])
-                .expect("Failed to parse CLI arguments");
+                .unwrap_or_else(|e| {
+                    panic!("Failed to parse CLI arguments: {}", e);
+                });
         match cli.command {
             super::super::Commands::Uninstall(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
@@ -62,13 +67,15 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_uninstall_no_name() {
-        let cli = super::super::Cli::try_parse_from(["augent", "uninstall"])
-            .expect("Failed to parse CLI arguments");
+        let cli = super::super::Cli::try_parse_from(["augent", "uninstall"]).unwrap_or_else(|e| {
+            panic!("Failed to parse CLI arguments: {}", e);
+        });
         match cli.command {
             super::super::Commands::Uninstall(args) => {
                 assert_eq!(args.name, None);
                 assert!(!args.yes);
                 assert!(!args.all_bundles);
+                assert!(!args.dry_run);
             }
             _ => panic!("Expected Uninstall command"),
         }

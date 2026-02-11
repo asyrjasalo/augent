@@ -1,4 +1,5 @@
 //! Tests for installing directory bundles by path
+#![allow(clippy::expect_used)]
 
 mod common;
 

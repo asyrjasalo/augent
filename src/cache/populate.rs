@@ -131,33 +131,50 @@ pub fn ensure_bundle_cached(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_copy_dir_recursive() {
-        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
+        let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
+            panic!("Failed to create temp directory: {}", e);
+        });
         let src = temp.path().join("src");
         let dst = temp.path().join("dst");
-        fs::create_dir_all(&src).expect("Failed to create src directory");
-        fs::write(src.join("test.txt"), "hello").expect("Failed to write test file");
+        fs::create_dir_all(&src).unwrap_or_else(|e| {
+            panic!("Failed to create src directory: {}", e);
+        });
+        fs::write(src.join("test.txt"), "hello").unwrap_or_else(|e| {
+            panic!("Failed to write test file: {}", e);
+        });
 
-        copy_dir_recursive(&src, &dst, CopyOptions::default())
-            .expect("Failed to copy directory recursively");
+        copy_dir_recursive(&src, &dst, CopyOptions::default()).unwrap_or_else(|e| {
+            panic!("Failed to copy directory recursively: {}", e);
+        });
         assert!(dst.join("test.txt").exists());
     }
 
     #[test]
     fn test_copy_dir_recursive_exclude_git() {
-        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
+        let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
+            panic!("Failed to create temp directory: {}", e);
+        });
         let src = temp.path().join("src");
         let dst = temp.path().join("dst");
-        fs::create_dir_all(&src).expect("Failed to create src directory");
-        fs::create_dir_all(src.join(".git")).expect("Failed to create .git directory");
-        fs::write(src.join("test.txt"), "hello").expect("Failed to write test file");
+        fs::create_dir_all(&src).unwrap_or_else(|e| {
+            panic!("Failed to create src directory: {}", e);
+        });
+        fs::create_dir_all(src.join(".git")).unwrap_or_else(|e| {
+            panic!("Failed to create .git directory: {}", e);
+        });
+        fs::write(src.join("test.txt"), "hello").unwrap_or_else(|e| {
+            panic!("Failed to write test file: {}", e);
+        });
 
-        copy_dir_recursive(&src, &dst, CopyOptions::exclude_git())
-            .expect("Failed to copy directory recursively");
+        copy_dir_recursive(&src, &dst, CopyOptions::exclude_git()).unwrap_or_else(|e| {
+            panic!("Failed to copy directory recursively: {}", e);
+        });
         assert!(dst.join("test.txt").exists());
         assert!(!dst.join(".git").exists());
     }

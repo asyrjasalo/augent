@@ -59,6 +59,7 @@ pub fn extract_description_from_frontmatter(frontmatter: &str) -> Option<String>
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

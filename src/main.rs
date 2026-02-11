@@ -32,8 +32,17 @@ use error::{AugentError, Result};
 
 /// Check if the current working directory is within a git repository
 fn check_git_repository(workspace_path: Option<PathBuf>) -> Result<()> {
-    let start_dir = workspace_path
-        .unwrap_or_else(|| std::env::current_dir().expect("Failed to get current directory"));
+    let start_dir = workspace_path.unwrap_or_else(|| {
+        std::env::current_dir()
+            .map_err(|e| AugentError::IoError {
+                message: format!("Failed to get current directory: {}", e),
+                source: Some(Box::new(e)),
+            })
+            .unwrap_or_else(|e| {
+                eprintln!("Warning: Using fallback directory due to error: {}", e);
+                PathBuf::from(".")
+            })
+    });
 
     if git2::Repository::discover(&start_dir).is_err() {
         return Err(AugentError::NotInGitRepository);
@@ -82,6 +91,7 @@ fn main() {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

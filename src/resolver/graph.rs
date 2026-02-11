@@ -109,6 +109,7 @@ pub fn validate_dependencies(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::config::{BundleConfig, BundleDependency};

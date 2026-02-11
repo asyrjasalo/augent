@@ -149,6 +149,7 @@ pub fn validate_local_bundle_path(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

@@ -106,6 +106,7 @@ pub fn rebuild_and_save(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

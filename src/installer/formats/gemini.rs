@@ -110,6 +110,7 @@ pub fn escape_toml_string(s: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

@@ -1,3 +1,7 @@
+//! Interactive install tests
+
+#![allow(clippy::expect_used)]
+
 mod common;
 
 use common::InteractiveTest;

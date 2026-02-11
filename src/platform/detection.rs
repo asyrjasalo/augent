@@ -107,6 +107,7 @@ pub fn resolve_platforms(workspace_root: &Path, specified: &[String]) -> Result<
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

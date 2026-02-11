@@ -32,6 +32,7 @@ pub fn extract_platform_from_location(location: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

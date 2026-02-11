@@ -112,9 +112,10 @@ fn determine_bundle_name(
         Some(dep) => dep.name.clone(),
         None => match &git_source.path {
             Some(path_val) if path_val.starts_with("$claudeplugin/") => {
-                let bundle_name = path_val
-                    .strip_prefix("$claudeplugin/")
-                    .expect("path starts with $claudeplugin/ (checked above)");
+                let bundle_name = match path_val.strip_prefix("$claudeplugin/") {
+                    Some(name) => name,
+                    None => return String::new(),
+                };
                 format!("{}/{}", base_name, bundle_name)
             }
             Some(path_val) => {
@@ -131,6 +132,7 @@ fn determine_bundle_name(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

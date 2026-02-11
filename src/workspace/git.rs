@@ -85,6 +85,7 @@ pub fn verify_git_root(path: &Path) -> Result<()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use tempfile::TempDir;

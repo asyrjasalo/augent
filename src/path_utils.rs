@@ -96,6 +96,7 @@ pub fn make_path_safe(name: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

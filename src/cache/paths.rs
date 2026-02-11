@@ -100,6 +100,7 @@ pub fn entry_resources_path(entry_path: &Path) -> PathBuf {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -124,14 +125,13 @@ mod tests {
     fn test_bundles_cache_dir() {
         let dir = bundles_cache_dir();
         assert!(dir.is_ok());
-        let path = dir.expect("bundles_cache_dir should be Ok");
+        let path = dir.unwrap();
         assert!(path.ends_with("bundles"));
     }
 
     #[test]
     fn test_bundle_cache_entry_path() {
-        let path = bundle_cache_entry_path("@author/repo", "abc123")
-            .expect("bundle_cache_entry_path should be Ok");
+        let path = bundle_cache_entry_path("@author/repo", "abc123").unwrap();
         assert!(path.to_string_lossy().contains("author-repo"));
         assert!(path.to_string_lossy().contains("abc123"));
     }
@@ -154,7 +154,7 @@ mod tests {
             "https://github.com/davila7/claude-code-templates.git",
             "abc123",
         )
-        .expect("repo_cache_entry_path should be Ok");
+        .unwrap();
         assert!(
             path.to_string_lossy()
                 .contains("davila7-claude-code-templates")
@@ -164,16 +164,13 @@ mod tests {
 
     #[test]
     fn test_repo_cache_entry_path_file_url_windows_safe() {
-        // file:// URLs on Windows can contain : and \ in the path; cache key must be path-safe
+        // file:// URLs on Windows can contain : and \ in path; cache key must be path-safe
         let path = repo_cache_entry_path(
             "file://C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpKA5X3S\\single-bundle-repo",
             "abc123",
         )
-        .expect("repo_cache_entry_path should be Ok");
-        let key_segment = path
-            .parent()
-            .and_then(|p| p.file_name())
-            .expect("path should have a parent with a file name");
+        .unwrap();
+        let key_segment = path.parent().and_then(|p| p.file_name()).unwrap();
         let key = key_segment.to_string_lossy();
         assert!(!key.contains('\\'), "cache key must not contain backslash");
         assert!(!key.contains(':'), "cache key must not contain colon");

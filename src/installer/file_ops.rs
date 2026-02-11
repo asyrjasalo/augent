@@ -132,6 +132,7 @@ fn handle_text_file(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
