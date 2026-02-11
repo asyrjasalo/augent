@@ -185,6 +185,36 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
     Ok(())
 }
 
+fn handle_deselected_bundles(workspace: &mut Workspace) -> Result<()> {
+    let config_bundle_names: Vec<String> = workspace
+        .bundle_config
+        .bundles
+        .iter()
+        .map(|b| b.name.clone())
+        .collect();
+
+    if config_bundle_names.is_empty() {
+        return Ok(());
+    }
+
+    uninstall_config_bundle_files(workspace, &config_bundle_names)?;
+    use crate::operations::uninstall::execution::remove_bundles_from_config;
+    remove_bundles_from_config(workspace, &config_bundle_names)?;
+    workspace.save()?;
+
+    Ok(())
+}
+
+fn handle_selected_bundles(
+    workspace: &mut Workspace,
+    args: &mut InstallArgs,
+    selected: &[DiscoveredBundle],
+    transaction: &mut Transaction,
+) -> Result<()> {
+    let mut install_op = InstallOperation::new(workspace, InstallOptions::from(&*args));
+    execute_install(&mut install_op, args, selected, transaction)
+}
+
 fn install_from_config(workspace_root: &std::path::Path, args: &mut InstallArgs) -> Result<()> {
     let mut workspace = setup_workspace(workspace_root)?;
     let mut transaction = Transaction::new(&workspace);
@@ -192,50 +222,26 @@ fn install_from_config(workspace_root: &std::path::Path, args: &mut InstallArgs)
 
     let discovered = workspace_config_bundles_as_discovered(&workspace, workspace_root);
 
-    // If multiple bundles and not --all-bundles, show interactive selection menu
-    if !args.all_bundles && discovered.len() > 1 {
+    let bundles_to_install = if !args.all_bundles && discovered.len() > 1 {
         let selected = select_bundles(args, workspace_root, &discovered, &false)?;
 
-        // If user deselected everything (menu was shown, nothing selected),
-        // uninstall all currently installed bundles from config and return early.
         if selected.is_empty() {
-            // Get the bundle names from the workspace config (augent.yaml)
-            let config_bundle_names: Vec<String> = workspace
-                .bundle_config
-                .bundles
-                .iter()
-                .map(|b| b.name.clone())
-                .collect();
-
-            if !config_bundle_names.is_empty() {
-                uninstall_config_bundle_files(&mut workspace, &config_bundle_names)?;
-                use crate::operations::uninstall::execution::remove_bundles_from_config;
-                remove_bundles_from_config(&mut workspace, &config_bundle_names)?;
-                workspace.save()?;
-                transaction.commit();
-            }
-            return Ok(());
+            // User deselected everything: uninstall all currently installed bundles
+            handle_deselected_bundles(&mut workspace)?;
+            Vec::new()
+        } else {
+            selected
         }
+    } else {
+        discovered
+    };
 
-        // User selected some bundles: install only those
-        let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&*args));
-        return match execute_install(&mut install_op, args, &selected, &mut transaction) {
-            Ok(()) => {
-                transaction.commit();
-                Ok(())
-            }
-            Err(e) => Err(e),
-        };
+    if !bundles_to_install.is_empty() {
+        handle_selected_bundles(&mut workspace, args, &bundles_to_install, &mut transaction)?;
     }
 
-    let mut install_op = InstallOperation::new(&mut workspace, InstallOptions::from(&*args));
-    match execute_install(&mut install_op, args, &discovered, &mut transaction) {
-        Ok(()) => {
-            transaction.commit();
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
+    transaction.commit();
+    Ok(())
 }
 
 /// Run install command

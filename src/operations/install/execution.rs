@@ -65,9 +65,6 @@ impl<'a> ExecutionOrchestrator<'a> {
         Vec<WorkspaceBundle>,
         std::collections::HashMap<String, crate::domain::InstalledFile>,
     )> {
-        if args.dry_run {
-            println!("[DRY RUN] Would install files...");
-        }
         let workspace_root = self.workspace.root.clone();
 
         let mut progress: Option<crate::ui::InteractiveProgressReporter> =
@@ -108,9 +105,7 @@ impl<'a> ExecutionOrchestrator<'a> {
 
     pub fn update_and_save_workspace(&mut self, ctx: UpdateAndSaveWorkspaceContext) -> Result<()> {
         let source_str = ctx.args.source.as_deref().unwrap_or("");
-        if ctx.args.dry_run {
-            println!("[DRY RUN] Would update configuration files...");
-        } else {
+        if !ctx.args.dry_run {
             use super::config::ConfigUpdater;
 
             let mut config_updater = ConfigUpdater::new(self.workspace);
@@ -123,9 +118,7 @@ impl<'a> ExecutionOrchestrator<'a> {
             self.workspace.should_create_augent_yaml = ctx.should_update_augent_yaml;
         }
 
-        if ctx.args.dry_run {
-            println!("[DRY RUN] Would save workspace...");
-        } else {
+        if !ctx.args.dry_run {
             self.workspace.save()?;
             *self.workspace = Workspace::open(ctx.workspace_root)?;
         }

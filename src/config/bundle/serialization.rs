@@ -1,11 +1,8 @@
 //! Serialization implementations for BundleConfig
 
 use crate::config::utils::count_optional_fields;
-use serde::de::MapAccess;
-use serde::de::Visitor;
 use serde::ser::SerializeStruct;
-use serde::{Deserializer, Serializer};
-use std::fmt;
+use serde::{Deserialize, Deserializer, Serializer};
 
 macro_rules! serialize_optional_field {
     ($state:expr, $name:expr, $value:expr) => {
@@ -54,58 +51,31 @@ pub fn deserialize_bundle_config<'de, D>(
 where
     D: Deserializer<'de>,
 {
-    struct BundleConfigVisitor;
-
-    impl<'de> Visitor<'de> for BundleConfigVisitor {
-        type Value = BundleConfigData;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a BundleConfig")
-        }
-
-        fn visit_map<M>(self, mut map: M) -> std::result::Result<BundleConfigData, M::Error>
-        where
-            M: MapAccess<'de>,
-        {
-            let mut description = None;
-            let mut version = None;
-            let mut author = None;
-            let mut license = None;
-            let mut homepage = None;
-            let mut bundles = Vec::new();
-
-            // Iterate through all keys once and extract the ones we care about
-            while let Some(key) = map.next_key()? {
-                match key {
-                    "description" => description = map.next_value()?,
-                    "version" => version = map.next_value()?,
-                    "author" => author = map.next_value()?,
-                    "license" => license = map.next_value()?,
-                    "homepage" => homepage = map.next_value()?,
-                    "bundles" => bundles = map.next_value()?,
-                    "name" => {
-                        // Skip the name field (it's read from filesystem)
-                        let _: serde::de::IgnoredAny = map.next_value()?;
-                    }
-                    _ => {
-                        // Unknown field - skip it
-                        let _: serde::de::IgnoredAny = map.next_value()?;
-                    }
-                }
-            }
-
-            Ok(BundleConfigData {
-                description,
-                version,
-                author,
-                license,
-                homepage,
-                bundles,
-            })
-        }
+    #[derive(serde::Deserialize)]
+    struct Raw {
+        #[serde(default)]
+        description: Option<String>,
+        #[serde(default)]
+        version: Option<String>,
+        #[serde(default)]
+        author: Option<String>,
+        #[serde(default)]
+        license: Option<String>,
+        #[serde(default)]
+        homepage: Option<String>,
+        #[serde(default)]
+        bundles: Vec<super::dependency::BundleDependency>,
     }
 
-    deserializer.deserialize_map(BundleConfigVisitor)
+    let raw = Raw::deserialize(deserializer)?;
+    Ok(BundleConfigData {
+        description: raw.description,
+        version: raw.version,
+        author: raw.author,
+        license: raw.license,
+        homepage: raw.homepage,
+        bundles: raw.bundles,
+    })
 }
 
 /// Internal struct to hold BundleConfig fields
