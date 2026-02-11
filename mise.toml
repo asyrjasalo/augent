@@ -53,8 +53,12 @@ run = "cargo test"
 description = "Lint codebase"
 run = "cargo clippy --all-targets --all-features -- -D warnings"
 
-[tasks.pedantic]
-description = "Lint codebase with pedantic and auto-fixes"
+[tasks.lint-fix]
+description = "Lint codebase and auto-fix"
+run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings"
+
+[tasks.lint-fix-all]
+description = "Lint codebase with pedantic and auto-fix"
 run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings -W clippy::pedantic"
 
 [tasks.ccn]
