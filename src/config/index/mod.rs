@@ -141,9 +141,8 @@ impl WorkspaceConfig {
     /// # Note
     /// This function is used by tests.
     #[allow(dead_code)] // Used by tests
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate() {
         // Name is computed from workspace location, not validated here
-        Ok(())
     }
 }
 

@@ -19,7 +19,7 @@ pub fn init_or_open_workspace(path: &Path) -> Result<crate::workspace::Workspace
 
 /// Infer workspace name from a path
 ///
-/// Re-exports the function from crate::workspace::initialization module.
+/// Re-exports the function from `crate::workspace::initialization` module.
 pub use crate::workspace::initialization::infer_workspace_name;
 
 /// Check if a workspace bundle should be included in installation
@@ -43,10 +43,7 @@ pub fn should_include_workspace_bundle(
 /// Check if workspace root has resources to install
 #[allow(dead_code)]
 pub fn has_workspace_resources(workspace_root: &Path) -> bool {
-    match crate::installer::discovery::discover_resources(workspace_root) {
-        Ok(resources) => !resources.is_empty(),
-        Err(_) => false,
-    }
+    !crate::installer::discovery::discover_resources(workspace_root).is_empty()
 }
 
 /// Get workspace bundle source path

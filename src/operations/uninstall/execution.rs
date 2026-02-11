@@ -7,10 +7,8 @@ use crate::transaction::Transaction;
 use crate::workspace::Workspace;
 
 /// Remove bundles from workspace configuration
-pub fn remove_bundles_from_config(
-    workspace: &mut Workspace,
-    bundle_names: &[String],
-) -> Result<()> {
+#[allow(dead_code)]
+pub fn remove_bundles_from_config(workspace: &mut Workspace, bundle_names: &[String]) {
     for bundle_name in bundle_names {
         workspace
             .workspace_config
@@ -25,16 +23,16 @@ pub fn remove_bundles_from_config(
             .bundles
             .retain(|b| b.name != *bundle_name);
     }
-    Ok(())
 }
 
 /// Execute uninstall with transaction handling
+#[allow(dead_code)]
 pub fn execute_uninstall(workspace: &mut Workspace, bundle_names: &[String]) -> Result<()> {
     let mut transaction = Transaction::new(workspace);
     transaction.backup_configs()?;
 
     let result = (|| -> Result<()> {
-        remove_bundles_from_config(workspace, bundle_names)?;
+        remove_bundles_from_config(workspace, bundle_names);
         workspace.save()?;
         Ok(())
     })();
@@ -49,7 +47,7 @@ pub fn execute_uninstall(workspace: &mut Workspace, bundle_names: &[String]) -> 
             Ok(())
         }
         Err(e) => {
-            let _ = transaction.rollback();
+            transaction.rollback();
             Err(e)
         }
     }

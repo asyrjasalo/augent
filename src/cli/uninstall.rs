@@ -36,7 +36,7 @@ mod tests {
     fn test_cli_parsing_uninstall() {
         let cli = super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle"])
             .unwrap_or_else(|e| {
-                panic!("Failed to parse CLI arguments: {}", e);
+                panic!("Failed to parse CLI arguments: {e}");
             });
         match cli.command {
             super::super::Commands::Uninstall(args) => {
@@ -54,7 +54,7 @@ mod tests {
         let cli =
             super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle", "--dry-run"])
                 .unwrap_or_else(|e| {
-                    panic!("Failed to parse CLI arguments: {}", e);
+                    panic!("Failed to parse CLI arguments: {e}");
                 });
         match cli.command {
             super::super::Commands::Uninstall(args) => {
@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn test_cli_parsing_uninstall_no_name() {
         let cli = super::super::Cli::try_parse_from(["augent", "uninstall"]).unwrap_or_else(|e| {
-            panic!("Failed to parse CLI arguments: {}", e);
+            panic!("Failed to parse CLI arguments: {e}");
         });
         match cli.command {
             super::super::Commands::Uninstall(args) => {

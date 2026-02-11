@@ -20,7 +20,7 @@ fn bundle_name_from_directory_path(content_path: &Path) -> Option<String> {
     content_path
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|name| name.to_string())
+        .map(std::string::ToString::to_string)
 }
 
 /// Get bundle name for a source: derive from directory name or $claudeplugin path.
@@ -63,11 +63,11 @@ mod tests {
     #[test]
     fn test_bundle_name_from_directory_path() {
         let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
-            panic!("Failed to create temp directory: {}", e);
+            panic!("Failed to create temp directory: {e}");
         });
         let bundle_dir = temp.path().join("my-bundle");
         std::fs::create_dir(&bundle_dir).unwrap_or_else(|e| {
-            panic!("Failed to create bundle directory: {}", e);
+            panic!("Failed to create bundle directory: {e}");
         });
         assert_eq!(
             bundle_name_from_directory_path(&bundle_dir),

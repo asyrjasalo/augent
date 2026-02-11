@@ -8,7 +8,7 @@
 //! Authentication is delegated entirely to git's native credential system:
 //! - SSH keys from ~/.ssh/
 //! - Git credential helpers
-//! - Environment variables (GIT_SSH_COMMAND, etc.)
+//! - Environment variables (`GIT_SSH_COMMAND`, etc.)
 
 use dirs;
 use git2::{Cred, CredentialType, Error, ErrorClass, RemoteCallbacks};
@@ -28,7 +28,7 @@ fn try_ssh_credentials(username: &str) -> std::result::Result<Cred, git2::Error>
 
     for key_name in &["id_ed25519", "id_rsa", "id_ecdsa"] {
         let private_key = ssh_dir.join(key_name);
-        let public_key = ssh_dir.join(format!("{}.pub", key_name));
+        let public_key = ssh_dir.join(format!("{key_name}.pub"));
 
         if private_key.exists() {
             let public_key_path = if public_key.exists() {
@@ -60,7 +60,7 @@ fn try_user_pass_credentials(
             Error::new(
                 git2::ErrorCode::GenericError,
                 ErrorClass::Config,
-                format!("Failed to create default git config: {}", e),
+                format!("Failed to create default git config: {e}"),
             )
         })?,
     };

@@ -6,9 +6,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::config::LockedSource;
-use crate::config::utils::BundleContainer;
-use crate::error::Result;
+use crate::config::{LockedSource, utils::BundleContainer};
 use crate::hash;
 use crate::workspace::Workspace;
 
@@ -29,12 +27,12 @@ pub struct ModifiedFile {
 ///
 /// Compares installed files with their original versions from cached bundles.
 /// Returns a list of files that have been modified.
-pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Result<Vec<ModifiedFile>> {
+pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Vec<ModifiedFile> {
     let mut modified = Vec::new();
 
     // Iterate through all bundles in workspace config
     for bundle in &workspace.workspace_config.bundles {
-        // Get the locked bundle info for hash/SHA information
+        // Get locked bundle info for hash/SHA information
         let locked_bundle = workspace.lockfile.find_bundle(&bundle.name);
 
         // Iterate through all enabled files in this bundle
@@ -52,9 +50,8 @@ pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Result<
                     get_original_hash(source_path, locked_bundle, cache_dir, &workspace.root);
 
                 // Calculate current file hash
-                let current_hash = match hash::hash_file(&full_installed_path) {
-                    Ok(h) => h,
-                    Err(_) => continue, // Skip if can't read file
+                let Ok(current_hash) = hash::hash_file(&full_installed_path) else {
+                    continue;
                 };
 
                 // Compare hashes
@@ -71,7 +68,7 @@ pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Result<
         }
     }
 
-    Ok(modified)
+    modified
 }
 
 /// Get the original hash of a file from the cached bundle
@@ -111,7 +108,7 @@ fn get_original_hash(
 pub fn preserve_modified_files(
     workspace: &mut Workspace,
     modified_files: &[ModifiedFile],
-) -> Result<HashMap<String, PathBuf>> {
+) -> HashMap<String, PathBuf> {
     let mut preserved = HashMap::new();
 
     for modified in modified_files {
@@ -134,7 +131,7 @@ pub fn preserve_modified_files(
         );
     }
 
-    Ok(preserved)
+    preserved
 }
 
 #[cfg(test)]
@@ -156,8 +153,7 @@ mod tests {
         let cache_dir = TempDir::new_in(crate::temp::temp_dir_base())
             .expect("Failed to create cache directory");
 
-        let modified = detect_modified_files(&workspace, cache_dir.path())
-            .expect("Failed to detect modified files");
+        let modified = detect_modified_files(&workspace, cache_dir.path());
         assert!(modified.is_empty());
     }
 
@@ -181,8 +177,7 @@ mod tests {
             source_path: "commands/test.md".to_string(),
         }];
 
-        let preserved = preserve_modified_files(&mut workspace, &modified)
-            .expect("Failed to preserve modified files");
+        let preserved = preserve_modified_files(&mut workspace, &modified);
         assert_eq!(preserved.len(), 1);
 
         // Check file is tracked (path matches installed path)

@@ -12,7 +12,7 @@ fn select_bundles(
     args: &InstallArgs,
     workspace_root: &std::path::Path,
     discovered: &[DiscoveredBundle],
-    installing_by_bundle_name: &bool,
+    installing_by_bundle_name: bool,
 ) -> Result<Vec<DiscoveredBundle>> {
     let installed_bundle_names =
         InstallOperation::get_installed_bundle_names_for_menu(workspace_root, discovered);
@@ -42,16 +42,20 @@ fn select_bundles(
 
 fn setup_workspace(workspace_root: &std::path::Path) -> Result<Workspace> {
     std::fs::create_dir_all(workspace_root).map_err(|e| crate::error::AugentError::IoError {
-        message: format!("Failed to create workspace directory: {}", e),
+        message: format!("Failed to create workspace directory: {e}"),
         source: Some(Box::new(e)),
     })?;
 
     let mut workspace = Workspace::init_or_open(workspace_root)?;
 
-    if !crate::installer::discovery::discover_resources(workspace_root)
-        .map(|resources: Vec<_>| resources.is_empty())
-        .unwrap_or(true)
-    {
+    // Only set bundle_config_dir if the workspace root itself is a bundle directory
+    // (has augent.yaml or resource directories directly in root, but NOT .augent/)
+    // This ensures we don't set it for normal workspaces that just happen to have no resources yet
+    let has_workspace_metadata = workspace_root.join(".augent").exists();
+    let has_bundle_manifest = workspace_root.join("augent.yaml").exists();
+    let has_resources = !crate::installer::discovery::discover_resources(workspace_root).is_empty();
+
+    if !has_workspace_metadata && (has_bundle_manifest || has_resources) {
         workspace.bundle_config_dir = Some(workspace_root.to_path_buf());
     }
 
@@ -72,8 +76,8 @@ fn prepare_install_operation<'a>(
     args: &InstallArgs,
     workspace_root: &std::path::Path,
 ) -> Result<InstallOperation<'a>> {
-    let mut install_op = InstallOperation::new(workspace, InstallOptions::from(args));
-    let platforms = install_op.select_or_detect_platforms(args, workspace_root, false)?;
+    let install_op = InstallOperation::new(workspace, InstallOptions::from(args));
+    let platforms = InstallOperation::select_or_detect_platforms(args, workspace_root, false)?;
     if platforms.is_empty() {
         return Err(crate::error::AugentError::NoPlatformsDetected);
     }
@@ -96,12 +100,7 @@ fn discover_and_select_bundles(
     let mut resolver = crate::resolver::Resolver::new(workspace_root);
     let discovered = resolver.discover_bundles(source_str)?;
 
-    select_bundles(
-        args,
-        workspace_root,
-        &discovered,
-        &installing_by_bundle_name,
-    )
+    select_bundles(args, workspace_root, &discovered, installing_by_bundle_name)
 }
 
 fn install_from_source(
@@ -148,7 +147,7 @@ fn workspace_config_bundles_as_discovered(
         .collect()
 }
 
-fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[String]) -> Result<()> {
+fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[String]) {
     // Get all locations from workspace_config that match the bundle names
     let mut files_to_remove: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -161,9 +160,7 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
         } else {
             // Try partial match (e.g., "bundle-a" matches "@test/bundle-a")
             for workspace_bundle in &workspace.workspace_config.bundles {
-                if workspace_bundle
-                    .name
-                    .ends_with(&format!("/{}", bundle_name))
+                if workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
                     || workspace_bundle.name == *bundle_name
                 {
                     for locations in workspace_bundle.enabled.values() {
@@ -181,8 +178,6 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
             let _ = std::fs::remove_file(&full_path);
         }
     }
-
-    Ok(())
 }
 
 fn handle_deselected_bundles(workspace: &mut Workspace) -> Result<()> {
@@ -197,9 +192,7 @@ fn handle_deselected_bundles(workspace: &mut Workspace) -> Result<()> {
         return Ok(());
     }
 
-    uninstall_config_bundle_files(workspace, &config_bundle_names)?;
-    use crate::operations::uninstall::execution::remove_bundles_from_config;
-    remove_bundles_from_config(workspace, &config_bundle_names)?;
+    uninstall_config_bundle_files(workspace, &config_bundle_names);
     workspace.save()?;
 
     Ok(())
@@ -223,7 +216,7 @@ fn install_from_config(workspace_root: &std::path::Path, args: &mut InstallArgs)
     let discovered = workspace_config_bundles_as_discovered(&workspace, workspace_root);
 
     let bundles_to_install = if !args.all_bundles && discovered.len() > 1 {
-        let selected = select_bundles(args, workspace_root, &discovered, &false)?;
+        let selected = select_bundles(args, workspace_root, &discovered, false)?;
 
         if selected.is_empty() {
             // User deselected everything: uninstall all currently installed bundles
@@ -257,13 +250,13 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
             &workspace_root,
             &workspace_root,
             false,
-        )?
+        )
     {
         return Ok(());
     }
 
     let installing_by_bundle_name =
-        InstallOperation::handle_source_argument(&mut args, &workspace_root)?;
+        InstallOperation::handle_source_argument(&mut args, &workspace_root);
 
     if args.source.is_some() {
         install_from_source(&workspace_root, &mut args, installing_by_bundle_name)

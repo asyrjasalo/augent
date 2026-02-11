@@ -48,7 +48,7 @@ fn display_resources_grouped(files: &[String]) {
     let resource_by_type = group_resources_by_type(files);
 
     let mut sorted_types: Vec<_> = resource_by_type.keys().copied().collect();
-    sorted_types.sort();
+    sorted_types.sort_unstable();
 
     for resource_type in sorted_types {
         let Some(files_for_type) = resource_by_type.get(resource_type) else {
@@ -78,7 +78,7 @@ fn group_resources_by_type(files: &[String]) -> HashMap<&str, Vec<String>> {
         resource_by_type
             .entry(resource_type)
             .or_default()
-            .push(file.to_string());
+            .push(file.clone());
     }
     resource_by_type
 }
@@ -129,7 +129,7 @@ fn display_with_workspace_bundle(files: &[String], ws_bundle: &WorkspaceBundle) 
                 &mut files_by_platform,
                 &mut uninstalled_files,
             ),
-            None => uninstalled_files.push(file.to_string()),
+            None => uninstalled_files.push(file.clone()),
         }
     }
 
@@ -159,7 +159,7 @@ fn process_file_locations(
         files_by_platform
             .entry(platform)
             .or_default()
-            .push((file.to_string(), location.to_string()));
+            .push((file.to_string(), location.clone()));
     }
 }
 
@@ -317,14 +317,6 @@ impl DetailedFormatter {
     }
 
     #[allow(dead_code)]
-    fn format_detailed_sections(&self, bundle: &crate::config::LockedBundle, ctx: &DisplayContext) {
-        if !bundle.files.is_empty() {
-            display_provided_files_grouped_by_platform(&bundle.files, ctx.workspace_bundle);
-        }
-        self.format_dependencies(bundle, ctx.workspace_root);
-    }
-
-    #[allow(dead_code)]
     fn format_dependencies(
         &self,
         bundle: &crate::config::LockedBundle,
@@ -332,19 +324,27 @@ impl DetailedFormatter {
     ) {
         if let Ok(bundle_config) = config_utils::load_bundle_config(workspace_root, &bundle.source)
         {
-            if !bundle_config.bundles.is_empty() {
-                println!("    {}", Style::new().bold().apply_to("Dependencies:"));
-                for dep in &bundle_config.bundles {
-                    println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-                }
-            } else {
+            if bundle_config.bundles.is_empty() {
                 println!(
                     "    {}: {}",
                     Style::new().bold().apply_to("Dependencies"),
                     Style::new().dim().apply_to("None")
                 );
+            } else {
+                println!("    {}", Style::new().bold().apply_to("Dependencies:"));
+                for dep in &bundle_config.bundles {
+                    println!("      - {}", Style::new().cyan().apply_to(&dep.name));
+                }
             }
         }
+    }
+
+    #[allow(dead_code)]
+    fn format_detailed_sections(&self, bundle: &crate::config::LockedBundle, ctx: &DisplayContext) {
+        if !bundle.files.is_empty() {
+            display_provided_files_grouped_by_platform(&bundle.files, ctx.workspace_bundle);
+        }
+        self.format_dependencies(bundle, ctx.workspace_root);
     }
 }
 
@@ -383,9 +383,9 @@ impl DisplayFormatter for JsonFormatter {
         }
 
         match serde_json::to_string_pretty(&output) {
-            Ok(json_str) => println!("{}", json_str),
+            Ok(json_str) => println!("{json_str}"),
             Err(e) => {
-                eprintln!("Warning: Failed to serialize JSON output: {}", e);
+                eprintln!("Warning: Failed to serialize JSON output: {e}");
                 // Print empty JSON as fallback
                 println!("{{}}");
             }
@@ -443,33 +443,27 @@ impl JsonFormatter {
     ) -> serde_json::Value {
         let mut grouped = serde_json::Map::new();
 
-        match ctx.workspace_bundle {
-            Some(ws_bundle) => {
-                for file in &bundle.files {
-                    if let Some(locations) = ws_bundle.get_locations(file) {
-                        for location in locations {
-                            let platform =
-                                super::platform_extractor::extract_platform_from_location(location);
-                            let arr = grouped
-                                .entry(&platform)
-                                .or_insert_with(|| serde_json::json!([]))
-                                .as_array_mut();
-                            if let Some(arr) = arr {
-                                arr.push(serde_json::json!({
-                                    "file": file,
-                                    "location": location
-                                }));
-                            }
+        if let Some(ws_bundle) = ctx.workspace_bundle {
+            for file in &bundle.files {
+                if let Some(locations) = ws_bundle.get_locations(file) {
+                    for location in locations {
+                        let platform =
+                            super::platform_extractor::extract_platform_from_location(location);
+                        let arr = grouped
+                            .entry(&platform)
+                            .or_insert_with(|| serde_json::json!([]))
+                            .as_array_mut();
+                        if let Some(arr) = arr {
+                            arr.push(serde_json::json!({
+                                "file": file,
+                                "location": location
+                            }));
                         }
                     }
                 }
             }
-            None => {
-                grouped.insert(
-                    "files".to_string(),
-                    serde_json::json!(bundle.files.to_vec()),
-                );
-            }
+        } else {
+            grouped.insert("files".to_string(), serde_json::json!(bundle.files.clone()));
         }
 
         serde_json::Value::Object(grouped)

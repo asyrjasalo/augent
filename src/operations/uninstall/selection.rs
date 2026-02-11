@@ -9,6 +9,7 @@ use crate::workspace::Workspace;
 use inquire::MultiSelect;
 use std::collections::HashMap;
 
+#[allow(dead_code)]
 fn build_workspace_bundle_map(workspace: &Workspace) -> HashMap<String, Vec<String>> {
     workspace
         .workspace_config
@@ -21,6 +22,7 @@ fn build_workspace_bundle_map(workspace: &Workspace) -> HashMap<String, Vec<Stri
         .collect()
 }
 
+#[allow(dead_code)]
 fn create_selection_items(
     lockfile_bundles: &[crate::config::LockedBundle],
     workspace_bundle_map: &HashMap<String, Vec<String>>,
@@ -37,6 +39,7 @@ fn create_selection_items(
         .collect()
 }
 
+#[allow(dead_code)]
 fn extract_bundle_name_from_display(display: &str) -> String {
     display
         .split(" (")
@@ -47,6 +50,7 @@ fn extract_bundle_name_from_display(display: &str) -> String {
 }
 
 /// Select bundles interactively from installed bundles
+#[allow(dead_code)]
 pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>> {
     if workspace.lockfile.bundles.is_empty() {
         println!("No bundles installed.");
@@ -64,6 +68,7 @@ pub fn select_bundles_interactively(workspace: &Workspace) -> Result<Vec<String>
 }
 
 /// Format bundle name for display, optionally including platform list
+#[allow(dead_code)]
 fn format_bundle_name(name: &str, platforms: Option<&Vec<String>>) -> String {
     if let Some(platforms) = platforms {
         if platforms.is_empty() {
@@ -77,9 +82,10 @@ fn format_bundle_name(name: &str, platforms: Option<&Vec<String>>) -> String {
 }
 
 /// Select bundles from a predefined list
+#[allow(dead_code)]
 pub fn select_bundles_from_list(
     workspace: &Workspace,
-    bundle_names: Vec<String>,
+    bundle_names: &[String],
 ) -> Result<Vec<String>> {
     if bundle_names.is_empty() {
         println!("No bundles to select from.");
@@ -99,19 +105,19 @@ pub fn select_bundles_from_list(
     run_bundle_selection_prompt(items)
 }
 
+#[allow(dead_code)]
 fn run_bundle_selection_prompt(items: Vec<String>) -> Result<Vec<String>> {
     println!();
 
-    let selection = match MultiSelect::new("Select bundles to uninstall", items)
+    let Some(selection) = MultiSelect::new("Select bundles to uninstall", items)
         .with_page_size(10)
         .with_help_message(
             "  ↑↓ navigate  space select  enter confirm  type to filter  q/esc cancel",
         )
         .with_scorer(&bundle_utils::score_by_name)
         .prompt_skippable()?
-    {
-        Some(sel) => sel,
-        None => return Ok(vec![]),
+    else {
+        return Ok(vec![]);
     };
 
     let selected_bundles: Vec<String> = selection
@@ -123,6 +129,7 @@ fn run_bundle_selection_prompt(items: Vec<String>) -> Result<Vec<String>> {
 }
 
 /// Filter bundles by name prefix (used with --all-bundles when name is not a scope pattern).
+#[allow(dead_code)]
 pub fn filter_bundles_by_prefix(workspace: &Workspace, prefix: &str) -> Vec<String> {
     let prefix_lower = prefix.to_lowercase();
     workspace

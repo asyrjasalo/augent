@@ -181,7 +181,7 @@ impl FormatRegistry {
     ///
     /// The converter will be indexed by its `platform_id()` and
     /// can be found later via `find_converter()`. Returns an error
-    /// if a converter for this platform_id is already registered.
+    /// if a converter for this `platform_id` is already registered.
     ///
     /// # Arguments
     ///
@@ -190,7 +190,7 @@ impl FormatRegistry {
     /// # Errors
     ///
     /// Returns `AugentError::DuplicateConverter` if a converter with
-    /// the same platform_id is already registered.
+    /// the same `platform_id` is already registered.
     ///
     /// # Example
     ///
@@ -235,7 +235,7 @@ impl FormatRegistry {
     /// # Errors
     ///
     /// Returns an error if any built-in converter fails to register
-    /// (e.g., duplicate platform_id).
+    /// (e.g., duplicate `platform_id`).
     pub fn register_builtins(&mut self) -> Result<()> {
         macro_rules! register_converters {
             ($($converter:expr),* $(,)?) => {

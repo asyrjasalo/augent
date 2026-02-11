@@ -36,11 +36,11 @@ use crate::error::{AugentError, Result};
 ///
 /// # Arguments
 ///
-/// * `resolved` - HashMap of all resolved bundles keyed by name
+/// * `resolved` - `HashMap` of all resolved bundles keyed by name
 ///
 /// # Returns
 ///
-/// A HashMap mapping bundle names to their dependency lists
+/// A `HashMap` mapping bundle names to their dependency lists
 ///
 /// # Example
 ///
@@ -77,7 +77,7 @@ pub fn build_dependency_list(
 ///
 /// # Arguments
 ///
-/// * `deps` - Dependency list (from build_dependency_list)
+/// * `deps` - Dependency list (from `build_dependency_list`)
 /// * `resolved` - All resolved bundles keyed by name
 ///
 /// # Errors
@@ -87,11 +87,11 @@ pub fn validate_dependencies(
     deps: &std::collections::HashMap<String, Vec<String>>,
     resolved: &std::collections::HashMap<String, ResolvedBundle>,
 ) -> Result<()> {
-    let resolved_keys: Vec<&str> = resolved.keys().map(|k| k.as_str()).collect();
+    let resolved_keys: Vec<&str> = resolved.keys().map(std::string::String::as_str).collect();
     for (name, bundle_deps) in deps {
         for dep_name in bundle_deps {
             if !resolved_keys.contains(&dep_name.as_str()) {
-                let resolved_names: Vec<&str> = resolved_keys.to_vec();
+                let resolved_names: Vec<&str> = resolved_keys.clone();
 
                 return Err(AugentError::BundleValidationFailed {
                     message: format!(
@@ -128,7 +128,7 @@ mod tests {
         ResolvedBundle {
             name: name.to_string(),
             dependency: None,
-            source_path: std::path::PathBuf::from(format!("/{}", name)),
+            source_path: std::path::PathBuf::from(format!("/{name}")),
             resolved_sha: None,
             resolved_ref: None,
             git_source: None,

@@ -45,9 +45,9 @@ fn create_and_add_index_entry(metadata: &BundleCacheMetadata) -> Result<()> {
     add_index_entry(IndexEntry {
         url: metadata.url.to_string(),
         sha: metadata.sha.to_string(),
-        path: metadata.path_opt.map(|s| s.to_string()),
+        path: metadata.path_opt.map(std::string::ToString::to_string),
         bundle_name: metadata.bundle_name.to_string(),
-        resolved_ref: metadata.resolved_ref.map(|s| s.to_string()),
+        resolved_ref: metadata.resolved_ref.map(std::string::ToString::to_string),
     })
 }
 
@@ -62,9 +62,9 @@ fn create_cache_entry_dir(entry_path: &Path) -> Result<()> {
 }
 
 fn copy_repository_to_cache(temp_dir: &Path, repo_dst: &Path) -> Result<()> {
-    copy_dir_recursive(temp_dir, repo_dst, CopyOptions::default()).map_err(|e| {
+    copy_dir_recursive(temp_dir, repo_dst, &CopyOptions::default()).map_err(|e| {
         AugentError::IoError {
-            message: format!("Failed to copy repository to cache: {}", e),
+            message: format!("Failed to copy repository to cache: {e}"),
             source: Some(Box::new(e)),
         }
     })
@@ -83,9 +83,9 @@ fn copy_content_to_resources(
             message: "Content destination path has no parent directory".to_string(),
         })?;
     fs::create_dir_all(parent).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to create content parent directory: {}", e),
+        message: format!("Failed to create content parent directory: {e}"),
     })?;
-    copy_dir_recursive(temp_dir, resources, CopyOptions::exclude_git())?;
+    copy_dir_recursive(temp_dir, resources, &CopyOptions::exclude_git())?;
 
     Ok(())
 }
@@ -138,19 +138,19 @@ mod tests {
     #[test]
     fn test_copy_dir_recursive() {
         let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
-            panic!("Failed to create temp directory: {}", e);
+            panic!("Failed to create temp directory: {e}");
         });
         let src = temp.path().join("src");
         let dst = temp.path().join("dst");
         fs::create_dir_all(&src).unwrap_or_else(|e| {
-            panic!("Failed to create src directory: {}", e);
+            panic!("Failed to create src directory: {e}");
         });
         fs::write(src.join("test.txt"), "hello").unwrap_or_else(|e| {
-            panic!("Failed to write test file: {}", e);
+            panic!("Failed to write test file: {e}");
         });
 
-        copy_dir_recursive(&src, &dst, CopyOptions::default()).unwrap_or_else(|e| {
-            panic!("Failed to copy directory recursively: {}", e);
+        copy_dir_recursive(&src, &dst, &CopyOptions::default()).unwrap_or_else(|e| {
+            panic!("Failed to copy directory recursively: {e}");
         });
         assert!(dst.join("test.txt").exists());
     }
@@ -158,22 +158,22 @@ mod tests {
     #[test]
     fn test_copy_dir_recursive_exclude_git() {
         let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
-            panic!("Failed to create temp directory: {}", e);
+            panic!("Failed to create temp directory: {e}");
         });
         let src = temp.path().join("src");
         let dst = temp.path().join("dst");
         fs::create_dir_all(&src).unwrap_or_else(|e| {
-            panic!("Failed to create src directory: {}", e);
+            panic!("Failed to create src directory: {e}");
         });
         fs::create_dir_all(src.join(".git")).unwrap_or_else(|e| {
-            panic!("Failed to create .git directory: {}", e);
+            panic!("Failed to create .git directory: {e}");
         });
         fs::write(src.join("test.txt"), "hello").unwrap_or_else(|e| {
-            panic!("Failed to write test file: {}", e);
+            panic!("Failed to write test file: {e}");
         });
 
-        copy_dir_recursive(&src, &dst, CopyOptions::exclude_git()).unwrap_or_else(|e| {
-            panic!("Failed to copy directory recursively: {}", e);
+        copy_dir_recursive(&src, &dst, &CopyOptions::exclude_git()).unwrap_or_else(|e| {
+            panic!("Failed to copy directory recursively: {e}");
         });
         assert!(dst.join("test.txt").exists());
         assert!(!dst.join(".git").exists());

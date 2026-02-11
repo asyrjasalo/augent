@@ -19,15 +19,14 @@ pub fn select_bundle_interactively(workspace: &Workspace) -> Result<String> {
 
     let items: Vec<String> = sorted_bundles.iter().map(|b| b.name.clone()).collect();
 
-    let selection = match Select::new("Select bundle to show", items)
+    let Some(selection) = Select::new("Select bundle to show", items)
         .with_starting_cursor(0)
         .with_page_size(10)
         .without_filtering()
         .with_help_message("↑↓ to move, ENTER to select, ESC/q to cancel")
         .prompt_skippable()?
-    {
-        Some(name) => name,
-        None => return Ok(String::new()),
+    else {
+        return Ok(String::new());
     };
 
     Ok(selection)
@@ -50,15 +49,14 @@ pub fn select_bundles_from_list(
     // Sort bundles alphabetically by name
     bundle_names.sort();
 
-    let selection = match Select::new("Select bundle to show", bundle_names)
+    let Some(selection) = Select::new("Select bundle to show", bundle_names)
         .with_starting_cursor(0)
         .with_page_size(10)
         .without_filtering()
         .with_help_message("↑↓ to move, ENTER to select, ESC/q to cancel")
         .prompt_skippable()?
-    {
-        Some(name) => name,
-        None => return Ok(String::new()),
+    else {
+        return Ok(String::new());
     };
 
     Ok(selection)

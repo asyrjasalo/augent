@@ -1,4 +1,4 @@
-//! LockedSource enum for lockfile
+//! `LockedSource` enum for lockfile
 //!
 //! Represents resolved source information for a bundle.
 

@@ -26,9 +26,9 @@ pub fn normalize_ssh_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
         let normalized_path = if path_part.starts_with('/') {
             path_part.to_string()
         } else {
-            format!("/{}", path_part)
+            format!("/{path_part}")
         };
-        return std::borrow::Cow::Owned(format!("ssh://{}{}", host_part, normalized_path));
+        return std::borrow::Cow::Owned(format!("ssh://{host_part}{normalized_path}"));
     }
 
     // No colon found, return as-is (shouldn't happen for valid SSH URLs)
@@ -37,8 +37,8 @@ pub fn normalize_ssh_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
 
 /// Normalize file:// URLs so libgit2 can resolve them on Unix.
 ///
-/// On Windows, file:// is not used: clone() uses a local copy instead because
-/// libgit2 mis-parses file://C:\path, file:///C:/path, and file:///C|/path.
+/// On Windows, file:// is not used: `clone()` uses a local copy instead because
+/// libgit2 mis-parses <file://C:\path>, <file:///C:/path>, and <file:///C|/path>.
 pub fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     if !url.starts_with("file://") {
         return std::borrow::Cow::Borrowed(url);
@@ -48,10 +48,10 @@ pub fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
         let after = &url[7..]; // after "file://"
         if after.contains('\\') {
             let path = after.replace('\\', "/");
-            return std::borrow::Cow::Owned(format!("file:///{}", path));
+            return std::borrow::Cow::Owned(format!("file:///{path}"));
         }
         if !after.is_empty() && !after.starts_with('/') {
-            return std::borrow::Cow::Owned(format!("file:///{}", after));
+            return std::borrow::Cow::Owned(format!("file:///{after}"));
         }
     }
     std::borrow::Cow::Borrowed(url)

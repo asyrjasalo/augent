@@ -16,7 +16,7 @@ fn create_bundle_not_found_error(git_source: &GitSource) -> AugentError {
     let ref_suffix = git_source
         .git_ref
         .as_deref()
-        .map(|r| format!("@{}", r))
+        .map(|r| format!("@{r}"))
         .unwrap_or_default();
     let bundle_name = git_source.path.as_deref().unwrap_or("");
     AugentError::BundleNotFound {
@@ -47,7 +47,7 @@ fn create_resolved_bundle(info: BundleBuildInfo, git_source: &GitSource) -> Reso
     }
 }
 
-/// Resolve a git bundle from a GitSource
+/// Resolve a git bundle from a `GitSource`
 ///
 /// # Arguments
 ///
@@ -74,7 +74,7 @@ pub fn resolve_git(
         return Err(create_bundle_not_found_error(git_source));
     }
 
-    let name = determine_bundle_name(git_source, dependency, &None);
+    let name = determine_bundle_name(git_source, dependency, None);
 
     crate::resolver::validation::check_cycle(&name, resolution_stack)?;
 
@@ -104,7 +104,7 @@ pub fn resolve_git(
 fn determine_bundle_name(
     git_source: &GitSource,
     dependency: Option<&BundleDependency>,
-    config: &Option<crate::config::BundleConfig>,
+    config: Option<&crate::config::BundleConfig>,
 ) -> String {
     let base_name = string_utils::parse_git_url_to_repo_base(&git_source.url);
 
@@ -112,18 +112,17 @@ fn determine_bundle_name(
         Some(dep) => dep.name.clone(),
         None => match &git_source.path {
             Some(path_val) if path_val.starts_with("$claudeplugin/") => {
-                let bundle_name = match path_val.strip_prefix("$claudeplugin/") {
-                    Some(name) => name,
-                    None => return String::new(),
+                let Some(bundle_name) = path_val.strip_prefix("$claudeplugin/") else {
+                    return String::new();
                 };
-                format!("{}/{}", base_name, bundle_name)
+                format!("{base_name}/{bundle_name}")
             }
             Some(path_val) => {
                 if let Some(_cfg) = &config {
                     let bundle_name = path_val.split('/').next_back().unwrap_or(path_val);
-                    format!("{}/{}", base_name, bundle_name)
+                    format!("{base_name}/{bundle_name}")
                 } else {
-                    format!("{}:{}", base_name, path_val)
+                    format!("{base_name}:{path_val}")
                 }
             }
             None => base_name,

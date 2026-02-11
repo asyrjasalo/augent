@@ -6,14 +6,14 @@
 //! ## Usage
 //!
 //! \`\`\`ignore
-//! let mut transaction = Transaction::new(&workspace);
-//! transaction.backup_configs()?;
+//! let mut transaction = `Transaction::new(&workspace)`;
+//! `transaction.backup_configs()`?;
 //!
 //! // Perform operations...
-//! transaction.track_file_created(path);
+//! `transaction.track_file_created(path)`;
 //!
 //! // On success:
-//! transaction.commit();
+//! `transaction.commit()`;
 //!
 //! // On error (automatic via Drop if not committed):
 //! // rollback happens automatically
@@ -118,17 +118,15 @@ impl Transaction {
     }
 
     /// Manually trigger a rollback
-    pub fn rollback(&mut self) -> Result<()> {
+    pub fn rollback(&mut self) {
         if self.committed {
-            return Ok(());
+            return;
         }
 
         Self::remove_created_files(&self.created_files);
         Self::restore_file_backups(&self.modified_files);
         Self::remove_empty_created_dirs(&self.created_dirs);
         Self::restore_config_backups(&self.config_backups);
-
-        Ok(())
     }
 
     fn remove_created_files(files: &HashSet<PathBuf>) {
@@ -188,8 +186,9 @@ impl Drop for Transaction {
     fn drop(&mut self) {
         if !self.committed && self.rollback_enabled {
             // Automatic rollback on drop if not committed
-            if let Err(e) = self.rollback() {
-                eprintln!("Warning: Rollback failed: {}", e);
+            if !self.committed && self.rollback_enabled {
+                // Automatic rollback on drop if not committed
+                self.rollback();
             }
         }
     }

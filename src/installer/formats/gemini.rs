@@ -5,6 +5,7 @@
 //! - Universal merged frontmatter → TOML format
 //! - TOML string escaping
 
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use crate::error::{AugentError, Result};
@@ -19,7 +20,7 @@ use super::super::parser;
 pub struct GeminiConverter;
 
 impl FormatConverter for GeminiConverter {
-    fn platform_id(&self) -> &str {
+    fn platform_id(&self) -> &'static str {
         "gemini"
     }
 
@@ -36,7 +37,7 @@ impl FormatConverter for GeminiConverter {
             })?;
 
         let (description, prompt) = parser::extract_description_and_prompt(&content);
-        let toml_content = build_toml_content(description, &prompt);
+        let toml_content = build_toml_content(description.as_deref(), &prompt);
 
         let toml_target = apply_extension(ctx.target, self.file_extension());
         crate::installer::formats::write_content_to_file(&toml_target, &toml_content)
@@ -49,7 +50,7 @@ impl FormatConverter for GeminiConverter {
         ctx: FormatConverterContext,
     ) -> Result<()> {
         let description = crate::universal::get_str(merged, "description");
-        let toml_content = build_toml_content(description, body);
+        let toml_content = build_toml_content(description.as_deref(), body);
 
         let toml_target = apply_extension(ctx.target, self.file_extension());
         crate::installer::formats::write_content_to_file(&toml_target, &toml_content)
@@ -64,18 +65,22 @@ impl FormatConverter for GeminiConverter {
     }
 }
 
-fn build_toml_content(description: Option<String>, prompt: &str) -> String {
+fn build_toml_content(description: Option<&str>, prompt: &str) -> String {
     let mut toml_content = String::new();
 
-    if let Some(desc) = description.as_ref() {
-        toml_content.push_str(&format!("description = {}\n", escape_toml_string(desc)));
+    if let Some(desc) = description {
+        if let Err(e) = writeln!(toml_content, "description = {}", escape_toml_string(desc)) {
+            eprintln!("Failed to write to TOML content: {e}");
+        }
     }
 
     let is_multiline = prompt.contains('\n');
     if is_multiline {
-        toml_content.push_str(&format!("prompt = \"\"\"\n{}\"\"\"\n", &prompt));
-    } else {
-        toml_content.push_str(&format!("prompt = {}\n", escape_toml_string(prompt)));
+        if let Err(e) = writeln!(toml_content, "prompt = \"\"\"\n{prompt}\"\"\"\n") {
+            eprintln!("Failed to write to TOML content: {e}");
+        }
+    } else if let Err(e) = writeln!(toml_content, "prompt = {}", escape_toml_string(prompt)) {
+        eprintln!("Failed to write to TOML content: {e}");
     }
 
     toml_content
@@ -100,13 +105,14 @@ pub fn escape_toml_string(s: &str) -> String {
             '\r' => escaped.push_str("\\r"),
             '\t' => escaped.push_str("\\t"),
             '\x00'..='\x08' | '\x0B' | '\x0C' | '\x0E'..='\x1F' => {
-                escaped.push_str(&format!("\\x{:02X}", c as u8));
+                use std::fmt::Write;
+                let _ = write!(escaped, "\\x{:02X}", c as u8);
             }
             _ => escaped.push(c),
         }
     }
 
-    format!("\"{}\"", escaped)
+    format!("\"{escaped}\"")
 }
 
 #[cfg(test)]
@@ -185,7 +191,8 @@ mod tests {
 
     #[test]
     fn test_build_toml_content() {
-        let result = build_toml_content(Some("Test description".to_string()), "Single line");
+        let test_desc = "Test description";
+        let result = build_toml_content(Some(test_desc), "Single line");
         assert!(result.contains("description ="));
         assert!(result.contains("Test description"));
         assert!(result.contains("prompt ="));

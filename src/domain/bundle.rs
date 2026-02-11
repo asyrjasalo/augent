@@ -54,9 +54,9 @@ impl ResourceCounts {
             .filter(|(_, count)| *count > 0)
             .map(|(name, count)| {
                 if *count == 1 {
-                    format!("1 {}", name)
+                    format!("1 {name}")
                 } else {
-                    format!("{} {}s", count, name)
+                    format!("{count} {name}s")
                 }
             })
             .collect();
@@ -69,9 +69,7 @@ impl ResourceCounts {
     }
 
     #[allow(dead_code)]
-    pub fn validate(&self) -> Result<(), String> {
-        Ok(())
-    }
+    pub fn validate() {}
 }
 
 /// A resolved bundle with all information needed for installation
@@ -127,7 +125,8 @@ impl DiscoveredBundle {
                 self.path.display()
             ));
         }
-        self.resource_counts.validate()
+        ResourceCounts::validate();
+        Ok(())
     }
 }
 

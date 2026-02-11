@@ -36,7 +36,7 @@
 //! The installer is organized into specialized submodules:
 //!
 //! - **discovery**: Resource discovery and filtering in bundle directories
-//! - **file_ops**: Basic file operations (copy, merge, read, write)
+//! - **`file_ops`**: Basic file operations (copy, merge, read, write)
 //! - **detection**: Platform directory and binary file detection
 //! - **parser**: Frontmatter parsing for platform-specific metadata
 //! - **writer**: Output writing for processed content
@@ -242,7 +242,7 @@ impl<'a> Installer<'a> {
         }
     }
 
-    pub fn discover_resources_internal(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
+    pub fn discover_resources_internal(bundle_path: &Path) -> Vec<DiscoveredResource> {
         discovery::discover_resources(bundle_path)
     }
 
@@ -262,10 +262,10 @@ impl<'a> Installer<'a> {
     }
 
     fn install_resource_for_platform(
-        ctx: ResourceInstallContext<'_, '_>,
+        ctx: &ResourceInstallContext<'_, '_>,
         resource: &DiscoveredResource,
         installed_files: &mut HashMap<String, InstalledFile>,
-        format_registry: Arc<FormatRegistry>,
+        format_registry: &Arc<FormatRegistry>,
     ) -> Result<()> {
         crate::installer::file_ops::copy_file(
             &resource.absolute_path,
@@ -291,7 +291,7 @@ impl<'a> Installer<'a> {
     }
 
     pub fn install_bundle(&mut self, bundle: &ResolvedBundle) -> Result<WorkspaceBundle> {
-        let resources = Installer::discover_resources_internal(&bundle.source_path)?;
+        let resources = Installer::discover_resources_internal(&bundle.source_path);
         let resources = discovery::filter_skills_resources(resources);
 
         let mut installed_files = HashMap::new();
@@ -309,10 +309,10 @@ impl<'a> Installer<'a> {
                         resource_type: &resource.resource_type,
                     };
                     Self::install_resource_for_platform(
-                        ctx,
+                        &ctx,
                         resource,
                         &mut installed_files,
-                        self.format_registry.clone(),
+                        &self.format_registry,
                     )?;
                 }
             }

@@ -54,18 +54,18 @@
 //!
 //! Each major concern has a dedicated coordinator struct:
 //!
-//! - **InstallOperation**: Main workflow coordinator
-//! - **InstallContext**: Shared context for all coordinators
-//! - **InstallResolver**: Install-specific resolution coordinator
+//! - **`InstallOperation`**: Main workflow coordinator
+//! - **`InstallContext`**: Shared context for all coordinators
+//! - **`InstallResolver`**: Install-specific resolution coordinator
 //!
 //! Each major concern has a dedicated coordinator struct:
 //!
-//! - **InstallOperation**: Main workflow coordinator
-//! - **InstallContext**: Shared context for all coordinators
-//! - **InstallResolver**: Install-specific resolution coordinator
-//! - **ExecutionOrchestrator**: Installation execution coordinator
-//! - **WorkspaceManager**: Workspace operations coordinator
-//! - **NameFixer**: Bundle name handling coordinator
+//! - **`InstallOperation`**: Main workflow coordinator
+//! - **`InstallContext`**: Shared context for all coordinators
+//! - **`InstallResolver`**: Install-specific resolution coordinator
+//! - **`ExecutionOrchestrator`**: Installation execution coordinator
+//! - **`WorkspaceManager`**: Workspace operations coordinator
+//! - **`NameFixer`**: Bundle name handling coordinator
 //!
 //! This pattern ensures clear separation of concerns and makes testing easier.
 //!

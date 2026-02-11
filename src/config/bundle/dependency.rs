@@ -1,4 +1,4 @@
-//! BundleDependency struct for bundle configuration
+//! `BundleDependency` struct for bundle configuration
 //!
 //! A dependency declaration in augent.yaml
 

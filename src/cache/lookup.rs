@@ -10,7 +10,7 @@ use super::paths::SYNTHETIC_DIR;
 use std::path::Path;
 use std::path::PathBuf;
 
-/// Extract plugin name from \$claudeplugin/path (e.g. "\$claudeplugin/ai-ml-toolkit" -> "ai-ml-toolkit").
+/// Extract plugin name from `\$claudeplugin`/path (e.g. "\$claudeplugin/ai-ml-toolkit" -> "ai-ml-toolkit").
 pub fn marketplace_plugin_name(path: Option<&str>) -> Option<&str> {
     path.and_then(|p| p.strip_prefix(r"\$claudeplugin/"))
 }
@@ -20,16 +20,20 @@ pub fn index_lookup(
     url: &str,
     sha: &str,
     path: Option<&str>,
-) -> Result<Option<(String, Option<String>)>> {
+) -> Option<(PathBuf, String, Option<String>)> {
     use super::index::index_lookup;
 
     let entries = index_lookup(url, sha);
     for e in &entries {
         if e.path.as_deref() == path {
-            return Ok(Some((e.bundle_name.clone(), e.resolved_ref.clone())));
+            return Some((
+                e.bundle_name.clone().into(),
+                sha.to_string(),
+                e.resolved_ref.clone(),
+            ));
         }
     }
-    Ok(None)
+    None
 }
 
 /// Resolve content path for a cached bundle
@@ -37,16 +41,14 @@ fn resolve_content_path(_entry_path: &Path, resources: &Path, path_opt: Option<&
     if let Some(name) = marketplace_plugin_name(path_opt) {
         resources.join(SYNTHETIC_DIR).join(name)
     } else {
-        path_opt
-            .map(|p| resources.join(p))
-            .unwrap_or_else(|| resources.to_path_buf())
+        path_opt.map_or_else(|| resources.to_path_buf(), |p| resources.join(p))
     }
 }
 
 /// Get a cached bundle if it exists (lookup by url, sha, path in index).
 ///
-/// Returns (content_path, sha, resolved_ref) or None if not cached.
-/// Repo-level: content_path = resources/ or resources/<path>. \$claudeplugin: per-bundle entry.
+/// Returns (`content_path`, sha, `resolved_ref`) or None if not cached.
+/// Repo-level: `content_path` = resources/ or resources/<path>. `\$claudeplugin`: per-bundle entry.
 pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<String>)>> {
     let sha = source
         .resolved_sha
@@ -55,9 +57,9 @@ pub fn get_cached(source: &GitSource) -> Result<Option<(PathBuf, String, Option<
             message: "get_cached requires resolved_sha".to_string(),
         })?;
     let path_opt = source.path.as_deref();
-    let (_bundle_name, resolved_ref) = match index_lookup(&source.url, sha, path_opt)? {
-        Some(result) => result,
-        None => return Ok(None),
+    let resolved_ref = match index_lookup(&source.url, sha, path_opt) {
+        Some((_, _, ref_val)) => ref_val,
+        None => None,
     };
 
     let entry_path = super::paths::repo_cache_entry_path(&source.url, sha)?;
@@ -89,8 +91,6 @@ mod tests {
     #[test]
     fn test_index_lookup_not_found() {
         let result = index_lookup("https://github.com/test/repo", "abc123", None);
-        assert!(result.is_ok());
-        let inner = result.unwrap();
-        assert!(inner.is_none());
+        assert!(result.is_none());
     }
 }

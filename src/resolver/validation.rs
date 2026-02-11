@@ -54,7 +54,7 @@ fn resolve_workspace_canonical(workspace_root: &Path) -> Result<PathBuf> {
         .map_err(|_| AugentError::BundleValidationFailed {
             message: "Workspace root cannot be resolved.".to_string(),
         })
-        .map(|p| p.into_path_buf())
+        .map(normpath::BasePathBuf::into_path_buf)
 }
 
 fn canonicalize_parent_with_filename(path: &Path) -> Option<PathBuf> {
@@ -66,8 +66,7 @@ fn canonicalize_parent_with_filename(path: &Path) -> Option<PathBuf> {
 
 fn normalize_or_as_path(path: &Path) -> PathBuf {
     path.normalize()
-        .map(|p| p.into_path_buf())
-        .unwrap_or_else(|_| path.to_path_buf())
+        .map_or_else(|_| path.to_path_buf(), normpath::BasePathBuf::into_path_buf)
 }
 
 fn try_canonicalize_variants(path: &Path) -> Option<PathBuf> {
@@ -79,7 +78,12 @@ fn try_canonicalize_variants(path: &Path) -> Option<PathBuf> {
         return Some(result);
     }
 
-    Some(normalize_or_as_path(path))
+    let normalized = normalize_or_as_path(path);
+    if normalized.as_os_str().is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
 }
 
 fn resolve_full_path_canonical(full_path: &Path, workspace_canonical: &Path) -> PathBuf {
@@ -103,7 +107,9 @@ fn check_path_within_workspace(
     workspace_canonical: &Path,
     user_path: &Path,
 ) -> Result<()> {
-    if !full_canonical.starts_with(workspace_canonical) {
+    if full_canonical.starts_with(workspace_canonical) {
+        Ok(())
+    } else {
         Err(AugentError::BundleValidationFailed {
             message: format!(
                 "Local bundle path '{}' resolves to '{}' which is outside of repository at '{}'. \
@@ -113,8 +119,6 @@ fn check_path_within_workspace(
                 workspace_canonical.display()
             ),
         })
-    } else {
-        Ok(())
     }
 }
 

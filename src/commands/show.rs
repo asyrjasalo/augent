@@ -7,13 +7,13 @@ use crate::workspace;
 
 /// Run the show command
 ///
-/// This is a thin CLI wrapper that delegates to ShowOperation.
+/// This is a thin CLI wrapper that delegates to `ShowOperation`.
 pub fn run(workspace: Option<std::path::PathBuf>, args: ShowArgs) -> Result<()> {
     let current_dir = match workspace {
         Some(path) => path,
         None => {
             std::env::current_dir().map_err(|e| crate::error::AugentError::WorkspaceNotFound {
-                path: format!("Failed to get current directory: {}", e),
+                path: format!("Failed to get current directory: {e}"),
             })?
         }
     };

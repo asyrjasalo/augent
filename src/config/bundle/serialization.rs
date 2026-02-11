@@ -1,4 +1,4 @@
-//! Serialization implementations for BundleConfig
+//! Serialization implementations for `BundleConfig`
 
 use crate::config::utils::count_optional_fields;
 use serde::ser::SerializeStruct;
@@ -12,9 +12,9 @@ macro_rules! serialize_optional_field {
     };
 }
 
-/// Serialize BundleConfig (empty name field, name injected externally)
+/// Serialize `BundleConfig` (empty name field, name injected externally)
 pub fn serialize_bundle_config<S>(
-    _config: &BundleConfigData,
+    config: &BundleConfigData,
     serializer: S,
 ) -> std::result::Result<S::Ok, S::Error>
 where
@@ -27,9 +27,15 @@ where
         license,
         homepage,
         bundles,
-    } = _config;
+    } = config;
 
-    let optional_count = count_optional_fields(description, version, author, license, homepage);
+    let optional_count = count_optional_fields(
+        description.as_ref(),
+        version.as_ref(),
+        author.as_ref(),
+        license.as_ref(),
+        homepage.as_ref(),
+    );
     let field_count = 2 + optional_count;
 
     let mut state = serializer.serialize_struct("BundleConfig", field_count)?;
@@ -44,7 +50,7 @@ where
     state.end()
 }
 
-/// Deserialize BundleConfig (skip name field, read from filesystem)
+/// Deserialize `BundleConfig` (skip name field, read from filesystem)
 pub fn deserialize_bundle_config<'de, D>(
     deserializer: D,
 ) -> std::result::Result<BundleConfigData, D::Error>
@@ -78,7 +84,7 @@ where
     })
 }
 
-/// Internal struct to hold BundleConfig fields
+/// Internal struct to hold `BundleConfig` fields
 pub struct BundleConfigData {
     pub description: Option<String>,
     pub version: Option<String>,

@@ -1,6 +1,6 @@
 //! Git source handling
 //!
-//! This module provides GitSource struct and URL parsing logic for Git repositories.
+//! This module provides `GitSource` struct and URL parsing logic for Git repositories.
 
 use crate::error::{AugentError, Result};
 use crate::git::url_parser;
@@ -57,7 +57,7 @@ impl GitSource {
         // Check for GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
         if let Some((owner, repo, git_ref, path_val)) = url_parser::parse_github_web_ui_url(input) {
             return Ok(Self {
-                url: format!("https://github.com/{}/{}.git", owner, repo),
+                url: format!("https://github.com/{owner}/{repo}.git"),
                 git_ref: Some(git_ref),
                 path: path_val,
                 resolved_sha: None,
@@ -81,7 +81,7 @@ impl GitSource {
     }
 
     /// Parse path separator handling when main part has no fragment
-    /// Returns (optional_path, optional_ref, url_part_for_parsing)
+    /// Returns (`optional_path`, `optional_ref`, `url_part_for_parsing`)
     fn parse_path_without_fragment<'a>(
         main_part: &'a str,
         ref_part: Option<&'a str>,
@@ -97,17 +97,17 @@ impl GitSource {
     /// Parse URL portion (without fragment)
     fn parse_url(input: &str) -> Result<String> {
         if let Some(rest) = input.strip_prefix("github:") {
-            return Ok(format!("https://github.com/{}.git", rest));
+            return Ok(format!("https://github.com/{rest}.git"));
         }
 
         if let Some(rest) = input.strip_prefix('@') {
             if Self::is_github_shorthand(rest) {
-                return Ok(format!("https://github.com/{}.git", rest));
+                return Ok(format!("https://github.com/{rest}.git"));
             }
         }
 
         if Self::is_github_shorthand(input) {
-            return Ok(format!("https://github.com/{}.git", input));
+            return Ok(format!("https://github.com/{input}.git"));
         }
 
         if input.starts_with("https://")
@@ -135,7 +135,7 @@ impl GitSource {
             .replace(".git", "");
 
         match &self.resolved_sha {
-            Some(sha) => format!("{}/{}", url_slug, sha),
+            Some(sha) => format!("{url_slug}/{sha}"),
             None => url_slug,
         }
     }

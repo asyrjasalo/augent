@@ -11,8 +11,8 @@
 //!
 //! ## Module Organization
 //!
-//! - `bundle_source.rs`: BundleSource enum and parsing
-//! - `git_source.rs`: GitSource struct and URL parsing
+//! - `bundle_source.rs`: `BundleSource` enum and parsing
+//! - `git_source.rs`: `GitSource` struct and URL parsing
 //! - `bundle.rs`: Fully resolved bundle model with validation
 
 pub mod bundle;

@@ -180,7 +180,7 @@ mod tests {
         assert!(dep.validate().is_ok());
 
         let dep2 = BundleDependency {
-            name: "".to_string(),
+            name: String::new(),
             git: None,
             git_ref: None,
             path: None,

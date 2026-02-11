@@ -51,13 +51,13 @@ pub struct GitBundleContext<'a> {
 pub fn create_cache_metadata<'a>(
     bundle_name: &'a str,
     ctx: &'a GitBundleContext<'_>,
-    subdirectory: &'a Option<String>,
+    subdirectory: Option<&'a String>,
 ) -> crate::cache::populate::BundleCacheMetadata<'a> {
     crate::cache::populate::BundleCacheMetadata {
         bundle_name,
         sha: ctx.sha,
         url: &ctx.source.url,
-        path_opt: subdirectory.as_deref(),
+        path_opt: subdirectory.map(|x| x.as_str()),
         resolved_ref: ctx.resolved_ref.as_deref(),
     }
 }
@@ -104,18 +104,18 @@ pub fn process_git_bundle(bundle: &mut DiscoveredBundle, ctx: &GitBundleContext<
             ctx.repo_path,
             ctx.content_path,
             bundle,
-            &ctx.marketplace_config.as_ref(),
+            ctx.marketplace_config.as_ref(),
             ctx.source,
         );
 
     let (bundle_content_path, _synthetic_guard) = helpers::create_synthetic_bundle_if_marketplace(
         ctx.repo_path,
         bundle,
-        subdirectory.clone(),
+        subdirectory.clone().as_ref(),
         ctx.source,
     )?;
 
-    let metadata = create_cache_metadata(&bundle_name_for_cache, ctx, &subdirectory);
+    let metadata = create_cache_metadata(&bundle_name_for_cache, ctx, subdirectory.as_ref());
     cache::ensure_bundle_cached(&metadata, ctx.repo_path, &bundle_content_path)?;
 
     update_bundle_git_source(bundle, ctx, subdirectory);

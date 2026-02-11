@@ -15,7 +15,6 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::domain::DiscoveredResource;
-use crate::error::Result;
 
 /// Known resource directories in bundles
 const RESOURCE_DIRS: &[&str] = &["commands", "rules", "agents", "skills", "root"];
@@ -32,7 +31,7 @@ fn discover_files_in_resource_dir(bundle_path: &Path, dir_name: &str) -> Vec<Dis
     WalkDir::new(&dir_path)
         .follow_links(true)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
         .map(|entry| {
             let absolute_path = entry.path().to_path_buf();
@@ -63,7 +62,7 @@ fn discover_root_files(bundle_path: &Path) -> Vec<DiscoveredResource> {
 }
 
 /// Discover all resource files in a bundle directory
-pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>> {
+pub fn discover_resources(bundle_path: &Path) -> Vec<DiscoveredResource> {
     let mut resources = Vec::new();
 
     for dir_name in RESOURCE_DIRS {
@@ -72,7 +71,7 @@ pub fn discover_resources(bundle_path: &Path) -> Result<Vec<DiscoveredResource>>
 
     resources.extend(discover_root_files(bundle_path));
 
-    Ok(resources)
+    resources
 }
 
 /// Collect all skill directories that contain SKILL.md files
@@ -97,7 +96,7 @@ fn find_leaf_dirs(all_dirs: &HashSet<String>) -> HashSet<String> {
         .filter(|dir| {
             !all_dirs
                 .iter()
-                .any(|other| *other != **dir && other.starts_with(&format!("{}/", dir)))
+                .any(|other| *other != **dir && other.starts_with(&format!("{dir}/")))
         })
         .cloned()
         .collect()
@@ -107,7 +106,7 @@ fn find_leaf_dirs(all_dirs: &HashSet<String>) -> HashSet<String> {
 fn is_in_leaf_dir(path_str: &str, leaf_dirs: &HashSet<String>) -> bool {
     leaf_dirs
         .iter()
-        .any(|skill_dir| path_str == *skill_dir || path_str.starts_with(&format!("{}/", skill_dir)))
+        .any(|skill_dir| path_str == *skill_dir || path_str.starts_with(&format!("{skill_dir}/")))
 }
 
 /// Filter skills so we only install leaf directories that contain a SKILL.md.
@@ -184,7 +183,7 @@ mod tests {
             .expect("Failed to write debug.md");
         fs::write(commands_dir.join("test.md"), "# Test command").expect("Failed to write test.md");
 
-        let resources = discover_resources(temp.path()).expect("Failed to discover resources");
+        let resources = discover_resources(temp.path());
         assert_eq!(resources.len(), 2);
         assert!(
             resources
@@ -206,7 +205,7 @@ mod tests {
         fs::write(temp.path().join("AGENTS.md"), "# Agents").expect("Failed to write AGENTS.md");
         fs::write(temp.path().join("mcp.jsonc"), "{}").expect("Failed to write mcp.jsonc");
 
-        let resources = discover_resources(temp.path()).expect("Failed to discover resources");
+        let resources = discover_resources(temp.path());
         assert_eq!(resources.len(), 2);
     }
 

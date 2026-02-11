@@ -1,4 +1,4 @@
-//! Serialization implementations for WorkspaceConfig
+//! Serialization implementations for `WorkspaceConfig`
 
 use serde::de::MapAccess;
 use serde::de::Visitor;
@@ -6,7 +6,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserializer, Serializer};
 use std::fmt;
 
-/// Serialize WorkspaceConfig (empty name field, name injected externally)
+/// Serialize `WorkspaceConfig` (empty name field, name injected externally)
 pub fn serialize_workspace_config<S>(
     bundles: &[super::bundle::WorkspaceBundle],
     serializer: S,
@@ -21,7 +21,7 @@ where
     state.end()
 }
 
-/// Deserialize WorkspaceConfig (skip name field, read from filesystem)
+/// Deserialize `WorkspaceConfig` (skip name field, read from filesystem)
 pub fn deserialize_workspace_config<'de, D>(
     deserializer: D,
 ) -> std::result::Result<Vec<super::bundle::WorkspaceBundle>, D::Error>

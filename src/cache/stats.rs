@@ -33,9 +33,10 @@ impl CachedBundle {
 }
 
 fn format_size_human_readable(size_bytes: u64) -> String {
+    #[allow(clippy::cast_precision_loss)]
     let size = size_bytes as f64;
     if size < 1024.0 {
-        format!("{} B", size_bytes)
+        format!("{size_bytes} B")
     } else if size < 1024.0 * 1024.0 {
         format!("{:.1} KB", size / 1024.0)
     } else if size < 1024.0 * 1024.0 * 1024.0 {
@@ -88,13 +89,13 @@ pub fn list_cached_bundles() -> Result<Vec<CachedBundle>> {
     }
 
     let entries = fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read cache directory: {}", e),
+        message: format!("Failed to read cache directory: {e}"),
     })?;
 
     let mut sha_bundles = Vec::new();
     for entry in entries {
         let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read entry: {}", e),
+            message: format!("Failed to read entry: {e}"),
         })?;
 
         if !entry.path().is_dir() {
@@ -124,10 +125,10 @@ fn collect_sha_bundles(entry_path: &Path) -> Result<Vec<ShaBundleStats>> {
     let mut bundles = Vec::new();
 
     for sha_entry in fs::read_dir(entry_path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read SHA directory: {}", e),
+        message: format!("Failed to read SHA directory: {e}"),
     })? {
         let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read SHA entry: {}", e),
+            message: format!("Failed to read SHA entry: {e}"),
         })?;
 
         if !sha_entry.path().is_dir() {
@@ -143,12 +144,12 @@ fn collect_sha_bundles(entry_path: &Path) -> Result<Vec<ShaBundleStats>> {
     Ok(bundles)
 }
 
-/// Read bundle name from BUNDLE_NAME_FILE
+/// Read bundle name from `BUNDLE_NAME_FILE`
 fn read_bundle_name(entry_path: &Path) -> Result<String> {
     fs::read_to_string(entry_path.join(BUNDLE_NAME_FILE))
         .map(|s| s.trim().to_string())
         .map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read bundle name: {}", e),
+            message: format!("Failed to read bundle name: {e}"),
         })
 }
 
@@ -165,12 +166,12 @@ pub fn remove_cached_bundle(bundle_name: &str) -> Result<()> {
 
     if !path.exists() {
         return Err(AugentError::CacheOperationFailed {
-            message: format!("Bundle not found in cache: {}", bundle_name),
+            message: format!("Bundle not found in cache: {bundle_name}"),
         });
     }
 
     fs::remove_dir_all(&path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to remove cached bundle: {}", e),
+        message: format!("Failed to remove cached bundle: {e}"),
     })?;
 
     // Remove index entries
@@ -196,10 +197,10 @@ pub fn cache_stats() -> Result<CacheStats> {
     let mut stats = CacheStats::default();
 
     for entry in fs::read_dir(&path).map_err(|e| AugentError::CacheOperationFailed {
-        message: format!("Failed to read cache directory: {}", e),
+        message: format!("Failed to read cache directory: {e}"),
     })? {
         let entry = entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read entry: {}", e),
+            message: format!("Failed to read entry: {e}"),
         })?;
 
         if entry.path().is_dir() {
@@ -212,14 +213,13 @@ pub fn cache_stats() -> Result<CacheStats> {
 }
 
 fn count_entries_in_dir(entry_path: &Path, stats: &mut CacheStats) {
-    let sha_entries = match fs::read_dir(entry_path) {
-        Ok(entries) => entries,
-        Err(_) => return,
+    let Ok(sha_entries) = fs::read_dir(entry_path) else {
+        return;
     };
 
     for sha_entry in sha_entries {
         let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to read SHA entry: {}", e),
+            message: format!("Failed to read SHA entry: {e}"),
         });
 
         if let Ok(entry) = sha_entry {
@@ -242,13 +242,13 @@ pub fn clear_cache() -> Result<()> {
     let path = super::bundles_cache_dir()?;
     if path.exists() {
         fs::remove_dir_all(&path).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to clear cache: {}", e),
+            message: format!("Failed to clear cache: {e}"),
         })?;
     }
     let index_path = super::cache_dir()?.join(super::index::INDEX_FILE);
     if index_path.exists() {
         fs::remove_file(&index_path).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to remove cache index: {}", e),
+            message: format!("Failed to remove cache index: {e}"),
         })?;
     }
     super::index::invalidate_index_cache();
@@ -261,13 +261,13 @@ fn dir_size(path: &Path) -> Result<u64> {
     for entry in WalkDir::new(path)
         .follow_links(false)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
     {
         if entry.file_type().is_file() {
             size += entry
                 .metadata()
                 .map_err(|e| AugentError::CacheOperationFailed {
-                    message: format!("Failed to get metadata: {}", e),
+                    message: format!("Failed to get metadata: {e}"),
                 })?
                 .len();
         }

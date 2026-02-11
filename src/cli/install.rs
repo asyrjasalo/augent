@@ -2,6 +2,7 @@ use clap::Parser;
 
 /// Arguments for the install command
 #[derive(Parser, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 #[command(after_help = "EXAMPLES:\n  \
                    Install from GitHub:\n    augent install @author/bundle\n    \
                    augent install github:author/bundle\n\n\
@@ -47,7 +48,7 @@ mod tests {
     fn test_cli_parsing_install() {
         let cli = super::super::Cli::try_parse_from(["augent", "install", "github:author/bundle"])
             .unwrap_or_else(|e| {
-                panic!("Failed to parse CLI arguments: {}", e);
+                panic!("Failed to parse CLI arguments: {e}");
             });
         match cli.command {
             super::super::Commands::Install(args) => {
@@ -62,7 +63,7 @@ mod tests {
     #[test]
     fn test_cli_parsing_install_no_source() {
         let cli = super::super::Cli::try_parse_from(["augent", "install"]).unwrap_or_else(|e| {
-            panic!("Failed to parse CLI arguments: {}", e);
+            panic!("Failed to parse CLI arguments: {e}");
         });
         match cli.command {
             super::super::Commands::Install(args) => {
@@ -87,7 +88,7 @@ mod tests {
             "--frozen",
         ])
         .unwrap_or_else(|e| {
-            panic!("Failed to parse CLI arguments: {}", e);
+            panic!("Failed to parse CLI arguments: {e}");
         });
         match cli.command {
             super::super::Commands::Install(args) => {
@@ -105,7 +106,7 @@ mod tests {
         let cli =
             super::super::Cli::try_parse_from(["augent", "install", "./local-bundle", "--dry-run"])
                 .unwrap_or_else(|e| {
-                    panic!("Failed to parse CLI arguments: {}", e);
+                    panic!("Failed to parse CLI arguments: {e}");
                 });
         match cli.command {
             super::super::Commands::Install(args) => {

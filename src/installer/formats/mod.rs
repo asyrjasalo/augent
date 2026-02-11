@@ -17,7 +17,7 @@
 //! - **junie**: Rules composite merge to guidelines.md
 //! - **kilo**: Basic file passthrough for Kilo Code
 //! - **kiro**: Basic file passthrough for Kiro
-//! - **opencode**: Frontmatter adjustments for OpenCode skills/commands/agents
+//! - **opencode**: Frontmatter adjustments for `OpenCode` skills/commands/agents
 //! - **qwen**: AGENTS.md → QWEN.md with composite merge
 //! - **roo**: Basic file passthrough for Roo Code
 //! - **warp**: AGENTS.md → WARP.md with composite merge
@@ -55,7 +55,7 @@ use crate::error::Result;
 use crate::installer::formats::plugin::FormatConverterContext;
 
 /// Helper function to copy markdown file content with error handling
-pub fn copy_markdown_file(ctx: FormatConverterContext) -> Result<()> {
+pub fn copy_markdown_file(ctx: &FormatConverterContext) -> Result<()> {
     let content = std::fs::read_to_string(ctx.source).map_err(|e| {
         crate::error::AugentError::FileReadFailed {
             path: ctx.source.display().to_string(),
@@ -73,7 +73,7 @@ pub fn copy_markdown_file(ctx: FormatConverterContext) -> Result<()> {
 }
 
 /// Helper function to write merged body content to target
-pub fn write_body_to_target(body: &str, ctx: FormatConverterContext) -> Result<()> {
+pub fn write_body_to_target(body: &str, ctx: &FormatConverterContext) -> Result<()> {
     crate::installer::file_ops::ensure_parent_dir(ctx.target)?;
     std::fs::write(ctx.target, body).map_err(|e| crate::error::AugentError::FileWriteFailed {
         path: ctx.target.display().to_string(),
@@ -97,7 +97,7 @@ pub fn write_content_to_file(target: &std::path::Path, content: &str) -> Result<
 
 /// Macro to implement a simple copy converter that just passes through markdown content
 ///
-/// This macro generates a FormatConverter implementation for platforms that:
+/// This macro generates a `FormatConverter` implementation for platforms that:
 /// - Have a simple `.platform/` directory structure
 /// - Use Replace merge strategy
 /// - Don't transform content, just copy it
@@ -128,7 +128,7 @@ macro_rules! impl_simple_copy_converter {
                 &self,
                 ctx: crate::installer::formats::plugin::FormatConverterContext,
             ) -> crate::error::Result<()> {
-                crate::installer::formats::copy_markdown_file(ctx)
+                crate::installer::formats::copy_markdown_file(&ctx)
             }
 
             fn convert_from_merged(
@@ -137,7 +137,7 @@ macro_rules! impl_simple_copy_converter {
                 body: &str,
                 ctx: crate::installer::formats::plugin::FormatConverterContext,
             ) -> crate::error::Result<()> {
-                crate::installer::formats::write_body_to_target(body, ctx)
+                crate::installer::formats::write_body_to_target(body, &ctx)
             }
 
             fn merge_strategy(&self) -> crate::platform::MergeStrategy {
@@ -153,7 +153,7 @@ macro_rules! impl_simple_copy_converter {
 
 /// Macro to generate test module for simple copy converters
 ///
-/// This macro generates a test module that verifies the platform_id of a converter.
+/// This macro generates a test module that verifies the `platform_id` of a converter.
 /// Use this after implementing a converter with `impl_simple_copy_converter!`.
 ///
 /// # Usage

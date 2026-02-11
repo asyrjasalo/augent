@@ -6,7 +6,7 @@
 //! - Silent progress for dry-run mode
 //! - Display utilities for bundles and resources
 //!
-//! All progress reporting goes through the ProgressReporter trait, allowing
+//! All progress reporting goes through the `ProgressReporter` trait, allowing
 //! different implementations based on command-line flags (e.g., --quiet, --verbose).
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -46,7 +46,7 @@ pub trait ProgressReporter: Send + Sync {
 
 /// Interactive progress reporter with visual progress bars
 ///
-/// Uses indicatif ProgressBar for visual progress display during installations.
+/// Uses indicatif `ProgressBar` for visual progress display during installations.
 pub struct InteractiveProgressReporter {
     /// Main progress bar for bundle installation
     bundle_pb: ProgressBar,
@@ -89,7 +89,7 @@ impl ProgressReporter for InteractiveProgressReporter {
     }
 
     fn update_bundle(&mut self, bundle_name: &str, current: usize, total: usize) {
-        let msg = format!("({}/{}) {}", current, total, bundle_name);
+        let msg = format!("({current}/{total}) {bundle_name}");
         self.bundle_pb.set_message(msg);
     }
 
@@ -111,17 +111,25 @@ impl ProgressReporter for InteractiveProgressReporter {
     }
 
     fn finish_files(&mut self) {
-        Self::handle_progress_bars(&self.file_pb, &self.bundle_pb, |pb| pb.finish());
+        Self::handle_progress_bars(
+            self.file_pb.as_ref(),
+            &self.bundle_pb,
+            indicatif::ProgressBar::finish,
+        );
     }
 
     fn abandon(&mut self) {
-        Self::handle_progress_bars(&self.file_pb, &self.bundle_pb, |pb| pb.abandon());
+        Self::handle_progress_bars(
+            self.file_pb.as_ref(),
+            &self.bundle_pb,
+            indicatif::ProgressBar::finish,
+        );
     }
 }
 
 impl InteractiveProgressReporter {
     fn handle_progress_bars(
-        file_pb: &Option<ProgressBar>,
+        file_pb: Option<&ProgressBar>,
         bundle_pb: &ProgressBar,
         action: fn(&ProgressBar),
     ) {

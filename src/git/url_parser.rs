@@ -19,13 +19,13 @@ pub fn find_protocol_prefix_start(main_part: &str) -> usize {
     }
 }
 
-/// Skip Windows drive letter in file:// URLs (e.g., file://C:\ or file:///C:/)
+/// Skip Windows drive letter in file:// URLs (e.g., <file://C>:\ or <file:///C>:/)
 ///
-/// Returns (skip_bytes, rest_of_string)
+/// Returns (`skip_bytes`, `rest_of_string`)
 pub fn skip_windows_drive_letter(rest: &str) -> (usize, &str) {
     // Windows "C:\" or "C:/" : skip 2
     if rest.len() >= 2
-        && rest.chars().next().map(|c| c.is_ascii_alphabetic()) == Some(true)
+        && rest.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
         && rest.chars().nth(1) == Some(':')
     {
         (2, &rest[2..])
@@ -33,7 +33,7 @@ pub fn skip_windows_drive_letter(rest: &str) -> (usize, &str) {
     // Windows "/C:\" or "/C:/" : skip 3
     else if rest.len() >= 3
         && rest.starts_with('/')
-        && rest.chars().nth(1).map(|c| c.is_ascii_alphabetic()) == Some(true)
+        && rest.chars().nth(1).is_some_and(|c| c.is_ascii_alphabetic())
         && rest.chars().nth(2) == Some(':')
     {
         (3, &rest[3..])
@@ -75,7 +75,7 @@ pub fn is_valid_repo_url(
 
 /// Parse path separator handling when main part has no fragment
 ///
-/// Returns (optional_path, optional_ref, url_part_for_parsing)
+/// Returns (`optional_path`, `optional_ref`, `url_part_for_parsing`)
 pub fn parse_path_without_fragment<'a>(
     main_part: &'a str,
     ref_part: Option<&'a str>,
@@ -119,7 +119,7 @@ pub fn parse_path_without_fragment<'a>(
 
 /// Parse fragment portion (#ref or @ref) from input
 ///
-/// Returns (main_part, optional_ref_part)
+/// Returns (`main_part`, `optional_ref_part`)
 pub fn parse_fragment(input: &str) -> (&str, Option<&str>) {
     if let Some(hash_pos) = input.find('#') {
         (&input[..hash_pos], Some(&input[hash_pos + 1..]))
@@ -148,9 +148,9 @@ pub fn is_github_shorthand(input: &str) -> bool {
         && !input.starts_with('/')
 }
 
-/// Parse GitHub web UI URL format: https://github.com/{owner}/{repo}/tree/{ref}/{path}
+/// Parse GitHub web UI URL format: <https://github.com/{owner}/{repo}/tree/{ref}/{path>}
 ///
-/// Returns: (owner, repo, ref, optional_path)
+/// Returns: (owner, repo, ref, `optional_path`)
 pub fn parse_github_web_ui_url(input: &str) -> Option<(String, String, String, Option<String>)> {
     // Must start with https://github.com/
     let without_prefix = input.strip_prefix("https://github.com/")?;

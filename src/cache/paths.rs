@@ -26,7 +26,7 @@ pub const BUNDLE_NAME_FILE: &str = ".augent_bundle_name";
 /// Subdirectory for marketplace synthetic bundles
 pub const SYNTHETIC_DIR: &str = ".claude-plugin";
 
-/// Cache index file at cache root for (url, sha, path) -> bundle_name lookups
+/// Cache index file at cache root for (url, sha, path) -> `bundle_name` lookups
 #[allow(dead_code)]
 pub const INDEX_FILE: &str = ".augent_cache_index.json";
 
@@ -57,7 +57,7 @@ pub fn bundle_name_to_cache_key(name: &str) -> String {
     path_utils::make_path_safe(name)
 }
 
-/// Derive repo name from URL (e.g. https://github.com/davila7/claude-code-templates.git -> @davila7/claude-code-templates)
+/// Derive repo name from URL (e.g. <https://github.com/davila7/claude-code-templates.git> -> @davila7/claude-code-templates)
 pub fn repo_name_from_url(url: &str) -> String {
     let url_clean = url.trim_end_matches(".git");
     let repo_path = if let Some(colon_idx) = url_clean.find(':') {
@@ -69,7 +69,7 @@ pub fn repo_name_from_url(url: &str) -> String {
     if parts.len() >= 2 {
         let author = parts[parts.len() - 2];
         let repo = parts[parts.len() - 1];
-        format!("@{}/{}", author, repo)
+        format!("@{author}/{repo}")
     } else {
         format!("@unknown/{}", repo_path.replace('/', "-"))
     }

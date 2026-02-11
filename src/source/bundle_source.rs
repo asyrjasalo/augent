@@ -1,6 +1,6 @@
 //! Bundle source handling
 //!
-//! This module provides BundleSource enum for representing local and git-based bundle sources.
+//! This module provides `BundleSource` enum for representing local and git-based bundle sources.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -45,8 +45,7 @@ impl LocalPathParser {
             && input
                 .chars()
                 .next()
-                .map(|c| c.is_ascii_alphabetic())
-                .unwrap_or(false)
+                .is_some_and(|c| c.is_ascii_alphabetic())
             && input.chars().nth(1) == Some(':')
     }
 
@@ -88,7 +87,7 @@ impl LocalPathParser {
         input.starts_with("./")
             || input.starts_with("../")
             || input == "."
-            || (input.starts_with(".") && !input.contains("://"))
+            || (input.starts_with('.') && !input.contains("://"))
     }
 
     fn looks_like_local_filename(input: &str) -> bool {

@@ -13,15 +13,15 @@ use crate::source::GitSource;
 /// File name for storing the resolved ref (repository has detached HEAD after checkout)
 const REF_FILE: &str = ".augent_ref";
 
-/// Clone and checkout to a temp directory; returns (temp_dir, sha, resolved_ref).
-/// Caller must keep temp_dir alive until done using the path.
+/// Clone and checkout to a temp directory; returns (`temp_dir`, sha, `resolved_ref`).
+/// Caller must keep `temp_dir` alive until done using the path.
 pub fn clone_and_checkout(
     source: &GitSource,
 ) -> Result<(tempfile::TempDir, String, Option<String>)> {
     let base = crate::temp::temp_dir_base();
     let temp_dir =
         tempfile::TempDir::new_in(&base).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to create temp directory: {}", e),
+            message: format!("Failed to create temp directory: {e}"),
         })?;
 
     let repo = git::clone(&source.url, temp_dir.path(), true)?;
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_read_ref_from_cache_none() {
         let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
-            panic!("Failed to create temp directory: {}", e);
+            panic!("Failed to create temp directory: {e}");
         });
         assert!(read_ref_from_cache(temp.path()).is_none());
     }
@@ -72,11 +72,11 @@ mod tests {
     #[test]
     fn test_write_read_ref() {
         let temp = tempfile::TempDir::new().unwrap_or_else(|e| {
-            panic!("Failed to create temp directory: {}", e);
+            panic!("Failed to create temp directory: {e}");
         });
         let ref_path = temp.path().join(REF_FILE);
         write_ref_to_cache(temp.path(), "main").unwrap_or_else(|e| {
-            panic!("Failed to write ref to cache: {}", e);
+            panic!("Failed to write ref to cache: {e}");
         });
         assert_eq!(read_ref_from_cache(temp.path()), Some("main".to_string()));
         assert!(ref_path.exists());

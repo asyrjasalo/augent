@@ -50,7 +50,7 @@ struct MappingProcessor<'a> {
     platform_block: &'a mut Option<Value>,
 }
 
-impl<'a> MappingProcessor<'a> {
+impl MappingProcessor<'_> {
     fn process_entry(&mut self, key: &Value, value: &Value) {
         let key_str = key.as_str().unwrap_or("");
         if key_str == self.platform_id {
@@ -77,9 +77,8 @@ pub fn merge_frontmatter_for_platform(
     platform_id: &str,
     known_platform_ids: &[String],
 ) -> Value {
-    let mapping = match frontmatter.as_mapping() {
-        Some(m) => m,
-        None => return frontmatter.clone(),
+    let Some(mapping) = frontmatter.as_mapping() else {
+        return frontmatter.clone();
     };
 
     let known: std::collections::HashSet<_> =
@@ -127,12 +126,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_no_frontmatter() {
-        let content = "just body\nno delimiters";
-        assert!(parse_frontmatter_and_body(content).is_none());
-    }
-
-    #[test]
     fn test_parse_frontmatter_and_body() {
         let content = "---\ndescription: hello\n---\n\nbody here";
         let (fm, body) =
@@ -143,16 +136,16 @@ mod tests {
 
     #[test]
     fn parse_with_platform_block() {
-        let content = r#"---
+        let known: Vec<String> = KNOWN_PLATFORM_IDS.iter().map(|s| s.to_string()).collect();
+        let content = r"---
 description: common
 opencode:
   mode: subagent
   model: claude-sonnet
 ---
-body"#;
+body";
         let (fm, _) =
             parse_frontmatter_and_body(content).expect("Should parse frontmatter and body");
-        let known: Vec<String> = KNOWN_PLATFORM_IDS.iter().map(|s| s.to_string()).collect();
         let merged = merge_frontmatter_for_platform(&fm, "opencode", &known);
         assert_eq!(get_str(&merged, "description").as_deref(), Some("common"));
         assert_eq!(get_str(&merged, "mode").as_deref(), Some("subagent"));

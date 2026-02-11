@@ -2,7 +2,6 @@
 //! Handles fixing and normalizing bundle names
 
 use crate::domain::ResolvedBundle;
-use crate::error::Result;
 use crate::workspace::Workspace;
 
 /// Bundle name fixer for install operation
@@ -51,7 +50,7 @@ impl<'a> NameFixer<'a> {
     pub fn fix_dir_bundle_names(
         &self,
         mut resolved_bundles: Vec<ResolvedBundle>,
-    ) -> Result<Vec<ResolvedBundle>> {
+    ) -> Vec<ResolvedBundle> {
         for bundle in &mut resolved_bundles {
             if bundle.git_source.is_none() {
                 if let Ok(rel_from_config) =
@@ -63,14 +62,14 @@ impl<'a> NameFixer<'a> {
                         self.find_existing_dependency_with_path(&normalized_path)
                     {
                         if bundle.name != existing_dep.name {
-                            bundle.name = existing_dep.name.clone();
+                            bundle.name.clone_from(&existing_dep.name);
                         }
                     }
                 }
             }
         }
 
-        Ok(resolved_bundles)
+        resolved_bundles
     }
 
     /// Ensure workspace bundle is in the resolved list for execute method
@@ -79,11 +78,11 @@ impl<'a> NameFixer<'a> {
         mut resolved_bundles: Vec<ResolvedBundle>,
         has_modified_files: bool,
         skip_workspace_bundle: bool,
-    ) -> Result<Vec<ResolvedBundle>> {
+    ) -> Vec<ResolvedBundle> {
         let workspace_bundle_name = self.workspace.get_workspace_name();
 
-        // If we detected modified files, ensure workspace bundle is in the resolved list
-        // UNLESS we're installing a specific bundle by name (in which case skip the workspace bundle)
+        // If we detected modified files, ensure workspace bundle is in resolved list
+        // UNLESS we're installing a specific bundle by name (in which case skip workspace bundle)
         if has_modified_files
             && !skip_workspace_bundle
             && !resolved_bundles
@@ -102,11 +101,11 @@ impl<'a> NameFixer<'a> {
             resolved_bundles.push(workspace_bundle);
         }
 
-        // Also filter out the workspace bundle from resolved_bundles if we're installing by bundle name
+        // Also filter out workspace bundle from resolved_bundles if we're installing by bundle name
         if skip_workspace_bundle {
             resolved_bundles.retain(|b| b.name != workspace_bundle_name);
         }
 
-        Ok(resolved_bundles)
+        resolved_bundles
     }
 }

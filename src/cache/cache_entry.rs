@@ -1,6 +1,6 @@
 //! Main cache entry operations
 //!
-//! This module provides primary cache_bundle function that orchestrates
+//! This module provides primary `cache_bundle` function that orchestrates
 //! entire cache operation flow: lookup, clone, populate, and storage.
 
 use std::path::PathBuf;
@@ -48,7 +48,7 @@ fn prepare_marketplace_bundle(
     let base = crate::temp::temp_dir_base();
     let synthetic_temp =
         tempfile::TempDir::new_in(&base).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to create temp directory: {}", e),
+            message: format!("Failed to create temp directory: {e}"),
         })?;
     operations::create_synthetic_bundle_to(
         temp_dir.path(),
@@ -82,7 +82,7 @@ fn try_get_existing_cache_entry(
     sha: &str,
     path_opt_str: Option<&str>,
 ) -> Result<Option<PathBuf>> {
-    let Some((_, _)) = super::lookup::index_lookup(url, sha, path_opt_str)? else {
+    let Some((_, _, _)) = super::lookup::index_lookup(url, sha, path_opt_str) else {
         return Ok(None);
     };
 
@@ -91,9 +91,7 @@ fn try_get_existing_cache_entry(
 
     let content = match marketplace_plugin_name(path_opt_str) {
         Some(name) => resources.join(super::paths::SYNTHETIC_DIR).join(name),
-        None => path_opt_str
-            .map(|p| resources.join(p))
-            .unwrap_or_else(|| resources.clone()),
+        None => path_opt_str.map_or_else(|| resources.clone(), |p| resources.join(p)),
     };
 
     Ok(content.is_dir().then_some(content))
@@ -101,10 +99,12 @@ fn try_get_existing_cache_entry(
 
 /// Cache a bundle by cloning from a git source (or use existing cache).
 ///
-/// Returns (resources_path, sha, resolved_ref).
-/// When resolved_sha is None, resolves ref via ls-remote first so we can check cache without cloning.
+/// Returns (`resources_path`, sha, `resolved_ref`).
+/// When `resolved_sha` is None, resolves ref via ls-remote first so we can check cache without cloning.
 #[allow(dead_code)]
 pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<String>)> {
+    use super::populate::BundleCacheMetadata;
+
     if let Some(result) = try_get_from_cache(source)? {
         return Ok(result);
     }
@@ -118,8 +118,6 @@ pub fn cache_bundle(source: &GitSource) -> Result<(PathBuf, String, Option<Strin
     if let Some(content) = try_get_existing_cache_entry(&source.url, &sha, path_opt_str)? {
         return Ok((content, sha, resolved_ref));
     }
-
-    use super::populate::BundleCacheMetadata;
 
     let metadata = BundleCacheMetadata {
         bundle_name: &bundle_name,

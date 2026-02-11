@@ -55,7 +55,7 @@ impl<'a> ShowOperation<'a> {
 
         if matching_bundles.is_empty() {
             return Err(AugentError::BundleNotFound {
-                name: format!("No bundles found matching '{}'", scope),
+                name: format!("No bundles found matching '{scope}'"),
             });
         }
 
@@ -77,7 +77,7 @@ impl<'a> ShowOperation<'a> {
             .lockfile
             .find_bundle(bundle_name)
             .ok_or_else(|| AugentError::BundleNotFound {
-                name: format!("Bundle '{}' not found", bundle_name),
+                name: format!("Bundle '{bundle_name}' not found"),
             })?;
 
         let workspace_bundle = self.workspace.workspace_config.find_bundle(bundle_name);

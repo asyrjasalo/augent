@@ -39,7 +39,7 @@ pub fn create_synthetic_bundle(
         .iter()
         .find(|b| b.name == bundle_name)
         .ok_or_else(|| AugentError::BundleNotFound {
-            name: format!("Bundle '{}' not found in marketplace.json", bundle_name),
+            name: format!("Bundle '{bundle_name}' not found in marketplace.json"),
         })?;
 
     let cache_root = cache::bundles_cache_dir()?.join("marketplace");
@@ -123,7 +123,11 @@ fn copy_single_resource(source_dir: &Path, resource_path: &str, target_path: &Pa
     let dest = target_path.join(file_name);
 
     if source.is_dir() {
-        copy_dir_recursive(&source, target_path.join(file_name), CopyOptions::default())?;
+        copy_dir_recursive(
+            &source,
+            target_path.join(file_name),
+            &CopyOptions::default(),
+        )?;
     } else {
         std::fs::copy(&source, &dest).map_err(|e| AugentError::IoError {
             message: format!(
@@ -165,13 +169,13 @@ fn generate_synthetic_config(
         .to_yaml(&bundle_name)
         .map_err(|e| AugentError::ConfigReadFailed {
             path: target_dir.join("augent.yaml").display().to_string(),
-            reason: format!("Failed to serialize config: {}", e),
+            reason: format!("Failed to serialize config: {e}"),
         })?;
 
     std::fs::write(target_dir.join("operation.yaml"), yaml_content).map_err(|e| {
         AugentError::FileWriteFailed {
             path: target_dir.join("augent.yaml").display().to_string(),
-            reason: format!("Failed to write config: {}", e),
+            reason: format!("Failed to write config: {e}"),
         }
     })?;
 

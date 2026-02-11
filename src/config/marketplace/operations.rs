@@ -61,7 +61,7 @@ impl MarketplaceConfig {
         let config: Self =
             serde_json::from_str(&content).map_err(|e| AugentError::ConfigReadFailed {
                 path: path.display().to_string(),
-                reason: format!("Failed to parse marketplace.json: {}", e),
+                reason: format!("Failed to parse marketplace.json: {e}"),
             })?;
         Ok(config)
     }
@@ -70,15 +70,15 @@ impl MarketplaceConfig {
 /// Copy a single resource (file or directory) to target
 fn copy_single_resource(source: &Path, target: &Path) -> Result<()> {
     if source.is_dir() {
-        copy_dir_recursive(source, target, CopyOptions::default()).map_err(|e| {
+        copy_dir_recursive(source, target, &CopyOptions::default()).map_err(|e| {
             AugentError::IoError {
-                message: format!("Failed to copy directory: {}", e),
+                message: format!("Failed to copy directory: {e}"),
                 source: Some(Box::new(e)),
             }
         })?;
     } else {
         fs::copy(source, target).map_err(|e| AugentError::IoError {
-            message: format!("Failed to copy file: {}", e),
+            message: format!("Failed to copy file: {e}"),
             source: Some(Box::new(e)),
         })?;
     }
@@ -90,7 +90,7 @@ fn copy_list(resource_list: &[String], target_subdir: &str) -> Result<()> {
     let target_path = Path::new(target_subdir);
     if !resource_list.is_empty() {
         fs::create_dir_all(target_path).map_err(|e| AugentError::IoError {
-            message: format!("Failed to create dir: {}", e),
+            message: format!("Failed to create dir: {e}"),
             source: Some(Box::new(e)),
         })?;
     }
@@ -101,8 +101,7 @@ fn copy_list(resource_list: &[String], target_subdir: &str) -> Result<()> {
         }
         let name = source
             .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "entry".to_string());
+            .map_or_else(|| "entry".to_string(), |n| n.to_string_lossy().to_string());
         copy_single_resource(source, &target_path.join(&name))?;
     }
     Ok(())
@@ -117,7 +116,7 @@ fn find_bundle_definition<'a>(
         .iter()
         .find(|b| b.name == plugin_name)
         .ok_or_else(|| AugentError::BundleNotFound {
-            name: format!("Bundle '{}' not found in marketplace.json", plugin_name),
+            name: format!("Bundle '{plugin_name}' not found in marketplace.json"),
         })
 }
 
@@ -144,12 +143,12 @@ fn write_bundle_config(
         .to_yaml(&bundle_name)
         .map_err(|e| AugentError::ConfigReadFailed {
             path: target_dir.join("augent.yaml").display().to_string(),
-            reason: format!("Failed to serialize config: {}", e),
+            reason: format!("Failed to serialize config: {e}"),
         })?;
     fs::write(target_dir.join("augent.yaml"), yaml_content).map_err(|e| {
         AugentError::FileWriteFailed {
             path: target_dir.join("augent.yaml").display().to_string(),
-            reason: format!("Failed to write config: {}", e),
+            reason: format!("Failed to write config: {e}"),
         }
     })?;
 
@@ -166,8 +165,8 @@ fn copy_all_bundle_resources(bundle_def: &MarketplaceBundle) -> Result<()> {
     Ok(())
 }
 
-/// Create synthetic bundle content at target_dir from marketplace plugin definition.
-/// Used by cache when storing marketplace bundles (same layout as create_synthetic_bundle in resolver).
+/// Create synthetic bundle content at `target_dir` from marketplace plugin definition.
+/// Used by cache when storing marketplace bundles (same layout as `create_synthetic_bundle` in resolver).
 pub fn create_synthetic_bundle_to(
     repo_root: &Path,
     plugin_name: &str,
@@ -179,7 +178,7 @@ pub fn create_synthetic_bundle_to(
     let bundle_def = find_bundle_definition(&config, plugin_name)?;
 
     fs::create_dir_all(target_dir).map_err(|e| AugentError::IoError {
-        message: format!("Failed to create target dir: {}", e),
+        message: format!("Failed to create target dir: {e}"),
         source: Some(Box::new(e)),
     })?;
 

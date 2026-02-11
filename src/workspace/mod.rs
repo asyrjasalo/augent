@@ -68,7 +68,7 @@ pub struct Workspace {
     pub should_create_augent_yaml: bool,
 
     /// Path to the directory where bundle's augent.yaml should be written
-    /// When set, augent.yaml is written to this directory instead of workspace.config_dir
+    /// When set, augent.yaml is written to this directory instead of `workspace.config_dir`
     /// This is used when installing from a subdirectory that is itself a bundle
     pub bundle_config_dir: Option<PathBuf>,
 }
@@ -102,17 +102,12 @@ impl Workspace {
         Ok(Self::from_initialized(initialized))
     }
 
-    #[allow(dead_code)]
-    pub fn get_config_source_path(&self) -> String {
-        "./.augent".to_string()
-    }
-
     pub fn get_bundle_source_path(&self) -> PathBuf {
         self.augent_dir.clone()
     }
 
     pub fn rebuild_workspace_config(&mut self) -> Result<()> {
-        let _rebuild_ctx = rebuild::RebuildContext {
+        let _rebuild = rebuild::RebuildContext {
             root: &self.root,
             lockfile: &self.lockfile,
         };

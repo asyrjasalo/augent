@@ -124,7 +124,7 @@ pub fn topological_sort(
 /// DFS helper for topological sort with cycle detection
 ///
 /// Implements three-color marking for cycle detection:
-/// - If node is GRAY (in temp_visited) → cycle detected
+/// - If node is GRAY (in `temp_visited`) → cycle detected
 /// - If node is BLACK (in visited) → already processed
 /// - Otherwise, mark as GRAY, visit deps, then BLACK
 ///
@@ -133,7 +133,7 @@ fn topo_dfs(ctx: &mut TopoSortContext, name: &str) -> Result<()> {
     // Cycle detection: node already in current path
     if ctx.temp_visited.contains(name) {
         return Err(AugentError::CircularDependency {
-            chain: format!("Cycle detected involving {}", name),
+            chain: format!("Cycle detected involving {name}"),
         });
     }
 
@@ -185,7 +185,7 @@ mod tests {
         ResolvedBundle {
             name: name.to_string(),
             dependency: None,
-            source_path: std::path::PathBuf::from(format!("/{}", name)),
+            source_path: std::path::PathBuf::from(format!("/{name}")),
             resolved_sha: None,
             resolved_ref: None,
             git_source: None,

@@ -1,16 +1,12 @@
 //! Version command implementation
 
-use crate::error::Result;
-
 /// Run version command
-pub fn run() -> Result<()> {
+pub fn run() {
     println!("augent {}", env!("CARGO_PKG_VERSION"));
     println!();
     println!("Build info:");
     println!("  Rust version: {}", rustc_version());
     println!("  Profile: {}", build_profile());
-
-    Ok(())
 }
 
 fn rustc_version() -> &'static str {

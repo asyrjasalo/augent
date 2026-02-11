@@ -46,7 +46,7 @@ impl PlatformLoader {
     /// Load built-in platforms from platforms.jsonc (embedded at compile time)
     ///
     /// This function directly parses platforms.jsonc without creating a loader
-    /// to avoid circular dependency between loader.load() and default_platforms()
+    /// to avoid circular dependency between `loader.load()` and `default_platforms()`
     pub(crate) fn load_builtin_platforms() -> Result<Vec<Platform>> {
         const PLATFORMS_JSONC: &str = include_str!("../../platforms.jsonc");
 
@@ -57,7 +57,7 @@ impl PlatformLoader {
     /// Load platforms.jsonc from workspace
     fn load_workspace_platforms(&self) -> Result<Option<Vec<Platform>>> {
         let platforms_path = self.workspace_root.join("platforms.jsonc");
-        self.load_platforms_from_path(&platforms_path)
+        Self::load_platforms_from_path(&platforms_path)
     }
 
     /// Load global platforms.jsonc from ~/.config/augent/
@@ -67,10 +67,10 @@ impl PlatformLoader {
         })?;
 
         let platforms_path = config_dir.join("augent").join("platforms.jsonc");
-        self.load_platforms_from_path(&platforms_path)
+        Self::load_platforms_from_path(&platforms_path)
     }
 
-    fn load_platforms_from_path(&self, platforms_path: &PathBuf) -> Result<Option<Vec<Platform>>> {
+    fn load_platforms_from_path(platforms_path: &PathBuf) -> Result<Option<Vec<Platform>>> {
         if !platforms_path.exists() {
             return Ok(None);
         }
@@ -180,7 +180,7 @@ impl PlatformLoader {
         result
     }
 
-    /// Process a single character and return (new_state, char_count_to_advance)
+    /// Process a single character and return (`new_state`, `char_count_to_advance`)
     fn process_char(
         c: char,
         next: Option<char>,

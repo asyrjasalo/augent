@@ -44,7 +44,7 @@ pub fn detect_platforms_or_error(workspace_root: &Path) -> Result<Vec<Platform>>
 /// Get a platform by ID, loading from platforms.jsonc if available
 /// First tries to find exact ID match, then looks for alias matches
 ///
-/// If workspace_root is provided, loads custom platforms from platforms.jsonc.
+/// If `workspace_root` is provided, loads custom platforms from platforms.jsonc.
 /// Otherwise, falls back to default platforms.
 pub fn get_platform(id: &str, workspace_root: Option<&Path>) -> Option<Platform> {
     let platforms = if let Some(root) = workspace_root {
@@ -76,9 +76,9 @@ pub fn get_platform(id: &str, workspace_root: Option<&Path>) -> Option<Platform>
 }
 
 /// Get multiple platforms by ID
-/// Supports alias resolution - each ID is resolved through get_platform()
+/// Supports alias resolution - each ID is resolved through `get_platform()`
 ///
-/// If workspace_root is provided, loads custom platforms from platforms.jsonc.
+/// If `workspace_root` is provided, loads custom platforms from platforms.jsonc.
 pub fn get_platforms(ids: &[String], workspace_root: Option<&Path>) -> Result<Vec<Platform>> {
     let mut platforms = Vec::new();
 

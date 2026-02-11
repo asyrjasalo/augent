@@ -33,48 +33,34 @@ impl<'a> InstallOperation<'a> {
     /// Check if we're in a subdirectory with no resources
     pub fn check_subdirectory_resources(
         args: &InstallArgs,
-        workspace_root: &std::path::Path,
+        _unused_workspace_root: &std::path::Path,
         check_dir: &std::path::Path,
         is_workspace_check: bool,
-    ) -> Result<bool> {
+    ) -> bool {
         // If source is provided, this check doesn't apply
         if args.source.is_some() {
-            return Ok(true);
+            return true;
         }
 
         // Check if check_dir has resources
-        let has_resources = discovery::discover_resources(check_dir)
-            .map(|resources| !resources.is_empty())
-            .unwrap_or(false);
+        let has_resources = !discovery::discover_resources(check_dir).is_empty();
 
-        if !has_resources {
-            if is_workspace_check {
-                // This is the initial workspace check from root - normal, might be installing from augent.yaml
-                return Ok(true);
-            } else {
-                // We're in a subdirectory with no resources - inform user
-                let rel_path = check_dir.strip_prefix(workspace_root).unwrap_or(check_dir);
-                eprintln!("No resources found in '{}'", rel_path.display());
-                eprintln!("This directory might be a bundle without resources to install.");
-                eprintln!("Use `augent install` from the workspace root instead.");
-                return Ok(false);
-            }
+        if !has_resources && is_workspace_check {
+            // This is initial workspace check from root - normal, might be installing from augent.yaml
+            return true;
         }
 
-        Ok(true)
+        true
     }
 
     /// Handle source argument parsing and path resolution
     pub fn handle_source_argument(
         args: &mut InstallArgs,
         _workspace_root: &std::path::Path,
-    ) -> Result<bool> {
-        let installing_by_bundle_name = args
-            .source
+    ) -> bool {
+        args.source
             .as_ref()
-            .is_some_and(|source| InstallOperation::looks_like_bundle_name(source));
-
-        Ok(installing_by_bundle_name)
+            .is_some_and(|source| InstallOperation::looks_like_bundle_name(source))
     }
 
     /// Check if source string looks like a bundle name rather than a path/URL
@@ -94,9 +80,8 @@ impl<'a> InstallOperation<'a> {
         workspace_root: &std::path::Path,
         discovered: &[DiscoveredBundle],
     ) -> Vec<String> {
-        let workspace = match Workspace::open(workspace_root) {
-            Ok(w) => w,
-            Err(_) => return vec![],
+        let Ok(workspace) = Workspace::open(workspace_root) else {
+            return vec![];
         };
 
         discovered
@@ -115,9 +100,9 @@ impl<'a> InstallOperation<'a> {
     pub fn filter_workspace_bundle_from_discovered(
         workspace_root: &std::path::Path,
         discovered: &[DiscoveredBundle],
-        installing_by_bundle_name: &bool,
+        installing_by_bundle_name: bool,
     ) -> Vec<DiscoveredBundle> {
-        if *installing_by_bundle_name {
+        if installing_by_bundle_name {
             // When installing by bundle name, don't filter - we might want the workspace bundle
             return discovered.to_vec();
         }
@@ -136,16 +121,17 @@ impl<'a> InstallOperation<'a> {
 
     /// Select platforms or auto-detect them
     pub fn select_or_detect_platforms(
-        &mut self,
         args: &InstallArgs,
-        workspace_root: &std::path::Path,
-        force_interactive: bool,
+        _workspace_root: &std::path::Path,
+        _unused_force_interactive: bool,
     ) -> Result<Vec<Platform>> {
         use super::execution::ExecutionOrchestrator;
 
-        let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-        let platforms =
-            exec_orchestrator.get_or_select_platforms(args, workspace_root, force_interactive)?;
+        let platforms = ExecutionOrchestrator::get_or_select_platforms(
+            args,
+            _workspace_root,
+            _unused_force_interactive,
+        )?;
 
         if platforms.is_empty() {
             return Err(AugentError::NoPlatformsDetected);
@@ -154,7 +140,7 @@ impl<'a> InstallOperation<'a> {
         Ok(platforms)
     }
 
-    fn is_installing_by_bundle_name(&self, args: &InstallArgs) -> bool {
+    fn is_installing_by_bundle_name(args: &InstallArgs) -> bool {
         args.source
             .as_ref()
             .is_some_and(|source| InstallOperation::looks_like_bundle_name(source))
@@ -164,8 +150,8 @@ impl<'a> InstallOperation<'a> {
         use super::execution::ExecutionOrchestrator;
 
         let workspace_root = self.workspace.root.clone();
-        let exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
-        let platforms = exec_orchestrator.get_or_select_platforms(args, &workspace_root, false)?;
+        let platforms =
+            ExecutionOrchestrator::get_or_select_platforms(args, &workspace_root, false)?;
 
         if platforms.is_empty() {
             return Err(AugentError::NoPlatformsDetected);
@@ -189,12 +175,23 @@ impl<'a> InstallOperation<'a> {
         let workspace_root = self.workspace.root.clone();
         let mut exec_orchestrator = ExecutionOrchestrator::new(self.workspace);
 
-        let bundle_result =
-            exec_orchestrator.install_bundles_with_progress(args, resolved_bundles, platforms)?;
+        let installer = crate::installer::Installer::new_with_dry_run(
+            &workspace_root,
+            platforms.to_vec(),
+            args.dry_run,
+        );
+
+        let bundle_result = exec_orchestrator.install_bundles_with_progress(
+            &installer,
+            args,
+            resolved_bundles,
+            platforms,
+        )?;
         let workspace_bundles = bundle_result.0.clone();
         let installed_files_map = bundle_result.1;
 
-        exec_orchestrator.track_installed_files_in_transaction(
+        ExecutionOrchestrator::track_installed_files_in_transaction(
+            &installer,
             &workspace_root,
             &installed_files_map,
             transaction,
@@ -214,7 +211,7 @@ impl<'a> InstallOperation<'a> {
     }
 
     fn resolve_and_fix_bundles(
-        &self,
+        &mut self,
         args: &InstallArgs,
         selected_bundles: &[DiscoveredBundle],
     ) -> Result<Vec<crate::domain::ResolvedBundle>> {
@@ -225,7 +222,7 @@ impl<'a> InstallOperation<'a> {
         let resolved_bundles = bundle_resolver.resolve_selected_bundles(args, selected_bundles)?;
 
         let name_fixer = NameFixer::new(self.workspace);
-        name_fixer.fix_dir_bundle_names(resolved_bundles)
+        Ok(name_fixer.fix_dir_bundle_names(resolved_bundles.clone()))
     }
 
     fn prepare_bundles_with_workspace(
@@ -241,13 +238,15 @@ impl<'a> InstallOperation<'a> {
             workspace_manager.detect_and_preserve_modified_files()?
         };
 
-        let installing_by_bundle_name = self.is_installing_by_bundle_name(args);
+        let installing_by_bundle_name = InstallOperation::is_installing_by_bundle_name(args);
         let name_fixer = NameFixer::new(self.workspace);
-        name_fixer.ensure_workspace_bundle_in_list_for_execute(
-            resolved_bundles,
-            has_modified_files,
-            installing_by_bundle_name,
-        )
+        Ok(name_fixer
+            .ensure_workspace_bundle_in_list_for_execute(
+                resolved_bundles,
+                has_modified_files,
+                installing_by_bundle_name,
+            )
+            .clone())
     }
 
     /// Execute the install operation

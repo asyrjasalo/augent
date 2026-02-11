@@ -34,11 +34,11 @@ fn add_blank_lines_between_bundles(lines: Vec<&str>) -> Vec<String> {
 
 /// Format YAML output with workspace name
 pub fn format_yaml_with_workspace_name(yaml: &str, workspace_name: &str) -> String {
-    let yaml = yaml.replace("name: ''", &format!("name: '{}'", workspace_name));
+    let yaml = yaml.replace("name: ''", &format!("name: '{workspace_name}'"));
 
     let parts: Vec<&str> = yaml.splitn(2, '\n').collect();
     if parts.len() != 2 {
-        return format!("{}\n", yaml);
+        return format!("{yaml}\n");
     }
 
     let result = format!("{}\n\n{}", parts[0], parts[1]);
@@ -53,11 +53,11 @@ pub fn format_yaml_with_workspace_name(yaml: &str, workspace_name: &str) -> Stri
 /// This is used during serialization to determine the number of fields
 /// in a struct when optional fields may or may not be present.
 pub fn count_optional_fields(
-    description: &Option<String>,
-    version: &Option<String>,
-    author: &Option<String>,
-    license: &Option<String>,
-    homepage: &Option<String>,
+    description: Option<&String>,
+    version: Option<&String>,
+    author: Option<&String>,
+    license: Option<&String>,
+    homepage: Option<&String>,
 ) -> usize {
     [description, version, author, license, homepage]
         .iter()

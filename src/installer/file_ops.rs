@@ -1,8 +1,8 @@
 //! Basic file operations for bundle installation
 //!
 //! This module handles low-level file operations:
-//! - Directory creation (ensure_parent_dir)
-//! - File copying orchestration (copy_file)
+//! - Directory creation (`ensure_parent_dir`)
+//! - File copying orchestration (`copy_file`)
 
 use std::path::Path;
 use std::sync::Arc;
@@ -13,14 +13,14 @@ use crate::platform::Platform;
 use super::detection;
 use super::writer;
 
-fn file_read_error(path: &Path, e: std::io::Error) -> AugentError {
+fn file_read_error(path: &Path, e: &std::io::Error) -> AugentError {
     AugentError::FileReadFailed {
         path: path.display().to_string(),
         reason: e.to_string(),
     }
 }
 
-fn file_write_error(path: &Path, e: std::io::Error) -> AugentError {
+fn file_write_error(path: &Path, e: &std::io::Error) -> AugentError {
     AugentError::FileWriteFailed {
         path: path.display().to_string(),
         reason: e.to_string(),
@@ -30,7 +30,7 @@ fn file_write_error(path: &Path, e: std::io::Error) -> AugentError {
 /// Ensure parent directory exists for a path
 pub fn ensure_parent_dir(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| file_write_error(parent, e))?;
+        std::fs::create_dir_all(parent).map_err(|e| file_write_error(parent, &e))?;
     }
     Ok(())
 }
@@ -41,7 +41,7 @@ pub fn copy_file(
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
-    format_registry: Arc<crate::installer::formats::FormatRegistry>,
+    format_registry: &Arc<crate::installer::formats::FormatRegistry>,
 ) -> Result<()> {
     let is_resource = detection::is_platform_resource_file(target, platforms, workspace_root);
     let is_binary = detection::is_likely_binary_file(source);
@@ -60,7 +60,7 @@ pub fn copy_file(
 fn perform_simple_copy(source: &Path, target: &Path) -> Result<()> {
     ensure_parent_dir(target)?;
     std::fs::copy(source, target)
-        .map_err(|e| file_write_error(target, e))
+        .map_err(|e| file_write_error(target, &e))
         .map(|_| ())
 }
 
@@ -69,7 +69,7 @@ fn handle_frontmatter_file(
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
-    format_registry: Arc<crate::installer::formats::FormatRegistry>,
+    format_registry: &Arc<crate::installer::formats::FormatRegistry>,
 ) -> Option<Result<()>> {
     let (fm, body) = crate::universal::parse_frontmatter_and_body(content)?;
 
@@ -100,18 +100,18 @@ fn handle_text_file(
     target: &Path,
     platforms: &[Platform],
     workspace_root: &Path,
-    format_registry: Arc<crate::installer::formats::FormatRegistry>,
+    format_registry: &Arc<crate::installer::formats::FormatRegistry>,
 ) -> Result<()> {
     ensure_parent_dir(target)?;
 
-    let content = std::fs::read_to_string(source).map_err(|e| file_read_error(source, e))?;
+    let content = std::fs::read_to_string(source).map_err(|e| file_read_error(source, &e))?;
 
     if let Some(result) = handle_frontmatter_file(
         &content,
         target,
         platforms,
         workspace_root,
-        format_registry.clone(),
+        &format_registry.clone(),
     ) {
         return result;
     }
@@ -126,7 +126,7 @@ fn handle_text_file(
         );
     }
 
-    std::fs::write(target, content).map_err(|e| file_write_error(target, e))?;
+    std::fs::write(target, content).map_err(|e| file_write_error(target, &e))?;
 
     Ok(())
 }

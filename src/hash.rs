@@ -44,7 +44,7 @@ pub fn hash_file(path: &Path) -> Result<String> {
 fn collect_files_to_hash(path: &Path) -> Vec<walkdir::DirEntry> {
     let mut files: Vec<_> = WalkDir::new(path)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
         .filter(|e| {
             let name = e.file_name().to_string_lossy();
@@ -123,7 +123,7 @@ pub fn verify_hash(expected: &str, actual: &str) -> bool {
         if h.starts_with(HASH_PREFIX) {
             h.to_string()
         } else {
-            format!("{}{}", HASH_PREFIX, h)
+            format!("{HASH_PREFIX}{h}")
         }
     };
 
@@ -201,17 +201,17 @@ mod tests {
     #[test]
     fn test_verify_hash() {
         // Test with same hash
-        let hash1 = format!("{}abc123", HASH_PREFIX);
+        let hash1 = format!("{HASH_PREFIX}abc123");
         let hash2 = hash1.clone();
         assert!(verify_hash(&hash1, &hash2));
 
         // Test with and without prefix
-        let hash_with_prefix = format!("{}abc123", HASH_PREFIX);
+        let hash_with_prefix = format!("{HASH_PREFIX}abc123");
         let hash_without_prefix = "abc123";
         assert!(verify_hash(&hash_with_prefix, hash_without_prefix));
 
         // Test different hashes don't match
-        let hash3 = format!("{}def456", HASH_PREFIX);
+        let hash3 = format!("{HASH_PREFIX}def456");
         assert!(!verify_hash(&hash1, &hash3));
     }
 }

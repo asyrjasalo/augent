@@ -1,6 +1,6 @@
 //! Shared context for install operation
 //!
-//! This module provides InstallContext, a centralized context that
+//! This module provides `InstallContext`, a centralized context that
 //! consolidates the various coordinator instances and shared state
 //! used throughout the install workflow.
 

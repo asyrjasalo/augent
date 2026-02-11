@@ -48,7 +48,7 @@ pub fn is_gemini_command_file(target: &Path) -> bool {
     path_str.contains(".gemini/commands/") && path_str.ends_with(".md")
 }
 
-/// Check if target path is an OpenCode commands/agents/skills file
+/// Check if target path is an `OpenCode` commands/agents/skills file
 #[allow(dead_code)]
 pub fn is_opencode_metadata_file(target: &Path) -> bool {
     let path_str = target.to_string_lossy();
@@ -112,7 +112,7 @@ fn is_any_resource_directory(path_str: &str) -> bool {
         "steering/",
     ];
 
-    let resource_set: HashSet<&str> = RESOURCE_DIRS.iter().cloned().collect();
+    let resource_set: HashSet<&str> = RESOURCE_DIRS.iter().copied().collect();
     resource_set.iter().any(|dir| path_str.contains(dir))
 }
 

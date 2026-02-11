@@ -1,10 +1,11 @@
 //! OpenCode-specific format converter plugin
 //!
-//! This converter handles conversions for OpenCode platform:
+//! This converter handles conversions for `OpenCode` platform:
 //! - Skills: Frontmatter adjustments for SKILL.md format
 //! - Commands: Frontmatter with description only
 //! - Agents: Frontmatter with description only
 
+use std::fmt::Write;
 use std::path::Path;
 
 use crate::error::{AugentError, Result};
@@ -14,12 +15,12 @@ use crate::platform::MergeStrategy;
 use super::super::file_ops;
 use super::super::parser;
 
-/// OpenCode format converter plugin
+/// `OpenCode` format converter plugin
 #[derive(Debug)]
 pub struct OpencodeConverter;
 
 impl FormatConverter for OpencodeConverter {
-    fn platform_id(&self) -> &str {
+    fn platform_id(&self) -> &'static str {
         "opencode"
     }
 
@@ -86,12 +87,12 @@ fn copy_generic_file(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Convert markdown frontmatter to OpenCode format
+/// Convert markdown frontmatter to `OpenCode` format
 ///
 /// Dispatches to specific converter based on resource type:
-/// - skills/ → convert_opencode_skill
-/// - commands/ → convert_opencode_command
-/// - agents/ → convert_opencode_agent
+/// - skills/ → `convert_opencode_skill`
+/// - commands/ → `convert_opencode_command`
+/// - agents/ → `convert_opencode_agent`
 ///
 /// Parse frontmatter from markdown content, returning (frontmatter, body).
 fn parse_frontmatter(content: &str) -> (Option<String>, String) {
@@ -101,17 +102,16 @@ fn parse_frontmatter(content: &str) -> (Option<String>, String) {
         return (None, content.to_string());
     }
 
-    let end_idx = match lines[1..].iter().position(|line| line.eq(&"---")) {
-        Some(idx) => idx,
-        None => return (None, content.to_string()),
+    let Some(end_idx) = lines[1..].iter().position(|line| line.eq(&"---")) else {
+        return (None, content.to_string());
     };
 
-    let fm = lines[1..end_idx + 1].join("\\n");
+    let fm = lines[1..=end_idx].join("\\n");
     let body_content = lines[end_idx + 2..].join("\\n");
     (Some(fm), body_content)
 }
 
-/// Build a HashMap from frontmatter lines.
+/// Build a `HashMap` from frontmatter lines.
 fn build_frontmatter_map(frontmatter: &str) -> std::collections::HashMap<String, String> {
     let mut map = std::collections::HashMap::new();
     for line in frontmatter.lines() {
@@ -128,7 +128,7 @@ fn build_frontmatter_map(frontmatter: &str) -> std::collections::HashMap<String,
     map
 }
 
-/// Build OpenCode frontmatter from parsed key-value map.
+/// Build `OpenCode` frontmatter from parsed key-value map.
 fn build_opencode_frontmatter(
     map: &std::collections::HashMap<String, String>,
     target: &Path,
@@ -138,19 +138,25 @@ fn build_opencode_frontmatter(
 
     let name = map
         .get("name")
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .or_else(|| target.file_stem().and_then(|s| s.to_str()))
         .unwrap_or("unknown");
-    fm.push_str(&format!("name: {}\\n", name));
+    if let Err(e) = writeln!(fm, "name: {name}") {
+        eprintln!("Failed to write frontmatter: {e}");
+    }
 
     for key in ["description", "license", "compatibility"] {
         if let Some(value) = map.get(key) {
-            fm.push_str(&format!("{}: {}\\n", key, value));
+            if let Err(e) = writeln!(fm, "{key}: {value}") {
+                eprintln!("Failed to write frontmatter: {e}");
+            }
         }
     }
 
     if let Some(meta) = map.get("metadata") {
-        fm.push_str(&format!("metadata: {}\\n", meta));
+        if let Err(e) = writeln!(fm, "metadata: {meta}") {
+            eprintln!("Failed to write frontmatter: {e}");
+        }
     }
 
     fm.push_str("---\\n\\n");
@@ -167,10 +173,7 @@ fn convert_skill(content: &str, target: &Path) -> Result<()> {
         return crate::installer::formats::write_content_to_file(target, body.as_str());
     };
 
-    crate::installer::formats::write_content_to_file(
-        target,
-        &format!("{}{}", new_frontmatter, body),
-    )
+    crate::installer::formats::write_content_to_file(target, &format!("{new_frontmatter}{body}"))
 }
 
 fn convert_command(content: &str, target: &Path) -> Result<()> {
@@ -188,7 +191,9 @@ fn convert_with_description_only(content: &str, target: &Path) -> Result<()> {
 
     if let Some(desc) = description {
         new_content.push_str("---\n");
-        new_content.push_str(&format!("description: {}\n", desc));
+        if let Err(e) = writeln!(new_content, "description: {desc}") {
+            eprintln!("Failed to write content: {e}");
+        }
         new_content.push_str("---\n\n");
     }
 

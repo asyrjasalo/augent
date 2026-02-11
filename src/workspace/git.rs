@@ -12,8 +12,7 @@ pub fn find_git_repository_root(start: &Path) -> Option<PathBuf> {
     // If normalization fails (can happen on Windows with temp paths), use the path as-is
     repo.workdir().map(|p| {
         p.normalize()
-            .map(|np| np.into_path_buf())
-            .unwrap_or_else(|_| p.to_path_buf())
+            .map_or_else(|_| p.to_path_buf(), normpath::BasePathBuf::into_path_buf)
     })
 }
 
@@ -50,27 +49,35 @@ pub fn validate_git_repository_root(path: &Path) -> Result<()> {
 }
 
 fn paths_represent_same_location(
-    canonical_root: &Option<PathBuf>,
+    canonical_root: Option<&PathBuf>,
     git_root: &Path,
-    git_root_normalized: &Option<PathBuf>,
+    git_root_normalized: Option<&PathBuf>,
     path: &Path,
 ) -> bool {
-    canonical_root.as_ref().map(|p| p.as_path()) == Some(git_root)
+    canonical_root.map(std::path::PathBuf::as_path) == Some(git_root)
         || path == git_root
-        || canonical_root.as_ref() == git_root_normalized.as_ref()
-        || canonical_root.as_ref().is_some_and(|cr| cr == path)
-        || git_root_normalized.as_ref().is_some_and(|gr| gr == path)
+        || canonical_root == git_root_normalized
+        || canonical_root.as_ref().is_some_and(|cr| *cr == path)
+        || git_root_normalized.as_ref().is_some_and(|gr| *gr == path)
 }
 
 /// Verify path is at git repository root using normalization
 pub fn verify_git_root(path: &Path) -> Result<()> {
-    let canonical_root = path.normalize().ok().map(|np| np.into_path_buf());
+    let canonical_root = path
+        .normalize()
+        .ok()
+        .map(normpath::BasePathBuf::into_path_buf);
     let git_root_normalized = find_git_repository_root(path)
         .as_ref()
-        .and_then(|p| p.normalize().ok().map(|np| np.into_path_buf()));
+        .and_then(|p| p.normalize().ok().map(normpath::BasePathBuf::into_path_buf));
 
     if let Some(git_root) = find_git_repository_root(path) {
-        if !paths_represent_same_location(&canonical_root, &git_root, &git_root_normalized, path) {
+        if !paths_represent_same_location(
+            canonical_root.as_ref(),
+            &git_root,
+            git_root_normalized.as_ref(),
+            path,
+        ) {
             return Err(AugentError::WorkspaceNotFound {
                 path: path.display().to_string(),
             });

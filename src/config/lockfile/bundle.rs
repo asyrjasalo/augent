@@ -1,4 +1,4 @@
-//! LockedBundle struct for lockfile
+//! `LockedBundle` struct for lockfile
 //!
 //! A resolved bundle in lockfile.
 
@@ -66,12 +66,12 @@ where
 fn validate_dir_source(name: &str, path: &str, hash: &str) -> Result<()> {
     if path.is_empty() {
         return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{}' has empty path", name),
+            message: format!("Bundle '{name}' has empty path"),
         });
     }
     if !hash.starts_with("blake3:") {
         return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{}' has invalid hash format", name),
+            message: format!("Bundle '{name}' has invalid hash format"),
         });
     }
     Ok(())
@@ -80,17 +80,17 @@ fn validate_dir_source(name: &str, path: &str, hash: &str) -> Result<()> {
 fn validate_git_source(name: &str, url: &str, sha: &str, hash: &str) -> Result<()> {
     if url.is_empty() {
         return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{}' has empty URL", name),
+            message: format!("Bundle '{name}' has empty URL"),
         });
     }
     if sha.is_empty() {
         return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{}' has empty SHA", name),
+            message: format!("Bundle '{name}' has empty SHA"),
         });
     }
     if !hash.starts_with("blake3:") {
         return Err(AugentError::ConfigInvalid {
-            message: format!("Bundle '{}' has invalid hash format", name),
+            message: format!("Bundle '{name}' has invalid hash format"),
         });
     }
     Ok(())
@@ -102,11 +102,11 @@ impl Serialize for LockedBundle {
         S: serde::Serializer,
     {
         let optional_count = count_optional_fields(
-            &self.description,
-            &self.version,
-            &self.author,
-            &self.license,
-            &self.homepage,
+            self.description.as_ref(),
+            self.version.as_ref(),
+            self.author.as_ref(),
+            self.license.as_ref(),
+            self.homepage.as_ref(),
         );
         let field_count = 3 + optional_count;
 
@@ -213,8 +213,7 @@ impl LockedBundle {
     #[allow(dead_code)] // Used by tests
     pub fn hash(&self) -> &str {
         match &self.source {
-            LockedSource::Dir { hash, .. } => hash,
-            LockedSource::Git { hash, .. } => hash,
+            LockedSource::Dir { hash, .. } | LockedSource::Git { hash, .. } => hash,
         }
     }
 }

@@ -69,7 +69,7 @@ fn build_default_selections(
         .iter()
         .enumerate()
         .filter_map(|(idx, b)| {
-            if installed.map(|set| set.contains(&b.name)).unwrap_or(false) {
+            if installed.is_some_and(|set| set.contains(&b.name)) {
                 Some(idx)
             } else {
                 None
@@ -96,10 +96,7 @@ fn format_bundle_display(
 ) -> String {
     let mut s = bundle.name.clone();
 
-    if installed
-        .map(|set| set.contains(&bundle.name))
-        .unwrap_or(false)
-    {
+    if installed.is_some_and(|set| set.contains(&bundle.name)) {
         s.push(' ');
         s.push_str(&installed_style.apply_to("(installed)").to_string());
     } else if let Some(formatted) = bundle.resource_counts.format() {

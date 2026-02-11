@@ -114,8 +114,8 @@
 //!
 //! The cache module is organized into specialized submodules:
 //!
-//! - **bundle_name**: Bundle name derivation from repo URLs
-//! - **cache_entry**: Single cache entry operations
+//! - **`bundle_name`**: Bundle name derivation from repo URLs
+//! - **`cache_entry`**: Single cache entry operations
 //! - **clone**: Git cloning and checkout operations
 //! - **index**: Cache index management for workspace tracking
 //! - **lookup**: Cache lookup and validation

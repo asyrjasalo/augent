@@ -1,6 +1,6 @@
 //! Junie-specific format converter plugin
 //!
-//! This converter handles conversions for JetBrains Junie platform:
+//! This converter handles conversions for `JetBrains` Junie platform:
 //! - Rules composite merge to guidelines.md
 
 use std::path::Path;
@@ -14,7 +14,7 @@ use crate::platform::MergeStrategy;
 pub struct JunieConverter;
 
 impl FormatConverter for JunieConverter {
-    fn platform_id(&self) -> &str {
+    fn platform_id(&self) -> &'static str {
         "junie"
     }
 
@@ -26,7 +26,7 @@ impl FormatConverter for JunieConverter {
     }
 
     fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()> {
-        crate::installer::formats::copy_markdown_file(ctx)
+        crate::installer::formats::copy_markdown_file(&ctx)
     }
 
     fn convert_from_merged(
@@ -35,7 +35,7 @@ impl FormatConverter for JunieConverter {
         body: &str,
         ctx: FormatConverterContext,
     ) -> Result<()> {
-        crate::installer::formats::write_body_to_target(body, ctx)
+        crate::installer::formats::write_body_to_target(body, &ctx)
     }
 
     fn merge_strategy(&self) -> MergeStrategy {

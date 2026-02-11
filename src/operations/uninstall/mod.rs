@@ -1,6 +1,6 @@
 //! Uninstall operation module
 //!
-//! This module provides UninstallOperation and related uninstall workflow logic.
+//! This module provides `UninstallOperation` and related uninstall workflow logic.
 //! Coordinates selection, dependency checking, confirmation, and execution.
 
 pub mod confirmation;
@@ -10,19 +10,12 @@ pub mod selection;
 
 use crate::cli::UninstallArgs;
 use crate::common::bundle_utils;
-use crate::common::string_utils;
 use crate::config::utils::BundleContainer;
 use crate::error::{AugentError, Result};
 use crate::workspace::Workspace;
 use normpath::PathExt;
 
-pub use confirmation::confirm_uninstall;
-pub use dependency::build_dependency_map;
-pub use dependency::check_bundle_dependents;
-pub use execution::execute_uninstall;
-pub use selection::filter_bundles_by_prefix;
 pub use selection::select_bundles_from_list;
-pub use selection::select_bundles_interactively;
 
 /// Configuration options for uninstall
 #[derive(Debug, Clone)]
@@ -35,115 +28,141 @@ impl From<&UninstallArgs> for UninstallOptions {
 }
 
 /// High-level uninstall operation
-pub struct UninstallOperation;
+pub struct UninstallOperation<'a> {
+    workspace: &'a mut Workspace,
+}
 
-impl UninstallOperation {
-    pub fn new(_workspace: &mut Workspace, _options: UninstallOptions) -> Self {
-        Self {}
+impl<'a> UninstallOperation<'a> {
+    pub fn new(workspace: &'a mut Workspace, _options: UninstallOptions) -> Self {
+        Self { workspace }
     }
 
-    fn validate_and_resolve_workspace(workspace: Option<std::path::PathBuf>) -> Result<Workspace> {
-        let workspace_root = match workspace {
-            Some(path) => path,
-            None => std::env::current_dir().map_err(|e| AugentError::IoError {
-                message: format!("Failed to get current directory: {}", e),
-                source: Some(Box::new(e)),
-            })?,
-        };
+    pub fn execute(&mut self, args: UninstallArgs) -> Result<()> {
+        let bundle_names = self.resolve_bundle_names(&args)?;
 
-        let workspace_root_for_workspace = match Workspace::find_from(&workspace_root) {
-            Some(path) => path,
-            None => {
-                let current = std::env::current_dir().map_err(|e| AugentError::IoError {
-                    message: format!("Failed to get current directory: {}", e),
-                    source: Some(Box::new(e)),
-                })?;
-                return Err(AugentError::WorkspaceNotFound {
-                    path: current.display().to_string(),
-                });
-            }
-        };
-
-        Workspace::open(&workspace_root_for_workspace)
-    }
-
-    fn check_all_bundle_dependents(workspace: &Workspace, bundle_names: &[String]) -> Result<()> {
-        let dependency_map = build_dependency_map(workspace)?;
-        for bundle_name in bundle_names {
-            check_bundle_dependents(workspace, bundle_name, &dependency_map)?;
+        if bundle_names.is_empty() {
+            return Err(AugentError::BundleNotFound {
+                name: args.name.unwrap_or_else(|| "unknown".to_string()),
+            });
         }
+
+        self.validate_bundles_installed(&bundle_names)?;
+
+        let confirmed = validate_dependencies_and_confirm(self.workspace, &args, &bundle_names)?;
+        if !confirmed {
+            return Ok(());
+        }
+
+        execution::execute_uninstall(self.workspace, &bundle_names)?;
         Ok(())
     }
 
-    fn rebuild_workspace_if_needed(ws: &mut Workspace) -> Result<bool> {
-        let needs_rebuild =
-            ws.workspace_config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
-        if needs_rebuild {
-            println!("Workspace configuration is missing. Rebuilding from installed files...");
-            ws.rebuild_workspace_config()?;
+    fn resolve_bundle_names(&self, args: &UninstallArgs) -> Result<Vec<String>> {
+        match &args.name {
+            None => Err(AugentError::BundleNotFound {
+                name: "No bundle specified".to_string(),
+            }),
+            Some(name) if name == "." => resolve_current_dir_bundle(self.workspace),
+            Some(name) => self.resolve_explicit_or_scope_bundle(name, args.all_bundles),
         }
-        Ok(needs_rebuild)
     }
 
-    fn validate_dependencies_and_confirm(
-        ws: &Workspace,
-        args: &UninstallArgs,
-        bundle_names: &[String],
-    ) -> Result<bool> {
-        Self::check_all_bundle_dependents(ws, bundle_names)?;
-        if !args.yes && !confirm_uninstall(ws, bundle_names)? {
-            println!("Uninstall cancelled.");
-            return Ok(false);
+    fn resolve_explicit_or_scope_bundle(
+        &self,
+        name: &str,
+        all_bundles: bool,
+    ) -> Result<Vec<String>> {
+        // Try as explicit bundle name first
+        if self.workspace.lockfile.find_bundle(name).is_some() {
+            return Ok(vec![name.to_string()]);
         }
-        Ok(true)
+
+        // Not found as exact match, but starts with @ - try as scope pattern
+        if name.starts_with('@') {
+            let bundles = resolve_scope_pattern_bundles(self.workspace, name, all_bundles);
+            if !bundles.is_empty() {
+                return Ok(bundles);
+            }
+        }
+
+        // Explicit bundle name provided but not found
+        Err(AugentError::BundleNotFound {
+            name: name.to_string(),
+        })
     }
 
-    pub fn execute(
-        &mut self,
-        workspace: Option<std::path::PathBuf>,
-        args: UninstallArgs,
-    ) -> Result<()> {
-        let mut ws = Self::validate_and_resolve_workspace(workspace)?;
-
-        Self::rebuild_workspace_if_needed(&mut ws)?;
-
-        let bundle_names = resolve_bundle_names(&ws, &args)?;
-
-        if bundle_names.is_empty() {
-            return Ok(());
+    fn validate_bundles_installed(&self, bundle_names: &[String]) -> Result<()> {
+        for bundle_name in bundle_names {
+            if self.workspace.lockfile.find_bundle(bundle_name).is_none() {
+                return Err(AugentError::BundleNotFound {
+                    name: bundle_name.clone(),
+                });
+            }
         }
-
-        let should_proceed = Self::validate_dependencies_and_confirm(&ws, &args, &bundle_names)?;
-        if !should_proceed {
-            return Ok(());
-        }
-
-        execute_uninstall(&mut ws, &bundle_names)
+        Ok(())
     }
+}
+
+#[allow(dead_code)]
+fn validate_and_resolve_workspace(workspace: Option<std::path::PathBuf>) -> Result<Workspace> {
+    let workspace_root = match workspace {
+        Some(path) => path,
+        None => std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {e}"),
+            source: Some(Box::new(e)),
+        })?,
+    };
+
+    let Some(workspace_root_for_workspace) = Workspace::find_from(&workspace_root) else {
+        let current = std::env::current_dir().map_err(|e| AugentError::IoError {
+            message: format!("Failed to get current directory: {e}"),
+            source: Some(Box::new(e)),
+        })?;
+        return Err(AugentError::WorkspaceNotFound {
+            path: current.display().to_string(),
+        });
+    };
+
+    Workspace::open(&workspace_root_for_workspace)
+}
+
+#[allow(dead_code)]
+fn rebuild_workspace_if_needed(ws: &mut Workspace) -> Result<bool> {
+    let needs_rebuild = ws.workspace_config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
+    if needs_rebuild {
+        println!("Workspace configuration is missing. Rebuilding from installed files...");
+        ws.rebuild_workspace_config()?;
+    }
+    Ok(needs_rebuild)
+}
+
+fn validate_dependencies_and_confirm(
+    ws: &Workspace,
+    args: &UninstallArgs,
+    bundle_names: &[String],
+) -> Result<bool> {
+    let dependency_map = dependency::build_dependency_map(ws)?;
+    for bundle_name in bundle_names {
+        dependency::check_bundle_dependents(ws, bundle_name, &dependency_map)?;
+    }
+    if !args.yes && !confirmation::confirm_uninstall(ws, bundle_names)? {
+        println!("Uninstall cancelled.");
+        return Ok(false);
+    }
+    Ok(true)
 }
 
 /// Resolve bundle names from arguments or interactive selection
-fn resolve_bundle_names(workspace: &Workspace, args: &UninstallArgs) -> Result<Vec<String>> {
-    let bundle_names = match &args.name {
-        Some(name) => resolve_named_bundle(workspace, name, args.all_bundles)?,
-        None => select_bundles_interactively(workspace)?,
-    };
-
-    Ok(bundle_names)
-}
-
-/// Resolve bundle names when a specific name is provided
-fn resolve_named_bundle(
-    workspace: &Workspace,
-    name: &str,
-    all_bundles: bool,
-) -> Result<Vec<String>> {
-    if name == "." {
-        resolve_current_dir_bundle(workspace)
-    } else if string_utils::is_scope_pattern(name) {
-        resolve_scope_pattern_bundles(workspace, name, all_bundles)
+#[allow(dead_code)]
+fn resolve_bundle_names(workspace: &Workspace, name: &str, all_bundles: bool) -> Vec<String> {
+    let matching_bundles = bundle_utils::filter_bundles_by_scope(workspace, name);
+    if matching_bundles.is_empty() {
+        println!("No bundles found matching scope: {name}");
+        vec![]
+    } else if all_bundles {
+        matching_bundles
     } else {
-        resolve_regular_bundle(workspace, name, all_bundles)
+        select_bundles_from_list(workspace, &matching_bundles).unwrap_or_default()
     }
 }
 
@@ -151,14 +170,18 @@ fn resolve_named_bundle(
 fn canonicalize_with_fallback(path: &std::path::Path) -> std::path::PathBuf {
     path.canonicalize()
         .ok()
-        .or_else(|| path.normalize().ok().map(|p| p.into_path_buf()))
+        .or_else(|| {
+            path.normalize()
+                .ok()
+                .map(normpath::BasePathBuf::into_path_buf)
+        })
         .unwrap_or_else(|| path.to_path_buf())
 }
 
 /// Resolve bundles when current directory is specified (".")
 fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
     let current_dir = std::env::current_dir().map_err(|e| AugentError::IoError {
-        message: format!("Failed to get current directory: {}", e),
+        message: format!("Failed to get current directory: {e}"),
         source: Some(Box::new(e)),
     })?;
 
@@ -167,7 +190,7 @@ fn resolve_current_dir_bundle(workspace: &Workspace) -> Result<Vec<String>> {
 
     // Check if current dir matches any bundle
     if let Some(bundle_name) = find_bundle_matching_current_dir(workspace, &current_dir_canonical) {
-        println!("Uninstalling current directory bundle: {}", bundle_name);
+        println!("Uninstalling current directory bundle: {bundle_name}");
         return Ok(vec![bundle_name]);
     }
 
@@ -220,10 +243,9 @@ fn check_nested_bundle(
     current_dir_canonical: &std::path::Path,
     root_canonical: &std::path::Path,
 ) -> Result<()> {
-    let rel_path = match current_dir_canonical.strip_prefix(root_canonical) {
-        Ok(path) => path,
-        Err(_) => return Ok(()), // Current dir is not under root
-    };
+    let Ok(rel_path) = current_dir_canonical.strip_prefix(root_canonical) else {
+        return Ok(());
+    }; // Current dir is not under root
 
     let first_component = rel_path
         .iter()
@@ -241,8 +263,7 @@ fn check_nested_bundle(
     {
         return Err(AugentError::BundleNotFound {
             name: format!(
-                "current directory (nested subdirectory of bundle '{}')",
-                potential_bundle_name
+                "current directory (nested subdirectory of bundle '{potential_bundle_name}')"
             ),
         });
     }
@@ -254,33 +275,14 @@ fn check_nested_bundle(
 fn resolve_scope_pattern_bundles(
     workspace: &Workspace,
     name: &str,
-    all_bundles: bool,
-) -> Result<Vec<String>> {
+    _all_bundles: bool,
+) -> Vec<String> {
     let matching_bundles = bundle_utils::filter_bundles_by_scope(workspace, name);
 
     if matching_bundles.is_empty() {
-        println!("No bundles found matching scope: {}", name);
-        Ok(vec![])
-    } else if all_bundles {
-        Ok(matching_bundles)
+        println!("No bundles found matching scope: {name}");
+        vec![]
     } else {
-        select_bundles_from_list(workspace, matching_bundles)
-    }
-}
-
-/// Resolve a regular bundle name (not "." and not a scope pattern)
-fn resolve_regular_bundle(
-    workspace: &Workspace,
-    name: &str,
-    all_bundles: bool,
-) -> Result<Vec<String>> {
-    if all_bundles {
-        Ok(filter_bundles_by_prefix(workspace, name))
-    } else if workspace.lockfile.find_bundle(name).is_some() {
-        Ok(vec![name.to_string()])
-    } else {
-        Err(AugentError::BundleNotFound {
-            name: name.to_string(),
-        })
+        select_bundles_from_list(workspace, &matching_bundles).unwrap_or_default()
     }
 }

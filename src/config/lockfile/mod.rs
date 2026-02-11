@@ -86,10 +86,7 @@ impl Lockfile {
                 reason: e.to_string(),
             })?;
         // Replace the empty name with the actual workspace name
-        json = json.replace(
-            "\"name\": \"\"",
-            &format!("\"name\": \"{}\"", workspace_name),
-        );
+        json = json.replace("\"name\": \"\"", &format!("\"name\": \"{workspace_name}\""));
         Ok(json)
     }
 

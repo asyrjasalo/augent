@@ -22,7 +22,7 @@ use super::WORKSPACE_DIR;
 /// }
 /// ```
 pub fn exists(root: &Path) -> bool {
-    root.join(WORKSPACE_DIR).is_dir()
+    root.join(WORKSPACE_DIR).exists()
 }
 
 /// Find a workspace at the git repository root

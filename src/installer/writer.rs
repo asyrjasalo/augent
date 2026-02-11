@@ -20,9 +20,9 @@ pub fn write_merged_frontmatter_markdown(
     let yaml = crate::universal::serialize_to_yaml(merged);
     let yaml = yaml.trim_end();
     let out = if yaml.is_empty() || yaml == "{}" {
-        format!("---\n---\n\n{}", body)
+        format!("---\n---\n\n{body}")
     } else {
-        format!("---\n{}\n---\n\n{}", yaml, body)
+        format!("---\n{yaml}\n---\n\n{body}")
     };
     file_ops::ensure_parent_dir(target)?;
     std::fs::write(target, out).map_err(|e| AugentError::FileWriteFailed {

@@ -31,7 +31,6 @@ impl<'a> ExecutionOrchestrator<'a> {
     }
 
     fn create_installer<'b>(
-        &'b self,
         workspace_root: &'b std::path::Path,
         platforms: &[Platform],
         dry_run: bool,
@@ -58,6 +57,7 @@ impl<'a> ExecutionOrchestrator<'a> {
 
     pub fn install_bundles_with_progress(
         &self,
+        _installer: &crate::installer::Installer<'_>,
         args: &InstallArgs,
         resolved_bundles: &[ResolvedBundle],
         platforms: &[Platform],
@@ -78,7 +78,7 @@ impl<'a> ExecutionOrchestrator<'a> {
 
         let (workspace_bundles_result, installed_files_map) = {
             let mut installer =
-                self.create_installer(&workspace_root, platforms, args.dry_run, progress.as_mut());
+                Self::create_installer(&workspace_root, platforms, args.dry_run, progress.as_mut());
             let result = installer.install_bundles(resolved_bundles);
             let installed_files = installer.installed_files().clone();
             (result, installed_files)
@@ -90,7 +90,7 @@ impl<'a> ExecutionOrchestrator<'a> {
     }
 
     pub fn track_installed_files_in_transaction(
-        &self,
+        _installer: &crate::installer::Installer<'_>,
         workspace_root: &std::path::Path,
         installed_files_map: &std::collections::HashMap<String, crate::domain::InstalledFile>,
         transaction: &mut Transaction,
@@ -126,7 +126,6 @@ impl<'a> ExecutionOrchestrator<'a> {
     }
 
     pub fn get_or_select_platforms(
-        &self,
         _args: &InstallArgs,
         workspace_root: &std::path::Path,
         _force_interactive: bool,

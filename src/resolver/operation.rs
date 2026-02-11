@@ -76,7 +76,7 @@ impl ResolveOperation {
                     skip_deps,
                     resolved: &self.resolved,
                 };
-                let resolved = crate::resolver::local::resolve_local(ctx)?;
+                let resolved = crate::resolver::local::resolve_local(&ctx)?;
 
                 self.track_resolution(&resolved, dependency.is_none());
                 Ok(resolved)

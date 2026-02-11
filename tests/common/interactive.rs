@@ -1,7 +1,7 @@
 //! Interactive test utilities using PTY (pseudo-terminal)
 //!
 //! This module provides utilities for testing interactive CLI commands that
-//! use terminal input (like inquire's MultiSelect), which cannot be
+//! use terminal input (like inquire's `MultiSelect`), which cannot be
 //! tested with standard stdin redirection.
 //!
 //! Usage:
@@ -51,7 +51,7 @@ impl InteractiveTest {
         cmd.env("TMPDIR", super::test_tmpdir_for_child().as_os_str());
 
         let session = Session::spawn(cmd)
-            .map_err(|e| std::io::Error::other(format!("Failed to spawn session: {}", e)))?;
+            .map_err(|e| std::io::Error::other(format!("Failed to spawn session: {e}")))?;
 
         Ok(Self { session })
     }
@@ -59,7 +59,7 @@ impl InteractiveTest {
     pub fn send_input(&mut self, input: &str) -> std::io::Result<()> {
         self.session
             .send(input)
-            .map_err(|e| std::io::Error::other(format!("Failed to send input: {}", e)))
+            .map_err(|e| std::io::Error::other(format!("Failed to send input: {e}")))
     }
 
     pub fn send_down(&mut self) -> std::io::Result<()> {
@@ -87,17 +87,17 @@ impl InteractiveTest {
     }
 
     pub fn wait_for_output_with_timeout(&mut self, timeout: Duration) -> std::io::Result<String> {
+        const MAX_NO_DATA: usize = 4; // Allow up to 200ms of no data (4 * 50ms) - reduced for faster tests
         let mut output = String::new();
         let mut buffer = [0u8; 4096];
         let start = std::time::Instant::now();
         let mut no_data_count = 0;
-        const MAX_NO_DATA: usize = 4; // Allow up to 200ms of no data (4 * 50ms) - reduced for faster tests
 
         // Brief delay so the process can produce output (helps on fast CI, e.g. x86_64 Linux)
         thread::sleep(Duration::from_millis(25));
 
         loop {
-            if self.check_timeout_for_output(&start, timeout)? {
+            if Self::check_timeout_for_output(&start, timeout) {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
                     "Timeout waiting for output",
@@ -134,7 +134,7 @@ impl InteractiveTest {
                     }
                 }
                 Err(e) => {
-                    if self.handle_read_error_for_output(&e, &mut output, &mut buffer)? {
+                    if self.handle_read_error_for_output(&e, &mut output, &mut buffer) {
                         break;
                     }
                     return Err(e);
@@ -166,34 +166,50 @@ impl InteractiveTest {
         false
     }
 
-    /// Returns Ok(true) if should break from loop, Ok(false) if error should be returned
+    /// Returns true if should break from loop, false if error should be returned
     fn handle_read_error_for_output(
         &mut self,
         e: &std::io::Error,
         output: &mut String,
         buffer: &mut [u8],
-    ) -> std::io::Result<bool> {
+    ) -> bool {
         // EIO (code 5 on Linux) can occur when process closes PTY slave;
         // drain before breaking to capture any buffered output
         #[cfg(unix)]
         if e.raw_os_error() == Some(5) {
             self.drain_remaining_output(output, buffer);
-            return Ok(true);
+            return true;
         }
         // For Windows or other errors, check if process exited
         if self.session.check(Eof).is_ok() {
             self.drain_remaining_output(output, buffer);
-            return Ok(true);
+            return true;
         }
-        Ok(false)
+        false
     }
 
-    fn check_timeout_for_output(
-        &self,
+    fn check_timeout_for_output(start: &std::time::Instant, timeout: Duration) -> bool {
+        start.elapsed() > timeout
+    }
+
+    fn check_timeout_with_context(
         start: &std::time::Instant,
         timeout: Duration,
-    ) -> std::io::Result<bool> {
-        Ok(start.elapsed() > timeout)
+        expected: &str,
+        output: &str,
+    ) -> std::io::Result<()> {
+        if Self::check_timeout_for_output(start, timeout) {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                format!(
+                    "Timeout waiting for text: {}. Output so far: {:?}",
+                    expected,
+                    Self::truncate_output(output)
+                ),
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     /// Drain any remaining output from the PTY (e.g. after Eof or EIO on Linux).
@@ -221,9 +237,9 @@ impl InteractiveTest {
         loop {
             iteration_count += 1;
 
-            self.check_iteration_limit(iteration_count, max_iterations, expected, &output)?;
+            Self::check_iteration_limit(iteration_count, max_iterations, expected, &output)?;
 
-            self.check_timeout(start, timeout, expected, &output)?;
+            Self::check_timeout_with_context(&start, timeout, expected, &output)?;
 
             match self.read_and_process(&mut buffer, &mut output, expected) {
                 ReadResult::Success => return Ok(output),
@@ -234,7 +250,6 @@ impl InteractiveTest {
     }
 
     fn check_iteration_limit(
-        &self,
         iteration_count: usize,
         max_iterations: usize,
         expected: &str,
@@ -247,28 +262,6 @@ impl InteractiveTest {
                     "Timeout waiting for text: {} (exceeded {} iterations). Output so far: {:?}",
                     expected,
                     max_iterations,
-                    Self::truncate_output(output)
-                ),
-            ))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn check_timeout(
-        &self,
-        start: std::time::Instant,
-        timeout: Duration,
-        expected: &str,
-        output: &str,
-    ) -> std::io::Result<()> {
-        if start.elapsed() > timeout {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                format!(
-                    "Timeout waiting for text: {} ({}ms elapsed). Output so far: {:?}",
-                    expected,
-                    start.elapsed().as_millis(),
                     Self::truncate_output(output)
                 ),
             ))
@@ -354,7 +347,7 @@ impl InteractiveTest {
         }
     }
 
-    /// Wait for process to finish without draining all output (faster than wait_for_output)
+    /// Wait for process to finish without draining all output (faster than `wait_for_output`)
     /// This is useful when you only need to verify files/state, not capture output.
     pub fn wait_for_completion(&mut self, timeout: Duration) -> std::io::Result<()> {
         let start = std::time::Instant::now();
@@ -375,19 +368,19 @@ impl InteractiveTest {
         }
     }
 
-    pub fn status(&mut self) -> std::io::Result<std::process::ExitStatus> {
+    pub fn status(&mut self) -> std::process::ExitStatus {
         // Wait for process to finish by expecting EOF
         let _ = self.session.expect(Eof);
         // Return a dummy success status (0)
         #[cfg(unix)]
         {
             use std::os::unix::process::ExitStatusExt;
-            Ok(std::process::ExitStatus::from_raw(0))
+            std::process::ExitStatus::from_raw(0)
         }
         #[cfg(windows)]
         {
             use std::os::windows::process::ExitStatusExt;
-            Ok(std::process::ExitStatus::from_raw(0))
+            std::process::ExitStatus::from_raw(0)
         }
     }
 }

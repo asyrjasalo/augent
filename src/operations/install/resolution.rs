@@ -9,7 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 /// Install-specific bundle resolver coordinator
 ///
-/// Wraps the core Resolver (ResolveOperation) with install-specific concerns:
+/// Wraps the core Resolver (`ResolveOperation`) with install-specific concerns:
 /// - Workspace context and bundle configuration
 /// - Progress bar display
 /// - Resolution scenario orchestration (workspace config vs source args)
@@ -45,7 +45,7 @@ impl<'a> InstallResolver<'a> {
         for dep in &self.workspace.bundle_config.bundles {
             if let Some(ref git_url) = dep.git {
                 let source = if let Some(ref git_ref) = dep.git_ref {
-                    format!("{}@{}", git_url, git_ref)
+                    format!("{git_url}@{git_ref}")
                 } else {
                     git_url.clone()
                 };

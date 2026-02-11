@@ -45,7 +45,7 @@ impl<'a> ConfigUpdater<'a> {
         resolved_bundles: &[crate::domain::ResolvedBundle],
         update_augent_yaml: bool,
     ) {
-        for bundle in resolved_bundles.iter() {
+        for bundle in resolved_bundles {
             if bundle.dependency.is_none() {
                 let workspace_name = self.workspace.get_workspace_name();
                 if bundle.name == workspace_name {
@@ -73,7 +73,7 @@ impl<'a> ConfigUpdater<'a> {
                 .or_else(|| bundle.resolved_ref.clone())
                 .filter(|r| r != "main" && r != "master");
             let mut dep = BundleDependency::git(&bundle.name, &git_source.url, ref_for_yaml);
-            dep.path = git_source.path.clone();
+            dep.path.clone_from(&git_source.path);
             dep
         } else {
             let bundle_path = &bundle.source_path;
@@ -192,13 +192,13 @@ impl<'a> ConfigUpdater<'a> {
         already_installed: Vec<LockedBundle>,
         new_bundles: Vec<LockedBundle>,
     ) {
-        if !new_bundles.is_empty() {
+        if new_bundles.is_empty() {
+            self.update_existing_bundles_in_place(already_installed);
+        } else {
             self.replace_and_add_bundles(already_installed);
             for bundle in new_bundles {
                 self.workspace.lockfile.add_bundle(bundle);
             }
-        } else {
-            self.update_existing_bundles_in_place(already_installed);
         }
 
         let workspace_name = self.workspace.get_workspace_name();
@@ -214,7 +214,7 @@ impl<'a> ConfigUpdater<'a> {
         let workspace_name = self.workspace.get_workspace_name();
         self.workspace.lockfile.reorganize(Some(&workspace_name));
 
-        for dep in self.workspace.bundle_config.bundles.iter_mut() {
+        for dep in &mut self.workspace.bundle_config.bundles {
             if dep.git.is_some() && dep.git_ref.is_none() {
                 if let Some(locked) = self.workspace.lockfile.find_bundle(&dep.name) {
                     if let LockedSource::Git {

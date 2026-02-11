@@ -29,7 +29,7 @@ fn is_bundle_directory(path: &Path) -> bool {
 fn get_bundle_name(path: &Path) -> Result<String> {
     path.file_name()
         .and_then(|n| n.to_str())
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .ok_or_else(|| AugentError::BundleNotFound {
             name: "Unknown".to_string(),
         })
@@ -49,7 +49,7 @@ fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
         path.to_path_buf()
     } else if path == Path::new(".") {
         std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
+            message: format!("Failed to get current directory: {e}"),
             source: Some(Box::new(e)),
         })?
     } else {
@@ -65,7 +65,7 @@ fn resolve_full_path(path: &Path, workspace_root: &Path) -> Result<PathBuf> {
         .or_else(|_| {
             joined
                 .normalize()
-                .map(|p| p.into_path_buf())
+                .map(normpath::BasePathBuf::into_path_buf)
                 .map_err(|e| AugentError::IoError {
                     message: format!("Failed to normalize path: {}", joined.display()),
                     source: Some(Box::new(e)),
@@ -84,8 +84,7 @@ fn get_bundle_name_from_dependency_or_path(
         None => path
             .file_name()
             .and_then(|n| n.to_str())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "bundle".to_string()),
+            .map_or_else(|| "bundle".to_string(), std::string::ToString::to_string),
     }
 }
 
@@ -116,7 +115,7 @@ pub struct ResolveLocalContext<'a> {
 /// # Errors
 ///
 /// Returns error if bundle not found, validation fails, or circular dependency detected.
-pub fn resolve_local(ctx: ResolveLocalContext) -> Result<ResolvedBundle> {
+pub fn resolve_local(ctx: &ResolveLocalContext) -> Result<ResolvedBundle> {
     let full_path = resolve_full_path(ctx.path, ctx.workspace_root)?;
 
     crate::resolver::validation::validate_local_bundle_path(

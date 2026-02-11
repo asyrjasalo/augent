@@ -1,6 +1,6 @@
 //! Error type tests
 //!
-//! Tests for AugentError enum and its conversions.
+//! Tests for `AugentError` enum and its conversions.
 
 #![allow(unused_imports)]
 #![allow(clippy::expect_used)]

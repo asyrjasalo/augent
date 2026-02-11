@@ -154,7 +154,7 @@ pub enum MergeStrategy {
 impl MergeStrategy {
     /// Merge two strings according to this strategy
     #[allow(dead_code)] // Used by tests
-    pub fn merge_strings(&self, existing: &str, new_content: &str) -> Result<String> {
+    pub fn merge_strings(self, existing: &str, new_content: &str) -> Result<String> {
         match self {
             MergeStrategy::Replace => Ok(new_content.to_string()),
             MergeStrategy::Composite => Ok(merge_composite(existing, new_content)),
@@ -203,10 +203,7 @@ fn merge_composite(existing: &str, new_content: &str) -> String {
     }
 
     // Use a clear separator between sections
-    format!(
-        "{}\n\n<!-- Augent: Additional content below -->\n\n{}",
-        existing, new_content
-    )
+    format!("{existing}\n\n<!-- Augent: Additional content below -->\n\n{new_content}")
 }
 
 /// Shallow merge: only top-level keys from new object override existing

@@ -10,7 +10,7 @@ pub fn resolve_workspace_path(workspace: Option<std::path::PathBuf>) -> Result<s
     match workspace {
         Some(path) => Ok(path),
         None => std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
+            message: format!("Failed to get current directory: {e}"),
             source: Some(Box::new(e)),
         }),
     }

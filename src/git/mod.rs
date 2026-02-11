@@ -9,7 +9,7 @@
 //! Authentication is delegated entirely to git's native system:
 //! - SSH keys from ~/.ssh/
 //! - Git credential helpers
-//! - Environment variables (GIT_SSH_COMMAND, etc.)
+//! - Environment variables (`GIT_SSH_COMMAND`, etc.)
 
 pub mod auth;
 pub mod checkout;

@@ -1,7 +1,7 @@
 //! Augent - AI configuration manager
 //!
 //! A platform-independent command line tool for managing AI coding platform resources
-//! across multiple platforms (Claude, Cursor, OpenCode, etc.) in a reproducible manner.
+//! across multiple platforms (Claude, Cursor, `OpenCode`, etc.) in a reproducible manner.
 
 use clap::Parser;
 use std::path::PathBuf;
@@ -35,11 +35,11 @@ fn check_git_repository(workspace_path: Option<PathBuf>) -> Result<()> {
     let start_dir = workspace_path.unwrap_or_else(|| {
         std::env::current_dir()
             .map_err(|e| AugentError::IoError {
-                message: format!("Failed to get current directory: {}", e),
+                message: format!("Failed to get current directory: {e}"),
                 source: Some(Box::new(e)),
             })
             .unwrap_or_else(|e| {
-                eprintln!("Warning: Using fallback directory due to error: {}", e);
+                eprintln!("Warning: Using fallback directory due to error: {e}");
                 PathBuf::from(".")
             })
     });
@@ -62,11 +62,17 @@ fn execute_command(workspace: Option<PathBuf>, command: Commands) -> Result<()> 
     match command {
         Commands::Install(args) => commands::install::run(workspace, args),
         Commands::Uninstall(args) => commands::uninstall::run(workspace, args),
-        Commands::List(args) => commands::list::run(workspace, args),
+        Commands::List(args) => commands::list::run(workspace, &args),
         Commands::Show(args) => commands::show::run(workspace, args),
         Commands::Cache(args) => commands::clean_cache::run(args),
-        Commands::Version => commands::version::run(),
-        Commands::Completions(args) => commands::completions::run(args),
+        Commands::Version => {
+            commands::version::run();
+            Ok(())
+        }
+        Commands::Completions(args) => {
+            commands::completions::run(&args);
+            Ok(())
+        }
     }
 }
 
@@ -77,7 +83,7 @@ fn main() {
     // Cache, version, and completions commands can be run outside a git repository
     if needs_git_repo(&cli.command) {
         if let Err(e) = check_git_repository(cli.workspace.clone()) {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             std::process::exit(1);
         }
     }
@@ -85,7 +91,7 @@ fn main() {
     let result = execute_command(cli.workspace, cli.command);
 
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }

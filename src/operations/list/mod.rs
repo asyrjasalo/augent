@@ -1,6 +1,6 @@
 //! List operation module
 //!
-//! This module provides ListOperation struct that encapsulates all
+//! This module provides `ListOperation` struct that encapsulates all
 //! listing business logic, including bundle information display and
 //! resource grouping.
 
@@ -87,6 +87,5 @@ fn list_bundles(workspace: &Workspace, options: &ListOptions) -> Result<()> {
             println!();
         }
     }
-
     Ok(())
 }

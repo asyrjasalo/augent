@@ -35,7 +35,7 @@ fn parse_sha_from_output(stdout: &str, git_ref: &str) -> Result<String> {
     if sha.len() != 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(AugentError::GitRefResolveFailed {
             git_ref: git_ref.to_string(),
-            reason: format!("invalid SHA from ls-remote: {}", sha),
+            reason: format!("invalid SHA from ls-remote: {sha}"),
         });
     }
 
@@ -61,7 +61,7 @@ pub fn ls_remote(url: &str, git_ref: Option<&str>) -> Result<String> {
         .output()
         .map_err(|e| AugentError::GitRefResolveFailed {
             git_ref: ref_arg.to_string(),
-            reason: format!("git ls-remote failed: {}", e),
+            reason: format!("git ls-remote failed: {e}"),
         })?;
 
     if !output.status.success() {
@@ -102,9 +102,9 @@ pub fn resolve_ref(repo: &Repository, git_ref: Option<&str>) -> Result<String> {
 fn resolve_reference<'a>(repo: &'a Repository, refname: &str) -> Result<git2::Commit<'a>> {
     let ref_candidates = [
         refname.to_string(),
-        format!("refs/heads/{}", refname),
-        format!("refs/tags/{}", refname),
-        format!("refs/remotes/origin/{}", refname),
+        format!("refs/heads/{refname}"),
+        format!("refs/tags/{refname}"),
+        format!("refs/remotes/origin/{refname}"),
     ];
 
     for candidate in &ref_candidates {

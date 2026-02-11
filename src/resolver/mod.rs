@@ -51,8 +51,8 @@ pub mod validation;
 // Re-export submodules
 pub use operation::ResolveOperation;
 
-/// Main resolver type - alias to ResolveOperation
+/// Main resolver type - alias to `ResolveOperation`
 ///
 /// This type alias maintains backward compatibility while delegating
-/// to the refactored ResolveOperation implementation.
+/// to the refactored `ResolveOperation` implementation.
 pub type Resolver = ResolveOperation;

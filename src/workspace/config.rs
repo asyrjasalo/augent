@@ -94,7 +94,7 @@ pub fn save_lockfile(config_dir: &Path, lockfile: &Lockfile, workspace_name: &st
     // Write to a temporary file in the same directory first, then
     // atomically rename it into place. This avoids readers ever seeing
     // a truncated or half-written lockfile.
-    let tmp_path = config_dir.join(format!("{}.tmp", LOCKFILE_NAME));
+    let tmp_path = config_dir.join(format!("{LOCKFILE_NAME}.tmp"));
 
     fs::write(&tmp_path, &content).map_err(|e| crate::error::AugentError::FileWriteFailed {
         path: tmp_path.display().to_string(),

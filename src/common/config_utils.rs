@@ -25,7 +25,7 @@ fn get_bundle_path(workspace_root: &Path, source: &LockedSource) -> std::path::P
                 .next()
                 .unwrap_or_default()
                 .trim_end_matches(".git");
-            get_cache_dir().join(format!("{}_{}", repo_name, sha))
+            get_cache_dir().join(format!("{repo_name}_{sha}"))
         }
     }
 }

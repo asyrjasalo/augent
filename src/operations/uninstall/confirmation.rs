@@ -8,6 +8,7 @@ use crate::workspace::Workspace;
 use inquire::Confirm;
 
 /// Count files that would be removed for a bundle
+#[allow(dead_code)]
 fn count_files_to_remove(
     workspace: &Workspace,
     bundle_name: &str,
@@ -38,15 +39,16 @@ fn count_files_to_remove(
 }
 
 /// Confirm uninstallation with user, showing what would be done
+#[allow(dead_code)]
 pub fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String]) -> Result<bool> {
     println!("\nThe following bundle(s) will be uninstalled:");
     for bundle_name in bundles_to_uninstall {
-        println!("  - {}", bundle_name);
+        println!("  - {bundle_name}");
 
         if let Some(locked_bundle) = workspace.lockfile.find_bundle(bundle_name) {
             if let Ok(file_count) = count_files_to_remove(workspace, bundle_name, locked_bundle) {
                 if file_count > 0 {
-                    println!("    {} file(s) will be removed", file_count);
+                    println!("    {file_count} file(s) will be removed");
                 }
             }
         }
@@ -59,7 +61,7 @@ pub fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String])
         .with_help_message("Press Enter to confirm, or 'n' to cancel")
         .prompt()
         .map_err(|e| AugentError::IoError {
-            message: format!("Failed to read confirmation: {}", e),
+            message: format!("Failed to read confirmation: {e}"),
             source: Some(Box::new(e)),
         })
 }

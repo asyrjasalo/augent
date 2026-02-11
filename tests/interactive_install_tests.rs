@@ -12,8 +12,8 @@ fn augent_bin_path() -> PathBuf {
 }
 
 #[test]
-// In cross's aarch64 Linux Docker image, PTY spawn can run the binary via /bin/sh, which
-// then interprets the ELF as a script and prints "Syntax error: `(` unexpected". Skip
+// In cross's aarch64 Linux Docker image, PTY spawn can run| binary via /bin/sh, which
+// then interprets| ELF as a script and prints "Syntax error: `(` unexpected". Skip
 // only on Linux aarch64; it passes on macOS aarch64.
 //
 // On Windows, PTY reads can block indefinitely in conpty, causing tests to hang.
@@ -26,7 +26,9 @@ fn augent_bin_path() -> PathBuf {
     target_os = "windows",
     ignore = "PTY reads block indefinitely on Windows conpty, causing test to hang"
 )]
+#[allow(clippy::too_many_lines)]
 fn test_install_with_menu_selects_all_bundles() {
+    use common::MenuAction;
     // Wrap test in timeout to prevent CI from hanging indefinitely
     // Reduced from 30s to 15s after optimizations (removed slow `augent list` call)
     common::run_with_timeout(std::time::Duration::from_secs(15), || {
@@ -71,7 +73,6 @@ fn test_install_with_menu_selects_all_bundles() {
             .expect("Menu should appear");
 
         // Select all bundles
-        use common::MenuAction;
         common::send_menu_actions(
             &mut test,
             &[
@@ -112,13 +113,11 @@ fn test_install_with_menu_selects_all_bundles() {
 
         assert!(
             bundle_names.contains(&"bundle-a") || bundle_names.contains(&"@test/bundle-a"),
-            "lockfile should contain bundle-a, found: {:?}",
-            bundle_names
+            "lockfile should contain bundle-a, found: {bundle_names:?}"
         );
         assert!(
             bundle_names.contains(&"bundle-b") || bundle_names.contains(&"@test/bundle-b"),
-            "lockfile should contain bundle-b, found: {:?}",
-            bundle_names
+            "lockfile should contain bundle-b, found: {bundle_names:?}"
         );
 
         // Note: We skip output verification since we verify via files and lockfile above

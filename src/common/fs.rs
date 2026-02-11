@@ -17,7 +17,7 @@ impl CopyOptions {
 }
 
 /// Copy a directory recursively with options
-pub fn copy_dir_recursive<P1, P2>(src: P1, dst: P2, options: CopyOptions) -> std::io::Result<()>
+pub fn copy_dir_recursive<P1, P2>(src: P1, dst: P2, options: &CopyOptions) -> std::io::Result<()>
 where
     P1: AsRef<Path>,
     P2: AsRef<Path>,
@@ -31,7 +31,7 @@ where
 
     for entry in fs::read_dir(src_ref)? {
         let entry = entry?;
-        copy_entry(&entry, dst_ref, &options)?;
+        copy_entry(&entry, dst_ref, options)?;
     }
 
     Ok(())
@@ -68,7 +68,7 @@ where
     P2: AsRef<Path>,
 {
     fs::create_dir_all(dst.as_ref())?;
-    copy_dir_recursive(src, dst, options.clone())
+    copy_dir_recursive(src, dst, options)
 }
 
 fn copy_file<P1, P2>(src: P1, dst: P2) -> std::io::Result<()>

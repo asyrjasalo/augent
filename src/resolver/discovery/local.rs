@@ -26,10 +26,7 @@ pub fn is_bundle_directory(full_path: &Path) -> bool {
     match full_path.read_dir() {
         Ok(entries) => {
             for entry_result in entries {
-                let entry = match entry_result {
-                    Ok(e) => e,
-                    Err(_) => continue,
-                };
+                let Ok(entry) = entry_result else { continue };
                 if let Some(name) = entry.file_name().to_str() {
                     if !known_files.contains(&name) && !name.starts_with('.') {
                         return true;
@@ -92,7 +89,7 @@ pub fn discover_local_bundles(path: &Path, workspace_root: &Path) -> Result<Vec<
         path.to_path_buf()
     } else if path == Path::new(".") {
         std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {}", e),
+            message: format!("Failed to get current directory: {e}"),
             source: Some(Box::new(e)),
         })?
     } else {

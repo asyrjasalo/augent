@@ -12,7 +12,7 @@ use crate::workspace::Workspace;
 /// Run uninstall command
 ///
 /// This is a thin CLI wrapper that handles workspace initialization
-/// and delegates to UninstallOperation for all business logic.
+/// and delegates to `UninstallOperation` for all business logic.
 pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result<()> {
     let current_dir = helpers::resolve_workspace_path(workspace)?;
     let workspace_root = Workspace::find_from(&current_dir).ok_or_else(|| {
@@ -32,7 +32,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     let options = UninstallOptions::from(&args);
     let mut operation = UninstallOperation::new(&mut workspace, options);
 
-    operation.execute(None, args)?;
+    operation.execute(args)?;
 
     Ok(())
 }

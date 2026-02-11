@@ -73,7 +73,7 @@ pub fn rebuild_workspace_config(root: &Path, lockfile: &Lockfile) -> Result<Work
 
 /// Detect which platforms are installed by checking for platform directories
 ///
-/// Uses the platform definitions from PlatformLoader to detect
+/// Uses the platform definitions from `PlatformLoader` to detect
 /// which platforms are installed, making this truly platform-independent.
 fn detect_installed_platforms(root: &Path) -> Result<Vec<std::path::PathBuf>> {
     let mut platforms = Vec::new();
@@ -95,7 +95,7 @@ fn detect_installed_platforms(root: &Path) -> Result<Vec<std::path::PathBuf>> {
 
 fn clean_default_branch_refs(bundle_config: &mut BundleConfig) {
     let is_default_branch = |r: &str| r == "main" || r == "master";
-    for dep in bundle_config.bundles.iter_mut() {
+    for dep in &mut bundle_config.bundles {
         if dep.git.is_some() {
             if let Some(ref r) = dep.git_ref {
                 if is_default_branch(r) {

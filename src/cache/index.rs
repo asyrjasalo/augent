@@ -50,7 +50,7 @@ pub fn read_index() -> Result<Vec<IndexEntry>> {
     if let Some(cached) = index_cache()
         .lock()
         .map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to acquire index cache lock: {}", e),
+            message: format!("Failed to acquire index cache lock: {e}"),
         })?
         .as_ref()
     {
@@ -76,7 +76,7 @@ pub fn read_index() -> Result<Vec<IndexEntry>> {
     *index_cache()
         .lock()
         .map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to acquire index cache lock: {}", e),
+            message: format!("Failed to acquire index cache lock: {e}"),
         })? = Some(entries.clone());
     Ok(entries)
 }
@@ -87,7 +87,7 @@ pub fn write_index(entries: &[IndexEntry]) -> Result<()> {
 
     let content =
         serde_json::to_string_pretty(entries).map_err(|e| AugentError::CacheOperationFailed {
-            message: format!("Failed to serialize index: {}", e),
+            message: format!("Failed to serialize index: {e}"),
         })?;
 
     fs::write(&index_path, content).map_err(|e| AugentError::CacheOperationFailed {
@@ -124,7 +124,7 @@ fn marketplace_plugin_name(path: Option<&str>) -> Option<&str> {
 /// List all cache index entries for a given (url, sha)
 ///
 /// Used to discover bundles from cache without cloning.
-/// Returns (path, bundle_name, content_path, resolved_ref) for each entry.
+/// Returns (`path`, `bundle_name`, `content_path`, `resolved_ref`) for each entry.
 pub fn list_cached_entries_for_url_sha(url: &str, sha: &str) -> Result<Vec<CachedEntryForUrlSha>> {
     let entry_path = super::repo_cache_entry_path(url, sha)?;
     let resources = super::entry_resources_path(&entry_path);
@@ -150,7 +150,7 @@ fn build_cached_entries_from_index(
         }
 
         let (path, content_path) = resolve_entry_path(entry, resources);
-        if should_include_entry(&content_path, &entry.path) {
+        if should_include_entry(&content_path, entry.path.as_ref()) {
             result.push((
                 path,
                 entry.bundle_name.clone(),
@@ -170,14 +170,14 @@ fn resolve_entry_path(entry: &IndexEntry, resources: &Path) -> (Option<String>, 
         entry
             .path
             .as_ref()
-            .map(|p| resources.join(p))
-            .unwrap_or_else(|| resources.to_path_buf())
+            .map_or_else(|| resources.to_path_buf(), |p| resources.join(p))
     };
     (entry.path.clone(), content_path)
 }
 
-fn should_include_entry(content_path: &Path, entry_path: &Option<String>) -> bool {
-    content_path.is_dir() || marketplace_plugin_name(entry_path.as_deref()).is_some()
+#[allow(clippy::ref_option)]
+fn should_include_entry(content_path: &Path, entry_path: Option<&String>) -> bool {
+    content_path.is_dir() || marketplace_plugin_name(entry_path.map(String::as_str)).is_some()
 }
 
 #[cfg(test)]

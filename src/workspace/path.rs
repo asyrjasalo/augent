@@ -19,7 +19,12 @@ pub fn find_file_candidates(
     let platform_id = extract_platform_id(platform_dir);
     let platform = load_platform(root, &platform_id)?;
 
-    add_transformed_candidates(&mut candidates, bundle_file, platform_dir, &platform);
+    add_transformed_candidates(
+        &mut candidates,
+        bundle_file,
+        platform_dir,
+        platform.as_ref(),
+    );
     add_direct_path_candidate(&mut candidates, bundle_file, platform_dir);
     add_common_fallback_candidates(&mut candidates, bundle_file, platform_dir);
 
@@ -50,7 +55,7 @@ fn add_transformed_candidates(
     candidates: &mut Vec<std::path::PathBuf>,
     bundle_file: &str,
     platform_dir: &Path,
-    platform: &Option<crate::platform::Platform>,
+    platform: Option<&crate::platform::Platform>,
 ) {
     if let Some(platform) = platform {
         for transform_rule in &platform.transforms {
@@ -88,7 +93,11 @@ fn add_common_fallback_candidates(
     platform_dir: &Path,
 ) {
     if let Some(filename) = bundle_file.split('/').next_back() {
-        if bundle_file.starts_with("rules/") && filename.ends_with(".md") {
+        if bundle_file.starts_with("rules/")
+            && std::path::Path::new(filename)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+        {
             add_mdc_candidate(candidates, filename, platform_dir);
         }
     }

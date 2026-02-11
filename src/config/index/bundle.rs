@@ -1,4 +1,4 @@
-//! WorkspaceBundle struct for workspace configuration
+//! `WorkspaceBundle` struct for workspace configuration
 //!
 //! A bundle's file mappings in the workspace.
 
@@ -13,7 +13,7 @@ pub struct WorkspaceBundle {
 
     /// Mapping of bundle files to installed locations per agent
     /// Key: bundle file path (e.g., "commands/debug.md")
-    /// Value: list of installed locations (e.g., [".opencode/commands/debug.md", ".cursor/rules/debug.mdc"])
+    /// Value: list of installed locations (e.g., [`.opencode/commands/debug.md`, `.cursor/rules/debug.mdc`])
     #[serde(default, serialize_with = "serialize_enabled_sorted")]
     pub enabled: HashMap<String, Vec<String>>,
 }

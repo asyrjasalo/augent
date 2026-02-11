@@ -1,7 +1,7 @@
 //! Platform detection and transformation module
 //!
 //! This module handles:
-//! - Platform definitions (Platform, TransformRule, MergeStrategy)
+//! - Platform definitions (Platform, `TransformRule`, `MergeStrategy`)
 //! - Platform detection (via detection module)
 //! - Merge strategies for combining files (via merge module)
 
@@ -206,8 +206,7 @@ mod unit_tests {
         for &expected_id in expected_ids {
             assert!(
                 ids.contains(&expected_id),
-                "Missing expected platform: {}",
-                expected_id
+                "Missing expected platform: {expected_id}"
             );
         }
     }

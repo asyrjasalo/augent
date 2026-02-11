@@ -43,7 +43,7 @@ pub fn extract_short_name(bundle_name: &str) -> String {
 /// # Returns
 /// * `Option<String>` - Bundle description if found, None otherwise
 pub fn get_description_for_bundle(
-    path_opt: &Option<String>,
+    path_opt: Option<&String>,
     short_name: &str,
     marketplace_config: &MarketplaceConfig,
     repo_path: &Path,
@@ -91,8 +91,8 @@ pub fn create_discovered_bundle_from_cache(
     info: CachedBundleInfo<'_>,
     source: &GitSource,
     sha: &str,
-    path_opt: &Option<String>,
-    resolved_ref: &Option<String>,
+    path_opt: Option<&String>,
+    resolved_ref: Option<&String>,
 ) -> DiscoveredBundle {
     DiscoveredBundle {
         name: info.short_name,
@@ -100,8 +100,8 @@ pub fn create_discovered_bundle_from_cache(
         description: info.description,
         git_source: Some(GitSource {
             url: source.url.clone(),
-            path: path_opt.clone(),
-            git_ref: resolved_ref.clone().or_else(|| source.git_ref.clone()),
+            path: path_opt.cloned(),
+            git_ref: resolved_ref.cloned().or_else(|| source.git_ref.clone()),
             resolved_sha: Some(sha.to_string()),
         }),
         resource_counts: ResourceCounts::from_path(info.resources_path),
@@ -133,7 +133,8 @@ pub fn load_cached_bundles_from_marketplace(
         for entry in &cache::list_cached_entries_for_url_sha(&source.url, sha)? {
             let (path_opt, bundle_name, resources_path, resolved_ref) = entry;
             let short_name = extract_short_name(bundle_name);
-            let description = get_description_for_bundle(path_opt, &short_name, mc, &repo_path);
+            let description =
+                get_description_for_bundle(path_opt.as_ref(), &short_name, mc, &repo_path);
 
             let bundle_info = CachedBundleInfo {
                 short_name,
@@ -145,8 +146,8 @@ pub fn load_cached_bundles_from_marketplace(
                 bundle_info,
                 source,
                 sha,
-                path_opt,
-                resolved_ref,
+                path_opt.as_ref(),
+                resolved_ref.as_ref(),
             ));
         }
         Ok(discovered)
@@ -173,7 +174,7 @@ pub fn determine_bundle_subdirectory_and_cache_name(
     _repo_path: &Path,
     content_path: &Path,
     bundle: &DiscoveredBundle,
-    _marketplace_config: &Option<&MarketplaceConfig>,
+    _marketplace_config: Option<&MarketplaceConfig>,
     source: &GitSource,
 ) -> (Option<String>, String) {
     let subdirectory = if bundle.path.starts_with(content_path) {
@@ -189,7 +190,7 @@ pub fn determine_bundle_subdirectory_and_cache_name(
     };
 
     let bundle_name_for_cache =
-        if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
+        if subdirectory.as_ref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
             cache::derive_marketplace_bundle_name(&source.url, &bundle.name)
         } else {
             bundle.name.clone()
@@ -214,13 +215,13 @@ pub fn determine_bundle_subdirectory_and_cache_name(
 pub fn create_synthetic_bundle_if_marketplace(
     repo_path: &Path,
     bundle: &DiscoveredBundle,
-    subdirectory: Option<String>,
+    subdirectory: Option<&String>,
     source: &GitSource,
 ) -> Result<(PathBuf, Option<TempDir>)> {
-    if subdirectory.as_deref() == Some(&format!("$claudeplugin/{}", bundle.name)) {
+    if subdirectory == Some(&format!("$claudeplugin/{}", bundle.name)) {
         let synthetic_temp =
             TempDir::new_in(crate::temp::temp_dir_base()).map_err(|e| AugentError::IoError {
-                message: format!("Failed to create temp dir: {}", e),
+                message: format!("Failed to create temp dir: {e}"),
                 source: Some(Box::new(e)),
             })?;
         crate::config::marketplace::operations::create_synthetic_bundle_to(

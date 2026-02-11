@@ -4,6 +4,7 @@ use crate::config::{BundleConfig, LockedSource, WorkspaceBundle};
 /// Provides helper functions for displaying bundle details, sources,
 /// and other information in a consistent format across the CLI.
 use console::Style;
+use std::fmt::Write;
 
 /// Git source details for display
 struct GitSourceDisplay<'a> {
@@ -13,10 +14,10 @@ struct GitSourceDisplay<'a> {
     path: &'a Option<String>,
 }
 
-/// Convert LockedSource to display string
+/// Convert `LockedSource` to display string
 pub fn locked_source_to_string(source: &LockedSource) -> String {
     match source {
-        LockedSource::Dir { path, .. } => format!("Directory ({})", path),
+        LockedSource::Dir { path, .. } => format!("Directory ({path})"),
         LockedSource::Git {
             url,
             git_ref,
@@ -24,13 +25,19 @@ pub fn locked_source_to_string(source: &LockedSource) -> String {
             path,
             ..
         } => {
-            let mut result = format!("Git ({})", url);
+            let mut result = format!("Git ({url})");
             if let Some(ref_name) = git_ref {
-                result.push_str(&format!(" ref: {}", ref_name));
+                if let Err(e) = writeln!(result, " ref: {ref_name}") {
+                    eprintln!("Failed to write to result string: {e}");
+                }
             }
-            result.push_str(&format!(" sha: {}", sha));
+            if let Err(e) = writeln!(result, " sha: {sha}") {
+                eprintln!("Failed to write to result string: {e}");
+            }
             if let Some(subdir) = path {
-                result.push_str(&format!(" path: {}", subdir));
+                if let Err(e) = writeln!(result, " path: {subdir}") {
+                    eprintln!("Failed to write to result string: {e}");
+                }
             }
             result
         }
@@ -72,7 +79,7 @@ pub fn display_bundle_info(
     workspace_bundle: Option<&WorkspaceBundle>,
     detailed: bool,
 ) {
-    println!("Bundle: {}", bundle_name);
+    println!("Bundle: {bundle_name}");
     println!("Source: {}", locked_source_to_string(locked_bundle));
 
     if let Some(workspace_bundle) = workspace_bundle {
@@ -115,9 +122,9 @@ fn display_dir_source(path: &str, indent: &str, version: Option<&str>, show_vers
     }
 }
 
-fn display_version_if_needed(indent: &str, path: &Option<String>, version: Option<&str>) {
+fn display_version_if_needed(indent: &str, path: Option<&String>, version: Option<&str>) {
     if let Some(v) = version {
-        if !path.as_ref().is_some_and(|p| p.contains("$claudeplugin")) {
+        if !path.is_some_and(|p| p.contains("$claudeplugin")) {
             println!(
                 "{}{} {}",
                 indent,
@@ -169,7 +176,7 @@ fn display_git_source(
         );
     }
     if show_version {
-        display_version_if_needed(indent, source.path, version);
+        display_version_if_needed(indent, source.path.as_ref(), version);
     }
 }
 

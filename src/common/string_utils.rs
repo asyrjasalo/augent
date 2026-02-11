@@ -29,9 +29,8 @@ pub fn capitalize_word(word: &str) -> String {
         return String::new();
     }
     let mut chars = word.chars();
-    let first_char = match chars.next() {
-        Some(c) => c,
-        None => return String::new(),
+    let Some(first_char) = chars.next() else {
+        return String::new();
     };
     let rest: String = chars.collect();
     format!("{}{}", first_char.to_uppercase(), rest)
@@ -172,7 +171,7 @@ pub fn bundle_name_from_url(git_url_opt: Option<&str>, plugin_name: &str) -> Str
     match git_url_opt {
         Some(url) => {
             let repo_base = parse_git_url_to_repo_base(url);
-            format!("{}/{}", repo_base, plugin_name)
+            format!("{repo_base}/{plugin_name}")
         }
         None => plugin_name.to_string(),
     }
@@ -217,7 +216,7 @@ pub fn parse_git_url_to_repo_base(url: &str) -> String {
         repo_path
     };
 
-    format!("@{}", clean_path)
+    format!("@{clean_path}")
 }
 
 #[cfg(test)]

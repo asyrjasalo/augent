@@ -57,7 +57,7 @@ pub fn configure_augent_cmd(cmd: &mut assert_cmd::Command, workspace_path: &Path
 }
 
 /// Canonical command for running augent in a workspace. Use this in all tests so workspace/cache/temp
-/// are isolated and never inherit from the environment (e.g. AUGENT_WORKSPACE from mise).
+/// are isolated and never inherit from the environment (e.g. `AUGENT_WORKSPACE` from mise).
 #[allow(dead_code)]
 #[allow(deprecated)]
 #[allow(clippy::expect_used)] // Idiomatic for test setup to panic on failure
@@ -75,7 +75,7 @@ pub fn augent_cmd_for_workspace(workspace_path: &Path) -> assert_cmd::Command {
 pub const AUGENT_TEST_CACHE_DIR: &str = "AUGENT_TEST_CACHE_DIR";
 
 /// TMPDIR value to pass to the augent child process so it never uses a path inside the repo.
-/// Used by augent_cmd_for_workspace when configuring the child process.
+/// Used by `augent_cmd_for_workspace` when configuring the child process.
 #[allow(dead_code)] // Used by augent_cmd_for_workspace
 pub fn test_tmpdir_for_child() -> PathBuf {
     platform_temp_fallback()
@@ -92,8 +92,7 @@ fn safe_temp_base(candidate: PathBuf) -> PathBuf {
     let repo = repo_root();
     let repo_abs = repo
         .normalize()
-        .map(|np| np.into_path_buf())
-        .unwrap_or_else(|_| repo.clone());
+        .map_or_else(|_| repo.clone(), normpath::BasePathBuf::into_path_buf);
     // Relative paths are resolved from cwd (often the repo) → treat as unsafe
     if !candidate.is_absolute() {
         return platform_temp_fallback();
@@ -123,7 +122,7 @@ fn platform_temp_fallback() -> PathBuf {
 }
 
 /// Get the base directory for test cache temporary files.
-/// Default is outside the repo; CI can set AUGENT_TEST_CACHE_DIR.
+/// Default is outside the repo; CI can set `AUGENT_TEST_CACHE_DIR`.
 fn test_temp_base() -> PathBuf {
     use std::env;
     match env::var_os(AUGENT_TEST_CACHE_DIR).map(PathBuf::from) {
@@ -132,8 +131,8 @@ fn test_temp_base() -> PathBuf {
     }
 }
 
-/// Base for workspace dirs; created once per process to avoid repeated create_dir_all.
-/// Uses test_temp_base() so CI can set AUGENT_TEST_CACHE_DIR and put workspaces and caches under one base.
+/// Base for workspace dirs; created once per process to avoid repeated `create_dir_all`.
+/// Uses `test_temp_base()` so CI can set `AUGENT_TEST_CACHE_DIR` and put workspaces and caches under one base.
 #[allow(clippy::expect_used)] // Idiomatic for test setup to panic on failure
 fn ensure_workspace_base() -> PathBuf {
     static INIT: Once = Once::new();
@@ -167,7 +166,7 @@ pub(crate) fn test_cache_dir_for_workspace(workspace_path: &Path) -> PathBuf {
 }
 
 /// Get a temporary cache directory path for tests (unique per call).
-/// Prefer configure_augent_cmd(workspace_path) so each workspace gets its own stable cache.
+/// Prefer `configure_augent_cmd(workspace_path)` so each workspace gets its own stable cache.
 #[allow(dead_code)] // Used by test files via common::test_cache_dir()
 #[allow(clippy::expect_used)]
 pub fn test_cache_dir() -> PathBuf {
@@ -318,7 +317,7 @@ impl TestWorkspace {
     /// Create agent directories
     #[allow(clippy::expect_used)]
     pub fn create_agent_dir(&self, agent: &str) -> PathBuf {
-        let agent_path = self.path.join(format!(".{}", agent));
+        let agent_path = self.path.join(format!(".{agent}"));
         std::fs::create_dir_all(&agent_path).expect("Failed to create agent directory");
         agent_path
     }
@@ -367,6 +366,7 @@ impl TestWorkspace {
     /// Create a mock git repository for testing
     #[allow(dead_code)] // Used by test files
     #[allow(clippy::expect_used)]
+    #[allow(clippy::too_many_lines)]
     pub fn create_mock_git_repo(&self, name: &str) -> PathBuf {
         let repo_path = self.path.join(name);
         std::fs::create_dir_all(&repo_path).expect("Failed to create repo directory");
@@ -398,7 +398,7 @@ impl TestWorkspace {
         let augent_yaml = repo_path.join("augent.yaml");
         std::fs::write(
             &augent_yaml,
-            format!("name: \"@test/{}\"\nbundles: []\n", name),
+            format!("name: \"@test/{name}\"\nbundles: []\n"),
         )
         .expect("Failed to write augent.yaml");
 

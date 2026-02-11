@@ -66,7 +66,7 @@ fn clean_all_cache() -> Result<()> {
 
 fn clean_specific_bundle(bundle_name: &str) -> Result<()> {
     cache::remove_cached_bundle(bundle_name)?;
-    println!("Removed cached bundle: {}", bundle_name);
+    println!("Removed cached bundle: {bundle_name}");
     Ok(())
 }
 

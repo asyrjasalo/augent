@@ -10,7 +10,7 @@ use std::path::Path;
 
 /// Normalize paths to use forward slashes consistently
 #[allow(dead_code)]
-fn normalize_path_separator(path: String) -> String {
+fn normalize_path_separator(path: &str) -> String {
     path.replace('\\', "/")
 }
 
@@ -37,15 +37,14 @@ fn calculate_relative_path(source_path: &Path, workspace_root: Option<&Path>) ->
     if let Some(root) = workspace_root {
         match source_path.strip_prefix(root) {
             Ok(rel_path) => {
-                let mut path_str =
-                    normalize_path_separator(rel_path.to_string_lossy().into_owned());
+                let mut path_str = normalize_path_separator(&rel_path.to_string_lossy());
                 normalize_path_segments(&mut path_str);
                 path_str
             }
-            Err(_) => normalize_path_separator(source_path.to_string_lossy().into_owned()),
+            Err(_) => normalize_path_separator(&source_path.to_string_lossy()),
         }
     } else {
-        normalize_path_separator(source_path.to_string_lossy().into_owned())
+        normalize_path_separator(&source_path.to_string_lossy())
     }
 }
 
@@ -110,10 +109,10 @@ pub fn create_locked_bundle_from_resolved(
     bundle: &ResolvedBundle,
     workspace_root: Option<&Path>,
 ) -> Result<LockedBundle> {
-    let resources = discover_resources(&bundle.source_path)?;
+    let resources = discover_resources(&bundle.source_path);
     let files: Vec<String> = resources
         .iter()
-        .map(|r| normalize_path_separator(r.bundle_path.to_string_lossy().into_owned()))
+        .map(|r| normalize_path_separator(&r.bundle_path.to_string_lossy()))
         .collect();
 
     let bundle_hash = hash::hash_directory(&bundle.source_path)?;

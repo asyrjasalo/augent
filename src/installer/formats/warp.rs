@@ -14,7 +14,7 @@ use crate::platform::MergeStrategy;
 pub struct WarpConverter;
 
 impl FormatConverter for WarpConverter {
-    fn platform_id(&self) -> &str {
+    fn platform_id(&self) -> &'static str {
         "warp"
     }
 
@@ -24,7 +24,7 @@ impl FormatConverter for WarpConverter {
     }
 
     fn convert_from_markdown(&self, ctx: FormatConverterContext) -> Result<()> {
-        crate::installer::formats::copy_markdown_file(ctx)
+        crate::installer::formats::copy_markdown_file(&ctx)
     }
 
     fn convert_from_merged(
@@ -33,7 +33,7 @@ impl FormatConverter for WarpConverter {
         body: &str,
         ctx: FormatConverterContext,
     ) -> Result<()> {
-        crate::installer::formats::write_body_to_target(body, ctx)
+        crate::installer::formats::write_body_to_target(body, &ctx)
     }
 
     fn merge_strategy(&self) -> MergeStrategy {
