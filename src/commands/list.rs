@@ -23,7 +23,7 @@ pub fn run(workspace: Option<PathBuf>, args: &ListArgs) -> Result<()> {
 
     let operation = ListOperation::new(&workspace);
     let options = ListOptions::from(args);
-    operation.execute(&options)?;
+    operation.execute(&options);
     Ok(())
 }
 

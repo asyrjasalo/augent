@@ -80,13 +80,13 @@ impl<'a> ShowOperation<'a> {
                 name: format!("Bundle '{bundle_name}' not found"),
             })?;
 
-        let workspace_bundle = self.workspace.workspace_config.find_bundle(bundle_name);
+        let workspace_bundle = self.workspace.config.find_bundle(bundle_name);
 
         if json {
             let ctx = DisplayContext {
                 workspace_root: &self.workspace_root,
                 workspace_bundle,
-                workspace_config: &self.workspace.workspace_config,
+                workspace_config: &self.workspace.config,
                 detailed,
             };
             let formatter = JsonFormatter;

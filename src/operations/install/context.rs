@@ -34,7 +34,7 @@ impl<'a> InstallContext<'a> {
 
     /// Get workspace config
     pub fn workspace_config(&self) -> &crate::config::WorkspaceConfig {
-        &self.workspace.workspace_config
+        &self.workspace.config
     }
 
     /// Get lockfile

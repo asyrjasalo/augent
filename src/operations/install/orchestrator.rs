@@ -122,15 +122,15 @@ impl<'a> InstallOperation<'a> {
     /// Select platforms or auto-detect them
     pub fn select_or_detect_platforms(
         args: &InstallArgs,
-        _workspace_root: &std::path::Path,
-        _unused_force_interactive: bool,
+        workspace_root: &std::path::Path,
+        unused_force_interactive: bool,
     ) -> Result<Vec<Platform>> {
         use super::execution::ExecutionOrchestrator;
 
         let platforms = ExecutionOrchestrator::get_or_select_platforms(
             args,
-            _workspace_root,
-            _unused_force_interactive,
+            workspace_root,
+            unused_force_interactive,
         )?;
 
         if platforms.is_empty() {

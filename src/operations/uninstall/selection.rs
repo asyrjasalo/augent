@@ -12,7 +12,7 @@ use std::collections::HashMap;
 #[allow(dead_code)]
 fn build_workspace_bundle_map(workspace: &Workspace) -> HashMap<String, Vec<String>> {
     workspace
-        .workspace_config
+        .config
         .bundles
         .iter()
         .map(|wb| {

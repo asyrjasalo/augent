@@ -130,7 +130,7 @@ mod tests {
             files: vec![],
         });
         workspace
-            .workspace_config
+            .config
             .add_bundle(crate::config::WorkspaceBundle::new(
                 "test-bundle".to_string(),
             ));

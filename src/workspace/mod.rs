@@ -61,7 +61,7 @@ pub struct Workspace {
     pub lockfile: Lockfile,
 
     /// Workspace configuration (augent.index.yaml)
-    pub workspace_config: WorkspaceConfig,
+    pub config: WorkspaceConfig,
 
     /// Whether to create augent.yaml during save (set by install command)
     /// This distinguishes between installing workspace bundle vs. dir bundle
@@ -107,12 +107,8 @@ impl Workspace {
     }
 
     pub fn rebuild_workspace_config(&mut self) -> Result<()> {
-        let _rebuild = rebuild::RebuildContext {
-            root: &self.root,
-            lockfile: &self.lockfile,
-        };
         let new_config = rebuild::rebuild_workspace_config(&self.root, &self.lockfile)?;
-        self.workspace_config = new_config;
+        self.config = new_config;
         self.save()?;
         Ok(())
     }
@@ -122,7 +118,7 @@ impl Workspace {
             config_dir: &self.config_dir,
             bundle_config: &self.bundle_config,
             lockfile: &self.lockfile,
-            workspace_config: &self.workspace_config,
+            workspace_config: &self.config,
             workspace_name: &self.get_workspace_name(),
             should_create_augent_yaml: self.should_create_augent_yaml,
             bundle_config_dir: self.bundle_config_dir.as_deref(),
@@ -137,7 +133,7 @@ impl Workspace {
             config_dir: init.config_dir,
             bundle_config: init.bundle_config,
             lockfile: init.lockfile,
-            workspace_config: init.workspace_config,
+            config: init.workspace_config,
             should_create_augent_yaml: init.should_create_augent_yaml,
             bundle_config_dir: init.bundle_config_dir,
         }

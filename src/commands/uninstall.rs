@@ -23,7 +23,7 @@ pub fn run(workspace: Option<std::path::PathBuf>, args: UninstallArgs) -> Result
     let mut workspace = Workspace::open(&workspace_root)?;
 
     let needs_rebuild =
-        workspace.workspace_config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
+        workspace.config.bundles.is_empty() && !workspace.lockfile.bundles.is_empty();
     if needs_rebuild {
         println!("Workspace configuration is missing. Rebuilding from installed files...");
         workspace.rebuild_workspace_config()?;

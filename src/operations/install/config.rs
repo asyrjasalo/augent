@@ -232,11 +232,9 @@ impl<'a> ConfigUpdater<'a> {
 
     fn update_workspace_config_with_bundles(&mut self, workspace_bundles: Vec<WorkspaceBundle>) {
         for bundle in workspace_bundles {
-            self.workspace.workspace_config.remove_bundle(&bundle.name);
-            self.workspace.workspace_config.add_bundle(bundle);
+            self.workspace.config.remove_bundle(&bundle.name);
+            self.workspace.config.add_bundle(bundle);
         }
-        self.workspace
-            .workspace_config
-            .reorganize(&self.workspace.lockfile);
+        self.workspace.config.reorganize(&self.workspace.lockfile);
     }
 }

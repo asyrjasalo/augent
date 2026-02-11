@@ -31,7 +31,7 @@ pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Vec<Mod
     let mut modified = Vec::new();
 
     // Iterate through all bundles in workspace config
-    for bundle in &workspace.workspace_config.bundles {
+    for bundle in &workspace.config.bundles {
         // Get locked bundle info for hash/SHA information
         let locked_bundle = workspace.lockfile.find_bundle(&bundle.name);
 
@@ -112,12 +112,9 @@ pub fn preserve_modified_files(
     let mut preserved = HashMap::new();
 
     for modified in modified_files {
-        // Remove the file from the original bundle's enabled files in workspace_config
+        // Remove file from original bundle's enabled files in workspace_config
         // since it's now managed locally
-        if let Some(bundle) = workspace
-            .workspace_config
-            .find_bundle_mut(&modified.source_bundle)
-        {
+        if let Some(bundle) = workspace.config.find_bundle_mut(&modified.source_bundle) {
             if let Some(locations) = bundle.enabled.get_mut(&modified.source_path) {
                 locations.clear();
             }

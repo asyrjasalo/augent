@@ -33,13 +33,6 @@ const PATH_UNSAFE_CHARS: &[char] = &['/', '\\', ':', '*', '?', '"', '<', '>', '|
 /// assert_eq!(make_path_safe("@org/sub/repo"), "org-sub-repo");
 /// assert_eq!(make_path_safe(":::"), "unknown");
 /// ```
-/// use `std::path::Path`;
-/// use `augent::path_utils::to_forward_slashes`;
-///
-/// let path = `Path::new("C`:\\Users\\file.txt");
-/// let forward = `to_forward_slashes(&path)`;
-/// `assert_eq!(forward`, "<C:/Users/file.txt>");
-/// ```
 pub fn to_forward_slashes(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }

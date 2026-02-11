@@ -245,7 +245,7 @@ pub struct SimpleFormatter;
 impl DisplayFormatter for SimpleFormatter {
     fn format_bundle(&self, bundle: &crate::config::LockedBundle, _ctx: &DisplayContext) {
         self.format_bundle_name(bundle);
-        self.format_metadata_simple(bundle);
+        Self::format_metadata_simple(bundle);
         self.format_source(bundle, false);
         display_marketplace_plugin(bundle);
         display_resources_grouped(&bundle.files);
@@ -256,7 +256,7 @@ impl DisplayFormatter for SimpleFormatter {
     }
 
     fn format_metadata(&self, bundle: &crate::config::LockedBundle) {
-        self.format_metadata_simple(bundle);
+        Self::format_metadata_simple(bundle);
     }
 
     fn format_source(&self, bundle: &crate::config::LockedBundle, _detailed: bool) {
@@ -266,7 +266,7 @@ impl DisplayFormatter for SimpleFormatter {
 
 impl SimpleFormatter {
     #[allow(dead_code)]
-    fn format_metadata_simple(&self, bundle: &crate::config::LockedBundle) {
+    fn format_metadata_simple(bundle: &crate::config::LockedBundle) {
         if let Some(ref description) = bundle.description {
             println!(
                 "    {} {}",
@@ -290,7 +290,7 @@ impl DisplayFormatter for DetailedFormatter {
         display_resources_grouped(&bundle.files);
 
         if ctx.detailed {
-            self.format_detailed_sections(bundle, ctx);
+            Self::format_detailed_sections(bundle, ctx);
         }
     }
 
@@ -299,7 +299,7 @@ impl DisplayFormatter for DetailedFormatter {
     }
 
     fn format_metadata(&self, bundle: &crate::config::LockedBundle) {
-        self.format_metadata_detailed(bundle);
+        Self::format_metadata_detailed(bundle);
     }
 
     fn format_source(&self, bundle: &crate::config::LockedBundle, detailed: bool) {
@@ -309,7 +309,7 @@ impl DisplayFormatter for DetailedFormatter {
 
 impl DetailedFormatter {
     #[allow(dead_code)]
-    fn format_metadata_detailed(&self, bundle: &crate::config::LockedBundle) {
+    fn format_metadata_detailed(bundle: &crate::config::LockedBundle) {
         display_opt_field!("Description:", bundle.description);
         display_opt_field!("Author:", bundle.author);
         display_opt_field!("License:", bundle.license);
@@ -317,11 +317,7 @@ impl DetailedFormatter {
     }
 
     #[allow(dead_code)]
-    fn format_dependencies(
-        &self,
-        bundle: &crate::config::LockedBundle,
-        workspace_root: &std::path::Path,
-    ) {
+    fn format_dependencies(bundle: &crate::config::LockedBundle, workspace_root: &std::path::Path) {
         if let Ok(bundle_config) = config_utils::load_bundle_config(workspace_root, &bundle.source)
         {
             if bundle_config.bundles.is_empty() {
@@ -340,11 +336,11 @@ impl DetailedFormatter {
     }
 
     #[allow(dead_code)]
-    fn format_detailed_sections(&self, bundle: &crate::config::LockedBundle, ctx: &DisplayContext) {
+    fn format_detailed_sections(bundle: &crate::config::LockedBundle, ctx: &DisplayContext) {
         if !bundle.files.is_empty() {
             display_provided_files_grouped_by_platform(&bundle.files, ctx.workspace_bundle);
         }
-        self.format_dependencies(bundle, ctx.workspace_root);
+        Self::format_dependencies(bundle, ctx.workspace_root);
     }
 }
 
@@ -379,7 +375,7 @@ impl DisplayFormatter for JsonFormatter {
         }
 
         if ctx.detailed {
-            self.add_detailed_info(&mut output, bundle, ctx);
+            Self::add_detailed_info(&mut output, bundle, ctx);
         }
 
         match serde_json::to_string_pretty(&output) {
@@ -401,13 +397,12 @@ impl DisplayFormatter for JsonFormatter {
 
 impl JsonFormatter {
     fn add_detailed_info(
-        &self,
         output: &mut serde_json::Value,
         bundle: &crate::config::LockedBundle,
         ctx: &DisplayContext,
     ) {
         if !bundle.files.is_empty() {
-            let files_by_platform = self.group_files_by_platform(bundle, ctx);
+            let files_by_platform = Self::group_files_by_platform(bundle, ctx);
             if !files_by_platform
                 .as_object()
                 .unwrap_or(&serde_json::Map::new())
@@ -437,7 +432,6 @@ impl JsonFormatter {
     }
 
     fn group_files_by_platform(
-        &self,
         bundle: &crate::config::LockedBundle,
         ctx: &DisplayContext,
     ) -> serde_json::Value {

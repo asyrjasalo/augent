@@ -10,10 +10,7 @@ use crate::workspace::Workspace;
 #[allow(dead_code)]
 pub fn remove_bundles_from_config(workspace: &mut Workspace, bundle_names: &[String]) {
     for bundle_name in bundle_names {
-        workspace
-            .workspace_config
-            .bundles
-            .retain(|b| b.name != *bundle_name);
+        workspace.config.bundles.retain(|b| b.name != *bundle_name);
         workspace
             .bundle_config
             .bundles

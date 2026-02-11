@@ -153,13 +153,13 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
 
     for bundle_name in bundle_names {
         // Try exact match first
-        if let Some(bundle_cfg) = workspace.workspace_config.find_bundle(bundle_name) {
+        if let Some(bundle_cfg) = workspace.config.find_bundle(bundle_name) {
             for locations in bundle_cfg.enabled.values() {
                 files_to_remove.extend(locations.iter().cloned());
             }
         } else {
             // Try partial match (e.g., "bundle-a" matches "@test/bundle-a")
-            for workspace_bundle in &workspace.workspace_config.bundles {
+            for workspace_bundle in &workspace.config.bundles {
                 if workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
                     || workspace_bundle.name == *bundle_name
                 {

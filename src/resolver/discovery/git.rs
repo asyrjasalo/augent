@@ -57,7 +57,7 @@ pub fn create_cache_metadata<'a>(
         bundle_name,
         sha: ctx.sha,
         url: &ctx.source.url,
-        path_opt: subdirectory.map(|x| x.as_str()),
+        path_opt: subdirectory.map(std::string::String::as_str),
         resolved_ref: ctx.resolved_ref.as_deref(),
     }
 }

@@ -128,7 +128,7 @@ fn validate_and_resolve_workspace(workspace: Option<std::path::PathBuf>) -> Resu
 
 #[allow(dead_code)]
 fn rebuild_workspace_if_needed(ws: &mut Workspace) -> Result<bool> {
-    let needs_rebuild = ws.workspace_config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
+    let needs_rebuild = ws.config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
     if needs_rebuild {
         println!("Workspace configuration is missing. Rebuilding from installed files...");
         ws.rebuild_workspace_config()?;

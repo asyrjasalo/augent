@@ -13,8 +13,8 @@ fn count_files_to_remove(
     workspace: &Workspace,
     bundle_name: &str,
     locked_bundle: &crate::config::lockfile::bundle::LockedBundle,
-) -> Result<usize> {
-    let bundle_config = workspace.workspace_config.find_bundle(bundle_name);
+) -> usize {
+    let bundle_config = workspace.config.find_bundle(bundle_name);
     let mut file_count = 0;
 
     for file_path in &locked_bundle.files {
@@ -35,7 +35,7 @@ fn count_files_to_remove(
         }
     }
 
-    Ok(file_count)
+    file_count
 }
 
 /// Confirm uninstallation with user, showing what would be done
@@ -46,10 +46,9 @@ pub fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String])
         println!("  - {bundle_name}");
 
         if let Some(locked_bundle) = workspace.lockfile.find_bundle(bundle_name) {
-            if let Ok(file_count) = count_files_to_remove(workspace, bundle_name, locked_bundle) {
-                if file_count > 0 {
-                    println!("    {file_count} file(s) will be removed");
-                }
+            let file_count = count_files_to_remove(workspace, bundle_name, locked_bundle);
+            if file_count > 0 {
+                println!("    {file_count} file(s) will be removed");
             }
         }
     }

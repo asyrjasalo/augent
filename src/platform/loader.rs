@@ -36,7 +36,7 @@ impl PlatformLoader {
             platforms = Self::merge_platforms(platforms, workspace_platforms);
         }
 
-        if let Some(global_platforms) = self.load_global_platforms()? {
+        if let Some(global_platforms) = Self::load_global_platforms()? {
             platforms = Self::merge_platforms(platforms, global_platforms);
         }
 
@@ -61,7 +61,7 @@ impl PlatformLoader {
     }
 
     /// Load global platforms.jsonc from ~/.config/augent/
-    fn load_global_platforms(&self) -> Result<Option<Vec<Platform>>> {
+    fn load_global_platforms() -> Result<Option<Vec<Platform>>> {
         let config_dir = dirs::config_dir().ok_or(AugentError::PlatformConfigFailed {
             message: "Could not determine config directory".to_string(),
         })?;

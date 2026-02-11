@@ -6,7 +6,6 @@
 
 use crate::cli::ListArgs;
 use crate::config::utils::BundleContainer;
-use crate::error::Result;
 use crate::workspace::Workspace;
 
 /// Configuration options for list
@@ -41,13 +40,13 @@ impl<'a> ListOperation<'a> {
     }
 
     /// Execute list operation
-    pub fn execute(&self, options: &ListOptions) -> Result<()> {
-        list_bundles(self.workspace, options)
+    pub fn execute(&self, options: &ListOptions) {
+        list_bundles(self.workspace, options);
     }
 }
 
 /// List bundles in the workspace
-fn list_bundles(workspace: &Workspace, options: &ListOptions) -> Result<()> {
+fn list_bundles(workspace: &Workspace, options: &ListOptions) {
     use crate::ui::formatter::{
         DetailedFormatter, DisplayContext, DisplayFormatter, JsonFormatter, SimpleFormatter,
     };
@@ -56,7 +55,7 @@ fn list_bundles(workspace: &Workspace, options: &ListOptions) -> Result<()> {
 
     if lockfile.bundles.is_empty() {
         println!("No bundles installed.");
-        return Ok(());
+        return;
     }
 
     let formatter: Box<dyn DisplayFormatter> = if options.json {
@@ -68,7 +67,7 @@ fn list_bundles(workspace: &Workspace, options: &ListOptions) -> Result<()> {
     };
 
     let workspace_root = &workspace.root;
-    let workspace_config = &workspace.workspace_config;
+    let workspace_config = &workspace.config;
 
     if !options.json {
         println!("Installed bundles ({}):", lockfile.bundles.len());
@@ -87,5 +86,4 @@ fn list_bundles(workspace: &Workspace, options: &ListOptions) -> Result<()> {
             println!();
         }
     }
-    Ok(())
 }
