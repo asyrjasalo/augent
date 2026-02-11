@@ -14,7 +14,7 @@ macro_rules! serialize_optional_field {
 
 /// Serialize `BundleConfig` (empty name field, name injected externally)
 pub fn serialize_bundle_config<S>(
-    config: &BundleConfigData,
+    data: &BundleConfigData,
     serializer: S,
 ) -> std::result::Result<S::Ok, S::Error>
 where
@@ -27,7 +27,7 @@ where
         license,
         homepage,
         bundles,
-    } = config;
+    } = data;
 
     let optional_count = count_optional_fields(
         description.as_ref(),

@@ -103,39 +103,6 @@ impl<'a> UninstallOperation<'a> {
     }
 }
 
-#[allow(dead_code)]
-fn validate_and_resolve_workspace(workspace: Option<std::path::PathBuf>) -> Result<Workspace> {
-    let workspace_root = match workspace {
-        Some(path) => path,
-        None => std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {e}"),
-            source: Some(Box::new(e)),
-        })?,
-    };
-
-    let Some(workspace_root_for_workspace) = Workspace::find_from(&workspace_root) else {
-        let current = std::env::current_dir().map_err(|e| AugentError::IoError {
-            message: format!("Failed to get current directory: {e}"),
-            source: Some(Box::new(e)),
-        })?;
-        return Err(AugentError::WorkspaceNotFound {
-            path: current.display().to_string(),
-        });
-    };
-
-    Workspace::open(&workspace_root_for_workspace)
-}
-
-#[allow(dead_code)]
-fn rebuild_workspace_if_needed(ws: &mut Workspace) -> Result<bool> {
-    let needs_rebuild = ws.config.bundles.is_empty() && !ws.lockfile.bundles.is_empty();
-    if needs_rebuild {
-        println!("Workspace configuration is missing. Rebuilding from installed files...");
-        ws.rebuild_workspace_config()?;
-    }
-    Ok(needs_rebuild)
-}
-
 fn validate_dependencies_and_confirm(
     ws: &Workspace,
     args: &UninstallArgs,
@@ -150,20 +117,6 @@ fn validate_dependencies_and_confirm(
         return Ok(false);
     }
     Ok(true)
-}
-
-/// Resolve bundle names from arguments or interactive selection
-#[allow(dead_code)]
-fn resolve_bundle_names(workspace: &Workspace, name: &str, all_bundles: bool) -> Vec<String> {
-    let matching_bundles = bundle_utils::filter_bundles_by_scope(workspace, name);
-    if matching_bundles.is_empty() {
-        println!("No bundles found matching scope: {name}");
-        vec![]
-    } else if all_bundles {
-        matching_bundles
-    } else {
-        select_bundles_from_list(workspace, &matching_bundles).unwrap_or_default()
-    }
 }
 
 /// Helper to canonicalize a path with fallbacks
