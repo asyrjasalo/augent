@@ -46,7 +46,7 @@ pub fn clone_local_file(url: &str, target: &Path) -> Result<Repository> {
 #[cfg(windows)]
 fn copy_dir_preserving_git_errors(src: &Path, dst: &Path, url: &str) -> Result<()> {
     use crate::common::fs::{CopyOptions, copy_dir_recursive};
-    copy_dir_recursive(src, dst, CopyOptions::default()).map_err(|e| AugentError::GitCloneFailed {
+    copy_dir_recursive(src, dst, &CopyOptions::default()).map_err(|e| AugentError::GitCloneFailed {
         url: url.to_string(),
         reason: format!("Failed to copy directory: {}", e),
     })
