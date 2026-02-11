@@ -15,21 +15,6 @@ macro_rules! serialize_optional_field {
     };
 }
 
-macro_rules! extract_map_field {
-    ($map:ident, $key:literal, $var:ident) => {
-        while let Some(key) = $map.next_key()? {
-            let key: String = key;
-            if key.as_str() == $key {
-                $var = $map.next_value()?;
-                break;
-            } else {
-                // Must consume the value before moving to next key
-                let _: serde::de::IgnoredAny = $map.next_value()?;
-            }
-        }
-    };
-}
-
 /// Serialize BundleConfig (empty name field, name injected externally)
 pub fn serialize_bundle_config<S>(
     _config: &BundleConfigData,
@@ -89,12 +74,25 @@ where
             let mut homepage = None;
             let mut bundles = Vec::new();
 
-            extract_map_field!(map, "description", description);
-            extract_map_field!(map, "version", version);
-            extract_map_field!(map, "author", author);
-            extract_map_field!(map, "license", license);
-            extract_map_field!(map, "homepage", homepage);
-            extract_map_field!(map, "bundles", bundles);
+            // Iterate through all keys once and extract the ones we care about
+            while let Some(key) = map.next_key()? {
+                match key {
+                    "description" => description = map.next_value()?,
+                    "version" => version = map.next_value()?,
+                    "author" => author = map.next_value()?,
+                    "license" => license = map.next_value()?,
+                    "homepage" => homepage = map.next_value()?,
+                    "bundles" => bundles = map.next_value()?,
+                    "name" => {
+                        // Skip the name field (it's read from filesystem)
+                        let _: serde::de::IgnoredAny = map.next_value()?;
+                    }
+                    _ => {
+                        // Unknown field - skip it
+                        let _: serde::de::IgnoredAny = map.next_value()?;
+                    }
+                }
+            }
 
             Ok(BundleConfigData {
                 description,
