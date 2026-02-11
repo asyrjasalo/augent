@@ -38,7 +38,7 @@ pub fn normalize_ssh_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
 /// Normalize file:// URLs so libgit2 can resolve them on Unix.
 ///
 /// On Windows, file:// is not used: `clone()` uses a local copy instead because
-/// libgit2 mis-parses <file://C:\path>, <file:///C:/path>, and <file:///C|/path>.
+/// libgit2 misparses <file://C:\path>, <file:///C:/path>, and <file:///C|/path>.
 pub fn normalize_file_url_for_clone(url: &str) -> std::borrow::Cow<'_, str> {
     if !url.starts_with("file://") {
         return std::borrow::Cow::Borrowed(url);
