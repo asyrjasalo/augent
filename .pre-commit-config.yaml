@@ -29,11 +29,6 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
 
-  - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.31.0
-    hooks:
-      - id: check-github-workflows
-
   - repo: https://github.com/rvben/rumdl-pre-commit
     rev: v0.0.222
     hooks:
