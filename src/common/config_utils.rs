@@ -66,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_load_bundle_config_nonexistent() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let workspace_root = temp.path();
 
         // Create a fake locked source
@@ -78,6 +78,6 @@ mod tests {
         // Should return empty config for nonexistent file
         let result = load_bundle_config(workspace_root, &source);
         assert!(result.is_ok());
-        assert!(result.unwrap().bundles.is_empty());
+        assert!(result.expect("Result should be Ok").bundles.is_empty());
     }
 }

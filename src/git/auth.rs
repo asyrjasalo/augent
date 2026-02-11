@@ -55,7 +55,8 @@ fn try_user_pass_credentials(
     username_from_url: Option<&str>,
 ) -> std::result::Result<Cred, git2::Error> {
     if let Ok(cred) = Cred::credential_helper(
-        &git2::Config::open_default().unwrap_or_else(|_| git2::Config::new().unwrap()),
+        &git2::Config::open_default()
+            .unwrap_or_else(|_| git2::Config::new().expect("Failed to create default git config")),
         url,
         username_from_url,
     ) {

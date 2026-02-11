@@ -156,15 +156,16 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
     }
 
     #[test]
     fn test_workspace_init() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let workspace = Workspace::init(temp.path()).unwrap();
+        let workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
 
         assert!(temp.path().join(WORKSPACE_DIR).is_dir());
 
@@ -190,22 +191,26 @@ mod tests {
 
     #[test]
     fn test_workspace_init_or_open() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let workspace1 = Workspace::init_or_open(temp.path()).unwrap();
+        let workspace1 =
+            Workspace::init_or_open(temp.path()).expect("Failed to init or open workspace");
         let name1 = workspace1.get_workspace_name();
 
-        let workspace2 = Workspace::init_or_open(temp.path()).unwrap();
+        let workspace2 =
+            Workspace::init_or_open(temp.path()).expect("Failed to init or open workspace");
         assert_eq!(workspace2.get_workspace_name(), name1);
     }
 
     #[test]
     fn test_workspace_get_bundle_source_path() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let workspace = Workspace::init(temp.path()).unwrap();
+        let workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
         let path = workspace.get_bundle_source_path();
 
         assert!(path.ends_with(WORKSPACE_DIR));

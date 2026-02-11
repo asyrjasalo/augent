@@ -61,9 +61,9 @@ mod tests {
 
     #[test]
     fn test_bundle_name_from_directory_path() {
-        let temp = tempfile::TempDir::new().unwrap();
+        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
         let bundle_dir = temp.path().join("my-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
+        std::fs::create_dir(&bundle_dir).expect("Failed to create bundle directory");
         assert_eq!(
             bundle_name_from_directory_path(&bundle_dir),
             Some("my-bundle".to_string())

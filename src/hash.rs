@@ -137,11 +137,12 @@ mod tests {
 
     #[test]
     fn test_hash_file() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let file_path = temp.path().join("test.txt");
-        std::fs::write(&file_path, "test content").unwrap();
+        std::fs::write(&file_path, "test content").expect("Failed to write test file");
 
-        let hash = hash_file(&file_path).unwrap();
+        let hash = hash_file(&file_path).expect("Failed to hash file");
         assert!(hash.starts_with(HASH_PREFIX));
     }
 
@@ -153,39 +154,45 @@ mod tests {
 
     #[test]
     fn test_hash_directory() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
         // Create some files
-        std::fs::write(temp.path().join("file1.txt"), "content1").unwrap();
-        std::fs::create_dir(temp.path().join("subdir")).unwrap();
-        std::fs::write(temp.path().join("subdir/file2.txt"), "content2").unwrap();
+        std::fs::write(temp.path().join("file1.txt"), "content1")
+            .expect("Failed to write file1.txt");
+        std::fs::create_dir(temp.path().join("subdir")).expect("Failed to create subdir");
+        std::fs::write(temp.path().join("subdir/file2.txt"), "content2")
+            .expect("Failed to write file2.txt");
 
-        let hash = hash_directory(temp.path()).unwrap();
+        let hash = hash_directory(temp.path()).expect("Failed to hash directory");
         assert!(hash.starts_with(HASH_PREFIX));
     }
 
     #[test]
     fn test_hash_directory_deterministic() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
-        std::fs::write(temp.path().join("a.txt"), "aaa").unwrap();
-        std::fs::write(temp.path().join("b.txt"), "bbb").unwrap();
+        std::fs::write(temp.path().join("a.txt"), "aaa").expect("Failed to write a.txt");
+        std::fs::write(temp.path().join("b.txt"), "bbb").expect("Failed to write b.txt");
 
-        let hash1 = hash_directory(temp.path()).unwrap();
-        let hash2 = hash_directory(temp.path()).unwrap();
+        let hash1 = hash_directory(temp.path()).expect("Failed to hash directory first time");
+        let hash2 = hash_directory(temp.path()).expect("Failed to hash directory second time");
         assert_eq!(hash1, hash2);
     }
 
     #[test]
     fn test_hash_directory_excludes_lockfile() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
-        std::fs::write(temp.path().join("file.txt"), "content").unwrap();
-        let hash1 = hash_directory(temp.path()).unwrap();
+        std::fs::write(temp.path().join("file.txt"), "content").expect("Failed to write file.txt");
+        let hash1 = hash_directory(temp.path()).expect("Failed to hash directory first time");
 
         // Add lockfile - should not change hash
-        std::fs::write(temp.path().join("augent.lock"), "lock content").unwrap();
-        let hash2 = hash_directory(temp.path()).unwrap();
+        std::fs::write(temp.path().join("augent.lock"), "lock content")
+            .expect("Failed to write augent.lock");
+        let hash2 = hash_directory(temp.path()).expect("Failed to hash directory second time");
 
         assert_eq!(hash1, hash2);
     }

@@ -91,14 +91,16 @@ mod tests {
 
     #[test]
     fn test_validate_git_repository_root_valid() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        git2::Repository::init(temp.path()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
         assert!(validate_git_repository_root(temp.path()).is_ok());
     }
 
     #[test]
     fn test_validate_git_repository_root_invalid() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let result = validate_git_repository_root(temp.path());
         assert!(result.is_err());
     }

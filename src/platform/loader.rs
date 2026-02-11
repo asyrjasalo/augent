@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn test_builtin_platforms() {
         let loader = PlatformLoader::new("/tmp/test");
-        let platforms = loader.load().unwrap();
+        let platforms = loader.load().expect("Failed to load platforms");
 
         assert!(!platforms.is_empty());
         assert!(platforms.iter().any(|p| p.id == "claude"));
@@ -261,7 +261,8 @@ mod tests {
     #[test]
     fn test_parse_platforms_json_array() {
         let json = r#"[{"id":"test","name":"Test","directory":".test","detection":[".test"],"transforms":[]}]"#;
-        let platforms = PlatformLoader::parse_platforms_json(json, "test.jsonc").unwrap();
+        let platforms = PlatformLoader::parse_platforms_json(json, "test.jsonc")
+            .expect("Failed to parse platforms JSON");
 
         assert_eq!(platforms.len(), 1);
         assert_eq!(platforms[0].id, "test");
@@ -270,7 +271,8 @@ mod tests {
     #[test]
     fn test_parse_platforms_json_object() {
         let json = r#"{"platforms":[{"id":"test","name":"Test","directory":".test","detection":[".test"],"transforms":[]}]}"#;
-        let platforms = PlatformLoader::parse_platforms_json(json, "test.jsonc").unwrap();
+        let platforms = PlatformLoader::parse_platforms_json(json, "test.jsonc")
+            .expect("Failed to parse platforms JSON");
 
         assert_eq!(platforms.len(), 1);
         assert_eq!(platforms[0].id, "test");

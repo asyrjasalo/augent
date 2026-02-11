@@ -32,7 +32,8 @@ use error::{AugentError, Result};
 
 /// Check if the current working directory is within a git repository
 fn check_git_repository(workspace_path: Option<PathBuf>) -> Result<()> {
-    let start_dir = workspace_path.unwrap_or_else(|| std::env::current_dir().unwrap());
+    let start_dir = workspace_path
+        .unwrap_or_else(|| std::env::current_dir().expect("Failed to get current directory"));
 
     if git2::Repository::discover(&start_dir).is_err() {
         return Err(AugentError::NotInGitRepository);
@@ -87,10 +88,10 @@ mod tests {
 
     #[test]
     fn test_check_git_repository_in_repo() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
 
         // Initialize a git repository
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
 
         // Should succeed when in a git repository
         let result = check_git_repository(Some(temp.path().to_path_buf()));
@@ -99,27 +100,27 @@ mod tests {
 
     #[test]
     fn test_check_git_repository_not_in_repo() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
 
         // Should fail when not in a git repository
         let result = check_git_repository(Some(temp.path().to_path_buf()));
         assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            result.expect_err("Should return NotInGitRepository error"),
             AugentError::NotInGitRepository
         ));
     }
 
     #[test]
     fn test_check_git_repository_nested_in_repo() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
 
         // Initialize a git repository
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
 
         // Create a nested directory
         let nested = temp.path().join("deep/nested/directory");
-        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir_all(&nested).expect("Failed to create test directory");
 
         // Should succeed from nested directory in a git repository
         let result = check_git_repository(Some(nested));

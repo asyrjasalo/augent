@@ -53,7 +53,9 @@ fn test_install_with_menu_selects_all_bundles() {
 
         let augent_path = augent_bin_path();
         let mut test = InteractiveTest::new(
-            augent_path.to_str().unwrap(),
+            augent_path
+                .to_str()
+                .expect("augent binary path should be valid UTF-8"),
             &["install", "--to", "cursor"],
             &workspace.path,
         )
@@ -174,7 +176,9 @@ fn test_install_menu_deselect_all_uninstalls_all() {
         // of all installed bundles from this source.
         let augent_path = augent_bin_path();
         let mut test = InteractiveTest::new(
-            augent_path.to_str().unwrap(),
+            augent_path
+                .to_str()
+                .expect("augent binary path should be valid UTF-8"),
             &["install", "--to", "cursor"],
             &workspace.path,
         )

@@ -402,14 +402,17 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register test converter");
 
         let source = Path::new("/src/test.md");
         let target = Path::new("/dst/.test/test.md");
 
         let converter = registry.find_converter(source, target);
         assert!(converter.is_some());
-        assert_eq!(converter.unwrap().platform_id(), "test");
+        assert_eq!(
+            converter.expect("Converter should exist").platform_id(),
+            "test"
+        );
     }
 
     #[test]
@@ -422,7 +425,7 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register test converter");
 
         let result = registry.register(Box::new(MockConverter {
             id: "test".to_string(),
@@ -432,7 +435,7 @@ mod tests {
         }));
 
         assert!(result.is_err());
-        match result.unwrap_err() {
+        match result.expect_err("Should return error for duplicate registration") {
             crate::error::AugentError::DuplicateConverter { platform_id } => {
                 assert_eq!(platform_id, "test");
             }
@@ -450,7 +453,7 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register test converter");
 
         assert_eq!(registry.registered_platforms().len(), 1);
 
@@ -473,7 +476,7 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register gemini converter");
         registry
             .register(Box::new(MockConverter {
                 id: "opencode".to_string(),
@@ -481,7 +484,7 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register opencode converter");
 
         let gemini_target = Path::new("/dst/.gemini/test.md");
         let opencode_target = Path::new("/dst/.opencode/test.md");
@@ -492,10 +495,20 @@ mod tests {
         let other_conv = registry.find_converter(Path::new("/src/test.md"), other_target);
 
         assert!(gemini_conv.is_some());
-        assert_eq!(gemini_conv.unwrap().platform_id(), "gemini");
+        assert_eq!(
+            gemini_conv
+                .expect("Gemini converter should exist")
+                .platform_id(),
+            "gemini"
+        );
 
         assert!(opencode_conv.is_some());
-        assert_eq!(opencode_conv.unwrap().platform_id(), "opencode");
+        assert_eq!(
+            opencode_conv
+                .expect("Opencode converter should exist")
+                .platform_id(),
+            "opencode"
+        );
 
         assert!(other_conv.is_none());
     }
@@ -510,11 +523,14 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register test converter");
 
         let converter = registry.get_by_platform_id("test");
         assert!(converter.is_some());
-        assert_eq!(converter.unwrap().platform_id(), "test");
+        assert_eq!(
+            converter.expect("Converter should exist").platform_id(),
+            "test"
+        );
 
         let missing = registry.get_by_platform_id("nonexistent");
         assert!(missing.is_none());
@@ -530,7 +546,7 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register gemini converter");
         registry
             .register(Box::new(MockConverter {
                 id: "opencode".to_string(),
@@ -538,7 +554,7 @@ mod tests {
                 supports_markdown: true,
                 supports_merged: false,
             }))
-            .unwrap();
+            .expect("Failed to register opencode converter");
 
         let platforms = registry.registered_platforms();
         assert_eq!(platforms.len(), 2);

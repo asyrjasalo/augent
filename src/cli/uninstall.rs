@@ -33,7 +33,8 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_uninstall() {
-        let cli = super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle"]).unwrap();
+        let cli = super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle"])
+            .expect("Failed to parse CLI arguments");
         match cli.command {
             super::super::Commands::Uninstall(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
@@ -49,7 +50,7 @@ mod tests {
     fn test_cli_parsing_uninstall_with_dry_run() {
         let cli =
             super::super::Cli::try_parse_from(["augent", "uninstall", "my-bundle", "--dry-run"])
-                .unwrap();
+                .expect("Failed to parse CLI arguments");
         match cli.command {
             super::super::Commands::Uninstall(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
@@ -61,7 +62,8 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_uninstall_no_name() {
-        let cli = super::super::Cli::try_parse_from(["augent", "uninstall"]).unwrap();
+        let cli = super::super::Cli::try_parse_from(["augent", "uninstall"])
+            .expect("Failed to parse CLI arguments");
         match cli.command {
             super::super::Commands::Uninstall(args) => {
                 assert_eq!(args.name, None);

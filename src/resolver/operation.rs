@@ -171,7 +171,8 @@ mod tests {
 
     #[test]
     fn test_operation_new() {
-        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base())
+            .expect("Failed to create temp directory");
         let operation = ResolveOperation::new(temp.path());
         assert!(operation.resolved.is_empty());
         assert!(operation.resolution_order.is_empty());
@@ -180,15 +181,16 @@ mod tests {
 
     #[test]
     fn test_resolve_local_bundle_no_config() {
-        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base())
+            .expect("Failed to create temp directory");
         let mut operation = ResolveOperation::new(temp.path());
 
         let bundle_dir = temp.path().join("my-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
+        std::fs::create_dir(&bundle_dir).expect("Failed to create bundle directory");
 
         let result = operation.resolve("./my-bundle", false);
         assert!(result.is_ok());
-        let bundles = result.unwrap();
+        let bundles = result.expect("Resolution should succeed");
         assert_eq!(bundles.len(), 1);
         assert_eq!(bundles[0].name, "my-bundle");
     }

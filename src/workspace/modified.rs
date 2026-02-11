@@ -145,30 +145,34 @@ mod tests {
 
     #[test]
     fn test_detect_modified_files_empty() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
         // Initialize git repository
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
 
-        let workspace = Workspace::init(temp.path()).unwrap();
-        let cache_dir = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
+        let cache_dir = TempDir::new_in(crate::temp::temp_dir_base())
+            .expect("Failed to create cache directory");
 
-        let modified = detect_modified_files(&workspace, cache_dir.path()).unwrap();
+        let modified = detect_modified_files(&workspace, cache_dir.path())
+            .expect("Failed to detect modified files");
         assert!(modified.is_empty());
     }
 
     #[test]
     fn test_preserve_modified_files() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
         // Initialize git repository
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
 
-        let mut workspace = Workspace::init(temp.path()).unwrap();
+        let mut workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
 
         // Create a mock modified file
         let src_file = temp.path().join("test.md");
-        fs::write(&src_file, "modified content").unwrap();
+        fs::write(&src_file, "modified content").expect("Failed to write test file");
 
         let modified = vec![ModifiedFile {
             installed_path: src_file.clone(),
@@ -176,7 +180,8 @@ mod tests {
             source_path: "commands/test.md".to_string(),
         }];
 
-        let preserved = preserve_modified_files(&mut workspace, &modified).unwrap();
+        let preserved = preserve_modified_files(&mut workspace, &modified)
+            .expect("Failed to preserve modified files");
         assert_eq!(preserved.len(), 1);
 
         // Check file is tracked (path matches installed path)

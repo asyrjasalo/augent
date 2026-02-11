@@ -196,16 +196,17 @@ mod tests {
     where
         F: FnOnce(&Path),
     {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let bundle_dir = temp.path().join("test-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
+        std::fs::create_dir(&bundle_dir).expect("Failed to create bundle directory");
         test(&bundle_dir);
     }
 
     #[test]
     fn test_is_bundle_directory_with_config() {
         run_bundle_test(|dir| {
-            std::fs::write(dir.join("augent.yaml"), "name: test\n").unwrap();
+            std::fs::write(dir.join("augent.yaml"), "name: test\n")
+                .expect("Failed to write augent.yaml");
             assert!(is_bundle_directory(dir));
         });
     }
@@ -213,7 +214,7 @@ mod tests {
     #[test]
     fn test_is_bundle_directory_with_commands() {
         run_bundle_test(|dir| {
-            std::fs::create_dir(dir.join("commands")).unwrap();
+            std::fs::create_dir(dir.join("commands")).expect("Failed to create commands directory");
             assert!(is_bundle_directory(dir));
         });
     }
@@ -221,7 +222,7 @@ mod tests {
     #[test]
     fn test_is_bundle_directory_not_a_bundle() {
         run_bundle_test(|dir| {
-            std::fs::write(dir.join("README.md"), "# Test").unwrap();
+            std::fs::write(dir.join("README.md"), "# Test").expect("Failed to write README.md");
             assert!(!is_bundle_directory(dir));
         });
     }
@@ -229,19 +230,21 @@ mod tests {
     #[test]
     fn test_get_bundle_name() {
         run_bundle_test(|dir| {
-            let name = get_bundle_name(dir).unwrap();
+            let name = get_bundle_name(dir).expect("Failed to get bundle name");
             assert_eq!(name, "test-bundle");
         });
     }
 
     #[test]
     fn test_discover_local_bundles() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let bundle_dir = temp.path().join("test-bundle");
-        std::fs::create_dir(&bundle_dir).unwrap();
-        std::fs::create_dir(bundle_dir.join("commands")).unwrap();
+        std::fs::create_dir(&bundle_dir).expect("Failed to create bundle directory");
+        std::fs::create_dir(bundle_dir.join("commands"))
+            .expect("Failed to create commands directory");
 
-        let discovered = discover_local_bundles(&bundle_dir, temp.path()).unwrap();
+        let discovered =
+            discover_local_bundles(&bundle_dir, temp.path()).expect("Failed to discover bundles");
 
         assert_eq!(discovered.len(), 1);
         assert_eq!(discovered[0].name, "test-bundle");

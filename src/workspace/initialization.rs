@@ -9,10 +9,10 @@ use crate::workspace::git;
 
 use super::WORKSPACE_DIR;
 
-/// Initialize a new workspace at the git repository root
+/// Initialize a new workspace at git repository root
 ///
-/// Creates the .augent directory structure and initial configuration files.
-/// The workspace bundle name is inferred from the directory name.
+/// Creates a .augent directory structure and initial configuration files.
+/// The workspace bundle name is inferred from directory name.
 pub fn init(root: &Path) -> Result<InitializedWorkspace> {
     git::verify_git_root(root)?;
 
@@ -33,7 +33,7 @@ pub fn init(root: &Path) -> Result<InitializedWorkspace> {
 
 /// Result of workspace initialization
 ///
-/// Contains all the components needed to construct a Workspace struct
+/// Contains all components needed to construct a Workspace struct
 pub struct InitializedWorkspace {
     pub root: PathBuf,
     pub augent_dir: PathBuf,
@@ -58,7 +58,7 @@ pub fn infer_workspace_name(root: &Path) -> String {
 /// Initialize or open workspace
 ///
 /// Creates a new workspace if one doesn't exist,
-/// or opens the existing one if it does.
+/// or opens an existing one if it does.
 pub fn init_or_open(root: &Path) -> Result<InitializedWorkspace> {
     if let Some(existing_root) = super::detection::find_from(root) {
         open(&existing_root)
@@ -67,7 +67,7 @@ pub fn init_or_open(root: &Path) -> Result<InitializedWorkspace> {
     }
 }
 
-/// Open an existing workspace at the git repository root
+/// Open an existing workspace at git repository root
 ///
 /// Loads workspace configuration from .augent/ directory.
 /// Configuration files (augent.yaml, augent.lock, augent.index.yaml) are loaded from .augent/.
@@ -115,18 +115,18 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
     }
 
     #[test]
     fn test_workspace_init() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let _workspace = init(temp.path()).unwrap();
+        let _workspace = init(temp.path()).expect("Failed to init workspace");
 
         assert!(temp.path().join(WORKSPACE_DIR).is_dir());
-
         assert!(
             !temp
                 .path()
@@ -146,14 +146,16 @@ mod tests {
 
     #[test]
     fn test_workspace_init_or_open() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let workspace1 = init_or_open(temp.path()).unwrap();
+        let workspace1 = init_or_open(temp.path()).expect("Failed to init or open workspace");
         let name1 = infer_workspace_name(&workspace1.root);
 
-        let workspace2 = init_or_open(temp.path()).unwrap();
+        let workspace2 = init_or_open(temp.path()).expect("Failed to init or open workspace");
         let name2 = infer_workspace_name(&workspace2.root);
+
         assert_eq!(name2, name1);
     }
 

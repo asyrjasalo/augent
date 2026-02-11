@@ -58,43 +58,48 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
     }
 
     #[test]
     fn test_workspace_exists() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
         assert!(!exists(temp.path()));
 
-        std::fs::create_dir(temp.path().join(WORKSPACE_DIR)).unwrap();
+        std::fs::create_dir(temp.path().join(WORKSPACE_DIR))
+            .expect("Failed to create workspace directory");
         assert!(exists(temp.path()));
     }
 
     #[test]
     fn test_workspace_find_from() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
-        std::fs::create_dir(temp.path().join(WORKSPACE_DIR)).unwrap();
+        std::fs::create_dir(temp.path().join(WORKSPACE_DIR))
+            .expect("Failed to create workspace directory");
 
         let nested = temp.path().join("src/deep/nested");
-        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir_all(&nested).expect("Failed to create nested directory");
 
         let found = find_from(&nested);
         assert!(found.is_some());
 
-        let found_canonical = normalize_path(&found.unwrap());
+        let found_canonical = normalize_path(&found.expect("Should find workspace"));
         let temp_canonical = normalize_path(temp.path());
         assert_eq!(found_canonical, temp_canonical);
     }
 
     #[test]
     fn test_workspace_find_from_not_found() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
         let nested = temp.path().join("src/deep/nested");
-        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir_all(&nested).expect("Failed to create nested directory");
 
         let found = find_from(&nested);
         assert!(found.is_none());

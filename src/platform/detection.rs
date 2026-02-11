@@ -113,37 +113,45 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_empty() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        let platforms = detect_platforms(temp.path()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let platforms = detect_platforms(temp.path()).expect("Failed to detect platforms");
         assert!(platforms.is_empty());
     }
 
     #[test]
     fn test_detect_platforms_claude() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        std::fs::create_dir(temp.path().join(".claude")).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        std::fs::create_dir(temp.path().join(".claude"))
+            .expect("Failed to create .claude directory");
 
-        let platforms = detect_platforms(temp.path()).unwrap();
+        let platforms = detect_platforms(temp.path()).expect("Failed to detect platforms");
         assert_eq!(platforms.len(), 1);
         assert_eq!(platforms[0].id, "claude");
     }
 
     #[test]
     fn test_detect_platforms_multiple() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        std::fs::create_dir(temp.path().join(".claude")).unwrap();
-        std::fs::create_dir(temp.path().join(".cursor")).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        std::fs::create_dir(temp.path().join(".claude"))
+            .expect("Failed to create .claude directory");
+        std::fs::create_dir(temp.path().join(".cursor"))
+            .expect("Failed to create .cursor directory");
 
-        let platforms = detect_platforms(temp.path()).unwrap();
+        let platforms = detect_platforms(temp.path()).expect("Failed to detect platforms");
         assert_eq!(platforms.len(), 2);
     }
 
     #[test]
     fn test_root_agent_file_adds_no_platform() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        std::fs::write(temp.path().join("CLAUDE.md"), "# Claude").unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        std::fs::write(temp.path().join("CLAUDE.md"), "# Claude")
+            .expect("Failed to write CLAUDE.md");
 
-        let platforms = detect_platforms(temp.path()).unwrap();
+        let platforms = detect_platforms(temp.path()).expect("Failed to detect platforms");
         assert!(
             platforms.is_empty(),
             "root agent files (CLAUDE.md, AGENTS.md, etc.) must not add any platform"
@@ -152,7 +160,8 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_or_error_empty() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let result = detect_platforms_or_error(temp.path());
         assert!(result.is_err());
     }
@@ -161,7 +170,7 @@ mod tests {
     fn test_get_platform() {
         let claude = get_platform("claude", None);
         assert!(claude.is_some());
-        assert_eq!(claude.unwrap().id, "claude");
+        assert_eq!(claude.expect("Claude platform should exist").id, "claude");
 
         let unknown = get_platform("unknown", None);
         assert!(unknown.is_none());
@@ -169,7 +178,8 @@ mod tests {
 
     #[test]
     fn test_get_platforms() {
-        let platforms = get_platforms(&["claude".to_string(), "cursor".to_string()], None).unwrap();
+        let platforms = get_platforms(&["claude".to_string(), "cursor".to_string()], None)
+            .expect("Failed to get platforms");
         assert_eq!(platforms.len(), 2);
     }
 
@@ -181,19 +191,23 @@ mod tests {
 
     #[test]
     fn test_resolve_platforms_specified() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         // Even without any platform directories, specified platforms work
-        let platforms = resolve_platforms(temp.path(), &["claude".to_string()]).unwrap();
+        let platforms = resolve_platforms(temp.path(), &["claude".to_string()])
+            .expect("Failed to resolve platforms");
         assert_eq!(platforms.len(), 1);
         assert_eq!(platforms[0].id, "claude");
     }
 
     #[test]
     fn test_resolve_platforms_auto_detect() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        std::fs::create_dir(temp.path().join(".opencode")).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        std::fs::create_dir(temp.path().join(".opencode"))
+            .expect("Failed to create .opencode directory");
 
-        let platforms = resolve_platforms(temp.path(), &[]).unwrap();
+        let platforms = resolve_platforms(temp.path(), &[]).expect("Failed to resolve platforms");
         assert_eq!(platforms.len(), 1);
         assert_eq!(platforms[0].id, "opencode");
     }
@@ -202,18 +216,33 @@ mod tests {
     fn test_get_platform_resolves_alias() {
         let cursor = get_platform("cursor", None);
         assert!(cursor.is_some());
-        assert_eq!(cursor.clone().unwrap().id, "cursor");
+        assert_eq!(
+            cursor.clone().expect("Cursor platform should exist").id,
+            "cursor"
+        );
 
         let cursor_ai = get_platform("cursor-ai", None);
         assert!(cursor_ai.is_some());
-        assert_eq!(cursor_ai.clone().unwrap().id, "cursor");
-        assert_eq!(cursor_ai.clone().unwrap().name, "Cursor");
+        assert_eq!(
+            cursor_ai
+                .clone()
+                .expect("Cursor-ai platform should exist")
+                .id,
+            "cursor"
+        );
+        assert_eq!(
+            cursor_ai
+                .clone()
+                .expect("Cursor-ai platform should exist")
+                .name,
+            "Cursor"
+        );
     }
 
     #[test]
     fn test_get_platforms_resolves_aliases() {
-        let platforms =
-            get_platforms(&["cursor-ai".to_string(), "claude".to_string()], None).unwrap();
+        let platforms = get_platforms(&["cursor-ai".to_string(), "claude".to_string()], None)
+            .expect("Failed to get platforms");
         assert_eq!(platforms.len(), 2);
         assert_eq!(platforms[0].id, "cursor");
         assert_eq!(platforms[0].name, "Cursor");

@@ -99,7 +99,7 @@ test_error_contains!(
 fn test_yaml_error_conversion() {
     let yaml_str = "invalid: yaml: content: [unclosed";
     let parse_result: std::result::Result<serde_yaml::Value, _> = serde_yaml::from_str(yaml_str);
-    let yaml_err = parse_result.unwrap_err();
+    let yaml_err = parse_result.expect_err("YAML parsing should have failed");
     let augent_err: AugentError = yaml_err.into();
     assert!(matches!(augent_err, AugentError::ConfigParseFailed { .. }));
 }
@@ -108,7 +108,7 @@ fn test_yaml_error_conversion() {
 fn test_json_error_conversion() {
     let json_str = "invalid json content";
     let parse_result: std::result::Result<serde_json::Value, _> = serde_json::from_str(json_str);
-    let json_err = parse_result.unwrap_err();
+    let json_err = parse_result.expect_err("JSON parsing should have failed");
     let augent_err: AugentError = json_err.into();
     assert!(matches!(augent_err, AugentError::ConfigParseFailed { .. }));
 }
@@ -317,7 +317,12 @@ fn test_io_error_preserves_source() {
 
     let source_err = augent_err.source();
     assert!(source_err.is_some(), "Source error should be preserved");
-    assert_eq!(source_err.unwrap().to_string(), "file.txt not found");
+    assert_eq!(
+        source_err
+            .expect("Source error should be present")
+            .to_string(),
+        "file.txt not found"
+    );
 }
 
 #[test]

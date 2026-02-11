@@ -105,9 +105,10 @@ mod tests {
 
     #[test]
     fn test_show_cache_stats_empty() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let cache_dir = temp.path().join("cache");
-        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
 
         // SAFETY: std::env::set_var is safe in test context.
         // Used for testing cache operations with a temporary directory.
@@ -122,8 +123,10 @@ mod tests {
     #[test]
     #[serial]
     fn test_clean_cache_all() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        std::fs::create_dir_all(temp.path().join("bundles")).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        std::fs::create_dir_all(temp.path().join("bundles"))
+            .expect("Failed to create bundles directory");
 
         let original = std::env::var("AUGENT_CACHE_DIR").ok();
         // SAFETY: std::env::set_var/remove_var is safe in test context.
@@ -150,7 +153,7 @@ mod tests {
         assert!(result.is_err());
         assert!(
             result
-                .unwrap_err()
+                .expect_err("Result should be Err")
                 .to_string()
                 .contains("not found in cache")
         );

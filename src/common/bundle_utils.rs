@@ -88,13 +88,13 @@ mod tests {
 
     #[test]
     fn test_filter_bundles_by_scope() {
-        let temp = TempDir::new().unwrap();
-        git2::Repository::init(temp.path()).unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
+        git2::Repository::init(temp.path()).expect("Failed to initialize git repository");
         let workspace_root = temp.path();
 
         // Create test workspace structure
         let augent_dir = workspace_root.join(".augent");
-        std::fs::create_dir_all(&augent_dir).unwrap();
+        std::fs::create_dir_all(&augent_dir).expect("Failed to create .augent directory");
 
         // Create augent.yaml and lockfile with test bundles
         let yaml_content = r#"
@@ -106,7 +106,8 @@ bundles:
   - name: "@author/other"
     git: https://github.com/author/repo3
 "#;
-        std::fs::write(augent_dir.join("augent.yaml"), yaml_content).unwrap();
+        std::fs::write(augent_dir.join("augent.yaml"), yaml_content)
+            .expect("Failed to write augent.yaml");
 
         let lock_content = r#"{
   "bundles": [
@@ -146,9 +147,10 @@ bundles:
     }
   ]
 }"#;
-        std::fs::write(augent_dir.join("augent.lock"), lock_content).unwrap();
+        std::fs::write(augent_dir.join("augent.lock"), lock_content)
+            .expect("Failed to write augent.lock");
 
-        let workspace = Workspace::open(workspace_root).unwrap();
+        let workspace = Workspace::open(workspace_root).expect("Failed to open workspace");
 
         // Test @author/scope pattern
         let results = filter_bundles_by_scope(&workspace, "@author/scope");

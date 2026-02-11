@@ -65,33 +65,34 @@ mod tests {
 
     #[test]
     fn test_load_bundle_config_missing() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let result = load_bundle_config(temp.path());
         assert!(result.is_ok());
-        assert!(result.unwrap().is_none());
+        assert!(result.expect("Config should be Ok").is_none());
     }
 
     #[test]
     fn test_load_bundle_config_valid() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let config_path = temp.path().join("augent.yaml");
         std::fs::write(
             &config_path,
             "name: test-bundle\ndescription: Test bundle\n",
         )
-        .unwrap();
+        .expect("Failed to write config file");
 
         let result = load_bundle_config(temp.path());
         assert!(result.is_ok());
-        let config = result.unwrap();
+        let config = result.expect("Config should be Ok");
         assert!(config.is_some());
     }
 
     #[test]
     fn test_load_bundle_config_invalid_yaml() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let config_path = temp.path().join("augent.yaml");
-        std::fs::write(&config_path, "invalid: yaml: content: [").unwrap();
+        std::fs::write(&config_path, "invalid: yaml: content: [")
+            .expect("Failed to write config file");
 
         let result = load_bundle_config(temp.path());
         assert!(result.is_err());
@@ -99,18 +100,18 @@ mod tests {
 
     #[test]
     fn test_load_marketplace_config_missing() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let result = load_marketplace_config_if_exists(temp.path());
         assert!(result.is_none());
     }
 
     #[test]
     fn test_load_marketplace_config_invalid() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let marketplace_dir = temp.path().join(".claude-plugin");
-        std::fs::create_dir_all(&marketplace_dir).unwrap();
+        std::fs::create_dir_all(&marketplace_dir).expect("Failed to create marketplace dir");
         let config_path = marketplace_dir.join("marketplace.json");
-        std::fs::write(&config_path, "invalid json").unwrap();
+        std::fs::write(&config_path, "invalid json").expect("Failed to write config file");
 
         let result = load_marketplace_config_if_exists(temp.path());
         assert!(result.is_none()); // Returns None on error, not Err

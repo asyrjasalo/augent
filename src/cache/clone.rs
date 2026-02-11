@@ -62,15 +62,15 @@ mod tests {
 
     #[test]
     fn test_read_ref_from_cache_none() {
-        let temp = tempfile::TempDir::new().unwrap();
+        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
         assert!(read_ref_from_cache(temp.path()).is_none());
     }
 
     #[test]
     fn test_write_read_ref() {
-        let temp = tempfile::TempDir::new().unwrap();
+        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
         let ref_path = temp.path().join(REF_FILE);
-        write_ref_to_cache(temp.path(), "main").unwrap();
+        write_ref_to_cache(temp.path(), "main").expect("Failed to write ref to cache");
         assert_eq!(read_ref_from_cache(temp.path()), Some("main".to_string()));
         assert!(ref_path.exists());
     }

@@ -89,6 +89,6 @@ mod tests {
     fn test_index_lookup_not_found() {
         let result = index_lookup("https://github.com/test/repo", "abc123", None);
         assert!(result.is_ok());
-        assert!(result.unwrap().is_none());
+        assert!(result.expect("Result should be Ok").is_none());
     }
 }

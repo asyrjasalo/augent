@@ -134,7 +134,8 @@ mod tests {
     #[test]
     fn test_parse_frontmatter_and_body() {
         let content = "---\ndescription: hello\n---\n\nbody here";
-        let (fm, body) = parse_frontmatter_and_body(content).unwrap();
+        let (fm, body) =
+            parse_frontmatter_and_body(content).expect("Should parse frontmatter and body");
         assert_eq!(get_str(&fm, "description").as_deref(), Some("hello"));
         assert_eq!(body.trim(), "body here");
     }
@@ -148,7 +149,8 @@ opencode:
   model: claude-sonnet
 ---
 body"#;
-        let (fm, _) = parse_frontmatter_and_body(content).unwrap();
+        let (fm, _) =
+            parse_frontmatter_and_body(content).expect("Should parse frontmatter and body");
         let known: Vec<String> = KNOWN_PLATFORM_IDS.iter().map(|s| s.to_string()).collect();
         let merged = merge_frontmatter_for_platform(&fm, "opencode", &known);
         assert_eq!(get_str(&merged, "description").as_deref(), Some("common"));
@@ -158,7 +160,8 @@ body"#;
     #[test]
     fn merge_platform_overrides_common() {
         let content = "---\ndescription: common\ncursor:\n  description: cursor-desc\n---\n";
-        let (fm, _) = parse_frontmatter_and_body(content).unwrap();
+        let (fm, _) =
+            parse_frontmatter_and_body(content).expect("Should parse frontmatter and body");
         let known: Vec<String> = KNOWN_PLATFORM_IDS.iter().map(|s| s.to_string()).collect();
         let merged = merge_frontmatter_for_platform(&fm, "cursor", &known);
         assert_eq!(

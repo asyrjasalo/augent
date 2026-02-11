@@ -164,7 +164,7 @@ mod tests {
         let result = check_cycle("bundle-a", &stack);
         assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            result.expect_err("Should return error for circular dependency"),
             AugentError::CircularDependency { .. }
         ));
     }

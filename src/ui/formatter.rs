@@ -382,7 +382,10 @@ impl DisplayFormatter for JsonFormatter {
             self.add_detailed_info(&mut output, bundle, ctx);
         }
 
-        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&output).expect("Failed to serialize JSON output")
+        );
     }
 
     fn format_bundle_name(&self, _bundle: &crate::config::LockedBundle) {}

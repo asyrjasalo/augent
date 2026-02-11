@@ -51,7 +51,7 @@ run = "cargo test"
 
 [tasks.lint]
 description = "Lint codebase"
-run = "cargo clippy --all-targets --all-features -- -D warnings"
+run = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used"
 
 [tasks.ccn]
 description = "Check CCN"

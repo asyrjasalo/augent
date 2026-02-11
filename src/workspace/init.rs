@@ -62,18 +62,22 @@ mod tests {
 
     #[test]
     fn test_init_or_open_workspace_new() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        git2::Repository::init(temp.path()).unwrap();
-        let _workspace = init_or_open_workspace(temp.path()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
+        let _workspace =
+            init_or_open_workspace(temp.path()).expect("Failed to init or open workspace");
         assert!(temp.path().join(".augent").exists());
     }
 
     #[test]
     fn test_init_or_open_workspace_existing() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
-        git2::Repository::init(temp.path()).unwrap();
-        crate::workspace::Workspace::init(temp.path()).unwrap();
-        let _workspace = init_or_open_workspace(temp.path()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
+        crate::workspace::Workspace::init(temp.path()).expect("Failed to init workspace");
+        let _workspace =
+            init_or_open_workspace(temp.path()).expect("Failed to init or open workspace");
         assert!(temp.path().join(".augent").exists());
     }
 

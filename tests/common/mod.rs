@@ -58,7 +58,7 @@ pub fn configure_augent_cmd(cmd: &mut assert_cmd::Command, workspace_path: &Path
 #[allow(dead_code)]
 #[allow(deprecated)]
 pub fn augent_cmd_for_workspace(workspace_path: &Path) -> assert_cmd::Command {
-    let mut cmd = assert_cmd::Command::cargo_bin("augent").unwrap();
+    let mut cmd = assert_cmd::Command::cargo_bin("augent").expect("Failed to get augent binary");
     configure_augent_cmd(&mut cmd, workspace_path);
     cmd.current_dir(workspace_path);
     cmd
@@ -168,7 +168,7 @@ pub fn test_cache_dir() -> PathBuf {
         "augent-test-cache-{}-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .expect("Failed to get time since UNIX_EPOCH")
             .as_nanos(),
         std::process::id()
     );

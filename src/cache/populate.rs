@@ -136,26 +136,28 @@ mod tests {
 
     #[test]
     fn test_copy_dir_recursive() {
-        let temp = tempfile::TempDir::new().unwrap();
+        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
         let src = temp.path().join("src");
         let dst = temp.path().join("dst");
-        fs::create_dir_all(&src).unwrap();
-        fs::write(src.join("test.txt"), "hello").unwrap();
+        fs::create_dir_all(&src).expect("Failed to create src directory");
+        fs::write(src.join("test.txt"), "hello").expect("Failed to write test file");
 
-        copy_dir_recursive(&src, &dst, CopyOptions::default()).unwrap();
+        copy_dir_recursive(&src, &dst, CopyOptions::default())
+            .expect("Failed to copy directory recursively");
         assert!(dst.join("test.txt").exists());
     }
 
     #[test]
     fn test_copy_dir_recursive_exclude_git() {
-        let temp = tempfile::TempDir::new().unwrap();
+        let temp = tempfile::TempDir::new().expect("Failed to create temp directory");
         let src = temp.path().join("src");
         let dst = temp.path().join("dst");
-        fs::create_dir_all(&src).unwrap();
-        fs::create_dir_all(src.join(".git")).unwrap();
-        fs::write(src.join("test.txt"), "hello").unwrap();
+        fs::create_dir_all(&src).expect("Failed to create src directory");
+        fs::create_dir_all(src.join(".git")).expect("Failed to create .git directory");
+        fs::write(src.join("test.txt"), "hello").expect("Failed to write test file");
 
-        copy_dir_recursive(&src, &dst, CopyOptions::exclude_git()).unwrap();
+        copy_dir_recursive(&src, &dst, CopyOptions::exclude_git())
+            .expect("Failed to copy directory recursively");
         assert!(dst.join("test.txt").exists());
         assert!(!dst.join(".git").exists());
     }

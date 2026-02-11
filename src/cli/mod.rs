@@ -98,13 +98,14 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_list() {
-        let cli = Cli::try_parse_from(["augent", "list"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "list"]).expect("Failed to parse CLI arguments");
         assert!(matches!(cli.command, Commands::List(_)));
     }
 
     #[test]
     fn test_cli_parsing_show() {
-        let cli = Cli::try_parse_from(["augent", "show", "my-bundle"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "show", "my-bundle"])
+            .expect("Failed to parse CLI arguments");
         match cli.command {
             Commands::Show(args) => {
                 assert_eq!(args.name, Some("my-bundle".to_string()));
@@ -115,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_show_no_name() {
-        let cli = Cli::try_parse_from(["augent", "show"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "show"]).expect("Failed to parse CLI arguments");
         match cli.command {
             Commands::Show(args) => {
                 assert_eq!(args.name, None);
@@ -126,13 +127,15 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_version() {
-        let cli = Cli::try_parse_from(["augent", "version"]).unwrap();
+        let cli =
+            Cli::try_parse_from(["augent", "version"]).expect("Failed to parse CLI arguments");
         assert!(matches!(cli.command, Commands::Version));
     }
 
     #[test]
     fn test_cli_global_options() {
-        let cli = Cli::try_parse_from(["augent", "-v", "-w", "/tmp/workspace", "list"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "-v", "-w", "/tmp/workspace", "list"])
+            .expect("Failed to parse CLI arguments");
         assert!(cli.verbose);
         assert_eq!(cli.workspace, Some(PathBuf::from("/tmp/workspace")));
     }
@@ -147,7 +150,8 @@ mod tests {
         } else {
             "/tmp/env-workspace"
         };
-        let cli = Cli::try_parse_from(["augent", "-w", env_path, "list"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "-w", env_path, "list"])
+            .expect("Failed to parse CLI arguments");
         assert_eq!(cli.workspace, Some(PathBuf::from(env_path)));
     }
 
@@ -169,7 +173,8 @@ mod tests {
         unsafe {
             std::env::set_var("AUGENT_WORKSPACE", env_path);
         }
-        let cli = Cli::try_parse_from(["augent", "-w", flag_path, "list"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "-w", flag_path, "list"])
+            .expect("Failed to parse CLI arguments");
         // Flag should override environment variable
         assert_eq!(cli.workspace, Some(PathBuf::from(flag_path)));
         unsafe {
@@ -179,7 +184,8 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_completions() {
-        let cli = Cli::try_parse_from(["augent", "completions", "bash"]).unwrap();
+        let cli = Cli::try_parse_from(["augent", "completions", "bash"])
+            .expect("Failed to parse CLI arguments");
         match cli.command {
             Commands::Completions(args) => {
                 assert_eq!(args.shell, "bash");

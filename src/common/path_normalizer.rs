@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_path_normalizer_creation() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let workspace_root = temp.path().to_path_buf();
         let config_dir = temp.path().join(".augent");
 
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_to_normalized_str() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let normalizer =
             PathNormalizer::new(temp.path().to_path_buf(), temp.path().join(".augent"));
 
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_relative_from_config() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let config_dir = temp.path().join(".augent");
         let normalizer = PathNormalizer::new(temp.path().to_path_buf(), config_dir.clone());
 
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_relative_from_root() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let normalizer =
             PathNormalizer::new(temp.path().to_path_buf(), temp.path().join(".augent"));
 
@@ -189,13 +189,17 @@ mod tests {
         assert_eq!(rel, Some("bundles/my-bundle".to_string()));
 
         // Path not under workspace root
-        let outside = temp.path().parent().unwrap().join("other");
+        let outside = temp
+            .path()
+            .parent()
+            .expect("Temp directory should have a parent")
+            .join("other");
         assert_eq!(normalizer.relative_from_root(&outside), None);
     }
 
     #[test]
     fn test_get_relative_path() {
-        let temp = TempDir::new().unwrap();
+        let temp = TempDir::new().expect("Failed to create temp directory");
         let config_dir = temp.path().join(".augent");
         let normalizer = PathNormalizer::new(temp.path().to_path_buf(), config_dir.clone());
 
@@ -214,7 +218,11 @@ mod tests {
         );
 
         // Absolute path outside workspace (returns normalized string)
-        let outside = temp.path().parent().unwrap().join("some/path");
+        let outside = temp
+            .path()
+            .parent()
+            .expect("Temp directory should have a parent")
+            .join("some/path");
         let result = normalizer.get_relative_path(&outside);
         assert!(result.contains("some/path"));
     }

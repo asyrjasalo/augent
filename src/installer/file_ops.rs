@@ -137,22 +137,29 @@ mod tests {
 
     #[test]
     fn test_ensure_parent_dir() {
-        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp = tempfile::TempDir::new_in(crate::temp::temp_dir_base())
+            .expect("Failed to create temp directory");
         let file_path = temp.path().join("subdir/nested/file.txt");
 
         let result = ensure_parent_dir(&file_path);
         assert!(result.is_ok());
-        assert!(file_path.parent().unwrap().exists());
+        assert!(
+            file_path
+                .parent()
+                .expect("File path should have parent")
+                .exists()
+        );
     }
 
     #[test]
     fn test_copy_file() {
         use tempfile::TempDir;
 
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let src = temp.path().join("source.txt");
         let dst = temp.path().join("target.txt");
-        std::fs::write(&src, "content").unwrap();
-        std::fs::copy(&src, &dst).unwrap();
+        std::fs::write(&src, "content").expect("Failed to write source file");
+        std::fs::copy(&src, &dst).expect("Failed to copy file");
     }
 }

@@ -148,16 +148,17 @@ mod tests {
 
     #[test]
     fn test_filter_skills_resources() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let base = temp.path();
 
         let md = "---\n---\nx";
 
-        fs::write(base.join("b.md"), md).unwrap();
-        fs::write(base.join("a.md"), "a").unwrap();
-        fs::create_dir_all(base.join("skills")).unwrap();
-        fs::write(base.join("skills/b.md"), md).unwrap();
-        fs::write(base.join("skills/a.md"), "a").unwrap();
+        fs::write(base.join("b.md"), md).expect("Failed to write b.md");
+        fs::write(base.join("a.md"), "a").expect("Failed to write a.md");
+        fs::create_dir_all(base.join("skills")).expect("Failed to create skills dir");
+        fs::write(base.join("skills/b.md"), md).expect("Failed to write skills/b.md");
+        fs::write(base.join("skills/a.md"), "a").expect("Failed to write skills/a.md");
 
         let resources = vec![
             create_discovered_resource(base.join("b.md"), "b.md", "root"),
@@ -173,14 +174,16 @@ mod tests {
 
     #[test]
     fn test_discover_resources_commands() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
         let commands_dir = temp.path().join("commands");
-        fs::create_dir(&commands_dir).unwrap();
-        fs::write(commands_dir.join("debug.md"), "# Debug command").unwrap();
-        fs::write(commands_dir.join("test.md"), "# Test command").unwrap();
+        fs::create_dir(&commands_dir).expect("Failed to create commands dir");
+        fs::write(commands_dir.join("debug.md"), "# Debug command")
+            .expect("Failed to write debug.md");
+        fs::write(commands_dir.join("test.md"), "# Test command").expect("Failed to write test.md");
 
-        let resources = discover_resources(temp.path()).unwrap();
+        let resources = discover_resources(temp.path()).expect("Failed to discover resources");
         assert_eq!(resources.len(), 2);
         assert!(
             resources
@@ -196,36 +199,41 @@ mod tests {
 
     #[test]
     fn test_discover_resources_root_files() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
 
-        fs::write(temp.path().join("AGENTS.md"), "# Agents").unwrap();
-        fs::write(temp.path().join("mcp.jsonc"), "{}").unwrap();
+        fs::write(temp.path().join("AGENTS.md"), "# Agents").expect("Failed to write AGENTS.md");
+        fs::write(temp.path().join("mcp.jsonc"), "{}").expect("Failed to write mcp.jsonc");
 
-        let resources = discover_resources(temp.path()).unwrap();
+        let resources = discover_resources(temp.path()).expect("Failed to discover resources");
         assert_eq!(resources.len(), 2);
     }
 
     #[test]
     fn test_filter_skills_resources_nested() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let base = temp.path();
 
         let valid_skill_md =
             "---\nname: valid-skill\ndescription: A valid skill for testing.\n---\n\nBody.";
 
-        fs::create_dir_all(base.join("skills/claude.ai")).unwrap();
-        fs::write(base.join("skills/claude.ai/SKILL.md"), valid_skill_md).unwrap();
-        fs::create_dir_all(base.join("skills/claude.ai/vercel")).unwrap();
+        fs::create_dir_all(base.join("skills/claude.ai"))
+            .expect("Failed to create skills/claude.ai dir");
+        fs::write(base.join("skills/claude.ai/SKILL.md"), valid_skill_md)
+            .expect("Failed to write SKILL.md");
+        fs::create_dir_all(base.join("skills/claude.ai/vercel"))
+            .expect("Failed to create vercel dir");
         fs::write(
             base.join("skills/claude.ai/vercel/SKILL.md"),
             valid_skill_md,
         )
-        .unwrap();
+        .expect("Failed to write vercel/SKILL.md");
         fs::write(
             base.join("skills/claude.ai/vercel/file.txt"),
             "file content",
         )
-        .unwrap();
+        .expect("Failed to write file.txt");
 
         let resources = vec![
             create_discovered_resource(

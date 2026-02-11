@@ -111,15 +111,17 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
     }
 
     #[test]
     fn test_rebuild_context() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let workspace = crate::workspace::Workspace::init(temp.path()).unwrap();
+        let workspace =
+            crate::workspace::Workspace::init(temp.path()).expect("Failed to init workspace");
 
         let _rebuild_ctx = RebuildContext {
             root: &workspace.root,

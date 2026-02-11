@@ -197,7 +197,8 @@ mod tests {
 
     #[test]
     fn test_parse_marketplace_config() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let marketplace_json = temp.path().join("marketplace.json");
 
         let json_content = r#"{
@@ -211,10 +212,10 @@ mod tests {
     }
   ]
 }"#;
+        fs::write(&marketplace_json, json_content).expect("Failed to write marketplace.json");
 
-        fs::write(&marketplace_json, json_content).unwrap();
-
-        let config = MarketplaceConfig::from_file(&marketplace_json).unwrap();
+        let config = MarketplaceConfig::from_file(&marketplace_json)
+            .expect("Failed to parse marketplace.json");
         assert_eq!(config.plugins.len(), 1);
         assert_eq!(config.plugins[0].name, "test-bundle");
         assert_eq!(config.plugins[0].description, "Test bundle");
@@ -225,7 +226,8 @@ mod tests {
 
     #[test]
     fn test_parse_marketplace_config_with_defaults() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let marketplace_json = temp.path().join("marketplace.json");
 
         let json_content = r#"{
@@ -236,10 +238,10 @@ mod tests {
     }
   ]
 }"#;
+        fs::write(&marketplace_json, json_content).expect("Failed to write marketplace.json");
 
-        fs::write(&marketplace_json, json_content).unwrap();
-
-        let config = MarketplaceConfig::from_file(&marketplace_json).unwrap();
+        let config = MarketplaceConfig::from_file(&marketplace_json)
+            .expect("Failed to parse marketplace.json");
         assert_eq!(config.plugins.len(), 1);
         assert!(config.plugins[0].version.is_none());
         assert!(config.plugins[0].source.is_none());
@@ -249,10 +251,11 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_json() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         let marketplace_json = temp.path().join("marketplace.json");
 
-        fs::write(&marketplace_json, "invalid json {{{").unwrap();
+        fs::write(&marketplace_json, "invalid json {{{").expect("Failed to write marketplace.json");
 
         let result = MarketplaceConfig::from_file(&marketplace_json);
         assert!(result.is_err());

@@ -84,21 +84,23 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).unwrap();
+        git2::Repository::init(temp.path()).expect("Failed to init git repository");
     }
 
     #[test]
     fn test_save_context_order() {
-        let temp = TempDir::new_in(crate::temp::temp_dir_base()).unwrap();
+        let temp =
+            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
         create_git_repo(&temp);
 
-        let mut workspace = crate::workspace::Workspace::init(temp.path()).unwrap();
+        let mut workspace =
+            crate::workspace::Workspace::init(temp.path()).expect("Failed to init workspace");
 
         add_test_bundle(&mut workspace);
         workspace.should_create_augent_yaml = true;
 
         let augent_dir = temp.path().join(crate::workspace::WORKSPACE_DIR);
-        workspace.save().unwrap();
+        workspace.save().expect("Failed to save workspace");
 
         assert_save_order(&augent_dir);
     }
@@ -138,17 +140,25 @@ mod tests {
         let yaml_path = augent_dir.join(BUNDLE_CONFIG_FILE);
         let index_path = augent_dir.join(WORKSPACE_INDEX_FILE);
 
-        let lockfile_meta = std::fs::metadata(&lockfile_path).unwrap();
-        let yaml_meta = std::fs::metadata(&yaml_path).unwrap();
-        let index_meta = std::fs::metadata(&index_path).unwrap();
+        let lockfile_meta =
+            std::fs::metadata(&lockfile_path).expect("Failed to read lockfile metadata");
+        let yaml_meta = std::fs::metadata(&yaml_path).expect("Failed to read augent.yaml metadata");
+        let index_meta =
+            std::fs::metadata(&index_path).expect("Failed to read augent.index.yaml metadata");
 
         assert!(lockfile_path.exists());
         assert!(yaml_path.exists());
         assert!(index_path.exists());
 
-        let lock_time = lockfile_meta.modified().unwrap();
-        let yaml_time = yaml_meta.modified().unwrap();
-        let index_time = index_meta.modified().unwrap();
+        let lock_time = lockfile_meta
+            .modified()
+            .expect("Failed to read lockfile modified time");
+        let yaml_time = yaml_meta
+            .modified()
+            .expect("Failed to read augent.yaml modified time");
+        let index_time = index_meta
+            .modified()
+            .expect("Failed to read augent.index.yaml modified time");
 
         assert!(
             lock_time <= yaml_time,
