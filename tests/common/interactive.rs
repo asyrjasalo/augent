@@ -167,6 +167,7 @@ impl InteractiveTest {
     }
 
     /// Returns true if should break from loop, false if error should be returned
+    #[allow(unused_variables)]
     fn handle_read_error_for_output(
         &mut self,
         e: &std::io::Error,
