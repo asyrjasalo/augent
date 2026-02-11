@@ -53,6 +53,10 @@ run = "cargo test"
 description = "Lint codebase"
 run = "cargo clippy --all-targets --all-features -- -D warnings"
 
+[tasks.pedantic]
+description = "Lint codebase with pedantic and auto-fixes"
+run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings -W clippy::pedantic"
+
 [tasks.ccn]
 description = "Check CCN"
 run = "uvx lizard -C 10 --warnings_only src/ tests/"

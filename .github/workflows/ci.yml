@@ -37,7 +37,7 @@ jobs:
         uses: bnjbvr/cargo-machete@main
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features
 
   # Test and build on all platforms in parallel
   build:

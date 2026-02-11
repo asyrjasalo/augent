@@ -76,16 +76,13 @@ expectrl = "0.8"
 # Serialize tests that share process-wide state (e.g. AUGENT_CACHE_DIR)
 serial_test = "3"
 
-[features]
-default = []
-
 [lints.clippy]
-unwrap_used = "warn"
 expect_used = "warn"
+unwrap_used = "warn"
 panic = "warn"
+panic_in_result_fn = "warn"
 todo = "warn"
 unimplemented = "warn"
-panic_in_result_fn = "warn"
 
 [profile.release]
 lto = true
