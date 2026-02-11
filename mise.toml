@@ -36,8 +36,8 @@ description = "Run all checks"
 alias = "c"
 run = [
   { task = "format" },
-  { task = "test" },
   { task = "lint" },
+  { task = "test" },
   { task = "ccn" },
 ]
 
