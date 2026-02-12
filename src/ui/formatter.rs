@@ -15,19 +15,26 @@ type FilesByPlatform = HashMap<String, Vec<(String, String)>>;
 
 /// Display Claude Marketplace plugin info if applicable
 fn display_marketplace_plugin(bundle: &crate::config::LockedBundle) {
-    if let LockedSource::Git { path: Some(p), .. } = &bundle.source {
-        if p.contains("$claudeplugin") {
-            println!("    {}", Style::new().bold().apply_to("Plugin:"));
-            println!(
-                "      {} {}",
-                Style::new().bold().apply_to("type:"),
-                Style::new().green().apply_to("Claude Marketplace")
-            );
-            if let Some(ref v) = bundle.version {
-                println!("      {} {}", Style::new().bold().apply_to("version:"), v);
-            }
-        }
+    let LockedSource::Git { path: Some(p), .. } = &bundle.source else {
+        return;
+    };
+
+    if !p.contains("$claudeplugin") {
+        return;
     }
+
+    println!("    {}", Style::new().bold().apply_to("Plugin:"));
+    println!(
+        "      {} {}",
+        Style::new().bold().apply_to("type:"),
+        Style::new().green().apply_to("Claude Marketplace")
+    );
+
+    let Some(ref v) = bundle.version else {
+        return;
+    };
+
+    println!("      {} {}", Style::new().bold().apply_to("version:"), v);
 }
 
 /// Display resources grouped by type with consistent layout
@@ -409,6 +416,7 @@ impl JsonFormatter {
                 .as_object()
                 .unwrap_or(&serde_json::Map::new())
                 .is_empty();
+
             if is_empty {
                 return;
             }
@@ -443,15 +451,23 @@ impl JsonFormatter {
         };
 
         for file in &bundle.files {
-            let Some(locations) = ws_bundle.get_locations(file) else {
-                continue;
-            };
-            for location in locations {
-                add_file_to_platform_grouped(file, location, &mut grouped);
-            }
+            Self::add_file_to_grouped(file, ws_bundle, &mut grouped);
         }
 
         serde_json::Value::Object(grouped)
+    }
+
+    fn add_file_to_grouped(
+        file: &str,
+        ws_bundle: &WorkspaceBundle,
+        grouped: &mut serde_json::Map<String, serde_json::Value>,
+    ) {
+        let Some(locations) = ws_bundle.get_locations(file) else {
+            return;
+        };
+        for location in locations {
+            add_file_to_platform_grouped(file, location, grouped);
+        }
     }
 }
 

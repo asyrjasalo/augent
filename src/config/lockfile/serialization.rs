@@ -1,7 +1,10 @@
 //! Serialization implementations for Lockfile
 
+use serde::de::MapAccess;
+use serde::de::Visitor;
 use serde::ser::SerializeStruct;
 use serde::{Deserializer, Serializer};
+use std::fmt;
 
 use crate::config::lockfile::bundle::LockedBundle;
 
@@ -27,10 +30,6 @@ pub fn deserialize_lockfile<'de, D>(
 where
     D: Deserializer<'de>,
 {
-    use serde::de::MapAccess;
-    use serde::de::Visitor;
-    use std::fmt;
-
     struct LockfileVisitor;
 
     impl<'de> Visitor<'de> for LockfileVisitor {
@@ -45,18 +44,27 @@ where
             M: MapAccess<'de>,
         {
             let mut bundles = Vec::new();
-
             while let Some(key) = map.next_key::<String>()? {
-                if key.as_str() != "bundles" {
-                    let _ = map.next_value::<serde::de::IgnoredAny>()?;
-                    continue;
-                }
-                bundles = map.next_value()?;
+                bundles = process_map_key(key.as_str(), &mut map, bundles)?;
             }
-
             Ok(bundles)
         }
     }
 
     deserializer.deserialize_map(LockfileVisitor)
+}
+
+fn process_map_key<'de, M>(
+    key: &str,
+    map: &mut M,
+    bundles: Vec<LockedBundle>,
+) -> std::result::Result<Vec<LockedBundle>, M::Error>
+where
+    M: MapAccess<'de>,
+{
+    if key != "bundles" {
+        map.next_value::<serde::de::IgnoredAny>()?;
+        return Ok(bundles);
+    }
+    map.next_value()
 }

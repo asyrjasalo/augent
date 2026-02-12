@@ -37,25 +37,9 @@ impl PathNormalizer {
     /// For non-existent paths, normalizes the longest existing ancestor and appends
     /// the remaining components to ensure consistent symlink resolution (e.g., /var -> /private/var on macOS).
     pub fn normalize(path: &Path) -> PathBuf {
-        let mut components = Vec::new();
-        let mut current = path;
-
-        while !current.exists() {
-            let Some(file_name) = current.file_name() else {
-                return path.to_path_buf();
-            };
-            components.push(file_name);
-
-            let Some(p) = current.parent() else {
-                return path.to_path_buf();
-            };
-            current = p;
-        }
-
-        let normalized_base = current.normalize().map_or_else(
-            |_| current.to_path_buf(),
-            |norm| norm.as_path().to_path_buf(),
-        );
+        let Some((components, normalized_base)) = Self::normalize_with_components(path) else {
+            return path.to_path_buf();
+        };
 
         let mut result = normalized_base;
 
@@ -64,6 +48,28 @@ impl PathNormalizer {
         }
 
         result
+    }
+
+    /// Extract components and normalize the base path
+    ///
+    /// Returns None if the path cannot be normalized.
+    fn normalize_with_components(path: &Path) -> Option<(Vec<&std::ffi::OsStr>, PathBuf)> {
+        let mut components = Vec::new();
+        let mut current = path;
+
+        while !current.exists() {
+            let file_name = current.file_name()?;
+            components.push(file_name);
+
+            let p = current.parent()?;
+            current = p;
+        }
+
+        let normalized_base = current
+            .normalize()
+            .ok().map_or_else(|| current.to_path_buf(), |norm| norm.as_path().to_path_buf());
+
+        Some((components, normalized_base))
     }
 
     /// Convert a path to normalized forward-slash string representation

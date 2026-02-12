@@ -165,12 +165,8 @@ impl MergeStrategy {
                         path: "merge source".to_string(),
                         reason: e.to_string(),
                     })?;
-                let new_json: JsonValue = serde_json::from_str(new_content).map_err(|e| {
-                    AugentError::ConfigParseFailed {
-                        path: "merge target".to_string(),
-                        reason: e.to_string(),
-                    }
-                })?;
+                let new_json: JsonValue =
+                    serde_json::from_str(new_content).map_err(|e| create_merge_target_error(&e))?;
 
                 let merged = match self {
                     MergeStrategy::Shallow => merge_json_shallow(existing_json, new_json),
@@ -242,5 +238,13 @@ fn merge_json_deep(existing: JsonValue, new: JsonValue) -> JsonValue {
         }
         // For non-objects/arrays, new value wins
         (_, new) => new,
+    }
+}
+
+/// Create a `ConfigParseFailed` error for merge target
+fn create_merge_target_error(error: &serde_json::Error) -> AugentError {
+    AugentError::ConfigParseFailed {
+        path: "merge target".to_string(),
+        reason: error.to_string(),
     }
 }

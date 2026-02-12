@@ -44,22 +44,27 @@ pub fn locked_source_to_string(source: &LockedSource) -> String {
 
 /// Extract platform names from a workspace bundle
 ///
-/// Returns a sorted list of platform identifiers extracted from the
-/// enabled file locations in the bundle.
+/// Returns a sorted list of platform identifiers extracted from
+/// enabled file locations in bundle.
 pub fn extract_platforms_from_bundle(workspace_bundle: &WorkspaceBundle) -> Vec<String> {
     let mut platforms = std::collections::HashSet::new();
     for locations in workspace_bundle.enabled.values() {
-        for location in locations {
-            let Some(platform) = location.strip_prefix('.').and_then(|p| p.split('/').next())
-            else {
-                continue;
-            };
-            platforms.insert(platform.to_string());
-        }
+        collect_platforms_from_locations(locations, &mut platforms);
     }
     let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();
     sorted_platforms.sort();
     sorted_platforms
+}
+
+fn collect_platforms_from_locations(
+    locations: &[String],
+    platforms: &mut std::collections::HashSet<String>,
+) {
+    for location in locations {
+        if let Some(platform) = location.strip_prefix('.').and_then(|p| p.split('/').next()) {
+            platforms.insert(platform.to_string());
+        }
+    }
 }
 
 /// Display bundle information in a standardized format.

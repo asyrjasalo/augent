@@ -43,21 +43,30 @@ impl<'a> InstallResolver<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         let mut all_bundles = Vec::new();
         for dep in &self.workspace.bundle_config.bundles {
-            let has_git_url = dep.git.is_some();
-            let has_path = dep.path.is_some();
-
-            let has_valid_combination = (has_git_url && !has_path) || (!has_git_url && has_path);
-            if !has_valid_combination {
-                continue;
-            }
-
-            if has_git_url {
-                Self::resolve_git_dep(dep, bundle_resolver, &mut all_bundles)?;
-            } else {
-                Self::resolve_path_dep(dep, bundle_resolver, &mut all_bundles)?;
-            }
+            Self::resolve_single_dep(dep, bundle_resolver, &mut all_bundles)?;
         }
         Ok(all_bundles)
+    }
+
+    fn resolve_single_dep(
+        dep: &crate::config::BundleDependency,
+        bundle_resolver: &mut Resolver,
+        all_bundles: &mut Vec<ResolvedBundle>,
+    ) -> Result<()> {
+        let has_git_url = dep.git.is_some();
+        let has_path = dep.path.is_some();
+
+        let has_valid_combination = (has_git_url && !has_path) || (!has_git_url && has_path);
+        if !has_valid_combination {
+            return Ok(());
+        }
+
+        if has_git_url {
+            Self::resolve_git_dep(dep, bundle_resolver, all_bundles)?;
+        } else {
+            Self::resolve_path_dep(dep, bundle_resolver, all_bundles)?;
+        }
+        Ok(())
     }
 
     fn resolve_git_dep(
@@ -119,15 +128,24 @@ impl<'a> InstallResolver<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         let mut all_bundles = Vec::new();
         for discovered in selected_bundles {
-            if let Some(git_source) = &discovered.git_source {
-                let url = Self::build_git_source_url(git_source);
-                let bundles = bundle_resolver.resolve(&url, false)?;
-                all_bundles.extend(bundles);
-            } else {
-                Self::resolve_local_bundle(discovered, bundle_resolver, &mut all_bundles)?;
-            }
+            Self::resolve_bundle_with_git_or_local(discovered, bundle_resolver, &mut all_bundles)?;
         }
         Ok(all_bundles)
+    }
+
+    fn resolve_bundle_with_git_or_local(
+        discovered: &crate::domain::DiscoveredBundle,
+        bundle_resolver: &mut Resolver,
+        all_bundles: &mut Vec<ResolvedBundle>,
+    ) -> Result<()> {
+        if let Some(git_source) = &discovered.git_source {
+            let url = Self::build_git_source_url(git_source);
+            let bundles = bundle_resolver.resolve(&url, false)?;
+            all_bundles.extend(bundles);
+        } else {
+            Self::resolve_local_bundle(discovered, bundle_resolver, all_bundles)?;
+        }
+        Ok(())
     }
 
     fn resolve_local_bundle(

@@ -158,26 +158,11 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
         }
 
         // Try partial match (e.g., "bundle-a" matches "@test/bundle-a")
-        for workspace_bundle in &workspace.config.bundles {
-            let is_match = workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
-                || workspace_bundle.name == *bundle_name;
-
-            if is_match {
-                files_to_remove.extend(
-                    workspace_bundle
-                        .enabled
-                        .values()
-                        .flat_map(|v| v.iter().cloned()),
-                );
-            }
-        }
+        collect_matching_bundle_files(&workspace.config.bundles, bundle_name, &mut files_to_remove);
 
         // Remove all collected files
         for location in &files_to_remove {
             let full_path = workspace.root.join(location);
-            if !full_path.exists() {
-                continue;
-            }
             let _ = std::fs::remove_file(&full_path);
         }
 
@@ -267,5 +252,20 @@ pub fn run(workspace: Option<std::path::PathBuf>, mut args: InstallArgs) -> Resu
         install_from_source(&workspace_root, &mut args, installing_by_bundle_name)
     } else {
         install_from_config(&workspace_root, &mut args)
+    }
+}
+
+fn collect_matching_bundle_files(
+    bundles: &[crate::config::WorkspaceBundle],
+    bundle_name: &str,
+    files_to_remove: &mut std::collections::HashSet<String>,
+) {
+    for bundle in bundles {
+        let is_match =
+            bundle.name.ends_with(&format!("/{bundle_name}")) || bundle.name == *bundle_name;
+
+        if is_match {
+            files_to_remove.extend(bundle.enabled.values().flat_map(|v| v.iter().cloned()));
+        }
     }
 }

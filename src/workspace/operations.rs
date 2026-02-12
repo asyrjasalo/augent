@@ -40,14 +40,13 @@ pub fn rebuild_workspace_config(root: &Path, lockfile: &Lockfile) -> Result<Work
         for bundle_file in &locked_bundle.files {
             let installed_locations = find_file_locations(bundle_file, root, &platform_dirs)?;
 
-            // If we found installed locations, add them to the workspace bundle
             if installed_locations.is_empty() {
                 continue;
             }
             workspace_bundle.add_file(bundle_file.clone(), installed_locations);
         }
 
-        // Add this bundle to the workspace config (even if empty)
+        // Add this bundle to workspace config (even if empty)
         rebuilt_config.add_bundle(workspace_bundle);
     }
 
@@ -83,7 +82,7 @@ fn find_file_locations(
 
 /// Detect which platforms are installed by checking for platform directories
 ///
-/// Uses the platform definitions from `PlatformLoader` to detect
+/// Uses platform definitions from `PlatformLoader` to detect
 /// which platforms are installed, making this truly platform-independent.
 fn detect_installed_platforms(root: &Path) -> Result<Vec<std::path::PathBuf>> {
     let mut platforms = Vec::new();

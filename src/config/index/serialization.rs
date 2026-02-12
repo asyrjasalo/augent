@@ -45,18 +45,27 @@ where
             M: MapAccess<'de>,
         {
             let mut bundles = Vec::new();
-
             while let Some(key) = map.next_key::<String>()? {
-                if key.as_str() == "bundles" {
-                    bundles = map.next_value()?;
-                } else {
-                    map.next_value::<serde::de::IgnoredAny>()?;
-                }
+                bundles = process_map_key(key.as_str(), &mut map, bundles)?;
             }
-
             Ok(bundles)
         }
     }
 
     deserializer.deserialize_map(WorkspaceConfigVisitor)
+}
+
+fn process_map_key<'de, M>(
+    key: &str,
+    map: &mut M,
+    bundles: Vec<super::bundle::WorkspaceBundle>,
+) -> std::result::Result<Vec<super::bundle::WorkspaceBundle>, M::Error>
+where
+    M: MapAccess<'de>,
+{
+    if key != "bundles" {
+        map.next_value::<serde::de::IgnoredAny>()?;
+        return Ok(bundles);
+    }
+    map.next_value()
 }

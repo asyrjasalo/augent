@@ -68,13 +68,17 @@ impl Lockfile {
 
     /// Ensure every git source has a ref (never null) - default to "main" when missing
     fn normalize_git_refs(&mut self) {
-        use crate::config::lockfile::source::LockedSource;
         for bundle in &mut self.bundles {
-            let LockedSource::Git { git_ref, .. } = &mut bundle.source else {
-                continue;
-            };
-            let _ = git_ref.get_or_insert_with(|| "main".to_string());
+            Self::normalize_bundle_git_ref(bundle);
         }
+    }
+
+    fn normalize_bundle_git_ref(bundle: &mut LockedBundle) {
+        use crate::config::lockfile::source::LockedSource;
+        let LockedSource::Git { git_ref, .. } = &mut bundle.source else {
+            return;
+        };
+        let _ = git_ref.get_or_insert_with(|| "main".to_string());
     }
 
     /// Serialize lockfile to JSON string (pretty-printed) with workspace name
@@ -102,8 +106,6 @@ impl Lockfile {
     /// Note: Dir bundles are already in dependency order from the resolver.
     /// This method only reorders to separate types and move workspace bundle to end.
     pub fn reorganize(&mut self, workspace_bundle_name: Option<&str>) {
-        use crate::config::lockfile::source::LockedSource;
-
         // Separate bundles into git, dir, and workspace types
         // IMPORTANT: git_bundles iteration preserves the order from self.bundles
         let mut git_bundles = Vec::new();
@@ -111,18 +113,13 @@ impl Lockfile {
         let mut workspace_bundle = None;
 
         for bundle in self.bundles.drain(..) {
-            let is_workspace =
-                matches!(&workspace_bundle_name, Some(ws_name) if bundle.name.as_str() == *ws_name);
-            if !is_workspace {
-                let target = if matches!(bundle.source, LockedSource::Dir { .. }) {
-                    &mut dir_bundles
-                } else {
-                    &mut git_bundles
-                };
-                target.push(bundle);
-                continue;
-            }
-            workspace_bundle = Some(bundle);
+            Self::categorize_bundle(
+                bundle,
+                workspace_bundle_name,
+                &mut git_bundles,
+                &mut dir_bundles,
+                &mut workspace_bundle,
+            );
         }
 
         // Reconstruct in correct order, preserving git bundle installation order
@@ -130,6 +127,24 @@ impl Lockfile {
         self.bundles.extend(dir_bundles); // Dir bundles in dependency order
         if let Some(ws_bundle) = workspace_bundle {
             self.bundles.push(ws_bundle); // Workspace bundle always last
+        }
+    }
+
+    fn categorize_bundle(
+        bundle: LockedBundle,
+        workspace_bundle_name: Option<&str>,
+        git_bundles: &mut Vec<LockedBundle>,
+        dir_bundles: &mut Vec<LockedBundle>,
+        workspace_bundle: &mut Option<LockedBundle>,
+    ) {
+        use crate::config::lockfile::source::LockedSource;
+
+        if is_workspace_bundle(&bundle, workspace_bundle_name) {
+            *workspace_bundle = Some(bundle);
+        } else if matches!(bundle.source, LockedSource::Dir { .. }) {
+            dir_bundles.push(bundle);
+        } else {
+            git_bundles.push(bundle);
         }
     }
 
@@ -174,31 +189,33 @@ impl Lockfile {
         bundle_config_deps: &[crate::config::BundleDependency],
         workspace_bundle_name: Option<&str>,
     ) {
-        // Create a map of name to bundle for quick lookup
         let mut bundle_map: HashMap<String, LockedBundle> = self
             .bundles
             .drain(..)
             .map(|b| (b.name.clone(), b))
             .collect();
 
-        // Extract workspace bundle if it exists
         let workspace_bundle = workspace_bundle_name.and_then(|name| bundle_map.remove(name));
+        let reordered = Self::reorder_bundles_from_deps(bundle_config_deps, bundle_map);
 
-        // Rebuild bundles vector in augent.yaml order
-        let mut reordered = Vec::new();
-        for dep in bundle_config_deps {
-            let Some(bundle) = bundle_map.remove(&dep.name) else {
-                continue;
-            };
-            reordered.push(bundle);
-        }
-        // Add any remaining bundles that weren't in augent.yaml (shouldn't happen, but be safe)
-        reordered.extend(bundle_map.into_values());
-        // Add workspace bundle at the end if it exists
+        let mut final_order = reordered;
         if let Some(ws_bundle) = workspace_bundle {
-            reordered.push(ws_bundle);
+            final_order.push(ws_bundle);
         }
-        self.bundles = reordered;
+        self.bundles = final_order;
+    }
+
+    fn reorder_bundles_from_deps(
+        bundle_config_deps: &[crate::config::BundleDependency],
+        mut bundle_map: HashMap<String, LockedBundle>,
+    ) -> Vec<LockedBundle> {
+        let reordered: Vec<_> = bundle_config_deps
+            .iter()
+            .filter_map(|dep| bundle_map.remove(&dep.name))
+            .collect();
+        let mut result = reordered;
+        result.extend(bundle_map.into_values());
+        result
     }
 
     /// Remove a bundle from the lockfile
@@ -224,4 +241,8 @@ impl BundleContainer<LockedBundle> for Lockfile {
     fn find_bundle(&self, name: &str) -> Option<&LockedBundle> {
         self.bundles().iter().find(|b| Self::name(b) == name)
     }
+}
+
+fn is_workspace_bundle(bundle: &LockedBundle, workspace_bundle_name: Option<&str>) -> bool {
+    matches!(&workspace_bundle_name, Some(ws_name) if bundle.name.as_str() == *ws_name)
 }

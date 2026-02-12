@@ -57,20 +57,24 @@ pub fn print_install_summary(
 
     for bundle in resolved_bundles {
         println!("  - {}", bundle.name);
+        print_bundle_files(&bundle.name, installed_files_map);
+    }
+}
 
-        let bundle_name_without_at = bundle.name.replace('@', "");
-        let bundle_name_str = &bundle.name;
-        for (bundle_path, installed) in installed_files_map {
-            let should_display = bundle_path.starts_with(bundle_name_str)
-                || bundle_path.contains(&bundle_name_without_at);
-            if !should_display {
-                continue;
-            }
-
-            println!(
-                "    {} ({})",
-                installed.bundle_path, installed.resource_type
-            );
+fn print_bundle_files(
+    bundle_name: &str,
+    installed_files_map: &std::collections::HashMap<String, crate::domain::InstalledFile>,
+) {
+    let bundle_name_without_at = bundle_name.replace('@', "");
+    for (bundle_path, installed) in installed_files_map {
+        let should_display =
+            bundle_path.starts_with(bundle_name) || bundle_path.contains(&bundle_name_without_at);
+        if !should_display {
+            continue;
         }
+        println!(
+            "    {} ({})",
+            installed.bundle_path, installed.resource_type
+        );
     }
 }

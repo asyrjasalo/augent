@@ -90,11 +90,9 @@ pub fn validate_dependencies(
     let resolved_keys: Vec<&str> = resolved.keys().map(std::string::String::as_str).collect();
     for (name, bundle_deps) in deps {
         for dep_name in bundle_deps {
-            let dep_exists = resolved_keys.contains(&dep_name.as_str());
-            if dep_exists {
+            if resolved_keys.contains(&dep_name.as_str()) {
                 continue;
             }
-
             let resolved_names: Vec<&str> = resolved_keys.clone();
             return Err(AugentError::BundleValidationFailed {
                 message: format!(

@@ -21,27 +21,31 @@ pub fn is_bundle_directory(full_path: &Path) -> bool {
         return true;
     }
 
+    let Ok(entries) = full_path.read_dir() else {
+        return false;
+    };
+
+    has_bundle_files(entries)
+}
+
+fn has_bundle_files(entries: std::fs::ReadDir) -> bool {
     let known_files: &[&'static str] = &["augent.yaml", "augent.lock", "augent.index.yaml", ".git"];
 
-    match full_path.read_dir() {
-        Ok(entries) => {
-            for entry_result in entries {
-                let Ok(entry) = entry_result else {
-                    continue;
-                };
-                let name = entry.file_name();
-                let Some(name) = name.to_str() else {
-                    continue;
-                };
-                if known_files.contains(&name) || name.starts_with('.') {
-                    continue;
-                }
-                return true;
-            }
-            false
+    for entry_result in entries {
+        let Ok(entry) = entry_result else {
+            continue;
+        };
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if known_files.contains(&name) || name.starts_with('.') {
+            continue;
         }
-        Err(_) => false,
+        return true;
     }
+
+    false
 }
 
 /// Get bundle name from a directory path

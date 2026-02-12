@@ -172,11 +172,11 @@ impl PlatformLoader {
             state = new_state;
             i += added_char;
 
-            let is_invisible_state = matches!(
+            let is_in_comment = matches!(
                 state,
                 JsoncParserState::InSingleLineComment | JsoncParserState::InMultiLineComment
             );
-            if is_invisible_state {
+            if is_in_comment {
                 continue;
             }
             result.push(c);

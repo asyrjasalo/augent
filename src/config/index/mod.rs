@@ -80,29 +80,40 @@ impl WorkspaceConfig {
 
     /// Reorder bundles to match order in a lockfile
     ///
-    /// This ensures workspace config has the same ordering as the lockfile,
+    /// This ensures workspace config has the same ordering as lockfile,
     /// with local (dir-based) bundles last so they override external dependencies.
     pub fn reorder_to_match_lockfile(&mut self, lockfile: &crate::config::Lockfile) {
         let mut reordered = Vec::new();
 
         // Add bundles in same order as lockfile
-        for locked_bundle in &lockfile.bundles {
-            let Some(workspace_bundle) = self.bundles.iter().find(|b| b.name == locked_bundle.name)
-            else {
-                continue;
-            };
-            reordered.push(workspace_bundle.clone());
-        }
+        Self::add_bundles_in_lockfile_order(&self.bundles, lockfile, &mut reordered);
 
         // Add any bundles that are in workspace but not in lockfile (shouldn't happen, but be safe)
         for bundle in &self.bundles {
-            let exists = reordered.iter().any(|b| b.name == bundle.name);
-            if !exists {
-                reordered.push(bundle.clone());
-            }
+            Self::add_if_not_exists(&mut reordered, bundle);
         }
 
         self.bundles = reordered;
+    }
+
+    fn add_bundles_in_lockfile_order(
+        bundles: &[WorkspaceBundle],
+        lockfile: &crate::config::Lockfile,
+        reordered: &mut Vec<WorkspaceBundle>,
+    ) {
+        reordered.extend(lockfile.bundles.iter().filter_map(|locked_bundle| {
+            bundles
+                .iter()
+                .find(|b| b.name == locked_bundle.name)
+                .cloned()
+        }));
+    }
+
+    fn add_if_not_exists(reordered: &mut Vec<WorkspaceBundle>, bundle: &WorkspaceBundle) {
+        let exists = reordered.iter().any(|b| b.name == bundle.name);
+        if !exists {
+            reordered.push(bundle.clone());
+        }
     }
 
     /// Remove a bundle from workspace

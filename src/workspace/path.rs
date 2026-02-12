@@ -144,8 +144,12 @@ pub fn apply_transform(to_pattern: &str, from_path: &str) -> String {
     let mut result = Vec::new();
 
     for pattern_part in pattern_parts {
-        if pattern_part == "*" && !from_parts.is_empty() {
-            result.push(from_parts.remove(0).to_string());
+        if pattern_part == "*" {
+            let Some(part) = from_parts.first() else {
+                continue;
+            };
+            result.push((*part).to_string());
+            from_parts.remove(0);
             continue;
         }
 
@@ -153,11 +157,12 @@ pub fn apply_transform(to_pattern: &str, from_path: &str) -> String {
             let Some(last) = from_parts.last() else {
                 continue;
             };
-            let Some(pos) = last.rfind('.') else {
+
+            if let Some(pos) = last.rfind('.') {
+                result.push(last[..pos].to_string());
+            } else {
                 result.push((*last).to_string());
-                continue;
-            };
-            result.push(last[..pos].to_string());
+            }
             continue;
         }
 

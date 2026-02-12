@@ -146,8 +146,9 @@ impl Transaction {
 
         for path in sorted_dirs {
             if !Self::is_empty_directory(path) {
-                let _ = fs::remove_dir(path);
+                continue;
             }
+            let _ = fs::remove_dir(path);
         }
     }
 
@@ -165,8 +166,7 @@ impl Transaction {
 
     fn restore_backups(backups: &[ConfigBackup], msg_type: &str) {
         for backup in backups {
-            let write_result = fs::write(&backup.path, &backup.content);
-            if let Err(e) = write_result {
+            if let Err(e) = fs::write(&backup.path, &backup.content) {
                 eprintln!(
                     "Warning: Failed to restore {}{}: {}",
                     msg_type,

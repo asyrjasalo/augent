@@ -166,13 +166,10 @@ impl BundleConfig {
             .collect();
 
         // Rebuild bundles vector in lockfile order
-        let mut reordered = Vec::new();
-        for name in lockfile_bundle_names {
-            let Some(dep) = dep_map.remove(name) else {
-                continue;
-            };
-            reordered.push(dep);
-        }
+        let mut reordered: Vec<_> = lockfile_bundle_names
+            .iter()
+            .filter_map(|name| dep_map.remove(name))
+            .collect();
         // Add any remaining dependencies that weren't in lockfile (shouldn't happen, but be safe)
         reordered.extend(dep_map.into_values());
         self.bundles = reordered;
