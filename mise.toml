@@ -42,7 +42,7 @@ run = "cargo fmt"
 
 [tasks.test]
 description = "Run tests"
-run = "cargo nextest run"
+run = "cargo nextest run --no-fail-fast"
 
 [tasks.lint]
 description = "Lint codebase with auto-fix"
