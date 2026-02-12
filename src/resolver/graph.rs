@@ -90,19 +90,21 @@ pub fn validate_dependencies(
     let resolved_keys: Vec<&str> = resolved.keys().map(std::string::String::as_str).collect();
     for (name, bundle_deps) in deps {
         for dep_name in bundle_deps {
-            if !resolved_keys.contains(&dep_name.as_str()) {
-                let resolved_names: Vec<&str> = resolved_keys.clone();
-
-                return Err(AugentError::BundleValidationFailed {
-                    message: format!(
-                        "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
-                     Available bundles: {}",
-                        dep_name,
-                        name,
-                        resolved_names.join(", ")
-                    ),
-                });
+            let dep_exists = resolved_keys.contains(&dep_name.as_str());
+            if dep_exists {
+                continue;
             }
+
+            let resolved_names: Vec<&str> = resolved_keys.clone();
+            return Err(AugentError::BundleValidationFailed {
+                message: format!(
+                    "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
+                 Available bundles: {}",
+                    dep_name,
+                    name,
+                    resolved_names.join(", ")
+                ),
+            });
         }
     }
     Ok(())

@@ -68,7 +68,7 @@ impl WorkspaceConfig {
 
     /// Reorganize all bundles to match lockfile order
     ///
-    /// Ensures all bundles are in the correct order based on lockfile.
+    /// Ensures all bundles are in correct order based on lockfile.
     pub fn reorganize(&mut self, lockfile: &crate::config::Lockfile) {
         self.reorder_to_match_lockfile(lockfile);
     }
@@ -78,25 +78,26 @@ impl WorkspaceConfig {
         self.bundles.push(bundle);
     }
 
-    /// Reorder bundles to match the order in a lockfile
+    /// Reorder bundles to match order in a lockfile
     ///
     /// This ensures workspace config has the same ordering as the lockfile,
     /// with local (dir-based) bundles last so they override external dependencies.
     pub fn reorder_to_match_lockfile(&mut self, lockfile: &crate::config::Lockfile) {
         let mut reordered = Vec::new();
 
-        // Add bundles in the same order as the lockfile
+        // Add bundles in same order as lockfile
         for locked_bundle in &lockfile.bundles {
-            if let Some(workspace_bundle) =
-                self.bundles.iter().find(|b| b.name == locked_bundle.name)
-            {
-                reordered.push(workspace_bundle.clone());
-            }
+            let Some(workspace_bundle) = self.bundles.iter().find(|b| b.name == locked_bundle.name)
+            else {
+                continue;
+            };
+            reordered.push(workspace_bundle.clone());
         }
 
         // Add any bundles that are in workspace but not in lockfile (shouldn't happen, but be safe)
         for bundle in &self.bundles {
-            if !reordered.iter().any(|b| b.name == bundle.name) {
+            let exists = reordered.iter().any(|b| b.name == bundle.name);
+            if !exists {
                 reordered.push(bundle.clone());
             }
         }
@@ -104,7 +105,7 @@ impl WorkspaceConfig {
         self.bundles = reordered;
     }
 
-    /// Remove a bundle from the workspace
+    /// Remove a bundle from workspace
     #[allow(dead_code)]
     pub fn remove_bundle(&mut self, name: &str) -> Option<WorkspaceBundle> {
         if let Some(pos) = self.bundles.iter().position(|b| b.name == name) {
@@ -127,12 +128,11 @@ impl WorkspaceConfig {
     #[allow(dead_code)] // Used by tests
     pub fn find_provider(&self, installed_path: &str) -> Option<(&str, &str)> {
         self.bundles.iter().find_map(|bundle| {
-            bundle.enabled.iter().find_map(|(source, locations)| {
-                locations
-                    .iter()
-                    .find(|loc| *loc == installed_path)
-                    .map(|_| (&bundle.name as &str, source.as_str()))
-            })
+            let (source, _locations) = bundle
+                .enabled
+                .iter()
+                .find(|(_, locs)| locs.iter().any(|loc| *loc == installed_path))?;
+            Some((&bundle.name as &str, source.as_str()))
         })
     }
 
@@ -140,7 +140,7 @@ impl WorkspaceConfig {
     ///
     /// # Note
     /// This function is used by tests.
-    #[allow(dead_code)] // Used by tests
+    #[allow(dead_code)]
     pub fn validate() {
         // Name is computed from workspace location, not validated here
     }

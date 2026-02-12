@@ -300,24 +300,7 @@ impl<'a> Installer<'a> {
             if self.dry_run {
                 continue;
             }
-
-            for platform in &self.platforms {
-                let target_path = self.calculate_target_path(resource, bundle, platform);
-
-                let ctx = ResourceInstallContext {
-                    installer: self,
-                    target_path: target_path.clone(),
-                    platform,
-                    bundle_name: &bundle.name,
-                    resource_type: &resource.resource_type,
-                };
-                Self::install_resource_for_platform(
-                    &ctx,
-                    resource,
-                    &mut installed_files,
-                    &self.format_registry,
-                )?;
-            }
+            self.install_resource_for_all_platforms(resource, bundle, &mut installed_files)?;
         }
 
         self.installed_files = installed_files;
@@ -326,6 +309,32 @@ impl<'a> Installer<'a> {
             name: bundle.name.clone(),
             enabled: HashMap::new(),
         })
+    }
+
+    fn install_resource_for_all_platforms(
+        &self,
+        resource: &DiscoveredResource,
+        bundle: &ResolvedBundle,
+        installed_files: &mut HashMap<String, InstalledFile>,
+    ) -> Result<()> {
+        let platforms = &self.platforms;
+        for platform in platforms {
+            let target_path = self.calculate_target_path(resource, bundle, platform);
+            let ctx = ResourceInstallContext {
+                installer: self,
+                target_path: target_path.clone(),
+                platform,
+                bundle_name: &bundle.name,
+                resource_type: &resource.resource_type,
+            };
+            Self::install_resource_for_platform(
+                &ctx,
+                resource,
+                installed_files,
+                &self.format_registry,
+            )?;
+        }
+        Ok(())
     }
 
     pub fn install_bundles(&mut self, bundles: &[ResolvedBundle]) -> Result<Vec<WorkspaceBundle>> {

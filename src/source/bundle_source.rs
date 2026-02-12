@@ -23,15 +23,14 @@ impl FileUrlParser {
     }
 
     fn try_parse(input: &str) -> Option<BundleSource> {
-        input.strip_prefix("file://").and_then(|after_protocol| {
-            if Self::indicates_git_source(after_protocol) {
-                GitSource::parse(input).ok().map(BundleSource::Git)
-            } else {
-                Some(BundleSource::Dir {
-                    path: PathBuf::from(after_protocol),
-                })
-            }
-        })
+        let after_protocol = input.strip_prefix("file://")?;
+        if Self::indicates_git_source(after_protocol) {
+            GitSource::parse(input).ok().map(BundleSource::Git)
+        } else {
+            Some(BundleSource::Dir {
+                path: PathBuf::from(after_protocol),
+            })
+        }
     }
 }
 

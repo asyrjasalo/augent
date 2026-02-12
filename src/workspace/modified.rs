@@ -57,11 +57,10 @@ fn check_bundle_modified_files(ctx: &CheckContext) -> Vec<ModifiedFile> {
     for (source_path, installed_locations) in &ctx.bundle.enabled {
         for installed_path in installed_locations {
             let full_installed_path = ctx.workspace_root.join(installed_path);
-            let modified_file = check_file_modification(ctx, source_path, &full_installed_path);
-
-            if let Some(mf) = modified_file {
-                modified.push(mf);
-            }
+            let Some(mf) = check_file_modification(ctx, source_path, &full_installed_path) else {
+                continue;
+            };
+            modified.push(mf);
         }
     }
 
@@ -138,15 +137,18 @@ pub fn preserve_modified_files(
     let mut preserved = HashMap::new();
 
     for modified in modified_files {
-        // Remove file from original bundle's enabled files in workspace_config
-        // since it's now managed locally
-        if let Some(bundle) = workspace.config.find_bundle_mut(&modified.source_bundle) {
-            if let Some(locations) = bundle.enabled.get_mut(&modified.source_path) {
-                locations.clear();
-            }
-            // Remove the entry entirely if it has no locations
-            bundle.enabled.remove(&modified.source_path);
+        let Some(bundle) = workspace.config.find_bundle_mut(&modified.source_bundle) else {
+            preserved.insert(
+                modified.source_path.clone(),
+                modified.installed_path.clone(),
+            );
+            continue;
+        };
+
+        if let Some(locations) = bundle.enabled.get_mut(&modified.source_path) {
+            locations.clear();
         }
+        bundle.enabled.remove(&modified.source_path);
 
         preserved.insert(
             modified.source_path.clone(),

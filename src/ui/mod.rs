@@ -98,16 +98,16 @@ impl ProgressReporter for InteractiveProgressReporter {
     }
 
     fn update_file(&mut self, file_path: &str) {
-        if let Some(ref file_pb) = self.file_pb {
-            // Truncate long paths for display
-            let display_path = if file_path.len() > 50 {
-                format!("...{}", &file_path[file_path.len() - 47..])
-            } else {
-                file_path.to_string()
-            };
-            file_pb.set_message(display_path);
-            file_pb.inc(1);
-        }
+        let Some(ref file_pb) = self.file_pb else {
+            return;
+        };
+        let display_path = if file_path.len() > 50 {
+            format!("...{}", &file_path[file_path.len() - 47..])
+        } else {
+            file_path.to_string()
+        };
+        file_pb.set_message(display_path);
+        file_pb.inc(1);
     }
 
     fn finish_files(&mut self) {

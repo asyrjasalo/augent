@@ -58,17 +58,19 @@ pub fn print_install_summary(
     for bundle in resolved_bundles {
         println!("  - {}", bundle.name);
 
-        // Show files installed for this bundle
+        let bundle_name_without_at = bundle.name.replace('@', "");
+        let bundle_name_str = &bundle.name;
         for (bundle_path, installed) in installed_files_map {
-            // Group by resource type for cleaner display
-            if bundle_path.starts_with(&bundle.name)
-                || bundle_path.contains(&bundle.name.replace('@', ""))
-            {
-                println!(
-                    "    {} ({})",
-                    installed.bundle_path, installed.resource_type
-                );
+            let should_display = bundle_path.starts_with(bundle_name_str)
+                || bundle_path.contains(&bundle_name_without_at);
+            if !should_display {
+                continue;
             }
+
+            println!(
+                "    {} ({})",
+                installed.bundle_path, installed.resource_type
+            );
         }
     }
 }

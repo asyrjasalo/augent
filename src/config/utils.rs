@@ -18,14 +18,18 @@ fn add_blank_lines_between_bundles(lines: Vec<&str>) -> Vec<String> {
         if line.trim_start().starts_with("bundles:") {
             in_bundles_section = true;
             formatted.push(line.to_string());
-        } else if in_bundles_section && line.trim_start().starts_with("- name:") {
-            if matches!(formatted.last(), Some(last) if !last.is_empty() && last.starts_with(' ')) {
-                formatted.push(String::new());
-            }
-            formatted.push(line.to_string());
-        } else {
-            formatted.push(line.to_string());
+            continue;
         }
+
+        if !in_bundles_section || !line.trim_start().starts_with("- name:") {
+            formatted.push(line.to_string());
+            continue;
+        }
+
+        if matches!(formatted.last(), Some(last) if !last.is_empty() && last.starts_with(' ')) {
+            formatted.push(String::new());
+        }
+        formatted.push(line.to_string());
     }
     formatted
 }

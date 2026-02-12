@@ -171,14 +171,15 @@ fn display_sorted_platforms(files_by_platform: &FilesByPlatform) {
         let platform_display = string_utils::capitalize_word(platform);
         println!("      {}", Style::new().cyan().apply_to(platform_display));
 
-        if let Some(file_mappings) = files_by_platform.get(platform) {
-            for (file, location) in file_mappings {
-                println!(
-                    "        {} → {}",
-                    Style::new().dim().apply_to(file),
-                    location
-                );
-            }
+        let Some(file_mappings) = files_by_platform.get(platform) else {
+            continue;
+        };
+        for (file, location) in file_mappings {
+            println!(
+                "        {} → {}",
+                Style::new().dim().apply_to(file),
+                location
+            );
         }
     }
 }
@@ -226,7 +227,7 @@ pub struct DisplayContext<'a> {
 /// Formatter trait for displaying bundle information
 ///
 /// This trait allows different display strategies (simple, detailed, JSON, etc.)
-/// by implementing the same interface.
+/// by implementing of same interface.
 #[allow(dead_code)]
 pub trait DisplayFormatter {
     fn format_bundle(&self, bundle: &crate::config::LockedBundle, ctx: &DisplayContext);
@@ -384,7 +385,6 @@ impl DisplayFormatter for JsonFormatter {
             Ok(json_str) => println!("{json_str}"),
             Err(e) => {
                 eprintln!("Warning: Failed to serialize JSON output: {e}");
-                // Print empty JSON as fallback
                 println!("{{}}");
             }
         }
@@ -405,27 +405,29 @@ impl JsonFormatter {
     ) {
         if !bundle.files.is_empty() {
             let files_by_platform = Self::group_files_by_platform(bundle, ctx);
-            if !files_by_platform
+            let is_empty = files_by_platform
                 .as_object()
                 .unwrap_or(&serde_json::Map::new())
-                .is_empty()
-            {
-                output["enabled_resources"] = files_by_platform;
+                .is_empty();
+            if is_empty {
+                return;
             }
+            output["enabled_resources"] = files_by_platform;
         }
 
-        if let Ok(bundle_config) =
+        let Ok(bundle_config) =
             config_utils::load_bundle_config(ctx.workspace_root, &bundle.source)
-        {
-            if !bundle_config.bundles.is_empty() {
-                output["dependencies"] = serde_json::Value::Array(
-                    bundle_config
-                        .bundles
-                        .iter()
-                        .map(|dep| serde_json::json!({"name": dep.name}))
-                        .collect(),
-                );
-            }
+        else {
+            return;
+        };
+        if !bundle_config.bundles.is_empty() {
+            output["dependencies"] = serde_json::Value::Array(
+                bundle_config
+                    .bundles
+                    .iter()
+                    .map(|dep| serde_json::json!({"name": dep.name}))
+                    .collect(),
+            );
         }
     }
 

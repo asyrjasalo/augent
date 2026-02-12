@@ -100,10 +100,14 @@ impl GitSource {
             return Ok(format!("https://github.com/{rest}.git"));
         }
 
-        if let Some(rest) = input.strip_prefix('@') {
-            if Self::is_github_shorthand(rest) {
-                return Ok(format!("https://github.com/{rest}.git"));
-            }
+        let Some(rest) = input.strip_prefix('@') else {
+            return Err(AugentError::SourceParseFailed {
+                input: input.to_string(),
+                reason: "Unknown source format".to_string(),
+            });
+        };
+        if Self::is_github_shorthand(rest) {
+            return Ok(format!("https://github.com/{rest}.git"));
         }
 
         if Self::is_github_shorthand(input) {

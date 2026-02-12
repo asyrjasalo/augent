@@ -78,17 +78,16 @@ impl Transaction {
     ///
     /// Should be called at the start of any operation that modifies config files.
     pub fn backup_configs(&mut self) -> Result<()> {
-        let config_files = [
+        let config_files: Vec<_> = [
             self.augent_dir.join("augent.yaml"),
             self.augent_dir.join("augent.lock"),
             self.augent_dir.join("augent.index.yaml"),
-        ];
+        ]
+        .into_iter()
+        .filter(|p| p.exists())
+        .collect();
 
         for path in &config_files {
-            if !path.exists() {
-                continue;
-            }
-
             let content = fs::read(path).map_err(|e| AugentError::FileReadFailed {
                 path: path.display().to_string(),
                 reason: e.to_string(),
@@ -146,7 +145,7 @@ impl Transaction {
         sorted_dirs.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
 
         for path in sorted_dirs {
-            if Self::is_empty_directory(path) {
+            if !Self::is_empty_directory(path) {
                 let _ = fs::remove_dir(path);
             }
         }
@@ -166,7 +165,8 @@ impl Transaction {
 
     fn restore_backups(backups: &[ConfigBackup], msg_type: &str) {
         for backup in backups {
-            if let Err(e) = fs::write(&backup.path, &backup.content) {
+            let write_result = fs::write(&backup.path, &backup.content);
+            if let Err(e) = write_result {
                 eprintln!(
                     "Warning: Failed to restore {}{}: {}",
                     msg_type,

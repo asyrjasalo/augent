@@ -52,25 +52,25 @@ impl<'a> NameFixer<'a> {
         mut resolved_bundles: Vec<ResolvedBundle>,
     ) -> Vec<ResolvedBundle> {
         for bundle in &mut resolved_bundles {
-            if bundle.git_source.is_some() {
+            if bundle.git_source.is_none() {
                 continue;
             }
 
-            let rel_from_config = match bundle.source_path.strip_prefix(&self.workspace.config_dir)
-            {
-                Ok(path) => path,
-                Err(_) => continue,
+            let Ok(rel_from_config) = bundle.source_path.strip_prefix(&self.workspace.config_dir)
+            else {
+                continue;
             };
 
             let normalized_path = normalize_bundle_path(rel_from_config);
-            let existing_dep = match self.find_existing_dependency_with_path(&normalized_path) {
-                Some(dep) => dep,
-                None => continue,
+            let Some(existing_dep) = self.find_existing_dependency_with_path(&normalized_path)
+            else {
+                continue;
             };
 
-            if bundle.name != existing_dep.name {
-                bundle.name.clone_from(&existing_dep.name);
+            if bundle.name == existing_dep.name {
+                continue;
             }
+            bundle.name.clone_from(&existing_dep.name);
         }
 
         resolved_bundles

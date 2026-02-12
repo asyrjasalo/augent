@@ -78,11 +78,16 @@ impl<'a> UninstallOperation<'a> {
         }
 
         // Not found as exact match, but starts with @ - try as scope pattern
-        if name.starts_with('@') {
-            let bundles = resolve_scope_pattern_bundles(self.workspace, name, all_bundles);
-            if !bundles.is_empty() {
-                return Ok(bundles);
-            }
+        let starts_with_at = name.starts_with('@');
+        if !starts_with_at {
+            return Err(AugentError::BundleNotFound {
+                name: name.to_string(),
+            });
+        }
+
+        let bundles = resolve_scope_pattern_bundles(self.workspace, name, all_bundles);
+        if !bundles.is_empty() {
+            return Ok(bundles);
         }
 
         // Explicit bundle name provided but not found

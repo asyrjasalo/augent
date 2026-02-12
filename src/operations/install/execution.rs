@@ -96,10 +96,18 @@ impl<'a> ExecutionOrchestrator<'a> {
         transaction: &mut Transaction,
     ) {
         for installed in installed_files_map.values() {
-            installed.target_paths.iter().for_each(|target| {
-                let full_path = workspace_root.join(target);
-                transaction.track_file_created(full_path);
-            });
+            Self::track_installed_bundle_files(workspace_root, installed, transaction);
+        }
+    }
+
+    fn track_installed_bundle_files(
+        workspace_root: &std::path::Path,
+        installed: &crate::domain::InstalledFile,
+        transaction: &mut Transaction,
+    ) {
+        for target in &installed.target_paths {
+            let full_path = workspace_root.join(target);
+            transaction.track_file_created(full_path);
         }
     }
 

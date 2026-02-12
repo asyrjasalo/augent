@@ -70,9 +70,10 @@ impl Lockfile {
     fn normalize_git_refs(&mut self) {
         use crate::config::lockfile::source::LockedSource;
         for bundle in &mut self.bundles {
-            if let LockedSource::Git { git_ref, .. } = &mut bundle.source {
-                let _ = git_ref.get_or_insert_with(|| "main".to_string());
-            }
+            let LockedSource::Git { git_ref, .. } = &mut bundle.source else {
+                continue;
+            };
+            let _ = git_ref.get_or_insert_with(|| "main".to_string());
         }
     }
 
@@ -110,15 +111,18 @@ impl Lockfile {
         let mut workspace_bundle = None;
 
         for bundle in self.bundles.drain(..) {
-            if matches!(&workspace_bundle_name, Some(ws_name) if bundle.name.as_str() == *ws_name) {
-                workspace_bundle = Some(bundle);
+            let is_workspace =
+                matches!(&workspace_bundle_name, Some(ws_name) if bundle.name.as_str() == *ws_name);
+            if !is_workspace {
+                let target = if matches!(bundle.source, LockedSource::Dir { .. }) {
+                    &mut dir_bundles
+                } else {
+                    &mut git_bundles
+                };
+                target.push(bundle);
                 continue;
             }
-
-            match bundle.source {
-                LockedSource::Dir { .. } => dir_bundles.push(bundle),
-                _ => git_bundles.push(bundle),
-            }
+            workspace_bundle = Some(bundle);
         }
 
         // Reconstruct in correct order, preserving git bundle installation order
@@ -183,9 +187,10 @@ impl Lockfile {
         // Rebuild bundles vector in augent.yaml order
         let mut reordered = Vec::new();
         for dep in bundle_config_deps {
-            if let Some(bundle) = bundle_map.remove(&dep.name) {
-                reordered.push(bundle);
-            }
+            let Some(bundle) = bundle_map.remove(&dep.name) else {
+                continue;
+            };
+            reordered.push(bundle);
         }
         // Add any remaining bundles that weren't in augent.yaml (shouldn't happen, but be safe)
         reordered.extend(bundle_map.into_values());

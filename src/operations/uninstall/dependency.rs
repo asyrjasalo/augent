@@ -66,12 +66,7 @@ pub fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
     for locked in &workspace.lockfile.bundles {
-        let config_path = match get_bundle_config_path(locked) {
-            Ok(path) => path,
-            Err(_) => continue,
-        };
-
-        let Some(config_path) = config_path else {
+        let Ok(Some(config_path)) = get_bundle_config_path(locked) else {
             continue;
         };
 

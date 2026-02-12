@@ -33,6 +33,7 @@ pub fn select_bundle_interactively(workspace: &Workspace) -> Result<String> {
 }
 
 /// Select a single bundle from a list of bundle names
+#[allow(dead_code)]
 pub fn select_bundles_from_list(
     _workspace: &Workspace,
     mut bundle_names: Vec<String>,

@@ -159,27 +159,29 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
 
         // Try partial match (e.g., "bundle-a" matches "@test/bundle-a")
         for workspace_bundle in &workspace.config.bundles {
-            if !(workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
-                || workspace_bundle.name == *bundle_name)
-            {
+            let is_match = workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
+                || workspace_bundle.name == *bundle_name;
+
+            if is_match {
+                files_to_remove.extend(
+                    workspace_bundle
+                        .enabled
+                        .values()
+                        .flat_map(|v| v.iter().cloned()),
+                );
+            }
+        }
+
+        // Remove all collected files
+        for location in &files_to_remove {
+            let full_path = workspace.root.join(location);
+            if !full_path.exists() {
                 continue;
             }
-
-            files_to_remove.extend(
-                workspace_bundle
-                    .enabled
-                    .values()
-                    .flat_map(|v| v.iter().cloned()),
-            );
-        }
-    }
-
-    // Remove all collected files
-    for location in files_to_remove {
-        let full_path = workspace.root.join(&location);
-        if full_path.exists() {
             let _ = std::fs::remove_file(&full_path);
         }
+
+        files_to_remove.clear();
     }
 }
 

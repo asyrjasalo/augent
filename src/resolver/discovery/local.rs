@@ -26,12 +26,17 @@ pub fn is_bundle_directory(full_path: &Path) -> bool {
     match full_path.read_dir() {
         Ok(entries) => {
             for entry_result in entries {
-                let Ok(entry) = entry_result else { continue };
+                let Ok(entry) = entry_result else {
+                    continue;
+                };
                 let name = entry.file_name();
-                let Some(name) = name.to_str() else { continue };
-                if !known_files.contains(&name) && !name.starts_with('.') {
-                    return true;
+                let Some(name) = name.to_str() else {
+                    continue;
+                };
+                if known_files.contains(&name) || name.starts_with('.') {
+                    continue;
                 }
+                return true;
             }
             false
         }

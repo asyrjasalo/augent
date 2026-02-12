@@ -105,20 +105,21 @@ impl ResolveOperation {
             self.resolution_order.push(name.clone());
         }
 
-        if let Some(ref cfg) = bundle.config {
-            if bundle.resolved_sha.is_some() {
-                return;
-            }
+        let Some(ref cfg) = bundle.config else {
+            return;
+        };
+        if bundle.resolved_sha.is_some() {
+            return;
+        }
 
-            let context_path = bundle
-                .git_source
-                .as_ref()
-                .map_or(&self.workspace_root, |_| &bundle.source_path)
-                .clone();
+        let context_path = bundle
+            .git_source
+            .as_ref()
+            .map_or(&self.workspace_root, |_| &bundle.source_path)
+            .clone();
 
-            for dep in &cfg.bundles {
-                let _ = self.resolve_dependency_with_context(dep, &context_path);
-            }
+        for dep in &cfg.bundles {
+            let _ = self.resolve_dependency_with_context(dep, &context_path);
         }
 
         self.resolution_stack.pop();

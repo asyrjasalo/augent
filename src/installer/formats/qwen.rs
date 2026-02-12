@@ -53,10 +53,8 @@ mod tests {
     #[test]
     fn test_qwen_converter_supports_conversion() {
         let converter = QwenConverter;
-        assert!(
-            converter
-                .supports_conversion(Path::new("/src/AGENTS.md"), Path::new("/dst/.qwen/QWEN.md"))
-        );
+        assert!(converter
+            .supports_conversion(Path::new("/src/AGENTS.md"), Path::new("/dst/.qwen/QWEN.md")));
         assert!(!converter.supports_conversion(
             Path::new("/src/test.md"),
             Path::new("/dst/.qwen/agents/test.md")

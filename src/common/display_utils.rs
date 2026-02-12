@@ -15,6 +15,7 @@ struct GitSourceDisplay<'a> {
 }
 
 /// Convert `LockedSource` to display string
+#[allow(dead_code)]
 pub fn locked_source_to_string(source: &LockedSource) -> String {
     match source {
         LockedSource::Dir { path, .. } => format!("Directory ({path})"),
@@ -71,6 +72,7 @@ pub fn extract_platforms_from_bundle(workspace_bundle: &WorkspaceBundle) -> Vec<
 /// * `locked_bundle` - Locked bundle information with source
 /// * `workspace_bundle` - Optional workspace bundle information
 /// * `detailed` - Whether to show detailed information including dependencies
+#[allow(dead_code)]
 pub fn display_bundle_info(
     bundle_name: &str,
     bundle_config: &BundleConfig,

@@ -23,18 +23,23 @@ fn count_files_to_remove(
             continue;
         }
 
-        if let Some(cfg) = bundle_config {
-            if let Some(locations) = cfg.get_locations(file_path) {
-                for location in locations {
-                    if workspace.root.join(location).exists() {
-                        file_count += 1;
-                    }
-                }
-            }
-        }
+        let Some(cfg) = bundle_config else {
+            continue;
+        };
+        let Some(locations) = cfg.get_locations(file_path) else {
+            continue;
+        };
+        file_count += count_workspace_files(workspace, locations);
     }
 
     file_count
+}
+
+fn count_workspace_files(workspace: &Workspace, locations: &[String]) -> usize {
+    locations
+        .iter()
+        .filter(|location| workspace.root.join(location).exists())
+        .count()
 }
 
 /// Confirm uninstallation with user, showing what would be done

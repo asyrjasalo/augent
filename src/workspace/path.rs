@@ -57,13 +57,15 @@ fn add_transformed_candidates(
     platform_dir: &Path,
     platform: Option<&crate::platform::Platform>,
 ) {
-    if let Some(platform) = platform {
-        for transform_rule in &platform.transforms {
-            if matches_glob(&transform_rule.from, bundle_file) {
-                let transformed = apply_transform(&transform_rule.to, bundle_file);
-                let candidate = platform_dir.join(&transformed);
-                candidates.push(candidate);
-            }
+    let Some(platform) = platform else {
+        return;
+    };
+    for transform_rule in &platform.transforms {
+        let is_match = matches_glob(&transform_rule.from, bundle_file);
+        if is_match {
+            let transformed = apply_transform(&transform_rule.to, bundle_file);
+            let candidate = platform_dir.join(&transformed);
+            candidates.push(candidate);
         }
     }
 }
@@ -144,18 +146,22 @@ pub fn apply_transform(to_pattern: &str, from_path: &str) -> String {
     for pattern_part in pattern_parts {
         if pattern_part == "*" && !from_parts.is_empty() {
             result.push(from_parts.remove(0).to_string());
-        } else if pattern_part == "{name}" {
+            continue;
+        }
+
+        if pattern_part == "{name}" {
             let Some(last) = from_parts.last() else {
                 continue;
             };
-            if let Some(pos) = last.rfind('.') {
-                result.push(last[..pos].to_string());
-            } else {
-                result.push(last.to_string());
-            }
-        } else {
-            result.push(pattern_part.to_string());
+            let Some(pos) = last.rfind('.') else {
+                result.push((*last).to_string());
+                continue;
+            };
+            result.push(last[..pos].to_string());
+            continue;
         }
+
+        result.push(pattern_part.to_string());
     }
 
     result.join("/")

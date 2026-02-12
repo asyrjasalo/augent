@@ -43,23 +43,59 @@ impl<'a> InstallResolver<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         let mut all_bundles = Vec::new();
         for dep in &self.workspace.bundle_config.bundles {
-            match (dep.git.as_ref(), dep.path.as_ref()) {
-                (Some(git_url), None) => {
-                    let source = dep
-                        .git_ref
-                        .as_ref()
-                        .map_or_else(|| git_url.clone(), |git_ref| format!("{git_url}#{git_ref}"));
-                    let bundles = bundle_resolver.resolve(&source, false)?;
-                    all_bundles.extend(bundles);
-                }
-                (None, Some(path)) => {
-                    let bundles = bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
-                    all_bundles.extend(bundles);
-                }
-                _ => {}
+            let has_git_url = dep.git.is_some();
+            let has_path = dep.path.is_some();
+
+            let has_valid_combination = (has_git_url && !has_path) || (!has_git_url && has_path);
+            if !has_valid_combination {
+                continue;
+            }
+
+            if has_git_url {
+                Self::resolve_git_dep(dep, bundle_resolver, &mut all_bundles)?;
+            } else {
+                Self::resolve_path_dep(dep, bundle_resolver, &mut all_bundles)?;
             }
         }
         Ok(all_bundles)
+    }
+
+    fn resolve_git_dep(
+        dep: &crate::config::BundleDependency,
+        bundle_resolver: &mut Resolver,
+        all_bundles: &mut Vec<ResolvedBundle>,
+    ) -> Result<()> {
+        let git_url =
+            dep.git
+                .as_ref()
+                .ok_or_else(|| crate::error::AugentError::ConfigParseFailed {
+                    path: "workspace config".to_string(),
+                    reason: "git dependency missing git URL".to_string(),
+                })?;
+        let source = dep
+            .git_ref
+            .as_ref()
+            .map_or_else(|| git_url.clone(), |git_ref| format!("{git_url}#{git_ref}"));
+        let bundles = bundle_resolver.resolve(&source, false)?;
+        all_bundles.extend(bundles);
+        Ok(())
+    }
+
+    fn resolve_path_dep(
+        dep: &crate::config::BundleDependency,
+        bundle_resolver: &mut Resolver,
+        all_bundles: &mut Vec<ResolvedBundle>,
+    ) -> Result<()> {
+        let path =
+            dep.path
+                .as_ref()
+                .ok_or_else(|| crate::error::AugentError::ConfigParseFailed {
+                    path: "workspace config".to_string(),
+                    reason: "path dependency missing path".to_string(),
+                })?;
+        let bundles = bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
+        all_bundles.extend(bundles);
+        Ok(())
     }
 
     /// Resolve a single discovered bundle
@@ -67,7 +103,7 @@ impl<'a> InstallResolver<'a> {
         bundle: &crate::domain::DiscoveredBundle,
         bundle_resolver: &mut Resolver,
     ) -> Result<Vec<ResolvedBundle>> {
-        if let Some(ref git_source) = bundle.git_source {
+        if let Some(git_source) = &bundle.git_source {
             let url = Self::build_git_source_url(git_source);
             bundle_resolver.resolve(&url, false)
         } else {
@@ -88,12 +124,21 @@ impl<'a> InstallResolver<'a> {
                 let bundles = bundle_resolver.resolve(&url, false)?;
                 all_bundles.extend(bundles);
             } else {
-                let bundle_path = discovered.path.to_string_lossy().to_string();
-                let bundles = bundle_resolver.resolve_multiple(&[bundle_path])?;
-                all_bundles.extend(bundles);
+                Self::resolve_local_bundle(discovered, bundle_resolver, &mut all_bundles)?;
             }
         }
         Ok(all_bundles)
+    }
+
+    fn resolve_local_bundle(
+        discovered: &crate::domain::DiscoveredBundle,
+        bundle_resolver: &mut Resolver,
+        all_bundles: &mut Vec<ResolvedBundle>,
+    ) -> Result<()> {
+        let bundle_path = discovered.path.to_string_lossy().to_string();
+        let bundles = bundle_resolver.resolve_multiple(std::slice::from_ref(&bundle_path))?;
+        all_bundles.extend(bundles);
+        Ok(())
     }
 
     fn create_progress_bar(dry_run: bool) -> Option<ProgressBar> {
@@ -137,14 +182,7 @@ impl<'a> InstallResolver<'a> {
                 None => return self.collect_workspace_bundles(&mut bundle_resolver),
             },
             1 => Self::resolve_single_bundle(&selected_bundles[0], &mut bundle_resolver),
-            _ => {
-                let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
-                if has_git_source {
-                    Self::resolve_git_bundles(selected_bundles, &mut bundle_resolver)
-                } else {
-                    Self::resolve_local_bundles(selected_bundles, &mut bundle_resolver)
-                }
-            }
+            _ => Self::resolve_multiple_bundles(selected_bundles, &mut bundle_resolver),
         }?;
 
         if let Some(pb) = pb {
@@ -152,5 +190,17 @@ impl<'a> InstallResolver<'a> {
         }
 
         Ok(resolved_bundles)
+    }
+
+    fn resolve_multiple_bundles(
+        selected_bundles: &[crate::domain::DiscoveredBundle],
+        bundle_resolver: &mut Resolver,
+    ) -> Result<Vec<ResolvedBundle>> {
+        let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());
+        if has_git_source {
+            Self::resolve_git_bundles(selected_bundles, bundle_resolver)
+        } else {
+            Self::resolve_local_bundles(selected_bundles, bundle_resolver)
+        }
     }
 }

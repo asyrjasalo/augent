@@ -91,15 +91,15 @@ impl PlatformLoader {
     /// Merge two platform configurations
     ///
     /// Later platforms override earlier platforms with matching IDs.
-    /// New platforms are added to the list.
+    /// New platforms are added to list.
     fn merge_platforms(base: Vec<Platform>, override_config: Vec<Platform>) -> Vec<Platform> {
         let mut merged = base;
 
         for platform in override_config {
-            if let Some(pos) = merged.iter().position(|p| p.id == platform.id) {
-                merged[pos] = platform;
-            } else {
-                merged.push(platform);
+            let position = merged.iter().position(|p| p.id == platform.id);
+            match position {
+                Some(pos) => merged[pos] = platform,
+                None => merged.push(platform),
             }
         }
 
@@ -124,10 +124,10 @@ impl PlatformLoader {
         let value: serde_json::Value = serde_json::from_str(json_content)
             .map_err(|e| Self::create_parse_error(path, e.to_string()))?;
 
-        match value {
+        let result = match value {
             serde_json::Value::Array(platforms) => {
                 serde_json::from_value(serde_json::Value::Array(platforms.clone()))
-                    .map_err(|e| Self::create_parse_error(path, e.to_string()))
+                    .map_err(|e| Self::create_parse_error(path, e.to_string()))?
             }
             serde_json::Value::Object(obj) => {
                 let Some(platforms_value) = obj.get("platforms").and_then(|v| v.as_array()) else {
@@ -137,13 +137,17 @@ impl PlatformLoader {
                     ));
                 };
                 serde_json::from_value(serde_json::Value::Array(platforms_value.clone()))
-                    .map_err(|e| Self::create_parse_error(path, e.to_string()))
+                    .map_err(|e| Self::create_parse_error(path, e.to_string()))?
             }
-            _ => Err(Self::create_parse_error(
-                path,
-                "Invalid JSON format".to_string(),
-            )),
-        }
+            _ => {
+                return Err(Self::create_parse_error(
+                    path,
+                    "Invalid JSON format".to_string(),
+                ))
+            }
+        };
+
+        Ok(result)
     }
 
     #[cfg(test)]
@@ -168,12 +172,14 @@ impl PlatformLoader {
             state = new_state;
             i += added_char;
 
-            if matches!(
+            let is_invisible_state = matches!(
                 state,
-                JsoncParserState::Default | JsoncParserState::InString
-            ) {
-                result.push(c);
+                JsoncParserState::InSingleLineComment | JsoncParserState::InMultiLineComment
+            );
+            if is_invisible_state {
+                continue;
             }
+            result.push(c);
         }
 
         result

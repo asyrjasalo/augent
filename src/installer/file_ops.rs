@@ -144,12 +144,10 @@ mod tests {
 
         let result = ensure_parent_dir(&file_path);
         assert!(result.is_ok());
-        assert!(
-            file_path
-                .parent()
-                .expect("File path should have parent")
-                .exists()
-        );
+        assert!(file_path
+            .parent()
+            .expect("File path should have parent")
+            .exists());
     }
 
     #[test]

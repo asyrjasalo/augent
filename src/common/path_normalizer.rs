@@ -41,16 +41,15 @@ impl PathNormalizer {
         let mut current = path;
 
         while !current.exists() {
-            let file_name = match current.file_name() {
-                Some(name) => name,
-                None => return path.to_path_buf(),
+            let Some(file_name) = current.file_name() else {
+                return path.to_path_buf();
             };
             components.push(file_name);
 
-            current = match current.parent() {
-                Some(p) => p,
-                None => return path.to_path_buf(),
+            let Some(p) = current.parent() else {
+                return path.to_path_buf();
             };
+            current = p;
         }
 
         let normalized_base = current.normalize().map_or_else(

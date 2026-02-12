@@ -41,9 +41,10 @@ pub fn rebuild_workspace_config(root: &Path, lockfile: &Lockfile) -> Result<Work
             let installed_locations = find_file_locations(bundle_file, root, &platform_dirs)?;
 
             // If we found installed locations, add them to the workspace bundle
-            if !installed_locations.is_empty() {
-                workspace_bundle.add_file(bundle_file.clone(), installed_locations);
+            if installed_locations.is_empty() {
+                continue;
             }
+            workspace_bundle.add_file(bundle_file.clone(), installed_locations);
         }
 
         // Add this bundle to the workspace config (even if empty)
@@ -94,7 +95,8 @@ fn detect_installed_platforms(root: &Path) -> Result<Vec<std::path::PathBuf>> {
     // Check each platform's directory for existence
     for platform in known_platforms {
         let platform_dir = root.join(&platform.directory);
-        if platform_dir.exists() && platform_dir.is_dir() {
+        let is_valid_dir = platform_dir.exists() && platform_dir.is_dir();
+        if is_valid_dir {
             platforms.push(platform_dir);
         }
     }

@@ -102,28 +102,29 @@ pub fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
         }
 
         if allowed_types.contains(CredentialType::SSH_KEY) {
-            return match username_from_url {
-                Some(username) => {
-                    Cred::ssh_key_from_agent(username).or_else(|_| try_ssh_credentials(username))
-                }
-                None => try_default_credentials().ok_or_else(|| {
-                    Error::new(
-                        git2::ErrorCode::Auth,
-                        ErrorClass::Http,
-                        "authentication failed",
-                    )
-                }),
-            };
+            if let Some(username) = username_from_url {
+                return Cred::ssh_key_from_agent(username)
+                    .or_else(|_| try_ssh_credentials(username));
+            }
+            return try_default_credentials().ok_or_else(|| {
+                Error::new(
+                    git2::ErrorCode::Auth,
+                    ErrorClass::Http,
+                    "authentication failed",
+                )
+            });
         }
 
         if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
             return try_user_pass_credentials(url, username_from_url);
         }
 
-        Err(Error::new(
-            git2::ErrorCode::Auth,
-            ErrorClass::Http,
-            "authentication failed",
-        ))
+        try_default_credentials().ok_or_else(|| {
+            Error::new(
+                git2::ErrorCode::Auth,
+                ErrorClass::Http,
+                "authentication failed",
+            )
+        })
     });
 }

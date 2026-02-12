@@ -7,7 +7,8 @@
 ///
 /// Scope patterns are used to match bundle names with prefixes like:
 /// - @author/scope - matches bundles starting with @author/scope
-/// - author/scope/ - matches bundles under the author/scope path
+/// - author/scope/ - matches bundles under author/scope path
+#[allow(dead_code)]
 pub fn is_scope_pattern(name: &str) -> bool {
     name.starts_with('@') || name.ends_with('/')
 }

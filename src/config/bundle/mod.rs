@@ -8,7 +8,7 @@ pub mod serialization;
 use serde::{Deserialize, Serialize};
 
 use crate::config::bundle::serialization::{
-    BundleConfigData, deserialize_bundle_config, serialize_bundle_config,
+    deserialize_bundle_config, serialize_bundle_config, BundleConfigData,
 };
 use crate::error::Result;
 
@@ -168,9 +168,10 @@ impl BundleConfig {
         // Rebuild bundles vector in lockfile order
         let mut reordered = Vec::new();
         for name in lockfile_bundle_names {
-            if let Some(dep) = dep_map.remove(name) {
-                reordered.push(dep);
-            }
+            let Some(dep) = dep_map.remove(name) else {
+                continue;
+            };
+            reordered.push(dep);
         }
         // Add any remaining dependencies that weren't in lockfile (shouldn't happen, but be safe)
         reordered.extend(dep_map.into_values());
@@ -180,15 +181,15 @@ impl BundleConfig {
     /// Remove dependency by name
     #[allow(dead_code)]
     pub fn remove_dependency(&mut self, name: &str) -> Option<BundleDependency> {
-        let Some(pos) = self.bundles.iter().position(|dep| {
+        let pos = self.bundles.iter().position(|dep| {
             dep.name == name
                 || dep
                     .path
                     .as_ref()
                     .is_some_and(|path| format!("{}/{}", dep.name, path) == name)
-        }) else {
-            return None;
-        };
+        });
+
+        let pos = pos?;
 
         Some(self.bundles.remove(pos))
     }
