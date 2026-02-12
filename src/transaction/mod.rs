@@ -85,17 +85,19 @@ impl Transaction {
         ];
 
         for path in &config_files {
-            if path.exists() {
-                let content = fs::read(path).map_err(|e| AugentError::FileReadFailed {
-                    path: path.display().to_string(),
-                    reason: e.to_string(),
-                })?;
-
-                self.config_backups.push(ConfigBackup {
-                    path: path.clone(),
-                    content,
-                });
+            if !path.exists() {
+                continue;
             }
+
+            let content = fs::read(path).map_err(|e| AugentError::FileReadFailed {
+                path: path.display().to_string(),
+                reason: e.to_string(),
+            })?;
+
+            self.config_backups.push(ConfigBackup {
+                path: path.clone(),
+                content,
+            });
         }
 
         Ok(())
@@ -131,9 +133,7 @@ impl Transaction {
 
     fn remove_created_files(files: &HashSet<PathBuf>) {
         for path in files {
-            if path.exists() {
-                let _ = fs::remove_file(path);
-            }
+            let _ = path.exists().then(|| fs::remove_file(path));
         }
     }
 
@@ -186,10 +186,7 @@ impl Drop for Transaction {
     fn drop(&mut self) {
         if !self.committed && self.rollback_enabled {
             // Automatic rollback on drop if not committed
-            if !self.committed && self.rollback_enabled {
-                // Automatic rollback on drop if not committed
-                self.rollback();
-            }
+            self.rollback();
         }
     }
 }

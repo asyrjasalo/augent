@@ -43,16 +43,20 @@ impl<'a> InstallResolver<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         let mut all_bundles = Vec::new();
         for dep in &self.workspace.bundle_config.bundles {
-            if let Some(ref git_url) = dep.git {
-                let source = dep
-                    .git_ref
-                    .as_ref()
-                    .map_or_else(|| git_url.clone(), |git_ref| format!("{git_url}@{git_ref}"));
-                let bundles = bundle_resolver.resolve(&source, false)?;
-                all_bundles.extend(bundles);
-            } else if let Some(ref path) = dep.path {
-                let bundles = bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
-                all_bundles.extend(bundles);
+            match (dep.git.as_ref(), dep.path.as_ref()) {
+                (Some(git_url), None) => {
+                    let source = dep
+                        .git_ref
+                        .as_ref()
+                        .map_or_else(|| git_url.clone(), |git_ref| format!("{git_url}#{git_ref}"));
+                    let bundles = bundle_resolver.resolve(&source, false)?;
+                    all_bundles.extend(bundles);
+                }
+                (None, Some(path)) => {
+                    let bundles = bundle_resolver.resolve_multiple(std::slice::from_ref(path))?;
+                    all_bundles.extend(bundles);
+                }
+                _ => {}
             }
         }
         Ok(all_bundles)
@@ -79,7 +83,7 @@ impl<'a> InstallResolver<'a> {
     ) -> Result<Vec<ResolvedBundle>> {
         let mut all_bundles = Vec::new();
         for discovered in selected_bundles {
-            if let Some(ref git_source) = discovered.git_source {
+            if let Some(git_source) = &discovered.git_source {
                 let url = Self::build_git_source_url(git_source);
                 let bundles = bundle_resolver.resolve(&url, false)?;
                 all_bundles.extend(bundles);
@@ -128,13 +132,10 @@ impl<'a> InstallResolver<'a> {
         let pb = Self::create_progress_bar(args.dry_run);
 
         let resolved_bundles = match selected_bundles.len() {
-            0 => {
-                if let Some(source) = &args.source {
-                    bundle_resolver.resolve(source, false)
-                } else {
-                    self.collect_workspace_bundles(&mut bundle_resolver)
-                }
-            }
+            0 => match args.source.as_ref() {
+                Some(source) => bundle_resolver.resolve(source, false),
+                None => return self.collect_workspace_bundles(&mut bundle_resolver),
+            },
             1 => Self::resolve_single_bundle(&selected_bundles[0], &mut bundle_resolver),
             _ => {
                 let has_git_source = selected_bundles.iter().any(|b| b.git_source.is_some());

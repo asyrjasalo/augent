@@ -141,22 +141,16 @@ fn build_opencode_frontmatter(
         .map(std::string::String::as_str)
         .or_else(|| target.file_stem().and_then(|s| s.to_str()))
         .unwrap_or("unknown");
-    if let Err(e) = writeln!(fm, "name: {name}") {
-        eprintln!("Failed to write frontmatter: {e}");
-    }
+    let _ = writeln!(fm, "name: {name}");
 
     for key in ["description", "license", "compatibility"] {
         if let Some(value) = map.get(key) {
-            if let Err(e) = writeln!(fm, "{key}: {value}") {
-                eprintln!("Failed to write frontmatter: {e}");
-            }
+            let _ = writeln!(fm, "{key}: {value}");
         }
     }
 
     if let Some(meta) = map.get("metadata") {
-        if let Err(e) = writeln!(fm, "metadata: {meta}") {
-            eprintln!("Failed to write frontmatter: {e}");
-        }
+        let _ = writeln!(fm, "metadata: {meta}");
     }
 
     fm.push_str("---\\n\\n");
@@ -191,9 +185,7 @@ fn convert_with_description_only(content: &str, target: &Path) -> Result<()> {
 
     if let Some(desc) = description {
         new_content.push_str("---\n");
-        if let Err(e) = writeln!(new_content, "description: {desc}") {
-            eprintln!("Failed to write content: {e}");
-        }
+        let _ = writeln!(new_content, "description: {desc}");
         new_content.push_str("---\n\n");
     }
 

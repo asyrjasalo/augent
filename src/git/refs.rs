@@ -108,11 +108,13 @@ fn resolve_reference<'a>(repo: &'a Repository, refname: &str) -> Result<git2::Co
     ];
 
     for candidate in &ref_candidates {
-        if let Ok(reference) = repo.find_reference(candidate) {
-            if let Ok(commit) = reference.peel_to_commit() {
-                return Ok(commit);
-            }
-        }
+        let Ok(reference) = repo.find_reference(candidate) else {
+            continue;
+        };
+        let Ok(commit) = reference.peel_to_commit() else {
+            continue;
+        };
+        return Ok(commit);
     }
 
     if let Ok(oid) = git2::Oid::from_str(refname) {
@@ -143,11 +145,7 @@ pub fn get_head_ref_name(repo: &Repository) -> Result<Option<String>> {
     })?;
 
     if head.is_branch() {
-        if let Some(refname) = head.shorthand() {
-            Ok(Some(refname.to_string()))
-        } else {
-            Ok(None)
-        }
+        Ok(head.shorthand().map(std::string::ToString::to_string))
     } else {
         Ok(None)
     }

@@ -26,19 +26,16 @@ pub fn locked_source_to_string(source: &LockedSource) -> String {
             ..
         } => {
             let mut result = format!("Git ({url})");
+            let _ = writeln!(result, " sha: {sha}");
+
             if let Some(ref_name) = git_ref {
-                if let Err(e) = writeln!(result, " ref: {ref_name}") {
-                    eprintln!("Failed to write to result string: {e}");
-                }
+                let _ = writeln!(result, " ref: {ref_name}");
             }
-            if let Err(e) = writeln!(result, " sha: {sha}") {
-                eprintln!("Failed to write to result string: {e}");
-            }
+
             if let Some(subdir) = path {
-                if let Err(e) = writeln!(result, " path: {subdir}") {
-                    eprintln!("Failed to write to result string: {e}");
-                }
+                let _ = writeln!(result, " path: {subdir}");
             }
+
             result
         }
     }
@@ -52,9 +49,11 @@ pub fn extract_platforms_from_bundle(workspace_bundle: &WorkspaceBundle) -> Vec<
     let mut platforms = std::collections::HashSet::new();
     for locations in workspace_bundle.enabled.values() {
         for location in locations {
-            if let Some(platform) = location.strip_prefix('.').and_then(|p| p.split('/').next()) {
-                platforms.insert(platform.to_string());
-            }
+            let Some(platform) = location.strip_prefix('.').and_then(|p| p.split('/').next())
+            else {
+                continue;
+            };
+            platforms.insert(platform.to_string());
         }
     }
     let mut sorted_platforms: Vec<_> = platforms.into_iter().collect();

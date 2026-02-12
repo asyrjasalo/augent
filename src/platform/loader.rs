@@ -130,15 +130,14 @@ impl PlatformLoader {
                     .map_err(|e| Self::create_parse_error(path, e.to_string()))
             }
             serde_json::Value::Object(obj) => {
-                if let Some(platforms_value) = obj.get("platforms").and_then(|v| v.as_array()) {
-                    serde_json::from_value(serde_json::Value::Array(platforms_value.clone()))
-                        .map_err(|e| Self::create_parse_error(path, e.to_string()))
-                } else {
-                    Err(Self::create_parse_error(
+                let Some(platforms_value) = obj.get("platforms").and_then(|v| v.as_array()) else {
+                    return Err(Self::create_parse_error(
                         path,
                         "Expected array of platforms or object with 'platforms' key".to_string(),
-                    ))
-                }
+                    ));
+                };
+                serde_json::from_value(serde_json::Value::Array(platforms_value.clone()))
+                    .map_err(|e| Self::create_parse_error(path, e.to_string()))
             }
             _ => Err(Self::create_parse_error(
                 path,

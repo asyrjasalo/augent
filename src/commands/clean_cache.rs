@@ -11,10 +11,9 @@ pub fn run(args: CacheArgs) -> Result<()> {
                 return Ok(());
             }
             CacheSubcommand::Clear(clear_args) => {
-                if let Some(bundle_name) = clear_args.only {
-                    clean_specific_bundle(&bundle_name)?;
-                } else {
-                    clean_all_cache()?;
+                match clear_args.only {
+                    Some(bundle_name) => clean_specific_bundle(&bundle_name)?,
+                    None => clean_all_cache()?,
                 }
                 return Ok(());
             }

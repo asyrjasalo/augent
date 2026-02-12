@@ -36,23 +36,22 @@ pub fn extract_description_and_prompt(content: &str) -> (Option<String>, String)
 pub fn extract_description_from_frontmatter(frontmatter: &str) -> Option<String> {
     for line in frontmatter.lines() {
         let line = line.trim();
-        if line.starts_with("description:") || line.starts_with("description =") {
-            let value = if let Some(idx) = line.find(':') {
-                line[idx + 1..].trim()
-            } else if let Some(idx) = line.find('=') {
-                line[idx + 1..].trim()
-            } else {
-                continue;
-            };
-
-            let value = value
-                .trim_start_matches('"')
-                .trim_start_matches('\'')
-                .trim_end_matches('"')
-                .trim_end_matches('\'');
-
-            return Some(value.to_string());
+        if !line.starts_with("description:") && !line.starts_with("description =") {
+            continue;
         }
+
+        let Some(idx) = line.find(':').or_else(|| line.find('=')) else {
+            continue;
+        };
+        let value = line[idx + 1..].trim();
+
+        let value = value
+            .trim_start_matches('"')
+            .trim_start_matches('\'')
+            .trim_end_matches('"')
+            .trim_end_matches('\'');
+
+        return Some(value.to_string());
     }
 
     None

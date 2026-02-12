@@ -130,7 +130,7 @@ impl WorkspaceConfig {
             bundle.enabled.iter().find_map(|(source, locations)| {
                 locations
                     .iter()
-                    .find(|&loc| loc == installed_path)
+                    .find(|loc| *loc == installed_path)
                     .map(|_| (&bundle.name as &str, source.as_str()))
             })
         })

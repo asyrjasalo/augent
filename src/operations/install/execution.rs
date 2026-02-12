@@ -96,10 +96,10 @@ impl<'a> ExecutionOrchestrator<'a> {
         transaction: &mut Transaction,
     ) {
         for installed in installed_files_map.values() {
-            for target in &installed.target_paths {
+            installed.target_paths.iter().for_each(|target| {
                 let full_path = workspace_root.join(target);
                 transaction.track_file_created(full_path);
-            }
+            });
         }
     }
 

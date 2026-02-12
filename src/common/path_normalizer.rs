@@ -40,21 +40,17 @@ impl PathNormalizer {
         let mut components = Vec::new();
         let mut current = path;
 
-        // Walk up the tree, collecting non-existent components until we find an existing path
         while !current.exists() {
-            if let Some(file_name) = current.file_name() {
-                components.push(file_name);
-            } else {
-                // No parent, can't normalize
-                return path.to_path_buf();
-            }
+            let file_name = match current.file_name() {
+                Some(name) => name,
+                None => return path.to_path_buf(),
+            };
+            components.push(file_name);
 
-            if let Some(parent) = current.parent() {
-                current = parent;
-            } else {
-                // No parent, can't normalize
-                return path.to_path_buf();
-            }
+            current = match current.parent() {
+                Some(p) => p,
+                None => return path.to_path_buf(),
+            };
         }
 
         let normalized_base = current.normalize().map_or_else(
@@ -62,7 +58,6 @@ impl PathNormalizer {
             |norm| norm.as_path().to_path_buf(),
         );
 
-        // Append non-existent components back
         let mut result = normalized_base;
 
         for component in components.iter().rev() {
@@ -116,13 +111,15 @@ impl PathNormalizer {
             return rel;
         }
 
-        if let Some(rel_from_root) = self.relative_from_root(path) {
-            if !rel_from_root.is_empty() {
-                return format!("./{rel_from_root}");
-            }
+        let Some(rel_from_root) = self.relative_from_root(path) else {
+            return Self::to_normalized_str(path);
+        };
+
+        if rel_from_root.is_empty() {
+            return Self::to_normalized_str(path);
         }
 
-        Self::to_normalized_str(path)
+        format!("./{rel_from_root}")
     }
 }
 

@@ -148,13 +148,13 @@ fn workspace_config_bundles_as_discovered(
 }
 
 fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[String]) {
-    // Get all locations from workspace_config that match the bundle names
     let mut files_to_remove: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     for bundle_name in bundle_names {
-        if let Some(bundle_cfg) = workspace.config.find_bundle(bundle_name) {
-            files_to_remove.extend(bundle_cfg.enabled.values().flat_map(|v| v.iter().cloned()));
-            continue;
+        // Try exact match first
+        let bundle_cfg = workspace.config.find_bundle(bundle_name);
+        if let Some(cfg) = bundle_cfg {
+            files_to_remove.extend(cfg.enabled.values().flat_map(|v| v.iter().cloned()));
         }
 
         // Try partial match (e.g., "bundle-a" matches "@test/bundle-a")
@@ -164,6 +164,7 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
             {
                 continue;
             }
+
             files_to_remove.extend(
                 workspace_bundle
                     .enabled

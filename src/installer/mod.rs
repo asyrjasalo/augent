@@ -300,6 +300,7 @@ impl<'a> Installer<'a> {
             if self.dry_run {
                 continue;
             }
+
             for platform in &self.platforms {
                 let target_path = self.calculate_target_path(resource, bundle, platform);
 

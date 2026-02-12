@@ -66,14 +66,21 @@ pub fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
     for locked in &workspace.lockfile.bundles {
-        let Some(config_path) = get_bundle_config_path(locked)? else {
+        let config_path = match get_bundle_config_path(locked) {
+            Ok(path) => path,
+            Err(_) => continue,
+        };
+
+        let Some(config_path) = config_path else {
             continue;
         };
 
-        if config_path.exists() {
-            if let Some(deps) = parse_bundle_dependencies(&config_path)? {
-                map.insert(locked.name.clone(), deps);
-            }
+        if !config_path.exists() {
+            continue;
+        }
+
+        if let Some(deps) = parse_bundle_dependencies(&config_path)? {
+            map.insert(locked.name.clone(), deps);
         }
     }
 

@@ -52,12 +52,9 @@ impl ResourceCounts {
         let non_zero: Vec<String> = parts
             .iter()
             .filter(|(_, count)| *count > 0)
-            .map(|(name, count)| {
-                if *count == 1 {
-                    format!("1 {name}")
-                } else {
-                    format!("{count} {name}s")
-                }
+            .map(|(name, count)| match *count {
+                1 => format!("1 {name}"),
+                _ => format!("{count} {name}s"),
             })
             .collect();
 

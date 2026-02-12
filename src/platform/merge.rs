@@ -234,9 +234,9 @@ fn merge_json_deep(existing: JsonValue, new: JsonValue) -> JsonValue {
         (JsonValue::Array(mut existing_arr), JsonValue::Array(new_arr)) => {
             // For arrays, append new items (avoiding duplicates for primitives)
             for item in new_arr {
-                if !existing_arr.contains(&item) {
-                    existing_arr.push(item);
-                }
+                let _ = existing_arr
+                    .contains(&item)
+                    .then(|| existing_arr.push(item));
             }
             JsonValue::Array(existing_arr)
         }

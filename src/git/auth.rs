@@ -30,16 +30,14 @@ fn try_ssh_credentials(username: &str) -> std::result::Result<Cred, git2::Error>
         let private_key = ssh_dir.join(key_name);
         let public_key = ssh_dir.join(format!("{key_name}.pub"));
 
-        if private_key.exists() {
-            let public_key_path = if public_key.exists() {
-                Some(public_key.as_path())
-            } else {
-                None
-            };
+        if !private_key.exists() {
+            continue;
+        }
 
-            if let Ok(cred) = Cred::ssh_key(username, public_key_path, &private_key, None) {
-                return Ok(cred);
-            }
+        let public_key_path = public_key.exists().then_some(public_key.as_path());
+
+        if let Ok(cred) = Cred::ssh_key(username, public_key_path, &private_key, None) {
+            return Ok(cred);
         }
     }
 
@@ -104,10 +102,18 @@ pub fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
         }
 
         if allowed_types.contains(CredentialType::SSH_KEY) {
-            if let Some(username) = username_from_url {
-                return Cred::ssh_key_from_agent(username)
-                    .or_else(|_| try_ssh_credentials(username));
-            }
+            return match username_from_url {
+                Some(username) => {
+                    Cred::ssh_key_from_agent(username).or_else(|_| try_ssh_credentials(username))
+                }
+                None => try_default_credentials().ok_or_else(|| {
+                    Error::new(
+                        git2::ErrorCode::Auth,
+                        ErrorClass::Http,
+                        "authentication failed",
+                    )
+                }),
+            };
         }
 
         if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {

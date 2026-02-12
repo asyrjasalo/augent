@@ -102,39 +102,26 @@ impl BundleConfig {
 
     /// Validate bundle configuration
     pub fn validate(&self) -> Result<()> {
-        // Validate dependencies
         for dep in &self.bundles {
             dep.validate()?;
         }
-
         Ok(())
     }
 
     /// Reorganize dependencies to maintain consistent order
     ///
-    /// Ensures all dependencies are in the correct order while PRESERVING git dependency order:
+    /// Ensures all dependencies are in correct order while PRESERVING git dependency order:
     /// 1. Git dependencies - IN THEIR ORIGINAL ORDER (never reordered)
     /// 2. Local (subdirectory-only) dependencies - In dependency order (dependencies first)
     ///
     /// IMPORTANT: Git dependencies maintain their exact order. New git dependencies
     /// are only added at the end, existing ones are never moved or reordered.
     pub fn reorganize(&mut self) {
-        // Separate dependencies into git and local (dir) types
-        // IMPORTANT: git_deps iteration preserves the order from self.bundles
-        let mut git_deps = Vec::new();
-        let mut local_deps = Vec::new();
+        let (git_deps, local_deps): (Vec<_>, Vec<_>) =
+            self.bundles.drain(..).partition(|dep| dep.git.is_some());
 
-        for dep in self.bundles.drain(..) {
-            if dep.git.is_some() {
-                git_deps.push(dep);
-            } else {
-                local_deps.push(dep);
-            }
-        }
-
-        // Reconstruct in the correct order, preserving git dependency installation order
-        self.bundles = git_deps; // Git dependencies in their original order
-        self.bundles.extend(local_deps); // Local dependencies last
+        self.bundles = git_deps;
+        self.bundles.extend(local_deps);
     }
 
     /// Add a dependency to bundle
@@ -149,17 +136,12 @@ impl BundleConfig {
         let is_local_dep = dep.git.is_none();
 
         if is_local_dep {
-            // Local dependencies go at the end (preserves all existing git dependency order)
             self.bundles.push(dep);
         } else {
-            // Git dependencies go before any local dependencies
-            // Find the first local dependency and insert before it
-            // This preserves the order of existing git dependencies
-            if let Some(pos) = self.bundles.iter().position(|b| b.git.is_none()) {
-                self.bundles.insert(pos, dep);
-            } else {
-                // No local dependencies yet, just append
-                self.bundles.push(dep);
+            let first_local_pos = self.bundles.iter().position(|b| b.git.is_none());
+            match first_local_pos {
+                Some(pos) => self.bundles.insert(pos, dep),
+                None => self.bundles.push(dep),
             }
         }
     }
@@ -170,7 +152,7 @@ impl BundleConfig {
         self.bundles.iter().any(|dep| dep.name == name)
     }
 
-    /// Reorder dependencies to match the order in lockfile
+    /// Reorder dependencies to match order in lockfile
     /// This ensures augent.yaml dependencies are in the same order as augent.lock bundles
     #[allow(dead_code)]
     pub fn reorder_dependencies(&mut self, lockfile_bundle_names: &[String]) {
@@ -198,23 +180,16 @@ impl BundleConfig {
     /// Remove dependency by name
     #[allow(dead_code)]
     pub fn remove_dependency(&mut self, name: &str) -> Option<BundleDependency> {
-        if let Some(pos) = self.bundles.iter().position(|dep| {
-            // Check if this is a simple name match
-            if dep.name == name {
-                return true;
-            }
+        let Some(pos) = self.bundles.iter().position(|dep| {
+            dep.name == name
+                || dep
+                    .path
+                    .as_ref()
+                    .is_some_and(|path| format!("{}/{}", dep.name, path) == name)
+        }) else {
+            return None;
+        };
 
-            // Check if this is a full bundle name (e.g., "author/repo/subdir")
-            // and match against name + path combination
-            if let Some(path) = &dep.path {
-                return format!("{}/{}", dep.name, path) == name;
-            }
-
-            false
-        }) {
-            Some(self.bundles.remove(pos))
-        } else {
-            None
-        }
+        Some(self.bundles.remove(pos))
     }
 }

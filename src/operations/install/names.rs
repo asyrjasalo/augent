@@ -55,16 +55,19 @@ impl<'a> NameFixer<'a> {
             if bundle.git_source.is_some() {
                 continue;
             }
-            let Ok(rel_from_config) = bundle.source_path.strip_prefix(&self.workspace.config_dir)
-            else {
-                continue;
+
+            let rel_from_config = match bundle.source_path.strip_prefix(&self.workspace.config_dir)
+            {
+                Ok(path) => path,
+                Err(_) => continue,
             };
 
             let normalized_path = normalize_bundle_path(rel_from_config);
-            let Some(existing_dep) = self.find_existing_dependency_with_path(&normalized_path)
-            else {
-                continue;
+            let existing_dep = match self.find_existing_dependency_with_path(&normalized_path) {
+                Some(dep) => dep,
+                None => continue,
             };
+
             if bundle.name != existing_dep.name {
                 bundle.name.clone_from(&existing_dep.name);
             }

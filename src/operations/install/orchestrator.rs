@@ -87,11 +87,10 @@ impl<'a> InstallOperation<'a> {
         discovered
             .iter()
             .filter_map(|b| {
-                if workspace.lockfile.find_bundle(&b.name).is_some() {
-                    Some(b.name.clone())
-                } else {
-                    None
-                }
+                workspace
+                    .lockfile
+                    .find_bundle(&b.name)
+                    .map(|_| b.name.clone())
             })
             .collect()
     }

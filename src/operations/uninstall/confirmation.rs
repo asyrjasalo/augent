@@ -18,23 +18,18 @@ fn count_files_to_remove(
     let mut file_count = 0;
 
     for file_path in &locked_bundle.files {
-        let Some(bundle_cfg) = &bundle_config else {
-            if workspace.root.join(file_path).exists() {
-                file_count += 1;
-            }
+        if workspace.root.join(file_path).exists() {
+            file_count += 1;
             continue;
-        };
+        }
 
-        let Some(locations) = bundle_cfg.get_locations(file_path) else {
-            if workspace.root.join(file_path).exists() {
-                file_count += 1;
-            }
-            continue;
-        };
-
-        for location in locations {
-            if workspace.root.join(location).exists() {
-                file_count += 1;
+        if let Some(cfg) = bundle_config {
+            if let Some(locations) = cfg.get_locations(file_path) {
+                for location in locations {
+                    if workspace.root.join(location).exists() {
+                        file_count += 1;
+                    }
+                }
             }
         }
     }
@@ -49,11 +44,12 @@ pub fn confirm_uninstall(workspace: &Workspace, bundles_to_uninstall: &[String])
     for bundle_name in bundles_to_uninstall {
         println!("  - {bundle_name}");
 
-        if let Some(locked_bundle) = workspace.lockfile.find_bundle(bundle_name) {
-            let file_count = count_files_to_remove(workspace, bundle_name, locked_bundle);
-            if file_count > 0 {
-                println!("    {file_count} file(s) will be removed");
-            }
+        let Some(locked_bundle) = workspace.lockfile.find_bundle(bundle_name) else {
+            continue;
+        };
+        let file_count = count_files_to_remove(workspace, bundle_name, locked_bundle);
+        if file_count > 0 {
+            println!("    {file_count} file(s) will be removed");
         }
     }
 

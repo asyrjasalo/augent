@@ -71,7 +71,7 @@ impl Lockfile {
         use crate::config::lockfile::source::LockedSource;
         for bundle in &mut self.bundles {
             if let LockedSource::Git { git_ref, .. } = &mut bundle.source {
-                git_ref.get_or_insert_with(|| "main".to_string());
+                let _ = git_ref.get_or_insert_with(|| "main".to_string());
             }
         }
     }
@@ -110,18 +110,14 @@ impl Lockfile {
         let mut workspace_bundle = None;
 
         for bundle in self.bundles.drain(..) {
-            if matches!(
-                &workspace_bundle_name,
-                Some(ws_name) if bundle.name.as_str() == *ws_name
-            ) {
+            if matches!(&workspace_bundle_name, Some(ws_name) if bundle.name.as_str() == *ws_name) {
                 workspace_bundle = Some(bundle);
                 continue;
             }
 
-            if matches!(bundle.source, LockedSource::Dir { .. }) {
-                dir_bundles.push(bundle);
-            } else {
-                git_bundles.push(bundle);
+            match bundle.source {
+                LockedSource::Dir { .. } => dir_bundles.push(bundle),
+                _ => git_bundles.push(bundle),
             }
         }
 
@@ -156,16 +152,13 @@ impl Lockfile {
             // Git bundles go at the end of git bundles (before any dir bundles)
             // Find the first dir bundle and insert before it
             // This ensures "latest comes last" - new bundles are always added at the end of git bundles
-            if let Some(pos) = self
+            match self
                 .bundles
                 .iter()
                 .position(|b| matches!(b.source, LockedSource::Dir { .. }))
             {
-                // Insert at the position of the first dir bundle (end of git bundles)
-                self.bundles.insert(pos, bundle);
-            } else {
-                // No dir bundles yet, append at the end
-                self.bundles.push(bundle);
+                Some(p) => self.bundles.insert(p, bundle),
+                None => self.bundles.push(bundle),
             }
         }
     }

@@ -218,16 +218,18 @@ fn count_entries_in_dir(entry_path: &Path, stats: &mut CacheStats) {
     };
 
     for sha_entry in sha_entries {
-        let sha_entry = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
+        let Ok(entry) = sha_entry.map_err(|e| AugentError::CacheOperationFailed {
             message: format!("Failed to read SHA entry: {e}"),
-        });
+        }) else {
+            continue;
+        };
 
-        if let Ok(entry) = sha_entry {
-            if entry.path().is_dir() {
-                stats.versions += 1;
-                add_dir_size_if_exists(&entry.path(), stats);
-            }
+        if !entry.path().is_dir() {
+            continue;
         }
+
+        stats.versions += 1;
+        add_dir_size_if_exists(&entry.path(), stats);
     }
 }
 

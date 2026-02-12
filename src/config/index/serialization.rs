@@ -46,11 +46,12 @@ where
         {
             let mut bundles = Vec::new();
 
-            while let Some(key) = map.next_key()? {
-                let key: String = key;
+            while let Some(key) = map.next_key::<String>()? {
                 match key.as_str() {
                     "bundles" => bundles = map.next_value()?,
-                    _ => drop(map.next_value::<serde::de::IgnoredAny>()?),
+                    _ => {
+                        drop(map.next_value::<serde::de::IgnoredAny>()?);
+                    }
                 }
             }
 

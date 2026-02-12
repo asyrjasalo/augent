@@ -54,9 +54,7 @@ pub fn strip_ansi(s: &str) -> String {
     while let Some(c) = chars.next() {
         if c == '\x1b' {
             // Skip ANSI escape sequence
-            if chars.next() == Some('[') {
-                chars.by_ref().find(char::is_ascii_alphabetic);
-            }
+            let _ = chars.by_ref().skip(1).find(char::is_ascii_alphabetic);
         } else {
             result.push(c);
         }

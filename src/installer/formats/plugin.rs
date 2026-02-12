@@ -279,12 +279,10 @@ impl FormatRegistry {
     ///
     /// `Some(converter)` if a matching converter is found, `None` otherwise
     pub fn find_converter(&self, source: &Path, target: &Path) -> Option<Arc<dyn FormatConverter>> {
-        for converter in self.converters.values() {
-            if converter.supports_conversion(source, target) {
-                return Some(converter.clone());
-            }
-        }
-        None
+        self.converters
+            .values()
+            .find(|converter| converter.supports_conversion(source, target))
+            .cloned()
     }
 
     /// Get converter by platform ID
