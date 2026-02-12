@@ -33,12 +33,8 @@ repos:
     rev: v0.1.18
     hooks:
       - id: rumdl-fmt
-        args: ["--disable", "MD013,MD033,MD034,MD041"]
-        files: |
-          (?x)^(
-            [^/]*\.md|
-            docs/.*\.md
-          )$
+        args: ["--disable", "MD013,MD033,MD034"]
+        files: ^(?!.*skills/).*$
 
   - repo: https://github.com/crate-ci/typos
     rev: v1.43.4
