@@ -437,27 +437,28 @@ impl JsonFormatter {
     ) -> serde_json::Value {
         let mut grouped = serde_json::Map::new();
 
-        if let Some(ws_bundle) = ctx.workspace_bundle {
-            for file in &bundle.files {
-                if let Some(locations) = ws_bundle.get_locations(file) {
-                    for location in locations {
-                        let platform =
-                            super::platform_extractor::extract_platform_from_location(location);
-                        let arr = grouped
-                            .entry(&platform)
-                            .or_insert_with(|| serde_json::json!([]))
-                            .as_array_mut();
-                        if let Some(arr) = arr {
-                            arr.push(serde_json::json!({
-                                "file": file,
-                                "location": location
-                            }));
-                        }
-                    }
+        let Some(ws_bundle) = ctx.workspace_bundle else {
+            grouped.insert("files".to_string(), serde_json::json!(bundle.files.clone()));
+            return serde_json::Value::Object(grouped);
+        };
+
+        for file in &bundle.files {
+            let Some(locations) = ws_bundle.get_locations(file) else {
+                continue;
+            };
+            for location in locations {
+                let platform = super::platform_extractor::extract_platform_from_location(location);
+                let arr = grouped
+                    .entry(&platform)
+                    .or_insert_with(|| serde_json::json!([]))
+                    .as_array_mut();
+                if let Some(arr) = arr {
+                    arr.push(serde_json::json!({
+                        "file": file,
+                        "location": location
+                    }));
                 }
             }
-        } else {
-            grouped.insert("files".to_string(), serde_json::json!(bundle.files.clone()));
         }
 
         serde_json::Value::Object(grouped)

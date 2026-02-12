@@ -87,18 +87,29 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_filter_bundles_by_scope() {
+    fn create_test_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
         let temp = TempDir::new().expect("Failed to create temp directory");
-        git2::Repository::init(temp.path()).expect("Failed to initialize git repository");
-        let workspace_root = temp.path();
+        let workspace_root = temp.path().to_path_buf();
+        git2::Repository::init(&workspace_root).expect("Failed to initialize git repository");
 
         // Create test workspace structure
         let augent_dir = workspace_root.join(".augent");
         std::fs::create_dir_all(&augent_dir).expect("Failed to create .augent directory");
 
-        // Create augent.yaml and lockfile with test bundles
-        let yaml_content = r#"
+        write_test_config_files(&augent_dir);
+
+        (temp, workspace_root)
+    }
+
+    fn write_test_config_files(augent_dir: &std::path::Path) {
+        std::fs::write(augent_dir.join("augent.yaml"), test_yaml_content())
+            .expect("Failed to write augent.yaml");
+        std::fs::write(augent_dir.join("augent.lock"), test_lock_content())
+            .expect("Failed to write augent.lock");
+    }
+
+    fn test_yaml_content() -> &'static str {
+        r#"
 bundles:
   - name: "@author/scope"
     git: https://github.com/author/repo
@@ -106,11 +117,11 @@ bundles:
     git: https://github.com/author/repo2
   - name: "@author/other"
     git: https://github.com/author/repo3
-"#;
-        std::fs::write(augent_dir.join("augent.yaml"), yaml_content)
-            .expect("Failed to write augent.yaml");
+"#
+    }
 
-        let lock_content = r#"{
+    fn test_lock_content() -> &'static str {
+        r#"{
   "bundles": [
     {
       "name": "@author/scope",
@@ -147,11 +158,14 @@ bundles:
       "files": []
     }
   ]
-}"#;
-        std::fs::write(augent_dir.join("augent.lock"), lock_content)
-            .expect("Failed to write augent.lock");
+}"#
+    }
 
-        let workspace = Workspace::open(workspace_root).expect("Failed to open workspace");
+    #[test]
+    fn test_filter_bundles_by_scope() {
+        let (_temp, workspace_root) = create_test_workspace();
+
+        let workspace = Workspace::open(&workspace_root).expect("Failed to open workspace");
 
         // Test @author/scope pattern
         let results = filter_bundles_by_scope(&workspace, "@author/scope");

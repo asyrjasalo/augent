@@ -55,11 +55,7 @@ pub fn strip_ansi(s: &str) -> String {
         if c == '\x1b' {
             // Skip ANSI escape sequence
             if chars.next() == Some('[') {
-                for c in chars.by_ref() {
-                    if c.is_ascii_alphabetic() {
-                        break;
-                    }
-                }
+                chars.by_ref().find(|c| c.is_ascii_alphabetic());
             }
         } else {
             result.push(c);

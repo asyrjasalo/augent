@@ -215,18 +215,22 @@ impl<'a> ConfigUpdater<'a> {
         self.workspace.lockfile.reorganize(Some(&workspace_name));
 
         for dep in &mut self.workspace.bundle_config.bundles {
-            if dep.git.is_some() && dep.git_ref.is_none() {
-                if let Some(locked) = self.workspace.lockfile.find_bundle(&dep.name) {
-                    if let LockedSource::Git {
-                        git_ref: Some(r), ..
-                    } = &locked.source
-                    {
-                        if r != "main" && r != "master" {
-                            dep.git_ref = Some(r.clone());
-                        }
-                    }
-                }
+            if dep.git.is_none() || dep.git_ref.is_some() {
+                continue;
             }
+            let Some(locked) = self.workspace.lockfile.find_bundle(&dep.name) else {
+                continue;
+            };
+            let LockedSource::Git {
+                git_ref: Some(r), ..
+            } = &locked.source
+            else {
+                continue;
+            };
+            if r == "main" || r == "master" {
+                continue;
+            }
+            dep.git_ref = Some(r.clone());
         }
     }
 

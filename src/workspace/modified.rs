@@ -55,14 +55,15 @@ pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Vec<Mod
                 };
 
                 // Compare hashes
-                if let Some(orig_hash) = original_hash {
-                    if !hash::verify_hash(&orig_hash, &current_hash) {
-                        modified.push(ModifiedFile {
-                            installed_path: full_installed_path,
-                            source_bundle: bundle.name.clone(),
-                            source_path: source_path.clone(),
-                        });
-                    }
+                let Some(orig_hash) = original_hash else {
+                    continue;
+                };
+                if !hash::verify_hash(&orig_hash, &current_hash) {
+                    modified.push(ModifiedFile {
+                        installed_path: full_installed_path,
+                        source_bundle: bundle.name.clone(),
+                        source_path: source_path.clone(),
+                    });
                 }
             }
         }

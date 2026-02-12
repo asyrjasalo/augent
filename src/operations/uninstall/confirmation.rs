@@ -18,18 +18,22 @@ fn count_files_to_remove(
     let mut file_count = 0;
 
     for file_path in &locked_bundle.files {
-        if let Some(bundle_cfg) = &bundle_config {
-            if let Some(locations) = bundle_cfg.get_locations(file_path) {
-                for location in locations {
-                    let full_path = workspace.root.join(location);
-                    if full_path.exists() {
-                        file_count += 1;
-                    }
-                }
+        let Some(bundle_cfg) = &bundle_config else {
+            if workspace.root.join(file_path).exists() {
+                file_count += 1;
             }
-        } else {
-            let full_path = workspace.root.join(file_path);
-            if full_path.exists() {
+            continue;
+        };
+
+        let Some(locations) = bundle_cfg.get_locations(file_path) else {
+            if workspace.root.join(file_path).exists() {
+                file_count += 1;
+            }
+            continue;
+        };
+
+        for location in locations {
+            if workspace.root.join(location).exists() {
                 file_count += 1;
             }
         }

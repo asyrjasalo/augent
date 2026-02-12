@@ -20,43 +20,25 @@ pub struct SaveWorkspaceConfigsContext<'a> {
 
 /// Rebuild workspace configuration by scanning filesystem for installed files
 ///
-/// This method reconstructs the index.yaml by:
+/// This method reconstructs index.yaml by:
 /// 1. Detecting which platforms are installed (by checking for .dirs)
 /// 2. For each bundle in lockfile, scanning for its files across all platforms
-/// 3. Reconstructing the index.yaml file mappings
+/// 3. Reconstructing index.yaml file mappings
 ///
 /// This is useful when index.yaml is missing or corrupted.
 pub fn rebuild_workspace_config(root: &Path, lockfile: &Lockfile) -> Result<WorkspaceConfig> {
     let mut rebuilt_config = WorkspaceConfig::new();
 
-    // Detect which platforms exist in the workspace
+    // Detect which platforms exist in workspace
     let platform_dirs = detect_installed_platforms(root)?;
 
     // For each bundle, scan for its files
     for locked_bundle in &lockfile.bundles {
         let mut workspace_bundle = crate::config::WorkspaceBundle::new(locked_bundle.name.clone());
 
-        // For each file in the locked bundle
+        // For each file in locked bundle
         for bundle_file in &locked_bundle.files {
-            let mut installed_locations = Vec::new();
-
-            // Check all detected platform directories for this file
-            for platform_dir in &platform_dirs {
-                // Try to find the file in common locations
-                let candidate_paths =
-                    crate::workspace::path::find_file_candidates(bundle_file, platform_dir, root)?;
-                for candidate_path in candidate_paths {
-                    if candidate_path.exists() {
-                        installed_locations.push(
-                            candidate_path
-                                .strip_prefix(root)
-                                .unwrap_or(&candidate_path)
-                                .to_string_lossy()
-                                .to_string(),
-                        );
-                    }
-                }
-            }
+            let installed_locations = find_file_locations(bundle_file, root, &platform_dirs)?;
 
             // If we found installed locations, add them to the workspace bundle
             if !installed_locations.is_empty() {
@@ -69,6 +51,33 @@ pub fn rebuild_workspace_config(root: &Path, lockfile: &Lockfile) -> Result<Work
     }
 
     Ok(rebuilt_config)
+}
+
+fn find_file_locations(
+    bundle_file: &str,
+    root: &Path,
+    platform_dirs: &[std::path::PathBuf],
+) -> Result<Vec<String>> {
+    let mut installed_locations = Vec::new();
+
+    for platform_dir in platform_dirs {
+        let candidate_paths =
+            crate::workspace::path::find_file_candidates(bundle_file, platform_dir, root)?;
+        for candidate_path in candidate_paths {
+            if !candidate_path.exists() {
+                continue;
+            }
+            installed_locations.push(
+                candidate_path
+                    .strip_prefix(root)
+                    .unwrap_or(&candidate_path)
+                    .to_string_lossy()
+                    .to_string(),
+            );
+        }
+    }
+
+    Ok(installed_locations)
 }
 
 /// Detect which platforms are installed by checking for platform directories

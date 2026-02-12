@@ -160,12 +160,13 @@ fn uninstall_config_bundle_files(workspace: &mut Workspace, bundle_names: &[Stri
         } else {
             // Try partial match (e.g., "bundle-a" matches "@test/bundle-a")
             for workspace_bundle in &workspace.config.bundles {
-                if workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
-                    || workspace_bundle.name == *bundle_name
+                if !(workspace_bundle.name.ends_with(&format!("/{bundle_name}"))
+                    || workspace_bundle.name == *bundle_name)
                 {
-                    for locations in workspace_bundle.enabled.values() {
-                        files_to_remove.extend(locations.iter().cloned());
-                    }
+                    continue;
+                }
+                for locations in workspace_bundle.enabled.values() {
+                    files_to_remove.extend(locations.iter().cloned());
                 }
             }
         }
