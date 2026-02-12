@@ -60,11 +60,6 @@ run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings"
 description = "Lint codebase with pedantic and auto-fix"
 run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings -W clippy::pedantic"
 
-[tasks.ccn]
-description = "Check CCN"
-alias = 'z'
-run = "uvx lizard -C 10 --warnings_only src/ tests/"
-
 [tasks.hooks]
 description = "Run pre-commit hooks"
 run = [

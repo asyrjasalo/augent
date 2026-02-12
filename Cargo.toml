@@ -85,6 +85,8 @@ expect_used = "warn"
 unwrap_used = "warn"
 panic = "warn"
 panic_in_result_fn = "warn"
+cognitive_complexity = "warn"
+too_many_lines = "warn"
 todo = "warn"
 unimplemented = "warn"
 
