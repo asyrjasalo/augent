@@ -49,7 +49,7 @@ description = "Run tests"
 run = "cargo nextest run"
 
 [tasks.lint]
-description = "Lint codebase and auto-fix"
+description = "Lint codebase with auto-fix"
 run = "cargo clippy --fix --allow-dirty --all-features"
 
 [tasks.hooks]
