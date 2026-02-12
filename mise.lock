@@ -11,6 +11,10 @@ backend = "aqua:ast-grep/ast-grep"
 version = "0.9.1"
 backend = "cargo:cargo-machete"
 
+[[tools."cargo:cargo-nextest"]]
+version = "0.9.126"
+backend = "cargo:cargo-nextest"
+
 [[tools."cargo:cargo-tarpaulin"]]
 version = "0.35.1"
 backend = "cargo:cargo-tarpaulin"

@@ -6,6 +6,7 @@
 
 rust = { version = "1.93", components = "rust-analyzer" }
 prek = "latest"
+"cargo:cargo-nextest" = "latest"
 
 [settings]
 lockfile = true
@@ -45,7 +46,7 @@ run = "cargo fmt"
 
 [tasks.test]
 description = "Run tests"
-run = "cargo test"
+run = "cargo nextest run"
 
 [tasks.lint]
 description = "Lint codebase"
