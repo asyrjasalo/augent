@@ -320,22 +320,39 @@ impl<'a> Installer<'a> {
         installed_files: &mut HashMap<String, InstalledFile>,
     ) -> Result<()> {
         for resource in resources {
-            for platform in &self.platforms {
-                let target_path = self.calculate_target_path(resource, bundle, platform);
-                let ctx = ResourceInstallContext {
-                    installer: self,
-                    target_path: target_path.clone(),
-                    platform,
-                    bundle_name: &bundle.name,
-                    resource_type: &resource.resource_type,
-                };
-                Self::install_resource_for_platform(
-                    &ctx,
-                    resource,
-                    installed_files,
-                    &self.format_registry,
-                )?;
-            }
+            Self::install_resource_across_platforms(
+                self,
+                resource,
+                bundle,
+                installed_files,
+                &self.format_registry,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn install_resource_across_platforms(
+        installer: &Installer,
+        resource: &DiscoveredResource,
+        bundle: &ResolvedBundle,
+        installed_files: &mut HashMap<String, InstalledFile>,
+        format_registry: &Arc<FormatRegistry>,
+    ) -> Result<()> {
+        for platform in &installer.platforms {
+            let target_path = installer.calculate_target_path(resource, bundle, platform);
+            let ctx = ResourceInstallContext {
+                installer,
+                target_path: target_path.clone(),
+                platform,
+                bundle_name: &bundle.name,
+                resource_type: &resource.resource_type,
+            };
+            Installer::install_resource_for_platform(
+                &ctx,
+                resource,
+                installed_files,
+                format_registry,
+            )?;
         }
         Ok(())
     }

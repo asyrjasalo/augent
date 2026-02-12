@@ -35,22 +35,26 @@ pub fn rebuild_workspace_config(root: &Path, lockfile: &Lockfile) -> Result<Work
     // For each bundle, scan for its files
     for locked_bundle in &lockfile.bundles {
         let mut workspace_bundle = crate::config::WorkspaceBundle::new(locked_bundle.name.clone());
-
-        // For each file in locked bundle
-        for bundle_file in &locked_bundle.files {
-            let installed_locations = find_file_locations(bundle_file, root, &platform_dirs)?;
-
-            if installed_locations.is_empty() {
-                continue;
-            }
-            workspace_bundle.add_file(bundle_file.clone(), installed_locations);
-        }
-
-        // Add this bundle to workspace config (even if empty)
+        add_bundle_files(&mut workspace_bundle, locked_bundle, root, &platform_dirs)?;
         rebuilt_config.add_bundle(workspace_bundle);
     }
 
     Ok(rebuilt_config)
+}
+
+fn add_bundle_files(
+    workspace_bundle: &mut crate::config::WorkspaceBundle,
+    locked_bundle: &crate::config::lockfile::bundle::LockedBundle,
+    root: &Path,
+    platform_dirs: &[std::path::PathBuf],
+) -> Result<()> {
+    for bundle_file in &locked_bundle.files {
+        let installed_locations = find_file_locations(bundle_file, root, platform_dirs)?;
+        if !installed_locations.is_empty() {
+            workspace_bundle.add_file(bundle_file.clone(), installed_locations);
+        }
+    }
+    Ok(())
 }
 
 fn find_file_locations(
@@ -63,21 +67,22 @@ fn find_file_locations(
     for platform_dir in platform_dirs {
         let candidate_paths =
             crate::workspace::path::find_file_candidates(bundle_file, platform_dir, root)?;
-        for candidate_path in candidate_paths {
-            if !candidate_path.exists() {
-                continue;
-            }
-            installed_locations.push(
-                candidate_path
-                    .strip_prefix(root)
-                    .unwrap_or(&candidate_path)
-                    .to_string_lossy()
-                    .to_string(),
-            );
+        for candidate_path in &candidate_paths {
+            installed_locations.extend(add_if_exists(candidate_path, root));
         }
     }
 
     Ok(installed_locations)
+}
+
+fn add_if_exists(candidate_path: &Path, root: &Path) -> Option<String> {
+    candidate_path.exists().then(|| {
+        candidate_path
+            .strip_prefix(root)
+            .unwrap_or(candidate_path)
+            .to_string_lossy()
+            .to_string()
+    })
 }
 
 /// Detect which platforms are installed by checking for platform directories

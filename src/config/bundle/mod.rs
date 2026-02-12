@@ -8,7 +8,7 @@ pub mod serialization;
 use serde::{Deserialize, Serialize};
 
 use crate::config::bundle::serialization::{
-    deserialize_bundle_config, serialize_bundle_config, BundleConfigData,
+    BundleConfigData, deserialize_bundle_config, serialize_bundle_config,
 };
 use crate::error::Result;
 

@@ -52,25 +52,28 @@ impl<'a> NameFixer<'a> {
         mut resolved_bundles: Vec<ResolvedBundle>,
     ) -> Vec<ResolvedBundle> {
         for bundle in &mut resolved_bundles {
-            let Some(ref _git_source) = bundle.git_source else {
-                continue;
-            };
-            let Ok(rel_from_config) = bundle.source_path.strip_prefix(&self.workspace.config_dir)
-            else {
-                continue;
-            };
-            let normalized_path = normalize_bundle_path(rel_from_config);
-            let Some(existing_dep) = self.find_existing_dependency_with_path(&normalized_path)
-            else {
-                continue;
-            };
-
-            if bundle.name != existing_dep.name {
-                bundle.name.clone_from(&existing_dep.name);
-            }
+            Self::fix_bundle_name(self, bundle);
         }
 
         resolved_bundles
+    }
+
+    fn fix_bundle_name(fixer: &NameFixer, bundle: &mut ResolvedBundle) {
+        let Some(ref _git_source) = bundle.git_source else {
+            return;
+        };
+        let Ok(rel_from_config) = bundle.source_path.strip_prefix(&fixer.workspace.config_dir)
+        else {
+            return;
+        };
+        let normalized_path = normalize_bundle_path(rel_from_config);
+        let Some(existing_dep) = fixer.find_existing_dependency_with_path(&normalized_path) else {
+            return;
+        };
+
+        if bundle.name != existing_dep.name {
+            bundle.name.clone_from(&existing_dep.name);
+        }
     }
 
     /// Ensure workspace bundle is in the resolved list for execute method

@@ -125,29 +125,39 @@ impl PlatformLoader {
             .map_err(|e| Self::create_parse_error(path, e.to_string()))?;
 
         let result = match value {
-            serde_json::Value::Array(platforms) => {
-                serde_json::from_value(serde_json::Value::Array(platforms.clone()))
-                    .map_err(|e| Self::create_parse_error(path, e.to_string()))?
-            }
-            serde_json::Value::Object(obj) => {
-                let Some(platforms_value) = obj.get("platforms").and_then(|v| v.as_array()) else {
-                    return Err(Self::create_parse_error(
-                        path,
-                        "Expected array of platforms or object with 'platforms' key".to_string(),
-                    ));
-                };
-                serde_json::from_value(serde_json::Value::Array(platforms_value.clone()))
-                    .map_err(|e| Self::create_parse_error(path, e.to_string()))?
-            }
+            serde_json::Value::Array(platforms) => Self::parse_platforms_array(platforms, path)?,
+            serde_json::Value::Object(obj) => Self::parse_platforms_object(&obj, path)?,
             _ => {
                 return Err(Self::create_parse_error(
                     path,
                     "Invalid JSON format".to_string(),
-                ))
+                ));
             }
         };
 
         Ok(result)
+    }
+
+    fn parse_platforms_array(
+        platforms: Vec<serde_json::Value>,
+        path: &str,
+    ) -> Result<Vec<Platform>> {
+        serde_json::from_value(serde_json::Value::Array(platforms))
+            .map_err(|e| Self::create_parse_error(path, e.to_string()))
+    }
+
+    fn parse_platforms_object(
+        obj: &serde_json::Map<String, serde_json::Value>,
+        path: &str,
+    ) -> Result<Vec<Platform>> {
+        let Some(platforms_value) = obj.get("platforms").and_then(|v| v.as_array()) else {
+            return Err(Self::create_parse_error(
+                path,
+                "Expected array of platforms or object with 'platforms' key".to_string(),
+            ));
+        };
+        serde_json::from_value(serde_json::Value::Array(platforms_value.clone()))
+            .map_err(|e| Self::create_parse_error(path, e.to_string()))
     }
 
     #[cfg(test)]
@@ -172,17 +182,23 @@ impl PlatformLoader {
             state = new_state;
             i += added_char;
 
-            let is_in_comment = matches!(
-                state,
-                JsoncParserState::InSingleLineComment | JsoncParserState::InMultiLineComment
-            );
-            if is_in_comment {
-                continue;
-            }
-            result.push(c);
+            Self::add_char_if_not_in_comment(c, state, &mut result);
         }
 
         result
+    }
+
+    fn add_char_if_not_in_comment(c: char, state: JsoncParserState, result: &mut String) {
+        if Self::should_add_to_result(state) {
+            result.push(c);
+        }
+    }
+
+    fn should_add_to_result(state: JsoncParserState) -> bool {
+        !matches!(
+            state,
+            JsoncParserState::InSingleLineComment | JsoncParserState::InMultiLineComment
+        )
     }
 
     /// Process a single character and return (`new_state`, `char_count_to_advance`)

@@ -65,9 +65,10 @@ impl PathNormalizer {
             current = p;
         }
 
-        let normalized_base = current
-            .normalize()
-            .ok().map_or_else(|| current.to_path_buf(), |norm| norm.as_path().to_path_buf());
+        let normalized_base = current.normalize().ok().map_or_else(
+            || current.to_path_buf(),
+            |norm| norm.as_path().to_path_buf(),
+        );
 
         Some((components, normalized_base))
     }

@@ -97,14 +97,27 @@ impl<'a> UninstallOperation<'a> {
     }
 
     fn validate_bundles_installed(&self, bundle_names: &[String]) -> Result<()> {
+        self.check_all_bundles_installed(bundle_names)
+    }
+
+    fn check_all_bundles_installed(&self, bundle_names: &[String]) -> Result<()> {
         for bundle_name in bundle_names {
-            if self.workspace.lockfile.find_bundle(bundle_name).is_none() {
-                return Err(AugentError::BundleNotFound {
-                    name: bundle_name.clone(),
-                });
-            }
+            self.ensure_bundle_installed(bundle_name)?;
         }
         Ok(())
+    }
+
+    fn ensure_bundle_installed(&self, bundle_name: &str) -> Result<()> {
+        if !self.is_bundle_installed(bundle_name) {
+            return Err(AugentError::BundleNotFound {
+                name: bundle_name.to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn is_bundle_installed(&self, bundle_name: &str) -> bool {
+        self.workspace.lockfile.find_bundle(bundle_name).is_some()
     }
 }
 

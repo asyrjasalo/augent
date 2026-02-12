@@ -185,12 +185,16 @@ mod tests {
 
         let resources = discover_resources(temp.path());
         assert_eq!(resources.len(), 2);
-        assert!(resources
-            .iter()
-            .any(|r| r.bundle_path == Path::new("commands/debug.md")));
-        assert!(resources
-            .iter()
-            .any(|r| r.bundle_path == Path::new("commands/test.md")));
+        assert!(
+            resources
+                .iter()
+                .any(|r| r.bundle_path == Path::new("commands/debug.md"))
+        );
+        assert!(
+            resources
+                .iter()
+                .any(|r| r.bundle_path == Path::new("commands/test.md"))
+        );
     }
 
     #[test]
@@ -252,9 +256,11 @@ mod tests {
         let filtered = filter_skills_resources(resources);
 
         // Only vercel (leaf) should be kept, not claude.ai (parent)
-        assert!(!filtered
-            .iter()
-            .any(|r| r.bundle_path == Path::new("skills/claude.ai/SKILL.md")));
+        assert!(
+            !filtered
+                .iter()
+                .any(|r| r.bundle_path == Path::new("skills/claude.ai/SKILL.md"))
+        );
     }
 
     fn create_discovered_resource(

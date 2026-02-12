@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::config::{utils::BundleContainer, LockedSource};
+use crate::config::{LockedSource, utils::BundleContainer};
 use crate::hash;
 use crate::workspace::Workspace;
 
@@ -57,14 +57,26 @@ fn check_bundle_modified_files(ctx: &CheckContext) -> Vec<ModifiedFile> {
     for (source_path, installed_locations) in &ctx.bundle.enabled {
         for installed_path in installed_locations {
             let full_installed_path = ctx.workspace_root.join(installed_path);
-            let Some(mf) = check_file_modification(ctx, source_path, &full_installed_path) else {
-                continue;
-            };
-            modified.push(mf);
+            modified.extend(check_and_add_if_modified(
+                ctx,
+                source_path,
+                &full_installed_path,
+            ));
         }
     }
 
     modified
+}
+
+fn check_and_add_if_modified(
+    ctx: &CheckContext,
+    source_path: &str,
+    full_installed_path: &Path,
+) -> Vec<ModifiedFile> {
+    match check_file_modification(ctx, source_path, full_installed_path) {
+        Some(mf) => vec![mf],
+        None => vec![],
+    }
 }
 
 fn check_file_modification(

@@ -61,13 +61,23 @@ fn add_transformed_candidates(
         return;
     };
     for transform_rule in &platform.transforms {
-        let is_match = matches_glob(&transform_rule.from, bundle_file);
-        if is_match {
-            let transformed = apply_transform(&transform_rule.to, bundle_file);
-            let candidate = platform_dir.join(&transformed);
-            candidates.push(candidate);
-        }
+        process_transform_rule(transform_rule, bundle_file, platform_dir, candidates);
     }
+}
+
+fn process_transform_rule(
+    transform_rule: &crate::platform::TransformRule,
+    bundle_file: &str,
+    platform_dir: &Path,
+    candidates: &mut Vec<std::path::PathBuf>,
+) {
+    let is_match = matches_glob(&transform_rule.from, bundle_file);
+    if !is_match {
+        return;
+    }
+    let transformed = apply_transform(&transform_rule.to, bundle_file);
+    let candidate = platform_dir.join(&transformed);
+    candidates.push(candidate);
 }
 
 fn add_direct_path_candidate(
@@ -94,15 +104,17 @@ fn add_common_fallback_candidates(
     bundle_file: &str,
     platform_dir: &Path,
 ) {
-    if let Some(filename) = bundle_file.split('/').next_back() {
-        if bundle_file.starts_with("rules/")
-            && std::path::Path::new(filename)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
-        {
-            add_mdc_candidate(candidates, filename, platform_dir);
-        }
+    let Some(filename) = bundle_file.split('/').next_back() else {
+        return;
+    };
+    let should_add = bundle_file.starts_with("rules/")
+        && std::path::Path::new(filename)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"));
+    if !should_add {
+        return;
     }
+    add_mdc_candidate(candidates, filename, platform_dir);
 }
 
 fn add_mdc_candidate(
@@ -128,9 +140,13 @@ pub fn matches_glob(pattern: &str, file_path: &str) -> bool {
     let candidate = CandidatePath::from(normalized_path.as_str());
 
     // Use wax for proper glob pattern matching
+    check_glob_match(pattern, &normalized_path, &candidate)
+}
+
+fn check_glob_match(pattern: &str, normalized_path: &str, candidate: &CandidatePath<'_>) -> bool {
     let glob = Glob::new(pattern);
     if let Ok(pattern_obj) = glob {
-        pattern_obj.matched(&candidate).is_some()
+        pattern_obj.matched(candidate).is_some()
     } else {
         // Fallback to exact match if pattern is invalid
         pattern == normalized_path
@@ -144,30 +160,33 @@ pub fn apply_transform(to_pattern: &str, from_path: &str) -> String {
     let mut result = Vec::new();
 
     for pattern_part in pattern_parts {
-        if pattern_part == "*" {
-            let Some(part) = from_parts.first() else {
-                continue;
-            };
-            result.push((*part).to_string());
-            from_parts.remove(0);
-            continue;
-        }
-
-        if pattern_part == "{name}" {
-            let Some(last) = from_parts.last() else {
-                continue;
-            };
-
-            if let Some(pos) = last.rfind('.') {
-                result.push(last[..pos].to_string());
-            } else {
-                result.push((*last).to_string());
-            }
-            continue;
-        }
-
-        result.push(pattern_part.to_string());
+        process_pattern_part(pattern_part, &mut from_parts, &mut result);
     }
 
     result.join("/")
+}
+
+fn process_pattern_part(pattern_part: &str, from_parts: &mut Vec<&str>, result: &mut Vec<String>) {
+    if pattern_part == "*" {
+        let Some(part) = from_parts.first() else {
+            return;
+        };
+        result.push((*part).to_string());
+        from_parts.remove(0);
+    } else if pattern_part == "{name}" {
+        process_name_pattern(from_parts, result);
+    } else {
+        result.push(pattern_part.to_string());
+    }
+}
+
+fn process_name_pattern(from_parts: &mut Vec<&str>, result: &mut Vec<String>) {
+    let Some(last) = from_parts.last() else {
+        return;
+    };
+    if let Some(pos) = last.rfind('.') {
+        result.push(last[..pos].to_string());
+    } else {
+        result.push((*last).to_string());
+    }
 }

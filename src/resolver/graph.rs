@@ -89,18 +89,25 @@ pub fn validate_dependencies(
 ) -> Result<()> {
     let resolved_keys: Vec<&str> = resolved.keys().map(std::string::String::as_str).collect();
     for (name, bundle_deps) in deps {
-        for dep_name in bundle_deps {
-            if resolved_keys.contains(&dep_name.as_str()) {
-                continue;
-            }
-            let resolved_names: Vec<&str> = resolved_keys.clone();
+        validate_bundle_dependencies(name, bundle_deps, &resolved_keys)?;
+    }
+    Ok(())
+}
+
+fn validate_bundle_dependencies(
+    bundle_name: &str,
+    bundle_deps: &[String],
+    resolved_keys: &[&str],
+) -> Result<()> {
+    for dep_name in bundle_deps {
+        if !resolved_keys.contains(&dep_name.as_str()) {
             return Err(AugentError::BundleValidationFailed {
                 message: format!(
                     "Dependency '{}' (from bundle '{}') not found in resolved bundles. \
                  Available bundles: {}",
                     dep_name,
-                    name,
-                    resolved_names.join(", ")
+                    bundle_name,
+                    resolved_keys.join(", ")
                 ),
             });
         }

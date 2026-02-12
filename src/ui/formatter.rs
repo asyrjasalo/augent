@@ -347,10 +347,17 @@ impl DetailedFormatter {
 
     #[allow(dead_code)]
     fn format_detailed_sections(bundle: &crate::config::LockedBundle, ctx: &DisplayContext) {
+        Self::display_enabled_resources_if_any(bundle, ctx);
+        Self::format_dependencies(bundle, ctx.workspace_root);
+    }
+
+    fn display_enabled_resources_if_any(
+        bundle: &crate::config::LockedBundle,
+        ctx: &DisplayContext,
+    ) {
         if !bundle.files.is_empty() {
             display_provided_files_grouped_by_platform(&bundle.files, ctx.workspace_bundle);
         }
-        Self::format_dependencies(bundle, ctx.workspace_root);
     }
 }
 
@@ -410,24 +417,41 @@ impl JsonFormatter {
         bundle: &crate::config::LockedBundle,
         ctx: &DisplayContext,
     ) {
-        if !bundle.files.is_empty() {
-            let files_by_platform = Self::group_files_by_platform(bundle, ctx);
-            let is_empty = files_by_platform
-                .as_object()
-                .unwrap_or(&serde_json::Map::new())
-                .is_empty();
+        Self::add_enabled_resources_if_present(output, bundle, ctx);
+        Self::add_dependencies_if_present(output, bundle, ctx);
+    }
 
-            if is_empty {
-                return;
-            }
-            output["enabled_resources"] = files_by_platform;
+    fn add_enabled_resources_if_present(
+        output: &mut serde_json::Value,
+        bundle: &crate::config::LockedBundle,
+        ctx: &DisplayContext,
+    ) {
+        if bundle.files.is_empty() {
+            return;
         }
 
+        let files_by_platform = Self::group_files_by_platform(bundle, ctx);
+        let is_empty = files_by_platform
+            .as_object()
+            .unwrap_or(&serde_json::Map::new())
+            .is_empty();
+
+        if !is_empty {
+            output["enabled_resources"] = files_by_platform;
+        }
+    }
+
+    fn add_dependencies_if_present(
+        output: &mut serde_json::Value,
+        bundle: &crate::config::LockedBundle,
+        ctx: &DisplayContext,
+    ) {
         let Ok(bundle_config) =
             config_utils::load_bundle_config(ctx.workspace_root, &bundle.source)
         else {
             return;
         };
+
         if !bundle_config.bundles.is_empty() {
             output["dependencies"] = serde_json::Value::Array(
                 bundle_config

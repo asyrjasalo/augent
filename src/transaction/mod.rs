@@ -145,9 +145,12 @@ impl Transaction {
         sorted_dirs.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
 
         for path in sorted_dirs {
-            if !Self::is_empty_directory(path) {
-                continue;
-            }
+            Self::try_remove_dir_if_empty(path);
+        }
+    }
+
+    fn try_remove_dir_if_empty(path: &Path) {
+        if Self::is_empty_directory(path) {
             let _ = fs::remove_dir(path);
         }
     }
@@ -166,14 +169,18 @@ impl Transaction {
 
     fn restore_backups(backups: &[ConfigBackup], msg_type: &str) {
         for backup in backups {
-            if let Err(e) = fs::write(&backup.path, &backup.content) {
-                eprintln!(
-                    "Warning: Failed to restore {}{}: {}",
-                    msg_type,
-                    backup.path.display(),
-                    e
-                );
-            }
+            Self::restore_backup(backup, msg_type);
+        }
+    }
+
+    fn restore_backup(backup: &ConfigBackup, msg_type: &str) {
+        if let Err(e) = fs::write(&backup.path, &backup.content) {
+            eprintln!(
+                "Warning: Failed to restore {}{}: {}",
+                msg_type,
+                backup.path.display(),
+                e
+            );
         }
     }
 }
