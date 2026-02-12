@@ -49,16 +49,8 @@ description = "Run tests"
 run = "cargo nextest run"
 
 [tasks.lint]
-description = "Lint codebase"
-run = "cargo clippy --all-targets --all-features"
-
-[tasks.lint-fix]
 description = "Lint codebase and auto-fix"
-run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings"
-
-[tasks.lint-fix-all]
-description = "Lint codebase with pedantic and auto-fix"
-run = "cargo clippy --fix --allow-dirty --all-features -- -D warnings -W clippy::pedantic"
+run = "cargo clippy --fix --allow-dirty --all-features"
 
 [tasks.hooks]
 description = "Run pre-commit hooks"

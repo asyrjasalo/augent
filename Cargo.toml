@@ -89,6 +89,7 @@ cognitive_complexity = "warn"
 too_many_lines = "warn"
 todo = "warn"
 unimplemented = "warn"
+pedantic = "warn"
 
 [profile.release]
 lto = true
