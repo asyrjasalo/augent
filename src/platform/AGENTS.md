@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/platform/
 ├── mod.rs            # Platform, TransformRule structs (212 lines)
 ├── detection.rs      # Platform detection in workspace

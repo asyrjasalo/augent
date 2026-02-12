@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/transaction/
 └── mod.rs    # Transaction struct, Drop impl (317 lines)
 ```

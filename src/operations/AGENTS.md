@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/operations/
 ├── mod.rs             # Re-exports (27 lines)
 ├── install/           # Install workflow (8 submodules)

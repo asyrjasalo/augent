@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/installer/
 ├── mod.rs              # Installer struct (349 lines)
 ├── discovery.rs        # Resource discovery, filtering

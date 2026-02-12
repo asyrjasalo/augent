@@ -14,7 +14,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/source/
 ├── mod.rs            # Re-exports (24 lines)
 ├── bundle_source.rs   # BundleSource enum and parsing

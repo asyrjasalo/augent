@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/workspace/
 ├── mod.rs              # Workspace struct (214 lines)
 ├── config.rs           # WorkspaceConfig operations

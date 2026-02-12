@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/config/
 ├── mod.rs             # Re-exports (20 lines)
 ├── bundle/            # Bundle config (augent.yaml)

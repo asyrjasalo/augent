@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/resolver/
 ├── mod.rs             # Resolver type alias, re-exports (57 lines)
 ├── operation/         # High-level resolution orchestration

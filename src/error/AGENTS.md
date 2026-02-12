@@ -4,7 +4,7 @@
 
 ## STRUCTURE
 
-```
+```text
 src/error/
 ├── mod.rs              # AugentError enum (577 lines - largest file)
 ├── bundle.rs           # Bundle error constructors
