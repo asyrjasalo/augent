@@ -30,46 +30,71 @@ pub struct ModifiedFile {
 pub fn detect_modified_files(workspace: &Workspace, cache_dir: &Path) -> Vec<ModifiedFile> {
     let mut modified = Vec::new();
 
-    // Iterate through all bundles in workspace config
     for bundle in &workspace.config.bundles {
-        // Get locked bundle info for hash/SHA information
         let locked_bundle = workspace.lockfile.find_bundle(&bundle.name);
+        let ctx = CheckContext {
+            bundle,
+            locked_bundle,
+            cache_dir,
+            workspace_root: &workspace.root,
+        };
+        modified.extend(check_bundle_modified_files(&ctx));
+    }
 
-        // Iterate through all enabled files in this bundle
-        for (source_path, installed_locations) in &bundle.enabled {
-            for installed_path in installed_locations {
-                let full_installed_path = workspace.root.join(installed_path);
+    modified
+}
 
-                // Skip if installed file doesn't exist
-                if !full_installed_path.exists() {
-                    continue;
-                }
+struct CheckContext<'a> {
+    bundle: &'a crate::config::WorkspaceBundle,
+    locked_bundle: Option<&'a crate::config::LockedBundle>,
+    cache_dir: &'a Path,
+    workspace_root: &'a Path,
+}
 
-                // Get the original file from cache
-                let original_hash =
-                    get_original_hash(source_path, locked_bundle, cache_dir, &workspace.root);
+fn check_bundle_modified_files(ctx: &CheckContext) -> Vec<ModifiedFile> {
+    let mut modified = Vec::new();
 
-                // Calculate current file hash
-                let Ok(current_hash) = hash::hash_file(&full_installed_path) else {
-                    continue;
-                };
+    for (source_path, installed_locations) in &ctx.bundle.enabled {
+        for installed_path in installed_locations {
+            let full_installed_path = ctx.workspace_root.join(installed_path);
+            let modified_file = check_file_modification(ctx, source_path, &full_installed_path);
 
-                // Compare hashes
-                let Some(orig_hash) = original_hash else {
-                    continue;
-                };
-                if !hash::verify_hash(&orig_hash, &current_hash) {
-                    modified.push(ModifiedFile {
-                        installed_path: full_installed_path,
-                        source_bundle: bundle.name.clone(),
-                        source_path: source_path.clone(),
-                    });
-                }
+            if let Some(mf) = modified_file {
+                modified.push(mf);
             }
         }
     }
 
     modified
+}
+
+fn check_file_modification(
+    ctx: &CheckContext,
+    source_path: &str,
+    full_installed_path: &Path,
+) -> Option<ModifiedFile> {
+    if !full_installed_path.exists() {
+        return None;
+    }
+
+    let orig_hash = get_original_hash(
+        source_path,
+        ctx.locked_bundle,
+        ctx.cache_dir,
+        ctx.workspace_root,
+    )?;
+
+    let current_hash = hash::hash_file(full_installed_path).ok()?;
+
+    if hash::verify_hash(&orig_hash, &current_hash) {
+        return None;
+    }
+
+    Some(ModifiedFile {
+        installed_path: full_installed_path.to_path_buf(),
+        source_bundle: ctx.bundle.name.clone(),
+        source_path: source_path.to_string(),
+    })
 }
 
 /// Get the original hash of a file from the cached bundle

@@ -318,20 +318,22 @@ impl DetailedFormatter {
 
     #[allow(dead_code)]
     fn format_dependencies(bundle: &crate::config::LockedBundle, workspace_root: &std::path::Path) {
-        if let Ok(bundle_config) = config_utils::load_bundle_config(workspace_root, &bundle.source)
-        {
+        let Ok(bundle_config) = config_utils::load_bundle_config(workspace_root, &bundle.source)
+        else {
+            return;
+        };
+
+        println!(
+            "    {}: {}",
+            Style::new().bold().apply_to("Dependencies"),
             if bundle_config.bundles.is_empty() {
-                println!(
-                    "    {}: {}",
-                    Style::new().bold().apply_to("Dependencies"),
-                    Style::new().dim().apply_to("None")
-                );
+                Style::new().dim().apply_to("None").to_string()
             } else {
-                println!("    {}", Style::new().bold().apply_to("Dependencies:"));
-                for dep in &bundle_config.bundles {
-                    println!("      - {}", Style::new().cyan().apply_to(&dep.name));
-                }
+                String::new()
             }
+        );
+        for dep in &bundle_config.bundles {
+            println!("      - {}", Style::new().cyan().apply_to(&dep.name));
         }
     }
 
@@ -420,11 +422,7 @@ impl JsonFormatter {
                     bundle_config
                         .bundles
                         .iter()
-                        .map(|dep| {
-                            serde_json::json!({
-                                "name": dep.name,
-                            })
-                        })
+                        .map(|dep| serde_json::json!({"name": dep.name}))
                         .collect(),
                 );
             }
@@ -447,21 +445,30 @@ impl JsonFormatter {
                 continue;
             };
             for location in locations {
-                let platform = super::platform_extractor::extract_platform_from_location(location);
-                let arr = grouped
-                    .entry(&platform)
-                    .or_insert_with(|| serde_json::json!([]))
-                    .as_array_mut();
-                if let Some(arr) = arr {
-                    arr.push(serde_json::json!({
-                        "file": file,
-                        "location": location
-                    }));
-                }
+                add_file_to_platform_grouped(file, location, &mut grouped);
             }
         }
 
         serde_json::Value::Object(grouped)
+    }
+}
+
+fn add_file_to_platform_grouped(
+    file: &str,
+    location: &str,
+    grouped: &mut serde_json::Map<String, serde_json::Value>,
+) {
+    let platform = super::platform_extractor::extract_platform_from_location(location);
+    let array = grouped
+        .entry(&platform)
+        .or_insert_with(|| serde_json::json!([]))
+        .as_array_mut();
+
+    if let Some(array) = array {
+        array.push(serde_json::json!({
+            "file": file,
+            "location": location
+        }));
     }
 }
 

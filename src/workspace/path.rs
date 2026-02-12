@@ -145,12 +145,13 @@ pub fn apply_transform(to_pattern: &str, from_path: &str) -> String {
         if pattern_part == "*" && !from_parts.is_empty() {
             result.push(from_parts.remove(0).to_string());
         } else if pattern_part == "{name}" {
-            if let Some(last) = from_parts.last() {
-                if let Some(pos) = last.rfind('.') {
-                    result.push(last[..pos].to_string());
-                } else {
-                    result.push(last.to_string());
-                }
+            let Some(last) = from_parts.last() else {
+                continue;
+            };
+            if let Some(pos) = last.rfind('.') {
+                result.push(last[..pos].to_string());
+            } else {
+                result.push(last.to_string());
             }
         } else {
             result.push(pattern_part.to_string());

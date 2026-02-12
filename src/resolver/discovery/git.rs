@@ -137,18 +137,24 @@ pub fn process_git_bundle(bundle: &mut DiscoveredBundle, ctx: &GitBundleContext<
 pub fn try_get_cached_bundles(
     source: &GitSource,
 ) -> Result<(Option<Vec<DiscoveredBundle>>, String)> {
-    if source.resolved_sha.is_none() {
-        if let Ok(sha) = git::ls_remote(&source.url, source.git_ref.as_deref()) {
-            if let Ok(cached) = cache::list_cached_entries_for_url_sha(&source.url, &sha) {
-                if !cached.is_empty() {
-                    let bundles = helpers::load_cached_bundles_from_marketplace(source, &sha)?;
-                    return Ok((Some(bundles), sha));
-                }
-            }
-        }
+    if source.resolved_sha.is_some() {
+        return Ok((None, String::new()));
     }
 
-    Ok((None, String::new()))
+    let Ok(sha) = git::ls_remote(&source.url, source.git_ref.as_deref()) else {
+        return Ok((None, String::new()));
+    };
+
+    let Ok(cached) = cache::list_cached_entries_for_url_sha(&source.url, &sha) else {
+        return Ok((None, sha));
+    };
+
+    if cached.is_empty() {
+        return Ok((None, sha));
+    }
+
+    let bundles = helpers::load_cached_bundles_from_marketplace(source, &sha)?;
+    Ok((Some(bundles), sha))
 }
 
 /// Load marketplace config if it exists in a repository

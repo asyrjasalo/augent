@@ -106,16 +106,18 @@ impl ResolveOperation {
         }
 
         if let Some(ref cfg) = bundle.config {
-            if bundle.resolved_sha.is_none() {
-                let context_path = if bundle.git_source.is_some() {
-                    bundle.source_path.clone()
-                } else {
-                    self.workspace_root.clone()
-                };
+            if bundle.resolved_sha.is_some() {
+                return;
+            }
 
-                for dep in &cfg.bundles {
-                    let _ = self.resolve_dependency_with_context(dep, &context_path);
-                }
+            let context_path = bundle
+                .git_source
+                .as_ref()
+                .map_or(&self.workspace_root, |_| &bundle.source_path)
+                .clone();
+
+            for dep in &cfg.bundles {
+                let _ = self.resolve_dependency_with_context(dep, &context_path);
             }
         }
 

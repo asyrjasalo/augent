@@ -1,6 +1,6 @@
 allow-panic-in-tests = true
 allow-unwrap-in-tests = true
 cognitive-complexity-threshold = 10
-excessive-nesting-threshold = 5
+excessive-nesting-threshold = 4
 too-many-arguments-threshold = 5
 too-many-lines-threshold = 50

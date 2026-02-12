@@ -71,9 +71,7 @@ impl Lockfile {
         use crate::config::lockfile::source::LockedSource;
         for bundle in &mut self.bundles {
             if let LockedSource::Git { git_ref, .. } = &mut bundle.source {
-                if git_ref.is_none() {
-                    *git_ref = Some("main".to_string());
-                }
+                git_ref.get_or_insert_with(|| "main".to_string());
             }
         }
     }
@@ -112,11 +110,12 @@ impl Lockfile {
         let mut workspace_bundle = None;
 
         for bundle in self.bundles.drain(..) {
-            if let Some(ws_name) = workspace_bundle_name {
-                if bundle.name == ws_name {
-                    workspace_bundle = Some(bundle);
-                    continue;
-                }
+            if matches!(
+                &workspace_bundle_name,
+                Some(ws_name) if bundle.name.as_str() == *ws_name
+            ) {
+                workspace_bundle = Some(bundle);
+                continue;
             }
 
             if matches!(bundle.source, LockedSource::Dir { .. }) {

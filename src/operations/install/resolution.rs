@@ -44,11 +44,10 @@ impl<'a> InstallResolver<'a> {
         let mut all_bundles = Vec::new();
         for dep in &self.workspace.bundle_config.bundles {
             if let Some(ref git_url) = dep.git {
-                let source = if let Some(ref git_ref) = dep.git_ref {
-                    format!("{git_url}@{git_ref}")
-                } else {
-                    git_url.clone()
-                };
+                let source = dep
+                    .git_ref
+                    .as_ref()
+                    .map_or_else(|| git_url.clone(), |git_ref| format!("{git_url}@{git_ref}"));
                 let bundles = bundle_resolver.resolve(&source, false)?;
                 all_bundles.extend(bundles);
             } else if let Some(ref path) = dep.path {

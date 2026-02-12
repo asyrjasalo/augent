@@ -49,17 +49,8 @@ where
             while let Some(key) = map.next_key()? {
                 let key: String = key;
                 match key.as_str() {
-                    "name" => {
-                        // Skip the name field - it's read from filesystem location
-                        let _: serde::de::IgnoredAny = map.next_value()?;
-                    }
-                    "bundles" => {
-                        bundles = map.next_value()?;
-                    }
-                    _ => {
-                        // Skip unknown fields
-                        let _: serde::de::IgnoredAny = map.next_value()?;
-                    }
+                    "bundles" => bundles = map.next_value()?,
+                    _ => drop(map.next_value::<serde::de::IgnoredAny>()?),
                 }
             }
 

@@ -126,14 +126,14 @@ impl WorkspaceConfig {
     /// Find which bundle provides a specific installed file
     #[allow(dead_code)] // Used by tests
     pub fn find_provider(&self, installed_path: &str) -> Option<(&str, &str)> {
-        for bundle in &self.bundles {
-            for (source, locations) in &bundle.enabled {
-                if locations.iter().any(|loc| loc == installed_path) {
-                    return Some((&bundle.name, source));
-                }
-            }
-        }
-        None
+        self.bundles.iter().find_map(|bundle| {
+            bundle.enabled.iter().find_map(|(source, locations)| {
+                locations
+                    .iter()
+                    .find(|&loc| loc == installed_path)
+                    .map(|_| (&bundle.name as &str, source.as_str()))
+            })
+        })
     }
 
     /// Validate workspace configuration

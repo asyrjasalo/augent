@@ -19,10 +19,8 @@ fn add_blank_lines_between_bundles(lines: Vec<&str>) -> Vec<String> {
             in_bundles_section = true;
             formatted.push(line.to_string());
         } else if in_bundles_section && line.trim_start().starts_with("- name:") {
-            if let Some(last) = formatted.last() {
-                if !last.is_empty() && last.starts_with(' ') {
-                    formatted.push(String::new());
-                }
+            if matches!(formatted.last(), Some(last) if !last.is_empty() && last.starts_with(' ')) {
+                formatted.push(String::new());
             }
             formatted.push(line.to_string());
         } else {

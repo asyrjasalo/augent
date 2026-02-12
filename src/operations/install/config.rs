@@ -46,21 +46,23 @@ impl<'a> ConfigUpdater<'a> {
         update_augent_yaml: bool,
     ) {
         for bundle in resolved_bundles {
-            if bundle.dependency.is_none() {
-                let workspace_name = self.workspace.get_workspace_name();
-                if bundle.name == workspace_name {
-                    continue;
-                }
+            if bundle.dependency.is_some() {
+                continue;
+            }
 
-                let is_git_bundle = bundle.git_source.is_some();
-                if !is_git_bundle && !update_augent_yaml {
-                    continue;
-                }
+            let workspace_name = self.workspace.get_workspace_name();
+            if bundle.name == workspace_name {
+                continue;
+            }
 
-                if !self.workspace.bundle_config.has_dependency(&bundle.name) {
-                    let dependency = self.create_bundle_dependency(bundle);
-                    self.workspace.bundle_config.add_dependency(dependency);
-                }
+            let is_git_bundle = bundle.git_source.is_some();
+            if !is_git_bundle && !update_augent_yaml {
+                continue;
+            }
+
+            if !self.workspace.bundle_config.has_dependency(&bundle.name) {
+                let dependency = self.create_bundle_dependency(bundle);
+                self.workspace.bundle_config.add_dependency(dependency);
             }
         }
     }
@@ -92,16 +94,13 @@ impl<'a> ConfigUpdater<'a> {
                 path_str
             };
 
-            if let Some(existing_dep) = self.workspace.bundle_config.bundles.iter().find(|dep| {
-                dep.path.as_ref().is_some_and(|p| {
-                    let normalized_existing = p
-                        .strip_prefix("./")
-                        .or_else(|| p.strip_prefix("../"))
-                        .unwrap_or(p);
-                    normalized_existing == normalized_path
-                })
-            }) {
-                existing_dep.name.clone()
+            let existing_dep =
+                self.workspace.bundle_config.bundles.iter().find(|dep| {
+                    paths_match(dep.path.as_deref(), &normalized_path).unwrap_or(false)
+                });
+
+            if let Some(dep) = existing_dep {
+                dep.name.clone()
             } else {
                 bundle_path
                     .file_name()
@@ -241,4 +240,13 @@ impl<'a> ConfigUpdater<'a> {
         }
         self.workspace.config.reorganize(&self.workspace.lockfile);
     }
+}
+
+fn paths_match(path: Option<&str>, normalized_path: &str) -> Option<bool> {
+    let path = path?;
+    let normalized = path
+        .strip_prefix("./")
+        .or_else(|| path.strip_prefix("../"))?;
+
+    Some(normalized == normalized_path)
 }

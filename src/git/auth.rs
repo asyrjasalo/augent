@@ -105,10 +105,8 @@ pub fn setup_auth_callbacks(callbacks: &mut RemoteCallbacks) {
 
         if allowed_types.contains(CredentialType::SSH_KEY) {
             if let Some(username) = username_from_url {
-                if let Ok(cred) = Cred::ssh_key_from_agent(username) {
-                    return Ok(cred);
-                }
-                return try_ssh_credentials(username);
+                return Cred::ssh_key_from_agent(username)
+                    .or_else(|_| try_ssh_credentials(username));
             }
         }
 

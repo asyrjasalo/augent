@@ -297,24 +297,25 @@ impl<'a> Installer<'a> {
         let mut installed_files = HashMap::new();
 
         for resource in &resources {
+            if self.dry_run {
+                continue;
+            }
             for platform in &self.platforms {
                 let target_path = self.calculate_target_path(resource, bundle, platform);
 
-                if !self.dry_run {
-                    let ctx = ResourceInstallContext {
-                        installer: self,
-                        target_path: target_path.clone(),
-                        platform,
-                        bundle_name: &bundle.name,
-                        resource_type: &resource.resource_type,
-                    };
-                    Self::install_resource_for_platform(
-                        &ctx,
-                        resource,
-                        &mut installed_files,
-                        &self.format_registry,
-                    )?;
-                }
+                let ctx = ResourceInstallContext {
+                    installer: self,
+                    target_path: target_path.clone(),
+                    platform,
+                    bundle_name: &bundle.name,
+                    resource_type: &resource.resource_type,
+                };
+                Self::install_resource_for_platform(
+                    &ctx,
+                    resource,
+                    &mut installed_files,
+                    &self.format_registry,
+                )?;
             }
         }
 
