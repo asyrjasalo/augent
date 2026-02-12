@@ -105,9 +105,15 @@ impl ResolveOperation {
             self.resolution_order.push(name.clone());
         }
 
-        let Some(ref cfg) = bundle.config else {
-            return;
-        };
+        self.process_bundle_dependencies(bundle);
+
+        self.resolution_stack.pop();
+
+        self.resolved.insert(name, bundle.clone());
+    }
+
+    fn process_bundle_dependencies(&mut self, bundle: &ResolvedBundle) {
+        let Some(ref cfg) = bundle.config else { return };
         if bundle.resolved_sha.is_some() {
             return;
         }
@@ -121,10 +127,6 @@ impl ResolveOperation {
         for dep in &cfg.bundles {
             let _ = self.resolve_dependency_with_context(dep, &context_path);
         }
-
-        self.resolution_stack.pop();
-
-        self.resolved.insert(name, bundle.clone());
     }
 
     fn resolve_dependency_with_context(

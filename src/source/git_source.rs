@@ -96,24 +96,27 @@ impl GitSource {
 
     /// Parse URL portion (without fragment)
     fn parse_url(input: &str) -> Result<String> {
+        // Try github: prefix
         if let Some(rest) = input.strip_prefix("github:") {
             return Ok(format!("https://github.com/{rest}.git"));
         }
 
-        let Some(rest) = input.strip_prefix('@') else {
-            return Err(AugentError::SourceParseFailed {
-                input: input.to_string(),
-                reason: "Unknown source format".to_string(),
-            });
-        };
-        if Self::is_github_shorthand(rest) {
-            return Ok(format!("https://github.com/{rest}.git"));
+        // Try @user/repo prefix (handle @ separately)
+        match input.strip_prefix('@') {
+            Some(rest) if Self::is_github_shorthand(rest) => {
+                Ok(format!("https://github.com/{rest}.git"))
+            }
+            _ => Self::parse_url_from_input(input),
         }
+    }
 
+    fn parse_url_from_input(input: &str) -> Result<String> {
+        // user/repo shorthand
         if Self::is_github_shorthand(input) {
             return Ok(format!("https://github.com/{input}.git"));
         }
 
+        // Full URL formats
         if input.starts_with("https://")
             || input.starts_with("git@")
             || input.starts_with("ssh://")
