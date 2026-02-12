@@ -91,7 +91,7 @@ and we should not limit our implementation to only GitHub, GitLab, etc..
 
 - Bundles are installed in order they are presented in `augent.yaml` so later bundles override the resources from earlier bundles where the resource file names overlap. For non-merged files (commands, rules, skills, root files), later bundles completely override earlier bundles if file names overlap. For merged files (AGENTS.md, mcp.jsonc, etc.), the merge behavior defined in the platform configuration applies instead of overriding. This override behavior is silent - no warnings are shown when later bundles override earlier bundles' files.
 
-- Some resources are merged with the existing ones if they already exist for the agent, e.g. AGENTS.md and mcp.jsonc files. The merging strategy likely differs between these file types (AGENTS.md is markdown, mcp.jsonc is JSON). **TODO: Research OpenPackage's platforms.jsonc schema for the exact merging behavior for each file type.**
+- Some resources are merged with the existing ones if they already exist for the agent, e.g. AGENTS.md and mcp.jsonc files. The merging strategy likely differs between these file types (AGENTS.md is markdown, mcp.jsonc is JSON).
 
 - Augent will know how to install the directory's content for AI coding platforms regardless of whether `augent.yaml`, `augent.lock`, `augent.index.yaml` is present in the directory. This ensures we maintain compatibility with Claude Code plugins, skills only repos, etc.
 
@@ -158,7 +158,7 @@ Basically, the user can give any path or repo url or github:author/reponame to `
 
 We adopt a `platforms.jsonc` configuration file approach to support ever increasing number of AI coding platforms and their features. It must be possible for the developer to add support to new AI coding platforms without changing the core code.
 
-**TODO: Research OpenPackage's platforms.jsonc schema and implementation** including:
+**Research OpenPackage's platforms.jsonc schema and implementation** including:
 
 - Platform identifier (e.g., "opencode", "cursor", "claude")
 - Directory structure where resources are stored

@@ -60,7 +60,7 @@ fn parse_bundle_dependencies(config_path: &std::path::Path) -> Result<Option<Vec
 
 /// Build a mapping from bundle name to names of bundles it depends on,
 /// by reading each bundle's own `augent.yaml` (if present).
-/// NOTE: Only git bundles have augent.yaml; dir bundles do not.
+/// Note: Only git bundles have augent.yaml; dir bundles do not.
 #[allow(dead_code)]
 pub fn build_dependency_map(workspace: &Workspace) -> Result<HashMap<String, Vec<String>>> {
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
