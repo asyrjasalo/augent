@@ -16,7 +16,6 @@ impl CopyOptions {
     }
 }
 
-/// Copy a directory recursively with options
 pub fn copy_dir_recursive<P1, P2>(src: P1, dst: P2, options: &CopyOptions) -> std::io::Result<()>
 where
     P1: AsRef<Path>,

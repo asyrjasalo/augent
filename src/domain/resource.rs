@@ -4,6 +4,8 @@
 
 use std::path::PathBuf;
 
+use crate::error::{Result, bundle_validation_failed};
+
 /// Discovered resource within a bundle
 #[derive(Debug, Clone)]
 pub struct DiscoveredResource {
@@ -32,18 +34,18 @@ pub struct InstalledFile {
 
 #[allow(dead_code)]
 impl DiscoveredResource {
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<()> {
         if self.bundle_path.as_os_str().is_empty() {
-            return Err("Bundle path cannot be empty".to_string());
+            return Err(bundle_validation_failed("Bundle path cannot be empty"));
         }
         if !self.absolute_path.exists() {
-            return Err(format!(
+            return Err(bundle_validation_failed(format!(
                 "Absolute path does not exist: {}",
                 self.absolute_path.display()
-            ));
+            )));
         }
         if self.resource_type.is_empty() {
-            return Err("Resource type cannot be empty".to_string());
+            return Err(bundle_validation_failed("Resource type cannot be empty"));
         }
         Ok(())
     }
@@ -51,15 +53,15 @@ impl DiscoveredResource {
 
 #[allow(dead_code)]
 impl InstalledFile {
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<()> {
         if self.bundle_path.is_empty() {
-            return Err("Bundle path cannot be empty".to_string());
+            return Err(bundle_validation_failed("Bundle path cannot be empty"));
         }
         if self.resource_type.is_empty() {
-            return Err("Resource type cannot be empty".to_string());
+            return Err(bundle_validation_failed("Resource type cannot be empty"));
         }
         if self.target_paths.is_empty() {
-            return Err("Target paths cannot be empty".to_string());
+            return Err(bundle_validation_failed("Target paths cannot be empty"));
         }
         Ok(())
     }
@@ -91,7 +93,7 @@ mod tests {
                 } else {
                     let result = resource.validate();
                     assert!(result.is_err());
-                    assert!(result.unwrap_err().contains("empty"));
+                    assert!(result.unwrap_err().to_string().contains("empty"));
                 }
             }
         };
@@ -131,7 +133,7 @@ mod tests {
                 } else {
                     let result = file.validate();
                     assert!(result.is_err());
-                    assert!(result.unwrap_err().contains("empty"));
+                    assert!(result.unwrap_err().to_string().contains("empty"));
                 }
             }
         };

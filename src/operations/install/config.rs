@@ -2,7 +2,7 @@
 //!
 //! This module handles updating bundle configurations, lockfiles, and workspace configs
 
-use crate::common::path_normalizer::PathNormalizer;
+use crate::common::path_normalizer::{PathNormalizer, paths_match};
 use crate::config::{
     BundleDependency, LockedBundle, LockedSource, WorkspaceBundle, utils::BundleContainer,
 };
@@ -105,12 +105,11 @@ impl<'a> ConfigUpdater<'a> {
             path_str
         };
 
-        let existing_dep = self
-            .workspace
-            .bundle_config
-            .bundles
-            .iter()
-            .find(|dep| paths_match(dep.path.as_deref(), &normalized_path).unwrap_or(false));
+        let existing_dep = self.workspace.bundle_config.bundles.iter().find(|dep| {
+            dep.path
+                .as_ref()
+                .is_some_and(|p| paths_match(p, &normalized_path))
+        });
 
         existing_dep.map_or_else(
             || extract_bundle_name_from_path(bundle_path, default_name),
@@ -285,13 +284,4 @@ fn extract_bundle_name_from_path(bundle_path: &std::path::Path, default_name: &s
         .and_then(|n| n.to_str())
         .unwrap_or(default_name)
         .to_string()
-}
-
-fn paths_match(path: Option<&str>, normalized_path: &str) -> Option<bool> {
-    let path = path?;
-    let normalized = path
-        .strip_prefix("./")
-        .or_else(|| path.strip_prefix("../"))?;
-
-    Some(normalized == normalized_path)
 }

@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 
 use crate::config::{BundleConfig, BundleDependency};
+use crate::error::{Result, bundle_validation_failed};
 use crate::source::GitSource;
 
 /// Count of resources by type for a bundle
@@ -85,15 +86,15 @@ pub struct ResolvedBundle {
 
 impl ResolvedBundle {
     #[allow(dead_code)]
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
-            return Err("Bundle name cannot be empty".to_string());
+            return Err(bundle_validation_failed("Bundle name cannot be empty"));
         }
         if !self.source_path.exists() {
-            return Err(format!(
+            return Err(bundle_validation_failed(format!(
                 "Source path does not exist: {}",
                 self.source_path.display()
-            ));
+            )));
         }
         Ok(())
     }
@@ -112,15 +113,15 @@ pub struct DiscoveredBundle {
 
 impl DiscoveredBundle {
     #[allow(dead_code)]
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
-            return Err("Bundle name cannot be empty".to_string());
+            return Err(bundle_validation_failed("Bundle name cannot be empty"));
         }
         if !self.path.exists() {
-            return Err(format!(
+            return Err(bundle_validation_failed(format!(
                 "Bundle path does not exist: {}",
                 self.path.display()
-            ));
+            )));
         }
         ResourceCounts::validate();
         Ok(())

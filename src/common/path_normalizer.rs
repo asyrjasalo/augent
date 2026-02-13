@@ -17,6 +17,25 @@ pub struct PathNormalizer {
     config_dir: PathBuf,
 }
 
+/// Check if two relative path strings match, ignoring ./ and ../ prefixes
+///
+/// This is used when comparing paths from configuration files where
+/// the prefix notation may vary (e.g., "./bundles/a" vs "bundles/a").
+///
+/// # Arguments
+/// * `existing_path` - The path to check (may have ./ or ../ prefix)
+/// * `normalized_path` - The normalized path to compare against (no prefix)
+///
+/// # Returns
+/// `true` if the paths are equivalent after removing prefixes
+pub fn paths_match(existing_path: &str, normalized_path: &str) -> bool {
+    let normalized_existing = existing_path
+        .strip_prefix("./")
+        .or_else(|| existing_path.strip_prefix("../"))
+        .unwrap_or(existing_path);
+    normalized_existing == normalized_path
+}
+
 #[allow(dead_code)]
 impl PathNormalizer {
     /// Create a new path normalizer

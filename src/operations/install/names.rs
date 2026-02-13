@@ -1,6 +1,7 @@
 //! Bundle name management for install operation
 //! Handles fixing and normalizing bundle names
 
+use crate::common::path_normalizer::paths_match;
 use crate::domain::ResolvedBundle;
 use crate::workspace::Workspace;
 
@@ -16,14 +17,6 @@ fn normalize_bundle_path(rel_from_config: &std::path::Path) -> String {
     } else {
         path_str
     }
-}
-
-fn paths_match(existing_path: &str, normalized_path: &str) -> bool {
-    let normalized_existing = existing_path
-        .strip_prefix("./")
-        .or_else(|| existing_path.strip_prefix("../"))
-        .unwrap_or(existing_path);
-    normalized_existing == normalized_path
 }
 
 impl<'a> NameFixer<'a> {
