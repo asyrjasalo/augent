@@ -26,6 +26,8 @@ exclude = [
     "CLAUDE.md",
     "Cross.toml",
     "dynamic-mcp.json",
+    "mise.lock",
+    "mise.toml",
     "package.json",
     "pyproject.toml"
 ]
