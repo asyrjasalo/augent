@@ -175,20 +175,15 @@ pub fn preserve_modified_files(
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::{create_git_repo, create_temp_dir};
     use std::fs;
-    use tempfile::TempDir;
 
     #[test]
     fn test_detect_modified_files_empty() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-
-        // Initialize git repository
-        git2::Repository::init(temp.path()).expect("Failed to init git repository");
+        let (temp, _path) = create_git_repo();
 
         let workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
-        let cache_dir = TempDir::new_in(crate::temp::temp_dir_base())
-            .expect("Failed to create cache directory");
+        let cache_dir = create_temp_dir();
 
         let modified = detect_modified_files(&workspace, cache_dir.path());
         assert!(modified.is_empty());
@@ -196,11 +191,7 @@ mod tests {
 
     #[test]
     fn test_preserve_modified_files() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-
-        // Initialize git repository
-        git2::Repository::init(temp.path()).expect("Failed to init git repository");
+        let (temp, _path) = create_git_repo();
 
         let mut workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
 

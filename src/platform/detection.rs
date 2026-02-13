@@ -110,20 +110,18 @@ pub fn resolve_platforms(workspace_root: &Path, specified: &[String]) -> Result<
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
+    use crate::test_fixtures::create_temp_dir;
 
     #[test]
     fn test_detect_platforms_empty() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         let platforms = detect_platforms(temp.path()).expect("Failed to detect platforms");
         assert!(platforms.is_empty());
     }
 
     #[test]
     fn test_detect_platforms_claude() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         std::fs::create_dir(temp.path().join(".claude"))
             .expect("Failed to create .claude directory");
 
@@ -134,8 +132,7 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_multiple() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         std::fs::create_dir(temp.path().join(".claude"))
             .expect("Failed to create .claude directory");
         std::fs::create_dir(temp.path().join(".cursor"))
@@ -147,8 +144,7 @@ mod tests {
 
     #[test]
     fn test_root_agent_file_adds_no_platform() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         std::fs::write(temp.path().join("CLAUDE.md"), "# Claude")
             .expect("Failed to write CLAUDE.md");
 
@@ -161,8 +157,7 @@ mod tests {
 
     #[test]
     fn test_detect_platforms_or_error_empty() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         let result = detect_platforms_or_error(temp.path());
         assert!(result.is_err());
     }
@@ -192,8 +187,7 @@ mod tests {
 
     #[test]
     fn test_resolve_platforms_specified() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         // Even without any platform directories, specified platforms work
         let platforms = resolve_platforms(temp.path(), &["claude".to_string()])
             .expect("Failed to resolve platforms");
@@ -203,8 +197,7 @@ mod tests {
 
     #[test]
     fn test_resolve_platforms_auto_detect() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         std::fs::create_dir(temp.path().join(".opencode"))
             .expect("Failed to create .opencode directory");
 

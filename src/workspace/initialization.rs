@@ -111,19 +111,13 @@ pub fn open(root: &Path) -> Result<InitializedWorkspace> {
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::create_git_repo;
     use crate::workspace::config::{BUNDLE_CONFIG_FILE, LOCKFILE_NAME, WORKSPACE_INDEX_FILE};
     use std::path::Path;
-    use tempfile::TempDir;
-
-    fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).expect("Failed to init git repository");
-    }
 
     #[test]
     fn test_workspace_init() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (temp, _path) = create_git_repo();
 
         let _workspace = init(temp.path()).expect("Failed to init workspace");
 
@@ -147,9 +141,7 @@ mod tests {
 
     #[test]
     fn test_workspace_init_or_open() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (temp, _path) = create_git_repo();
 
         let workspace1 = init_or_open(temp.path()).expect("Failed to init or open workspace");
         let name1 = infer_workspace_name(&workspace1.root);

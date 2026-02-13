@@ -143,13 +143,12 @@ pub fn filter_skills_resources(resources: Vec<DiscoveredResource>) -> Vec<Discov
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::create_temp_dir;
     use std::fs;
-    use tempfile::TempDir;
 
     #[test]
     fn test_filter_skills_resources() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         let base = temp.path();
 
         let md = "---\n---\nx";
@@ -174,8 +173,7 @@ mod tests {
 
     #[test]
     fn test_discover_resources_commands() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
 
         let commands_dir = temp.path().join("commands");
         fs::create_dir(&commands_dir).expect("Failed to create commands dir");
@@ -199,8 +197,7 @@ mod tests {
 
     #[test]
     fn test_discover_resources_root_files() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
 
         fs::write(temp.path().join("AGENTS.md"), "# Agents").expect("Failed to write AGENTS.md");
         fs::write(temp.path().join("mcp.jsonc"), "{}").expect("Failed to write mcp.jsonc");
@@ -211,8 +208,7 @@ mod tests {
 
     #[test]
     fn test_filter_skills_resources_nested() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         let base = temp.path();
 
         let valid_skill_md =

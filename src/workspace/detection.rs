@@ -55,17 +55,12 @@ pub fn find_from(start: &Path) -> Option<PathBuf> {
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::{create_git_repo, create_nested_dir, create_temp_dir};
     use normpath::PathExt;
-    use tempfile::TempDir;
-
-    fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).expect("Failed to init git repository");
-    }
 
     #[test]
     fn test_workspace_exists() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
 
         assert!(!exists(temp.path()));
 
@@ -76,14 +71,11 @@ mod tests {
 
     #[test]
     fn test_workspace_find_from() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (temp, _path) = create_git_repo();
         std::fs::create_dir(temp.path().join(WORKSPACE_DIR))
             .expect("Failed to create workspace directory");
 
-        let nested = temp.path().join("src/deep/nested");
-        std::fs::create_dir_all(&nested).expect("Failed to create nested directory");
+        let nested = create_nested_dir(&temp, "src/deep/nested");
 
         let found = find_from(&nested);
         assert!(found.is_some());
@@ -95,12 +87,9 @@ mod tests {
 
     #[test]
     fn test_workspace_find_from_not_found() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (temp, _path) = create_git_repo();
 
-        let nested = temp.path().join("src/deep/nested");
-        std::fs::create_dir_all(&nested).expect("Failed to create nested directory");
+        let nested = create_nested_dir(&temp, "src/deep/nested");
 
         let found = find_from(&nested);
         assert!(found.is_none());
