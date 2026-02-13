@@ -22,6 +22,8 @@ mod platform;
 mod resolver;
 mod source;
 mod temp;
+#[cfg(test)]
+mod test_fixtures;
 mod transaction;
 mod ui;
 mod universal;

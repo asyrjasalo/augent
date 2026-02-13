@@ -144,20 +144,14 @@ impl Workspace {
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::test_fixtures::create_git_repo;
     use crate::workspace::config::{BUNDLE_CONFIG_FILE, LOCKFILE_NAME, WORKSPACE_INDEX_FILE};
-    use tempfile::TempDir;
-
-    fn create_git_repo(temp: &TempDir) {
-        git2::Repository::init(temp.path()).expect("Failed to init git repository");
-    }
 
     #[test]
     fn test_workspace_init() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (temp, path) = create_git_repo();
 
-        let workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
+        let workspace = Workspace::init(&path).expect("Failed to init workspace");
 
         assert!(temp.path().join(WORKSPACE_DIR).is_dir());
 
@@ -183,28 +177,22 @@ mod tests {
 
     #[test]
     fn test_workspace_init_or_open() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (_temp, path) = create_git_repo();
 
-        let workspace1 =
-            Workspace::init_or_open(temp.path()).expect("Failed to init or open workspace");
+        let workspace1 = Workspace::init_or_open(&path).expect("Failed to init or open workspace");
         let name1 = workspace1.get_workspace_name();
 
-        let workspace2 =
-            Workspace::init_or_open(temp.path()).expect("Failed to init or open workspace");
+        let workspace2 = Workspace::init_or_open(&path).expect("Failed to init or open workspace");
         assert_eq!(workspace2.get_workspace_name(), name1);
     }
 
     #[test]
     fn test_workspace_get_bundle_source_path() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
-        create_git_repo(&temp);
+        let (_temp, path) = create_git_repo();
 
-        let workspace = Workspace::init(temp.path()).expect("Failed to init workspace");
-        let path = workspace.get_bundle_source_path();
+        let workspace = Workspace::init(&path).expect("Failed to init workspace");
+        let source_path = workspace.get_bundle_source_path();
 
-        assert!(path.ends_with(WORKSPACE_DIR));
+        assert!(source_path.ends_with(WORKSPACE_DIR));
     }
 }

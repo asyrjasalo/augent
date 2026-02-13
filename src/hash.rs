@@ -134,12 +134,11 @@ pub fn verify_hash(expected: &str, actual: &str) -> bool {
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
+    use crate::test_fixtures::create_temp_dir;
 
     #[test]
     fn test_hash_file() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
         let file_path = temp.path().join("test.txt");
         std::fs::write(&file_path, "test content").expect("Failed to write test file");
 
@@ -155,10 +154,8 @@ mod tests {
 
     #[test]
     fn test_hash_directory() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
 
-        // Create some files
         std::fs::write(temp.path().join("file1.txt"), "content1")
             .expect("Failed to write file1.txt");
         std::fs::create_dir(temp.path().join("subdir")).expect("Failed to create subdir");
@@ -171,8 +168,7 @@ mod tests {
 
     #[test]
     fn test_hash_directory_deterministic() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
 
         std::fs::write(temp.path().join("a.txt"), "aaa").expect("Failed to write a.txt");
         std::fs::write(temp.path().join("b.txt"), "bbb").expect("Failed to write b.txt");
@@ -184,13 +180,11 @@ mod tests {
 
     #[test]
     fn test_hash_directory_excludes_lockfile() {
-        let temp =
-            TempDir::new_in(crate::temp::temp_dir_base()).expect("Failed to create temp directory");
+        let temp = create_temp_dir();
 
         std::fs::write(temp.path().join("file.txt"), "content").expect("Failed to write file.txt");
         let hash1 = hash_directory(temp.path()).expect("Failed to hash directory first time");
 
-        // Add lockfile - should not change hash
         std::fs::write(temp.path().join("augent.lock"), "lock content")
             .expect("Failed to write augent.lock");
         let hash2 = hash_directory(temp.path()).expect("Failed to hash directory second time");
@@ -200,17 +194,14 @@ mod tests {
 
     #[test]
     fn test_verify_hash() {
-        // Test with same hash
         let hash1 = format!("{HASH_PREFIX}abc123");
         let hash2 = hash1.clone();
         assert!(verify_hash(&hash1, &hash2));
 
-        // Test with and without prefix
         let hash_with_prefix = format!("{HASH_PREFIX}abc123");
         let hash_without_prefix = "abc123";
         assert!(verify_hash(&hash_with_prefix, hash_without_prefix));
 
-        // Test different hashes don't match
         let hash3 = format!("{HASH_PREFIX}def456");
         assert!(!verify_hash(&hash1, &hash3));
     }
