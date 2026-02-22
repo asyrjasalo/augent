@@ -33,7 +33,7 @@ backend = "aqua:j178/prek"
 "platforms.windows-x64" = { checksum = "sha256:4aaf87523d3588090a6f547a5eca379264ddb287e3a424a1fab73aca6cd9c0c0", url = "https://github.com/j178/prek/releases/download/v0.3.2/prek-x86_64-pc-windows-msvc.zip"}
 
 [[tools.rust]]
-version = "1.93.0"
+version = "1.93.1"
 backend = "core:rust"
 
 [[tools.rust-analyzer]]
